@@ -2,7 +2,7 @@
 
 import toast from "react-hot-toast"
 import { useState, useEffect, useCallback } from "react"
-import { CalendarDays, AlertCircle, FileDown, Clock, ShieldCheck, Plus, ChevronLeft, ChevronRight, ListChecks, X, Smartphone, Monitor, Globe, Trash2, Search, BookOpen } from "lucide-react"
+import { CalendarDays, AlertCircle, FileDown, Clock, ShieldCheck, Plus, ChevronLeft, ChevronRight, ListChecks, X, Smartphone, Monitor, Globe, Trash2, Search, BookOpen, Send } from "lucide-react"
 import { isHoliday } from "@/utils/holidays"
 import Link from "next/link"
 
@@ -130,6 +130,8 @@ export default function AgentDashboard({ currentUser, shifts, currentYear, curre
   const [agendaNote, setAgendaNote] = useState('')
   const [agendaSearch, setAgendaSearch] = useState('')
   const [agendaSaving, setAgendaSaving] = useState(false)
+  const [telegramCode, setTelegramCode] = useState('')
+  const [telegramLoading, setTelegramLoading] = useState(false)
   const myShifts = shifts.filter(s => s.userId === currentUser.id)
 
   // Fetch agenda entries for current month
@@ -788,6 +790,64 @@ export default function AgentDashboard({ currentUser, shifts, currentYear, curre
                 Gestisci Agenda
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Telegram Link Widget */}
+      <div className="bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 rounded-[2rem] p-8 text-white relative overflow-hidden shadow-xl">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-6">
+          <div className="flex items-center gap-4 flex-1">
+            <div className="p-4 bg-white/15 backdrop-blur-sm rounded-2xl border border-white/20">
+              <Send size={28} className="text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-black">Notifiche Telegram</h3>
+              <p className="text-blue-100/80 text-sm font-medium mt-1">
+                Collega il tuo account Telegram per ricevere le allerte di emergenza dal Comando direttamente sul telefono.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center gap-3 min-w-[260px]">
+            {telegramCode ? (
+              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 text-center w-full">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-blue-200/70 mb-2">Il tuo codice (valido 15 min)</p>
+                <p className="text-3xl font-black tracking-[.3em] text-white">{telegramCode}</p>
+                <a
+                  href={`https://t.me/Reperibilita_Altamura_bot?start=${telegramCode}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 w-full inline-flex items-center justify-center gap-2 bg-white text-blue-700 px-6 py-3 rounded-xl font-black text-sm shadow-lg hover:scale-[1.03] active:scale-[0.97] transition-transform"
+                >
+                  <Send size={16} />
+                  Apri Telegram
+                </a>
+              </div>
+            ) : (
+              <button
+                disabled={telegramLoading}
+                onClick={async () => {
+                  setTelegramLoading(true)
+                  try {
+                    const res = await fetch('/api/telegram/link', { method: 'POST' })
+                    const data = await res.json()
+                    if (!res.ok) throw new Error(data.error)
+                    setTelegramCode(data.code)
+                    toast.success('Codice generato! Clicca su Apri Telegram.')
+                  } catch {
+                    toast.error('Errore nella generazione del codice.')
+                  } finally {
+                    setTelegramLoading(false)
+                  }
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-white text-blue-700 px-6 py-4 rounded-xl font-black text-sm shadow-lg hover:scale-[1.03] active:scale-[0.97] transition-transform disabled:opacity-50"
+              >
+                <Send size={18} />
+                {telegramLoading ? 'Generazione...' : 'Genera Codice di Collegamento'}
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -22,6 +22,11 @@ model User {
   massimale    Int       @default(8)
   squadra      String?   // E.g., "SQUADRA A", "SQUADRA B"
   forcePasswordChange Boolean @default(true)
+  telegramChatId        String?
+  telegramLinkCode      String?
+  telegramLinkExpires   DateTime?
+  adminAlerts   EmergencyAlert[] @relation("AdminAlerts")
+  receivedAlerts AlertRecipient[] @relation("AlertRecipientUser")
   absences      Absence[]
   shifts        Shift[]
   agendaEntries AgendaEntry[] @relation("agendaEntries")
@@ -103,4 +108,24 @@ model AuditLog {
   targetName String?
   details   String   // JSON or text description
   createdAt DateTime @default(now())
+}
+
+model EmergencyAlert {
+  id          String   @id @default(uuid())
+  adminId     String
+  admin       User     @relation("AdminAlerts", fields: [adminId], references: [id])
+  date        DateTime @default(now())
+  message     String
+  status      String   @default("PENDING") // PENDING, ACKNOWLEDGED
+  recipients  AlertRecipient[]
+}
+
+model AlertRecipient {
+  id          String   @id @default(uuid())
+  alertId     String
+  alert       EmergencyAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation("AlertRecipientUser", fields: [userId], references: [id])
+  status      String   @default("SENT") // SENT, ACKNOWLEDGED
+  ackedAt     DateTime?
 }

@@ -54,6 +54,9 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
   const [verbatelScript, setVerbatelScript] = useState("")
   const [isLoadingVerbatel, setIsLoadingVerbatel] = useState(false)
 
+  // Emergency Alert
+  const [isSendingAlert, setIsSendingAlert] = useState(false)
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -719,6 +722,28 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
           >
             <RefreshCw size={18} />
             Sincronizza Verbatel
+          </button>
+
+          <button
+            disabled={isSendingAlert}
+            onClick={async () => {
+              if (!confirm('🚨 SEI SICURO di voler lanciare un ALLERTA EMERGENZA via Telegram a tutti i reperibili di oggi?')) return
+              setIsSendingAlert(true)
+              try {
+                const res = await fetch('/api/admin/alert-emergency', { method: 'POST' })
+                const data = await res.json()
+                if (!res.ok) throw new Error(data.error || 'Errore invio allerta')
+                toast.success(`🚨 Allerta inviata a ${data.alerted} reperibili via Telegram!`)
+              } catch (err: any) {
+                toast.error(err.message || 'Errore Telegram')
+              } finally {
+                setIsSendingAlert(false)
+              }
+            }}
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-black transition-colors shadow-sm disabled:opacity-50 animate-pulse hover:animate-none"
+            title="Invia allerta immediata via Telegram ai reperibili di oggi"
+          >
+            🚨 {isSendingAlert ? 'Invio...' : 'Allerta Emergenza'}
           </button>
           
           <button 
