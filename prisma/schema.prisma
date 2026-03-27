@@ -21,6 +21,7 @@ model User {
   gradoLivello Int       @default(13)
   massimale    Int       @default(8)
   squadra      String?   // E.g., "SQUADRA A", "SQUADRA B"
+  forcePasswordChange Boolean @default(true)
   absences      Absence[]
   shifts        Shift[]
   agendaEntries AgendaEntry[] @relation("agendaEntries")

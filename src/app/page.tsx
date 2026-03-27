@@ -11,6 +11,7 @@ export default async function Home({ searchParams }: { searchParams: { view?: st
   const session = await auth()
   
   if (!session?.user) redirect('/login')
+  if (session.user.forcePasswordChange) redirect('/change-password')
 
   const { role, name, matricola } = session.user
   const view = (await searchParams).view

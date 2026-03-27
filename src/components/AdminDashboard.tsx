@@ -1,5 +1,6 @@
 "use client"
 
+import toast from "react-hot-toast"
 import { useState, useRef, useMemo } from "react"
 import { Calendar as CalendarIcon, UploadCloud, Users, ChevronLeft, ChevronRight, Settings, FileDown, LogOut, CheckCircle2, RefreshCw, X, FileEdit, Trash2, Shield, AlertCircle, HelpCircle, EyeOff, Eye, Mail, Play, Plus } from "lucide-react"
 import SettingsPanel from "./SettingsPanel"
@@ -123,7 +124,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       setEditingCell(null)
       router.refresh()
     } catch {
-      alert("Errore nel salvataggio")
+      toast.error("Errore nel salvataggio")
     } finally {
       setIsSavingCell(false)
     }
@@ -143,7 +144,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       if (!res.ok) throw new Error("Errore ricalcolo")
       router.refresh()
     } catch (err) {
-      alert("Errore durante il ricalcolo")
+      toast.error("Errore durante il ricalcolo")
     } finally {
       setRecalcAgent(null)
     }
@@ -281,7 +282,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 })();`;
       setVerbatelScript(scriptCode)
     } catch (err) {
-      alert("Errore durante la generazione dello script per Verbatel.")
+      toast.error("Errore durante la generazione dello script per Verbatel.")
     } finally {
       setIsLoadingVerbatel(false)
     }
@@ -299,7 +300,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       if (!res.ok) throw new Error("Generate API failed")
       router.refresh()
     } catch {
-      alert("Errore durante la generazione")
+      toast.error("Errore durante la generazione")
     } finally {
       setIsGenerating(false)
     }
@@ -316,7 +317,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       })
       router.refresh()
     } catch {
-      alert("Errore durante la pulizia")
+      toast.error("Errore durante la pulizia")
     } finally {
       setIsClearing(false)
     }
@@ -1254,7 +1255,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                 router.refresh()
                               } else {
                                 const d = await res.json()
-                                alert(d.error || "Errore creazione")
+                                toast.error(d.error || "Errore creazione")
                               }
                               setIsSavingUser(false)
                             }}
@@ -1334,9 +1335,9 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                   <input type="text" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Nuova Password" className="border-2 border-amber-400 rounded-lg px-2 py-1.5 text-xs font-black w-32 bg-white" />
                                 </div>
                                 <button onClick={async () => {
-                                  if(!newPass) return alert("Inserisci una password")
+                                  if(!newPass) return toast.error("Inserisci una password")
                                   const res = await fetch('/api/admin/users', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: agent.id, action: 'resetPassword', newPassword: newPass })})
-                                  if(res.ok) { alert("Password aggiornata!"); setNewPass("") }
+                                  if(res.ok) { toast.success("Password aggiornata!"); setNewPass("") }
                                 }} className="self-end text-[10px] font-black text-amber-800 bg-amber-100 px-4 py-2 rounded-lg border-2 border-amber-300 hover:bg-amber-200 transition-all uppercase">Reset</button>
                               </div>
                             </div>
@@ -1361,7 +1362,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                   setEditingAgent(null)
                                   router.refresh()
                                 } else {
-                                  alert("Errore durante il salvataggio")
+                                  toast.error("Errore durante il salvataggio")
                                 }
                               }} className="text-xs font-black text-white hover:bg-black px-6 py-3 bg-emerald-700 rounded-xl shadow-lg transition-all border-2 border-emerald-800">SALVA MODIFICHE</button>
                             </div>
@@ -1542,7 +1543,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                       placeholder="Il codice javascript apparirà qui..."
                     />
                     <button 
-                      onClick={() => { navigator.clipboard.writeText(verbatelScript); alert("Codice copiato negli appunti! Ora incollalo in Verbatel."); }}
+                      onClick={() => { navigator.clipboard.writeText(verbatelScript); toast.success("Codice copiato negli appunti! Ora incollalo in Verbatel."); }}
                       className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
                     >
                       COPIA NEGLI APPUNTI

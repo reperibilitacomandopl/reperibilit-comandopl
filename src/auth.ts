@@ -30,7 +30,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           name: user.name,
           email: user.email,
           role: user.role,
-          matricola: user.matricola
+          matricola: user.matricola,
+          forcePasswordChange: user.forcePasswordChange
         }
       }
     })
@@ -40,6 +41,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.role = user.role as string
         token.matricola = user.matricola as string
+        token.forcePasswordChange = user.forcePasswordChange as boolean
       }
       return token
     },
@@ -48,6 +50,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.role = token.role as string
         session.user.matricola = token.matricola as string
         session.user.id = token.sub as string
+        session.user.forcePasswordChange = token.forcePasswordChange as boolean
       }
       return session
     }

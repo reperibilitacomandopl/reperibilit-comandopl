@@ -1,5 +1,6 @@
 "use client"
 
+import toast from "react-hot-toast"
 import { useState, useEffect, useCallback } from "react"
 import { CalendarDays, AlertCircle, FileDown, Clock, ShieldCheck, Plus, ChevronLeft, ChevronRight, ListChecks, X, Smartphone, Monitor, Globe, Trash2, Search, BookOpen } from "lucide-react"
 import { isHoliday } from "@/utils/holidays"
@@ -170,11 +171,11 @@ export default function AgentDashboard({ currentUser, shifts, currentYear, curre
       } else {
         const errData = await res.json()
         console.error('Save failed:', errData)
-        alert('Errore durante il salvataggio: ' + (errData.error || 'Server error'))
+        toast.error('Errore durante il salvataggio: ' + (errData.error || 'Server error'))
       }
     } catch (err) {
       console.error('Save exception:', err)
-      alert('Errore di connessione o del server.')
+      toast.error('Errore di connessione o del server.')
     }
     setAgendaSaving(false)
   }
