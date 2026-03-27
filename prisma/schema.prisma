@@ -47,6 +47,7 @@ model Shift {
   date      DateTime
   type      String   @default("REP 22-07")  // Base shift: M7, P14, F, RR etc.
   repType   String?  // REP assignment: "REP 22-07" or null
+  isSyncedToVerbatel Boolean @default(false)
   createdAt DateTime @default(now())
   
   @@unique([userId, date])
