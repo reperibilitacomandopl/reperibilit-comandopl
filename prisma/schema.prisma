@@ -1,0 +1,104 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id          String    @id @default(uuid())
+  matricola   String    @unique
+  name        String
+  email       String?   @unique
+  phone       String?
+  password    String    // Hashed password
+  role        String    @default("AGENTE") // AGENTE o ADMIN
+  isUfficiale  Boolean   @default(false)
+  qualifica    String?   @default("Agente di P.L.")
+  gradoLivello Int       @default(13)
+  massimale    Int       @default(8)
+  squadra      String?   // E.g., "SQUADRA A", "SQUADRA B"
+  absences      Absence[]
+  shifts        Shift[]
+  agendaEntries AgendaEntry[] @relation("agendaEntries")
+  createdAt     DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Absence {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime
+  code      String   // F, M, 104, RR, ecc.
+  source    String   @default("MANUAL") // MANUAL o PDF_IMPORT
+  createdAt DateTime @default(now())
+  
+  @@unique([userId, date])
+}
+
+model Shift {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime
+  type      String   @default("REP 22-07")  // Base shift: M7, P14, F, RR etc.
+  repType   String?  // REP assignment: "REP 22-07" or null
+  createdAt DateTime @default(now())
+  
+  @@unique([userId, date])
+}
+
+model GlobalSettings {
+  id               Int      @id @default(1)
+  minUfficiali     Int      @default(1)
+  usaProporzionale Boolean  @default(true)
+  annoCorrente     Int      @default(2026)
+  meseCorrente     Int      @default(4)
+}
+
+model MonthStatus {
+  id          String   @id @default(uuid())
+  month       Int
+  year        Int
+  isPublished Boolean  @default(false)
+
+  @@unique([month, year])
+}
+
+model AgendaEntry {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation("agendaEntries", fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime
+  code      String   // Es: "0015", "0010", "2000"
+  label     String   // Es: "FERIE ANNO CORRENTE"
+  hours     Float?   // Ore (per permessi orari, straordinari)
+  note      String?  // Note libere
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date, code])
+}
+
+model PecSettings {
+  id       Int    @id @default(1)
+  host     String @default("")
+  port     String @default("465")
+  user     String @default("")
+  pass     String @default("")
+  fromAddr String @default("")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  adminId   String
+  adminName String?
+  action    String   // e.g. "UPDATE_SHIFT", "RESET_PASSWORD", "DELETE_AGENT"
+  targetId  String?  // ID of the target user or object
+  targetName String?
+  details   String   // JSON or text description
+  createdAt DateTime @default(now())
+}
