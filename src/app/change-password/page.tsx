@@ -1,15 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Lock, CheckCircle2, ArrowRight } from "lucide-react"
+import { signOut } from "next-auth/react"
+import { Lock, ArrowRight } from "lucide-react"
 import toast from "react-hot-toast"
 
 export default function ChangePasswordPage() {
   const [newPass, setNewPass] = useState("")
   const [confirmPass, setConfirmPass] = useState("")
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -29,9 +28,9 @@ export default function ChangePasswordPage() {
         throw new Error(d.error || "Errore")
       }
       
-      toast.success("Password impostata! Benvenuto nel Portale.")
-      router.push("/")
-      router.refresh()
+      toast.success("Password aggiornata! Effettua il login con la nuova password.")
+      // Sign out to clear the stale JWT, then redirect to login
+      await signOut({ callbackUrl: "/login" })
     } catch (err: any) {
       toast.error(err.message || "Errore imprevisto")
       setLoading(false)
