@@ -223,7 +223,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             const cell = row.querySelectorAll('td')[targetColIndex];
             if(!cell) continue;
 
-            if (cell.className.includes('reperibile') || cell.innerHTML.includes('fa-calendar-day') || cell.innerHTML.includes('fa-ban')) {
+            if (cell.className.includes('reperibile') || cell.innerHTML.includes('fa-calendar-day')) {
                 continue;
             }
 
