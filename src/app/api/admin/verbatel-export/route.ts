@@ -3,20 +3,45 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { logAudit } from '@/lib/audit';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-api-key',
+};
+
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
 export async function GET(request: Request) {
   try {
-    const session = await auth();
-    if (session?.user?.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { searchParams } = new URL(request.url);
+    const providedKey = request.headers.get('x-api-key') || searchParams.get('apiKey');
+    
+    // Auth check: either valid NextAuth session or valid API key
+    let isAdmin = false;
+    let adminId = 'API_KEY_USER';
+    
+    if (providedKey === process.env.AUTH_SECRET) {
+      isAdmin = true;
+    } else {
+      const session = await auth();
+      if (session?.user?.role === 'ADMIN') {
+        isAdmin = true;
+        adminId = session.user.id || 'ADMIN';
+      }
     }
 
-    const { searchParams } = new URL(request.url);
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+    }
+
     const month = parseInt(searchParams.get('mese') || '');
     const year = parseInt(searchParams.get('anno') || '');
     const unsyncedOnly = searchParams.get('unsyncedOnly') === 'true';
 
     if (isNaN(month) || isNaN(year)) {
-      return NextResponse.json({ error: 'Invalid month/year parameters' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid month/year parameters' }, { status: 400, headers: corsHeaders });
     }
 
     // Creiamo date inizio e fine mese (mese è 0-indexed in JS per Date)
@@ -78,15 +103,15 @@ export async function GET(request: Request) {
     });
 
     await logAudit({
-      adminId: session.user.id || '',
+      adminId: adminId,
       action: 'EXPORT_VERBATEL',
       details: `Export dati Verbatel per ${month}/${year}. Trovati ${result.length} agenti con reperibilità.`
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json(result, { headers: corsHeaders });
 
   } catch (error) {
     console.error('Error exporting verbatel data:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500, headers: corsHeaders });
   }
 }
