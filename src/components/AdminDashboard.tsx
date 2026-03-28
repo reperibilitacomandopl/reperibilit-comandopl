@@ -147,7 +147,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       const res = await fetch("/api/admin/generate-agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agentId, month: currentMonth - 1, year: currentYear })
+        body: JSON.stringify({ agentId, month: currentMonth, year: currentYear })
       })
       if (!res.ok) throw new Error("Errore ricalcolo")
       router.refresh()
