@@ -379,28 +379,42 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
         const wsName = wb.SheetNames[0]
         const ws = wb.Sheets[wsName]
         const data = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1 })
+        const headerRow = data[0] || []
+        const isVerbatelFormat = headerRow.some((h: any) => h?.toString().toLowerCase().includes("matricola"))
 
         const shiftsData: any[] = []
-        // Avoid ignoring "TOTALE GIORNALIERO" or valid agents
         const ignoreKeywords = ["AGENTE", "ISTRUTTORE", "UFFICIALE", "SOVRINTENDENTE", "ASSISTENTE", "VICE", "CAPITANO", "TENENTE"]
 
-        for (let r = 3; r < data.length; r++) {
-          const rowData = data[r]
-          if (!rowData || !rowData[1]) continue
-          const rawName = rowData[1]?.toString().trim().toUpperCase()
+        const startRow = isVerbatelFormat ? 1 : 3
 
-          // Skip empty or role marker rows, keep "TOTALE GIORNALIERO" out
+        for (let r = startRow; r < data.length; r++) {
+          const rowData = data[r]
+          if (!rowData) continue
+          
+          let rawName = ""
+          let matricola = ""
+
+          if (isVerbatelFormat) {
+            rawName = rowData[0]?.toString().trim().toUpperCase() || ""
+            matricola = rowData[1]?.toString().trim() || ""
+          } else {
+            rawName = rowData[1]?.toString().trim().toUpperCase() || ""
+          }
+
           if (!rawName || ignoreKeywords.some(kw => rawName === kw) || rawName.startsWith("TOTALE")) continue
 
+          const colOffset = isVerbatelFormat ? 4 : 2
+
           for (let d = 1; d <= 31; d++) {
-            const shiftType = rowData[d + 1]?.toString().trim()
+            const shiftType = rowData[d + colOffset - 1]?.toString().trim()
             if (shiftType) {
               const dateObj = new Date(Date.UTC(currentYear, currentMonth - 1, d))
               if (dateObj.getMonth() === currentMonth - 1) { 
                 shiftsData.push({
                   name: rawName,
+                  matricola: matricola,
                   date: dateObj.toISOString(),
-                  type: shiftType.toUpperCase()
+                  type: shiftType
                 })
               }
             }
