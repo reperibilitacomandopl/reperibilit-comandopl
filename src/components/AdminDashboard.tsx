@@ -379,13 +379,20 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
         const wsName = wb.SheetNames[0]
         const ws = wb.Sheets[wsName]
         const data = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1 })
-        const headerRow = data[0] || []
-        const isVerbatelFormat = headerRow.some((h: any) => h?.toString().toLowerCase().includes("matricola"))
+        let headerRowIndex = -1
+        for (let r = 0; r < Math.min(data.length, 10); r++) {
+          const row = data[r]
+          if (Array.isArray(row) && row.some(cell => cell?.toString().toLowerCase().includes("matricola"))) {
+            headerRowIndex = r
+            break
+          }
+        }
 
+        const isVerbatelFormat = headerRowIndex !== -1
         const shiftsData: any[] = []
         const ignoreKeywords = ["AGENTE", "ISTRUTTORE", "UFFICIALE", "SOVRINTENDENTE", "ASSISTENTE", "VICE", "CAPITANO", "TENENTE"]
 
-        const startRow = isVerbatelFormat ? 1 : 3
+        const startRow = isVerbatelFormat ? headerRowIndex + 1 : 3
 
         for (let r = startRow; r < data.length; r++) {
           const rowData = data[r]
