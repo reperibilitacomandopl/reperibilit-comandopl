@@ -380,19 +380,30 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
         const ws = wb.Sheets[wsName]
         const data = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1 })
         let headerRowIndex = -1
+        let isVerbatelFormat = false
+        let isReperibilitaFormat = false
+
         for (let r = 0; r < Math.min(data.length, 10); r++) {
           const row = data[r]
-          if (Array.isArray(row) && row.some(cell => cell?.toString().toLowerCase().includes("matricola"))) {
-            headerRowIndex = r
-            break
+          if (Array.isArray(row)) {
+            const rowStr = row.join(" ").toLowerCase()
+            if (rowStr.includes("matricola")) {
+              headerRowIndex = r
+              isVerbatelFormat = true
+              break
+            } else if (rowStr.includes("nominativo")) {
+              headerRowIndex = r
+              isReperibilitaFormat = true
+              break
+            }
           }
         }
 
-        const isVerbatelFormat = headerRowIndex !== -1
         const shiftsData: any[] = []
         const ignoreKeywords = ["AGENTE", "ISTRUTTORE", "UFFICIALE", "SOVRINTENDENTE", "ASSISTENTE", "VICE", "CAPITANO", "TENENTE"]
 
-        const startRow = isVerbatelFormat ? headerRowIndex + 1 : 3
+        const startRow = headerRowIndex !== -1 ? headerRowIndex + 1 : 3
+        const colOffset = isVerbatelFormat ? 4 : (isReperibilitaFormat ? 1 : 2)
 
         for (let r = startRow; r < data.length; r++) {
           const rowData = data[r]
@@ -405,12 +416,11 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             rawName = rowData[0]?.toString().trim().toUpperCase() || ""
             matricola = rowData[1]?.toString().trim() || ""
           } else {
-            rawName = rowData[1]?.toString().trim().toUpperCase() || ""
+            rawName = rowData[0]?.toString().trim().toUpperCase() || ""
+            // Se è il formato Reperibilità classico, il nome è a Colonna 0, turni da 1
           }
 
           if (!rawName || ignoreKeywords.some(kw => rawName === kw) || rawName.startsWith("TOTALE")) continue
-
-          const colOffset = isVerbatelFormat ? 4 : 2
 
           for (let d = 1; d <= 31; d++) {
             const shiftType = rowData[d + colOffset - 1]?.toString().trim()

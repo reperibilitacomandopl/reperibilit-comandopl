@@ -72,14 +72,14 @@ export async function POST(req: Request) {
       const userId = s.matricola ? userByMatricola.get(s.matricola?.toString()) : userByName.get(s.name?.toString().toUpperCase().trim())
       if (!userId) return null
 
-      const shiftTypeRaw = s.type?.toString().trim().toUpperCase() || ""
-      const isRep = shiftTypeRaw === "REP" || shiftTypeRaw === "REP 22-07"
+      const typeRaw = s.type?.toString().trim().toUpperCase() || ""
+      const isRCode = typeRaw === "R" || typeRaw === "REP" || typeRaw === "REP 22-07"
 
       return {
         userId,
         date: new Date(s.date),
-        type: isRep ? "" : s.type?.toString() || "",
-        repType: isRep ? "REP 22-07" : null
+        type: isRCode ? "" : s.type?.toString() || "",
+        repType: isRCode ? "REP 22-07" : null
       }
     }).filter(Boolean)
 
