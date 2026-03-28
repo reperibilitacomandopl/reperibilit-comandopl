@@ -49,48 +49,55 @@ export async function POST(req: Request) {
       }
     }
 
-    // 4. Prepare data for batch processing (Optimized Upsert)
-    const upsertPromises: any[] = []
-
-    for (const s of shifts) {
-      const userId = s.matricola ? userByMatricola.get(s.matricola?.toString()) : userByName.get(s.name?.toString().toUpperCase().trim())
-      if (!userId) continue
-
-      const typeRaw = s.type?.toString().trim().toUpperCase() || ""
-      const date = new Date(s.date)
-
-      const updateData: any = {}
-      if (importType === "rep") {
-        updateData.repType = "REP 22-07"
-      } else {
-        updateData.type = typeRaw
-      }
-
-      const createData = {
-        userId,
-        date,
-        type: importType === "base" ? typeRaw : "",
-        repType: importType === "rep" ? "REP 22-07" : null
-      }
-
-      upsertPromises.push(
-        prisma.shift.upsert({
-          where: {
-            userId_date: { userId, date }
-          },
-          update: updateData,
-          create: createData
-        })
-      )
-    }
-
-    // Execute in chunks
-    const chunkSize = 50
+    // 4. Prepare data for bulk upsert
+    // Constructing a single SQL query for maximum performance on PostgreSQL
+    // To handle R and RR specifically as base shifts
+    
+    const chunkSize = 200
     let totalImported = 0
-    for (let i = 0; i < upsertPromises.length; i += chunkSize) {
-      const batch = upsertPromises.slice(i, i + chunkSize)
-      await Promise.all(batch)
-      totalImported += batch.length
+
+    for (let i = 0; i < shifts.length; i += chunkSize) {
+      const chunk = shifts.slice(i, i + chunkSize)
+      
+      // Building the VALUES part of the SQL query
+      // Format: ('ID', 'USERID', 'DATE', 'TYPE', 'REPTYPE', 'CREATEDAT')
+      const valueLines: string[] = []
+      
+      for (const s of chunk) {
+        const userId = s.matricola ? userByMatricola.get(s.matricola?.toString()) : userByName.get(s.name?.toString().toUpperCase().trim())
+        if (!userId) continue
+
+        const typeRaw = s.type?.toString().trim().toUpperCase().replace(/'/g, "''") || ""
+        const dateStr = new Date(s.date).toISOString()
+        const id = crypto.randomUUID()
+        const now = new Date().toISOString()
+
+        if (importType === "rep") {
+          // Si sta caricando la reperibilità: R diventa REP
+          valueLines.push(`('${id}', '${userId}', '${dateStr}', '', 'REP 22-07', '${now}')`)
+        } else {
+          // Si sta caricando la programmazione: R e RR sono turni base
+          valueLines.push(`('${id}', '${userId}', '${dateStr}', '${typeRaw}', NULL, '${now}')`)
+        }
+      }
+
+      if (valueLines.length === 0) continue
+
+      const updateExpression = importType === "rep" 
+        ? `"repType" = EXCLUDED."repType"`
+        : `"type" = EXCLUDED."type"`
+
+      // Executing raw SQL for maximum speed
+      // We use ON CONFLICT because userId+date is unique
+      const sql = `
+        INSERT INTO "Shift" ("id", "userId", "date", "type", "repType", "createdAt")
+        VALUES ${valueLines.join(", ")}
+        ON CONFLICT ("userId", "date")
+        DO UPDATE SET ${updateExpression};
+      `
+
+      await prisma.$executeRawUnsafe(sql)
+      totalImported += valueLines.length
     }
 
     return NextResponse.json({ success: true, count: totalImported })
