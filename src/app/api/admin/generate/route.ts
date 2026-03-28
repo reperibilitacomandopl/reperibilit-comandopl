@@ -345,8 +345,8 @@ export async function POST(req: Request) {
       }
     }
 
-    // === SAVE TO DATABASE ===
-    // 1. Clear old REP assignments for this month
+    // === SAVE TO DATABASE (OPTIMIZED) ===
+    // 1. Reset all REP assignments for this month to null first
     await prisma.shift.updateMany({
       where: {
         date: {
@@ -357,29 +357,40 @@ export async function POST(req: Request) {
       data: { repType: null }
     })
 
-    // 2. Insert new REP shifts with upsert into repType
+    // 2. Prepare all upserts
+    const upsertPromises: any[] = []
     let totalAssigned = 0
+
     for (const agent of agents) {
       for (let day = 1; day <= daysInMonth; day++) {
         if (repResults[agent.id][day]) {
-          await prisma.shift.upsert({
-            where: {
-              userId_date: {
+          const shiftType = repResults[agent.id][day]
+          upsertPromises.push(
+            prisma.shift.upsert({
+              where: {
+                userId_date: {
+                  userId: agent.id,
+                  date: new Date(Date.UTC(year, month, day))
+                }
+              },
+              update: { repType: shiftType },
+              create: {
                 userId: agent.id,
-                date: new Date(Date.UTC(year, month, day))
+                date: new Date(Date.UTC(year, month, day)),
+                type: "",
+                repType: shiftType
               }
-            },
-            update: { repType: repResults[agent.id][day] },
-            create: {
-              userId: agent.id,
-              date: new Date(Date.UTC(year, month, day)),
-              type: "", // No base shift if created from scratch
-              repType: repResults[agent.id][day]
-            }
-          })
+            })
+          )
           totalAssigned++
         }
       }
+    }
+
+    // Execute in chunks of 50 to avoid connection pool exhaustion but remain fast
+    const chunkSize = 50
+    for (let i = 0; i < upsertPromises.length; i += chunkSize) {
+      await Promise.all(upsertPromises.slice(i, i + chunkSize))
     }
 
     // Build summary

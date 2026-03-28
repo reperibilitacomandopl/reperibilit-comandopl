@@ -82,29 +82,30 @@ export async function POST(req: Request) {
       return false
     }
 
-    // Calculate target
+    // Calculate target respecting individual massimale
+    const baseTargetLimit = agent.massimale || (isUff ? 6 : 5)
+    
     let availableDays = 0
     for (let d = 1; d <= daysInMonth; d++) {
       if (!isBlocked(d)) availableDays++
     }
     const baselineDays = Math.max(1, daysInMonth - 6)
-    let target = Math.round((availableDays / baselineDays) * baseTarget)
-    if (target > baseTarget) target = baseTarget
+    let target = Math.round((availableDays / baselineDays) * baseTargetLimit)
+    if (target > baseTargetLimit) target = baseTargetLimit
     if (availableDays > 0 && target < 1) target = 1
 
     // Assign REPs
     const assignedDays: number[] = []
-    let repCount = 0, numSab = 0, numDom = 0
+    let repCount = 0, numDom = 0
 
-    // Phase 1: strict spacing
+    // Phase 1: strict spacing (at least 2 days gap)
     for (let day = 1; day <= daysInMonth; day++) {
       if (repCount >= target) break
       if (isBlocked(day)) continue
       if (day < daysInMonth && isBlocked(day + 1)) continue
 
-      const dow = new Date(year, month, day).getDay()
       const isFestivo = isHoliday(new Date(year, month, day))
-      if (isFestivo && numDom >= 2) continue // Evita troppi festivi allo stesso agente (numDom funge da counter festivi generico in questo script)
+      if (isFestivo && numDom >= 2) continue 
 
       const tooClose = assignedDays.some(d => Math.abs(day - d) <= 2)
       if (tooClose) continue
@@ -122,8 +123,7 @@ export async function POST(req: Request) {
       assignedDays.push(day)
       repCount++
       dayRepCount[day]++
-      const isFestivoAdd = isHoliday(new Date(year, month, day))
-      if (isFestivoAdd) numDom++
+      if (isFestivo) numDom++
     }
 
     // Phase 2: relax spacing
@@ -143,9 +143,9 @@ export async function POST(req: Request) {
       }
     }
 
-    // Save assignments to DB
-    for (const day of assignedDays) {
-      await prisma.shift.upsert({
+    // Save assignments to DB (Optimized)
+    const upsertPromises = assignedDays.map(day => 
+      prisma.shift.upsert({
         where: {
           userId_date: { userId: agentId, date: new Date(Date.UTC(year, month, day)) }
         },
@@ -157,6 +157,11 @@ export async function POST(req: Request) {
           repType: "REP 22-07" 
         }
       })
+    )
+
+    const chunkSize = 50
+    for (let i = 0; i < upsertPromises.length; i += chunkSize) {
+      await Promise.all(upsertPromises.slice(i, i + chunkSize))
     }
 
     return NextResponse.json({

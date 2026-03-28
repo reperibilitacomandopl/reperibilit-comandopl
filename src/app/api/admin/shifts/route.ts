@@ -49,46 +49,50 @@ export async function POST(req: Request) {
       }
     }
 
-    // 4. Prepare data for batch processing
-    // We will delete existing shifts for the target period for the agents in the file to avoid conflicts
-    const userIds = Array.from(agentMap.values()).map(info => {
-      return info.matricola ? userByMatricola.get(info.matricola) : userByName.get(info.name.toUpperCase())
-    }).filter(Boolean) as string[]
+    // 4. Prepare data for batch processing (Optimized Upsert)
+    const upsertPromises: any[] = []
 
-    const dates = Array.from(new Set(shifts.map((s: any) => new Date(s.date).toISOString())))
-    const minDate = new Date(Math.min(...dates.map(d => new Date(d).getTime())))
-    const maxDate = new Date(Math.max(...dates.map(d => new Date(d).getTime())))
-
-    // Delete existing records for these users in this range to avoid "unique constraint" errors on re-upload
-    await prisma.shift.deleteMany({
-      where: {
-        userId: { in: userIds },
-        date: { gte: minDate, lte: maxDate }
-      }
-    })
-
-    // 5. Batch Insert
-    const dataToInsert = shifts.map((s: any) => {
+    for (const s of shifts) {
       const userId = s.matricola ? userByMatricola.get(s.matricola?.toString()) : userByName.get(s.name?.toString().toUpperCase().trim())
-      if (!userId) return null
+      if (!userId) continue
 
       const typeRaw = s.type?.toString().trim().toUpperCase() || ""
       const isRCode = typeRaw === "R" || typeRaw === "REP" || typeRaw === "REP 22-07"
+      const date = new Date(s.date)
 
-      return {
-        userId,
-        date: new Date(s.date),
-        type: isRCode ? "" : s.type?.toString() || "",
-        repType: isRCode ? "REP 22-07" : null
+      const updateData: any = {}
+      if (isRCode) {
+        updateData.repType = "REP 22-07"
+      } else {
+        updateData.type = s.type?.toString() || ""
       }
-    }).filter(Boolean)
 
-    const result = await prisma.shift.createMany({
-      data: dataToInsert as any,
-      skipDuplicates: true
-    })
+      upsertPromises.push(
+        prisma.shift.upsert({
+          where: {
+            userId_date: { userId, date }
+          },
+          update: updateData,
+          create: {
+            userId,
+            date,
+            type: isRCode ? "" : (s.type?.toString() || ""),
+            repType: isRCode ? "REP 22-07" : null
+          }
+        })
+      )
+    }
 
-    return NextResponse.json({ success: true, count: result.count })
+    // Execute in chunks
+    const chunkSize = 50
+    let totalImported = 0
+    for (let i = 0; i < upsertPromises.length; i += chunkSize) {
+      const batch = upsertPromises.slice(i, i + chunkSize)
+      await Promise.all(batch)
+      totalImported += batch.length
+    }
+
+    return NextResponse.json({ success: true, count: totalImported })
   } catch (error) {
     console.error("[SHIFTS API ERROR]", error)
     return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 })

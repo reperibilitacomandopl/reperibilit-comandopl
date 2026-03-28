@@ -348,15 +348,22 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
     }
   }
 
-  const handleClearAll = async () => {
-    if (!confirm(`Vuoi davvero CANCELLARE TUTTI I TURNI per il mese di ${currentMonthName} ${currentYear}?`)) return
+  const handleClear = async (type: "all" | "base" | "rep") => {
+    const messages = {
+      all: "CANCELLARE TUTTI I DATI (Turni e Reperibilità)",
+      base: "cancellare solo i TURNI BASE (M7, P14, F, ecc.)",
+      rep: "cancellare solo le REPERIBILITÀ (R)"
+    }
+    if (!confirm(`Vuoi davvero ${messages[type]} per il mese di ${currentMonthName} ${currentYear}?`)) return
+    
     setIsClearing(true)
     try {
       await fetch("/api/admin/clear", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ month: currentMonth, year: currentYear })
+        body: JSON.stringify({ month: currentMonth, year: currentYear, type })
       })
+      toast.success("Pulizia completata")
       router.refresh()
     } catch {
       toast.error("Errore durante la pulizia")
@@ -709,14 +716,26 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             </button>
           </div>
           
-          <button 
-            disabled={isClearing}
-            onClick={handleClearAll}
-            className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
-            title="Svuota Anagrafica e Turni per ripartire da zero"
-          >
-            <Trash2 size={18} />
-          </button>
+          <div className="flex bg-red-50 rounded-lg p-1 border border-red-100">
+            <button 
+              disabled={isClearing}
+              onClick={() => handleClear("base")}
+              className="flex items-center gap-2 hover:bg-white text-red-600 px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-tighter transition-all disabled:opacity-50"
+              title="Elimina solo i Turni Base (M, P, F, ecc.)"
+            >
+              <Trash2 size={14} />
+              Reset Turni
+            </button>
+            <button 
+              disabled={isClearing}
+              onClick={() => handleClear("rep")}
+              className="flex items-center gap-2 hover:bg-white text-red-600 px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-tighter transition-all disabled:opacity-50 border-l border-red-100"
+              title="Elimina solo le Reperibilità (R)"
+            >
+              <Trash2 size={14} />
+              Reset REP
+            </button>
+          </div>
           
           <button 
             onClick={() => setShowAnagrafica(true)}
