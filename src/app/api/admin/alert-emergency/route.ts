@@ -27,7 +27,7 @@ async function sendTelegramMessage(chatId: string, text: string, replyMarkup?: a
 export async function POST(req: Request) {
   try {
     const session = await auth();
-    if (!session || session.user?.role !== "ADMIN") {
+    if (!session || !session.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -35,11 +35,28 @@ export async function POST(req: Request) {
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth(); // 0-11
     const currentDay = today.getDate();
+    const todayUTC = new Date(Date.UTC(currentYear, currentMonth, currentDay));
+
+    // Check if Admin OR Officer on duty today
+    const isOfficerOnDuty = await prisma.shift.findFirst({
+      where: {
+        userId: session.user.id,
+        date: todayUTC,
+        user: { isUfficiale: true },
+        repType: { not: null }
+      }
+    });
+
+    const isAdmin = session.user.role === "ADMIN";
+
+    if (!isAdmin && !isOfficerOnDuty) {
+      return NextResponse.json({ error: "Unauthorized. Solo l'Admin o l'Ufficiale di servizio possono inviare allerte." }, { status: 403 });
+    }
 
     // 1. Trova i turni di Reperibilità per OGGI
     const todayShifts = await prisma.shift.findMany({
       where: {
-        date: new Date(Date.UTC(currentYear, currentMonth, currentDay)),
+        date: todayUTC,
         repType: { not: null }
       },
       include: { user: true }
