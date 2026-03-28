@@ -2,7 +2,7 @@
 
 import toast from "react-hot-toast"
 import { useState, useEffect, useCallback } from "react"
-import { CalendarDays, AlertCircle, FileDown, Clock, ShieldCheck, Plus, ChevronLeft, ChevronRight, ListChecks, X, Smartphone, Monitor, Globe, Trash2, Search, BookOpen, Send } from "lucide-react"
+import { CalendarDays, AlertCircle, FileDown, Clock, ShieldCheck, Plus, ChevronLeft, ChevronRight, ListChecks, X, Smartphone, Monitor, Globe, Trash2, Search, BookOpen, Send, Phone } from "lucide-react"
 import { isHoliday } from "@/utils/holidays"
 import Link from "next/link"
 
@@ -120,7 +120,7 @@ type AgendaItem = {
   note: string | null
 }
 
-export default function AgentDashboard({ currentUser, shifts, currentYear, currentMonth, isPublished }: { currentUser: { id: string, matricola: string, name: string }, shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], currentYear: number, currentMonth: number, isPublished: boolean }) {
+export default function AgentDashboard({ currentUser, shifts, allAgents, currentYear, currentMonth, isPublished }: { currentUser: { id: string, matricola: string, name: string }, shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], allAgents: any[], currentYear: number, currentMonth: number, isPublished: boolean }) {
   const [showSyncModal, setShowSyncModal] = useState(false)
   const [showAgenda, setShowAgenda] = useState(false)
   const [agendaEntries, setAgendaEntries] = useState<AgendaItem[]>([])
@@ -132,7 +132,33 @@ export default function AgentDashboard({ currentUser, shifts, currentYear, curre
   const [agendaSaving, setAgendaSaving] = useState(false)
   const [telegramCode, setTelegramCode] = useState('')
   const [telegramLoading, setTelegramLoading] = useState(false)
+  
+  // Duty Officer State
+  const [dutyTeam, setDutyTeam] = useState<any[]>([])
+  const [isOfficerOnDuty, setIsOfficerOnDuty] = useState(false)
+  const [loadingDutyTeam, setLoadingDutyTeam] = useState(false)
+  
   const myShifts = shifts.filter(s => s.userId === currentUser.id)
+
+  // Fetch Duty Team if Officer
+  useEffect(() => {
+    async function fetchDutyTeam() {
+      try {
+        setLoadingDutyTeam(true)
+        const res = await fetch('/api/officer/duty-team')
+        if (res.ok) {
+          const data = await res.json()
+          setDutyTeam(data.team || [])
+          setIsOfficerOnDuty(true)
+        }
+      } catch (err) {
+        console.error("Error fetching duty team:", err)
+      } finally {
+        setLoadingDutyTeam(false)
+      }
+    }
+    fetchDutyTeam()
+  }, [])
 
   // Fetch agenda entries for current month
   const fetchAgenda = useCallback(async () => {
@@ -304,6 +330,78 @@ export default function AgentDashboard({ currentUser, shifts, currentYear, curre
 
   return (
     <div className="space-y-8 pb-10">
+      {/* Duty Officer Dashboard Section (Solo se in servizio oggi) */}
+      {isOfficerOnDuty && dutyTeam.length > 0 && (
+        <div className="bg-white rounded-[2rem] border-4 border-blue-600 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-700">
+          <div className="bg-blue-600 p-6 text-white flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white/20 rounded-2xl">
+                <ShieldCheck size={32} />
+              </div>
+              <div>
+                <h3 className="text-xl font-black uppercase tracking-tighter">Centrale Operativa</h3>
+                <p className="text-blue-100 text-xs font-bold uppercase tracking-widest opacity-80">Riepilogo Reperibili di Oggi</p>
+              </div>
+            </div>
+            <div className="text-right hidden sm:block">
+              <p className="text-[10px] font-black uppercase opacity-60">Ufficiale di Servizio</p>
+              <p className="font-bold text-sm">{currentUser.name}</p>
+            </div>
+          </div>
+          
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {dutyTeam.map((member) => (
+                <div key={member.id} className="group relative bg-slate-50 border border-slate-200 rounded-2xl p-4 transition-all hover:bg-white hover:shadow-xl hover:border-blue-200">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-black text-blue-600 uppercase tracking-wider">{member.repType}</span>
+                        {member.telegramChatId ? (
+                          <span className="bg-emerald-100 text-emerald-700 text-[8px] font-black px-1.5 py-0.5 rounded uppercase">Telegram OK</span>
+                        ) : (
+                          <span className="bg-slate-200 text-slate-500 text-[8px] font-black px-1.5 py-0.5 rounded uppercase">No Telegram</span>
+                        )}
+                      </div>
+                      <h4 className="font-black text-slate-900 line-clamp-1">{member.name}</h4>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Matricola: {member.matricola}</p>
+                    </div>
+
+                    {member.phone && (
+                      <a 
+                        href={`tel:${member.phone}`}
+                        className="p-4 bg-white border border-slate-200 text-blue-600 rounded-2xl shadow-sm hover:bg-blue-600 hover:text-white hover:border-blue-600 hover:scale-110 active:scale-95 transition-all"
+                        title="Chiama ora"
+                      >
+                        <Phone size={24} fill="currentColor" fillOpacity={0.1} />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="mt-6 pt-6 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest max-w-sm text-center sm:text-left">
+                ℹ️ Questa rubrica è visibile esclusivamente all'Ufficiale incaricato per la giornata odierna.
+              </p>
+              <button 
+                onClick={async () => {
+                  if (!confirm('🚨 Inviare allerta emergenza via Telegram a tutto il team?')) return
+                  const res = await fetch('/api/admin/alert-emergency', { method: 'POST' })
+                  if (res.ok) toast.success('🚨 Allerta inviata con successo!')
+                  else toast.error('Impossibile inviare l\'allerta.')
+                }}
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-black text-sm shadow-xl shadow-red-200 transition-all hover:scale-[1.03] active:scale-[0.97]"
+              >
+                <Send size={18} />
+                Lancia Allerta Team
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header Section */}
       <div className="bg-gradient-to-br from-blue-900 via-indigo-900 to-slate-900 p-8 rounded-[2rem] shadow-2xl text-white relative overflow-hidden border border-white/10">
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full -mr-20 -mt-20 blur-3xl animate-pulse"></div>

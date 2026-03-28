@@ -43,16 +43,31 @@ export async function POST(req: Request) {
       if (data && data.startsWith("ack_alert_")) {
         const alertId = data.replace("ack_alert_", "");
         
-        // Trova il destinatario tramite il chatId utente e l'alertId
-        const user = await prisma.user.findFirst({ where: { telegramChatId: String(chatId) } });
-        if (user) {
+        // Trova il destinatario tramite il chatId utente e l'alertId (L'AGENTE)
+        const agent = await prisma.user.findFirst({ where: { telegramChatId: String(chatId) } });
+        
+        if (agent) {
+          // 1. Aggiorna lo stato nel DB
           await prisma.alertRecipient.updateMany({
-            where: { alertId, userId: user.id },
+            where: { alertId, userId: agent.id },
             data: { status: "ACKNOWLEDGED", ackedAt: new Date() }
           });
 
-          await answerCallbackQuery(q.id, "Presa visione confermata. Grazie.");
-          await sendTelegramMessage(chatId, "✅ <b>Presa Visione Registrata!</b> La centrale operativa è stata aggiornata in tempo reale.");
+          // 2. Notifica di conferma all'agente
+          await answerCallbackQuery(q.id, "Presa in carico confermata. Grazie.");
+          await sendTelegramMessage(chatId, "✅ <b>Presa in Carico Registrata!</b> La centrale operativa e l'Ufficiale sono stati aggiornati in tempo reale.");
+
+          // 3. Notifica di "Ritorno" all'Ufficiale che ha lanciato l'allerta
+          const alert = await prisma.emergencyAlert.findUnique({
+            where: { id: alertId },
+            include: { admin: true }
+          });
+
+          if (alert && alert.admin.telegramChatId) {
+            const timeStr = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+            const adminMessage = `🚨 <b>ALLERTA CONFERMATA</b>\n\nL'Agente <b>${agent.name}</b> (Matr. ${agent.matricola}) ha appena preso in carico l'emergenza alle ore ${timeStr}.`;
+            await sendTelegramMessage(alert.admin.telegramChatId, adminMessage);
+          }
         }
       }
       return NextResponse.json({ ok: true });

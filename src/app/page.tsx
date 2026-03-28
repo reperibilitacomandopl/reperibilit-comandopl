@@ -96,7 +96,7 @@ export default async function Home({ searchParams }: { searchParams: { view?: st
         {isAdminView ? (
           <AdminDashboard allAgents={users as any} shifts={shifts} currentYear={currentYear} currentMonth={currentMonth} isPublished={isPublished} />
         ) : (
-          <DynamicAgentDashboard currentUser={{ id: session?.user?.id || "", matricola: matricola || "", name: name || "" }} shifts={shifts} currentYear={currentYear} currentMonth={currentMonth} isPublished={isPublished} />
+          <DynamicAgentDashboard currentUser={{ id: session?.user?.id || "", matricola: matricola || "", name: name || "" }} shifts={shifts} allAgents={users as any} currentYear={currentYear} currentMonth={currentMonth} isPublished={isPublished} />
         )}
       </main>
 
