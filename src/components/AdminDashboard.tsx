@@ -337,7 +337,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       const res = await fetch("/api/admin/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ month: currentMonth - 1, year: currentYear })
+        body: JSON.stringify({ month: currentMonth, year: currentYear })
       })
       if (!res.ok) throw new Error("Generate API failed")
       router.refresh()
@@ -355,7 +355,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       await fetch("/api/admin/clear", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ month: currentMonth - 1, year: currentYear })
+        body: JSON.stringify({ month: currentMonth, year: currentYear })
       })
       router.refresh()
     } catch {
@@ -528,7 +528,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       const res = await fetch("/api/admin/publish-month", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ month: currentMonth - 1, year: currentYear, isPublished: !isPublished })
+        body: JSON.stringify({ month: currentMonth, year: currentYear, isPublished: !isPublished })
       })
       if (!res.ok) throw new Error("Errore pubblicazione")
       setUploadStatus(isPublished ? "Turni nascosti." : "Turni Pubblicati!")
@@ -748,7 +748,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 const res = await fetch("/api/admin/send-pec", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ month: currentMonth - 1, year: currentYear })
+                  body: JSON.stringify({ month: currentMonth, year: currentYear })
                 })
                 const data = await res.json()
                 if (!res.ok) throw new Error(data.error || "Errore sconosciuto PEC")
