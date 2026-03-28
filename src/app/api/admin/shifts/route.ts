@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { shifts }: { shifts: any[] } = await req.json()
+    const { shifts, importType }: { shifts: any[], importType: "base" | "rep" } = await req.json()
 
     // 1. Group shifts and identify unique agents (by matricola preferably, fallback to name)
     const agentMap = new Map<string, { name: string, matricola: string }>()
@@ -57,14 +57,20 @@ export async function POST(req: Request) {
       if (!userId) continue
 
       const typeRaw = s.type?.toString().trim().toUpperCase() || ""
-      const isRCode = typeRaw === "R" || typeRaw === "REP" || typeRaw === "REP 22-07"
       const date = new Date(s.date)
 
       const updateData: any = {}
-      if (isRCode) {
+      if (importType === "rep") {
         updateData.repType = "REP 22-07"
       } else {
-        updateData.type = s.type?.toString() || ""
+        updateData.type = typeRaw
+      }
+
+      const createData = {
+        userId,
+        date,
+        type: importType === "base" ? typeRaw : "",
+        repType: importType === "rep" ? "REP 22-07" : null
       }
 
       upsertPromises.push(
@@ -73,12 +79,7 @@ export async function POST(req: Request) {
             userId_date: { userId, date }
           },
           update: updateData,
-          create: {
-            userId,
-            date,
-            type: isRCode ? "" : (s.type?.toString() || ""),
-            repType: isRCode ? "REP 22-07" : null
-          }
+          create: createData
         })
       )
     }

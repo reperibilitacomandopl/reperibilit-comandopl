@@ -61,6 +61,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
   const [showSwapApprovals, setShowSwapApprovals] = useState(false)
   const [pendingSwaps, setPendingSwaps] = useState<any[]>([])
   const [isLoadingSwaps, setIsLoadingSwaps] = useState(false)
+  const [importType, setImportType] = useState<"base" | "rep">("base")
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
@@ -372,7 +373,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
     }
   }
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "base" | "rep") => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -450,7 +451,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
         const response = await fetch('/api/admin/shifts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ shifts: shiftsData })
+          body: JSON.stringify({ shifts: shiftsData, importType: type })
         })
 
         if (!response.ok) {
@@ -660,7 +661,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             accept=".xlsx, .xls" 
             className="hidden" 
             ref={fileInputRef} 
-            onChange={handleFileUpload}
+            onChange={(e) => handleFileUpload(e, importType)}
           />
           <div className="flex items-center gap-2 flex-grow xl:flex-grow-0">
             <input 
@@ -691,8 +692,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
           </div>
           
           <div className="flex bg-slate-100 rounded-lg p-1">
-            <button 
-              onClick={() => fileInputRef.current?.click()}
+             <button 
+              onClick={() => { setImportType("base"); setTimeout(() => fileInputRef.current?.click(), 10) }}
               className="flex items-center gap-2 hover:bg-white text-slate-700 px-3 py-1.5 rounded-md text-sm font-semibold transition-all shadow-[0_0_0_1px_rgba(0,0,0,0.05)_inset]"
               title="Importa i turni o le assenze (F, M, 104, ecc)"
             >
@@ -700,7 +701,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
               Importa Turni
             </button>
             <button 
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => { setImportType("rep"); setTimeout(() => fileInputRef.current?.click(), 10) }}
               className="flex items-center gap-2 hover:bg-white text-purple-700 px-3 py-1.5 rounded-md text-sm font-semibold transition-all shadow-[0_0_0_1px_rgba(0,0,0,0.05)_inset]"
               title="Importa il file con scritto 'REP' generato dal gestionale"
             >

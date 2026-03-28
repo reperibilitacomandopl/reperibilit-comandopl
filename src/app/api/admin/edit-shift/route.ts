@@ -20,19 +20,20 @@ export async function PUT(req: Request) {
     const targetUser = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } })
 
     if (!type || type.trim() === "") {
-      // Clear: try update first, if record doesn't exist just delete
-      try {
+      // Logic: if clearing, we first try to remove the Reperibilità layer.
+      // If there was no Reperibilità, we clear the base shift.
+      const currentShift = await prisma.shift.findUnique({
+        where: { userId_date: { userId, date: new Date(date) } }
+      })
+
+      if (currentShift?.repType) {
+        // Clear only REPERIBILITÀ, keep base shift
         await prisma.shift.update({
-          where: {
-            userId_date: {
-              userId,
-              date: new Date(date)
-            }
-          },
-          data: { type: "", repType: null }
+          where: { id: currentShift.id },
+          data: { repType: null }
         })
-      } catch {
-        // Record doesn't exist, try to delete if it somehow exists
+      } else {
+        // Clear everything (or just the base shift)
         await prisma.shift.deleteMany({
           where: { userId, date: new Date(date) }
         })
