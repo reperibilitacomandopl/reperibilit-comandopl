@@ -73,8 +73,8 @@ export async function POST(req: Request) {
         const now = new Date().toISOString()
 
         if (importType === "rep") {
-          // Si sta caricando la reperibilità: R diventa REP
-          valueLines.push(`('${id}', '${userId}', '${dateStr}', '', 'REP 22-07', '${now}')`)
+          // Si sta caricando la reperibilità: R diventa REP (Maiuscolo = Viola)
+          valueLines.push(`('${id}', '${userId}', '${dateStr}', '', 'REP', '${now}')`)
         } else {
           // Si sta caricando la programmazione: R e RR sono turni base
           valueLines.push(`('${id}', '${userId}', '${dateStr}', '${typeRaw}', NULL, '${now}')`)

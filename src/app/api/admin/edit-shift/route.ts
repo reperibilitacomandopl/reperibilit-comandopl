@@ -51,8 +51,9 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: true, action: "cleared" })
     }
 
-    const value = type.trim().toUpperCase()
-    const isRep = value.includes("REP")
+    const valueRaw = type.trim()
+    const value = valueRaw.toLowerCase() === "rep" ? "rep" : valueRaw.toUpperCase()
+    const isRep = value.toUpperCase().includes("REP")
 
     // Upsert the shift
     await prisma.shift.upsert({

@@ -116,8 +116,12 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
     if (!editingCell) return
     setIsSavingCell(true)
     
-    let finalValue = value.trim().toUpperCase()
-    if (finalValue === "REP") { finalValue = "REP_MANUALE" }
+    let finalValue = value.trim()
+    if (finalValue.toUpperCase() === "REP") { 
+      finalValue = "rep" 
+    } else {
+      finalValue = finalValue.toUpperCase()
+    }
 
     try {
       const res = await fetch('/api/admin/edit-shift', {
@@ -1020,25 +1024,27 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                               const shift = shifts.find(s => s.userId === agent.id && new Date(s.date).toISOString() === targetDate)
                               
                               const sType = (shift?.type || "").toUpperCase()
-                              const rType = (shift?.repType || "").toUpperCase()
+                              const rType = (shift?.repType || "") // Keep case for coloring
 
-                              if (rType.includes("REP")) repDays.push(di.day)
+                              if (rType.toLowerCase().includes("rep")) repDays.push(di.day)
 
                               let cellBg = di.isWeekend ? "bg-red-50/40" : ""
                               let badge = ""
                               let badgeClass = ""
 
                               // Priority: If there's a REP assignment, show it prominently
-                              if (rType === "REP") { // Imported Fixed REP
+                              if (rType === "REP") { // Imported Fixed REP (Viola)
                                 cellBg = "bg-purple-100"
                                 badge = "REP"
                                 badgeClass = "bg-purple-600 text-white font-black shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)] border border-purple-700"
-                              } else if (rType === "REP_MANUALE") { // Manual Fixed REP
+                              } else if (rType === "rep") { // Manual Fixed REP (Arancione)
                                 cellBg = "bg-orange-100"
                                 badge = "REP"
                                 badgeClass = "bg-orange-500 text-white font-black shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)] border border-orange-600"
-                              } else if (rType.includes("REP")) { // Auto-generated REP 22-07
+                              } else if (rType.toLowerCase().includes("rep")) { // Auto-generated REP 22-07 (Verde)
                                 cellBg = "bg-emerald-100"
+                                badge = "REP"
+                                badgeClass = "bg-emerald-500 text-white font-black shadow-sm"
                                 badge = "REP"
                                 badgeClass = "bg-emerald-500 text-white font-black shadow-sm"
                               } else if (sType.startsWith("F") || sType === "104" || sType === "FERIE" || sType === "MALATTIA") {
