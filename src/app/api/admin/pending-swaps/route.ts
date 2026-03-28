@@ -1,0 +1,27 @@
+import { NextResponse } from "next/server"
+import { auth } from "@/auth"
+import { prisma } from "@/lib/prisma"
+
+export async function GET() {
+  try {
+    const session = await auth()
+    if (!session || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const requests = await prisma.shiftSwapRequest.findMany({
+      where: { status: "ACCEPTED" }, // Only show those that colleague already accepted
+      include: {
+        requester: { select: { name: true, matricola: true } },
+        targetUser: { select: { name: true, matricola: true } },
+        shift: true
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+
+    return NextResponse.json(requests)
+  } catch (err) {
+    console.error("Error fetching pending swaps:", err)
+    return NextResponse.json({ error: "Internal Error" }, { status: 500 })
+  }
+}

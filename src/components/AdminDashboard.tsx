@@ -57,6 +57,11 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
   // Emergency Alert
   const [isSendingAlert, setIsSendingAlert] = useState(false)
 
+  // Shift Swap Approvals
+  const [showSwapApprovals, setShowSwapApprovals] = useState(false)
+  const [pendingSwaps, setPendingSwaps] = useState<any[]>([])
+  const [isLoadingSwaps, setIsLoadingSwaps] = useState(false)
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -165,6 +170,40 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       console.error(err)
     } finally {
       setIsLoadingAudit(false)
+    }
+  }
+  const fetchPendingSwaps = async () => {
+    setIsLoadingSwaps(true)
+    try {
+      const res = await fetch("/api/admin/pending-swaps")
+      if (res.ok) {
+        const data = await res.json()
+        setPendingSwaps(data)
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setIsLoadingSwaps(false)
+    }
+  }
+
+  const handleApproveSwap = async (swapId: string) => {
+    if (!confirm("Confermi l'approvazione finale di questo scambio? Il turno verrà aggiornato automaticamente in griglia.")) return
+    try {
+      const res = await fetch("/api/admin/approve-swap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ swapId })
+      })
+      if (res.ok) {
+        toast.success("Scambio approvato e griglia aggiornata!")
+        fetchPendingSwaps()
+        router.refresh()
+      } else {
+        toast.error("Errore durante l'approvazione")
+      }
+    } catch {
+      toast.error("Errore di rete")
     }
   }
 
@@ -662,6 +701,19 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
           >
             <RefreshCw size={18} className={isLoadingAudit ? "animate-spin" : ""} />
             Log Attività
+          </button>
+
+          <button 
+            onClick={() => { setShowSwapApprovals(true); fetchPendingSwaps() }}
+            className="group relative flex items-center gap-2 bg-amber-50 text-amber-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-amber-100 transition-all border border-amber-200"
+          >
+            <RefreshCw size={18} className={isLoadingSwaps ? "animate-spin" : ""} />
+            Scambi
+            {pendingSwaps.length > 0 && (
+              <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-600 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white animate-bounce">
+                {pendingSwaps.length}
+              </span>
+            )}
           </button>
 
           <button 
@@ -1577,6 +1629,78 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 )}
               </div>
 
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal Richieste Scambio */}
+      {showSwapApprovals && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowSwapApprovals(false)}></div>
+          <div className="relative w-full max-w-2xl bg-white rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-amber-500 p-6 text-white flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-xl">
+                  <RefreshCw size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black uppercase tracking-tight">Approvazione Scambi</h3>
+                  <p className="text-amber-100 text-xs font-bold uppercase tracking-widest opacity-80">Richieste in attesa di autorizzazione</p>
+                </div>
+              </div>
+              <button onClick={() => setShowSwapApprovals(false)} className="text-white/60 hover:text-white transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+              {isLoadingSwaps ? (
+                <div className="flex justify-center py-10">
+                  <RefreshCw size={40} className="animate-spin text-slate-200" />
+                </div>
+              ) : pendingSwaps.length === 0 ? (
+                <div className="text-center py-10 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                  <p className="text-slate-400 font-medium">Nessuna richiesta di scambio in attesa.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {pendingSwaps.map((swap: any) => (
+                    <div key={swap.id} className="bg-white border-2 border-slate-100 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-center gap-4 hover:border-amber-200 transition-all shadow-sm">
+                      <div className="flex items-center gap-4">
+                        <div className="text-center">
+                           <p className="text-[10px] font-black uppercase text-slate-400">Data Turno</p>
+                           <p className="font-black text-slate-800">{new Date(swap.shift.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}</p>
+                        </div>
+                        <div className="h-10 w-[2px] bg-slate-100"></div>
+                        <div>
+                          <p className="text-[10px] font-black uppercase text-slate-400">Proposta di Scambio</p>
+                          <div className="flex items-center gap-2">
+                             <span className="font-bold text-slate-900">{swap.requester.name}</span>
+                             <ChevronRight size={14} className="text-slate-400" />
+                             <span className="font-extrabold text-blue-600">{swap.targetUser.name}</span>
+                          </div>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase">Tipo: <span className="text-emerald-600">{swap.shift.repType}</span></p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => handleApproveSwap(swap.id)}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-black shadow-lg shadow-emerald-100 transition-all hover:scale-105 active:scale-95"
+                        >
+                          APPROVA
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="bg-slate-50 p-6 border-t border-slate-100">
+               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
+                 ⚠️ L'approvazione sposta definitivamente la titolarità del turno nel calendario ufficiale. L'operazione non è reversibile automaticamente.
+               </p>
             </div>
           </div>
         </div>

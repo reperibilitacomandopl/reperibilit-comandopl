@@ -2,8 +2,9 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const session = await auth()
     if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
@@ -14,7 +15,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
 
     const swapRequest = await prisma.shiftSwapRequest.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { shift: true }
     })
 
@@ -27,7 +28,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
 
     const updated = await prisma.shiftSwapRequest.update({
-      where: { id: params.id },
+      where: { id },
       data: { status }
     })
 

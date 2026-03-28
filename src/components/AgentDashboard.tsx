@@ -1,8 +1,8 @@
 "use client"
 
-import toast from "react-hot-toast"
 import { useState, useEffect, useCallback } from "react"
-import { CalendarDays, AlertCircle, FileDown, Clock, ShieldCheck, Plus, ChevronLeft, ChevronRight, ListChecks, X, Smartphone, Monitor, Globe, Trash2, Search, BookOpen, Send, Phone } from "lucide-react"
+import toast from "react-hot-toast"
+import { CalendarDays, AlertCircle, FileDown, Clock, ShieldCheck, Plus, ChevronLeft, ChevronRight, ListChecks, X, Smartphone, Monitor, Globe, Trash2, Search, BookOpen, Send, Phone, RefreshCw, ChevronDown } from "lucide-react"
 import { isHoliday } from "@/utils/holidays"
 import Link from "next/link"
 
@@ -137,28 +137,91 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   const [dutyTeam, setDutyTeam] = useState<any[]>([])
   const [isOfficerOnDuty, setIsOfficerOnDuty] = useState(false)
   const [loadingDutyTeam, setLoadingDutyTeam] = useState(false)
+
+  // Shift Swap State
+  const [swapRequests, setSwapRequests] = useState<any[]>([])
+  const [showSwapModal, setShowSwapModal] = useState(false)
+  const [selectedShiftForSwap, setSelectedShiftForSwap] = useState<any>(null)
+  const [targetColleagueId, setTargetColleagueId] = useState('')
+  const [swapLoading, setSwapLoading] = useState(false)
   
   const myShifts = shifts.filter(s => s.userId === currentUser.id)
 
   // Fetch Duty Team if Officer
-  useEffect(() => {
-    async function fetchDutyTeam() {
-      try {
-        setLoadingDutyTeam(true)
-        const res = await fetch('/api/officer/duty-team')
-        if (res.ok) {
-          const data = await res.json()
-          setDutyTeam(data.team || [])
-          setIsOfficerOnDuty(true)
-        }
-      } catch (err) {
-        console.error("Error fetching duty team:", err)
-      } finally {
-        setLoadingDutyTeam(false)
+  const fetchDutyTeam = useCallback(async () => {
+    try {
+      setLoadingDutyTeam(true)
+      const res = await fetch('/api/officer/duty-team')
+      if (res.ok) {
+        const data = await res.json()
+        setDutyTeam(data.team || [])
+        setIsOfficerOnDuty(true)
       }
+    } catch (err) {
+      console.error("Error fetching duty team:", err)
+    } finally {
+      setLoadingDutyTeam(false)
     }
-    fetchDutyTeam()
   }, [])
+
+  // Fetch Swap Requests
+  const fetchSwaps = useCallback(async () => {
+    try {
+      const res = await fetch('/api/shifts/swap')
+      if (res.ok) {
+        const data = await res.json()
+        setSwapRequests(data)
+      }
+    } catch { /* silent */ }
+  }, [])
+
+  useEffect(() => {
+    fetchDutyTeam()
+    fetchSwaps()
+  }, [fetchDutyTeam, fetchSwaps])
+
+  const handleRespondSwap = async (id: string, status: "ACCEPTED" | "REJECTED") => {
+    try {
+      const res = await fetch(`/api/shifts/swap/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      })
+      if (res.ok) {
+        toast.success(status === 'ACCEPTED' ? "Scambio accettato! In attesa di approvazione Admin." : "Scambio rifiutato.")
+        fetchSwaps()
+      } else {
+        const d = await res.json()
+        toast.error(d.error || "Errore")
+      }
+    } catch {
+      toast.error("Errore di connessione")
+    }
+  }
+
+  const handleRequestSwap = async () => {
+    if (!selectedShiftForSwap || !targetColleagueId) return
+    setSwapLoading(true)
+    try {
+      const res = await fetch('/api/shifts/swap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shiftId: selectedShiftForSwap.id, targetUserId: targetColleagueId })
+      })
+      if (res.ok) {
+        toast.success("Proposta di scambio inviata al collega!")
+        setShowSwapModal(false)
+        fetchSwaps()
+      } else {
+        const d = await res.json()
+        toast.error(d.error || "Errore nell'invio")
+      }
+    } catch {
+      toast.error("Errore di rete")
+    } finally {
+      setSwapLoading(false)
+    }
+  }
 
   // Fetch agenda entries for current month
   const fetchAgenda = useCallback(async () => {
@@ -573,10 +636,24 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                     {isRep && sType && (
                       <span className="text-[7px] font-bold text-emerald-700 mt-0.5">base: {sType}</span>
                     )}
+                    {isRep && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedShiftForSwap(sObj);
+                          setShowSwapModal(true);
+                        }}
+                        className="w-full mt-2 group/swap flex items-center justify-center gap-1 bg-white/10 hover:bg-emerald-600 border border-emerald-400/30 text-emerald-700 hover:text-white py-1 rounded-lg text-[8px] font-black uppercase transition-all active:scale-95"
+                        title="Proponi uno scambio per questo turno"
+                      >
+                        <RefreshCw size={10} className="group-hover/swap:rotate-180 transition-transform duration-500" />
+                        Scambia
+                      </button>
+                    )}
                   </div>
                 )
               })}
-              </div>
+            </div>
           )}
         </div>
       </div>
@@ -891,6 +968,148 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
           </div>
         </div>
       </div>
+
+      {/* Bacheca Scambio Turni */}
+      <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden">
+        <div className="bg-slate-900 p-6 text-white flex items-center gap-4">
+          <div className="p-3 bg-indigo-500/20 rounded-2xl border border-indigo-400/30">
+            <RefreshCw size={24} className="text-indigo-300" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black uppercase tracking-tighter">Bacheca Scambi</h3>
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Gestisci le tue proposte di scambio</p>
+          </div>
+        </div>
+
+        <div className="p-6">
+          {swapRequests.length === 0 ? (
+            <div className="text-center py-10 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+              <p className="text-slate-400 text-sm font-medium italic">Nessuna proposta di scambio attiva.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {swapRequests.map((req) => {
+                const isIncoming = req.targetUserId === currentUser.id
+                const dateStr = new Date(req.shift.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })
+                
+                return (
+                  <div key={req.id} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border-2 transition-all ${isIncoming ? 'bg-indigo-50 border-indigo-100 hover:border-indigo-200' : 'bg-slate-50 border-slate-200 hover:border-slate-300'}`}>
+                    <div className="flex items-center gap-4">
+                      <div className={`p-3 rounded-xl ${isIncoming ? 'bg-indigo-500/10 text-indigo-600' : 'bg-slate-500/10 text-slate-600'}`}>
+                        {isIncoming ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${isIncoming ? 'bg-indigo-600 text-white' : 'bg-slate-600 text-white'}`}>
+                            {isIncoming ? 'Ricevuta' : 'Inviata'}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-500 uppercase">{dateStr}</span>
+                        </div>
+                        <h4 className="font-black text-slate-900">
+                          {isIncoming ? `Scambio da ${req.requester.name}` : `Proposta a ${req.targetUser.name}`}
+                        </h4>
+                        <p className="text-xs text-slate-500 font-medium">Turno: <span className="font-bold text-blue-600">{req.shift.repType}</span></p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {req.status === 'PENDING' ? (
+                        isIncoming ? (
+                          <>
+                            <button 
+                              onClick={() => handleRespondSwap(req.id, "REJECTED")}
+                              className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                            >
+                              Rifiuta
+                            </button>
+                            <button 
+                              onClick={() => handleRespondSwap(req.id, "ACCEPTED")}
+                              className="px-5 py-2 bg-indigo-600 text-white text-xs font-black rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all hover:scale-[1.05]"
+                            >
+                              Accetta
+                            </button>
+                          </>
+                        ) : (
+                          <span className="px-4 py-2 bg-amber-100 text-amber-700 text-[10px] font-black uppercase rounded-xl">In attesa...</span>
+                        )
+                      ) : (
+                        <span className={`px-4 py-2 text-[10px] font-black uppercase rounded-xl ${
+                          req.status === 'ACCEPTED' ? 'bg-emerald-100 text-emerald-700' :
+                          req.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                          'bg-blue-100 text-blue-700'
+                        }`}>
+                          {req.status === 'ACCEPTED' ? 'Accettata (In attesa Admin)' : 
+                           req.status === 'REJECTED' ? 'Rifiutata' : 
+                           'Approvata Admin'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Modal Scambio */}
+      {showSwapModal && selectedShiftForSwap && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowSwapModal(false)}></div>
+          <div className="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-8 text-white">
+              <div className="flex justify-between items-start mb-4">
+                <div className="p-3 bg-white/20 rounded-2xl border border-white/20">
+                  <RefreshCw size={24} />
+                </div>
+                <button onClick={() => setShowSwapModal(false)} className="text-white/60 hover:text-white transition-colors">
+                  <X size={24} />
+                </button>
+              </div>
+              <h3 className="text-2xl font-black tracking-tight">Proponi Scambio</h3>
+              <p className="text-blue-100 text-sm mt-2 opacity-80">
+                Data: <b>{new Date(selectedShiftForSwap.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}</b>
+              </p>
+            </div>
+
+            <div className="p-8 space-y-6">
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Seleziona il collega</label>
+                <div className="relative">
+                  <select 
+                    value={targetColleagueId}
+                    onChange={(e) => setTargetColleagueId(e.target.value)}
+                    className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl px-4 py-4 text-sm font-bold text-slate-800 focus:border-blue-500 focus:outline-none appearance-none cursor-pointer hover:bg-white transition-all shadow-sm"
+                  >
+                    <option value="">Scegli un collega...</option>
+                    {allAgents.filter(a => a.id !== currentUser.id).map(agent => (
+                      <option key={agent.id} value={agent.id}>{agent.name} (Matr. {agent.matricola})</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                    <ChevronDown size={18} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
+                <p className="text-[10px] text-blue-700 font-bold uppercase tracking-widest text-center leading-relaxed">
+                  ⚠️ Una volta inviata, il collega dovrà accettare la proposta. Successivamente l'Admin darà l'OK finale per aggiornare la griglia.
+                </p>
+              </div>
+
+              <button 
+                disabled={!targetColleagueId || swapLoading}
+                onClick={handleRequestSwap}
+                className="w-full bg-slate-900 hover:bg-black text-white py-4 rounded-2xl font-black text-sm transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl disabled:opacity-50 disabled:scale-100 disabled:pointer-events-none flex items-center justify-center gap-2"
+              >
+                {swapLoading ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
+                Invia Proposta
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Telegram Link Widget */}
       <div className="bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 rounded-[2rem] p-8 text-white relative overflow-hidden shadow-xl">
