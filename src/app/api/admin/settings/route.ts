@@ -14,7 +14,7 @@ export async function GET() {
     let settings = await prisma.globalSettings.findFirst()
     if (!settings) {
       settings = await prisma.globalSettings.create({
-        data: { id: 1, minUfficiali: 1, usaProporzionale: true, annoCorrente: 2026, meseCorrente: 4 }
+        data: { id: 1, minUfficiali: 1, usaProporzionale: true, annoCorrente: 2026, meseCorrente: 4, massimaleAgente: 5, massimaleUfficiale: 6, distaccoMinimo: 2, permettiConsecutivi: false }
       })
     }
 
@@ -67,14 +67,22 @@ export async function PUT(req: Request) {
           minUfficiali: minUfficiali ?? undefined, 
           usaProporzionale: usaProporzionale ?? undefined,
           meseCorrente: meseCorrente ?? undefined,
-          annoCorrente: annoCorrente ?? undefined
+          annoCorrente: annoCorrente ?? undefined,
+          massimaleAgente: body.massimaleAgente ?? undefined,
+          massimaleUfficiale: body.massimaleUfficiale ?? undefined,
+          distaccoMinimo: body.distaccoMinimo ?? undefined,
+          permettiConsecutivi: body.permettiConsecutivi ?? undefined
         },
         create: { 
           id: 1, 
           minUfficiali: minUfficiali ?? 1, 
           usaProporzionale: usaProporzionale ?? true, 
           annoCorrente: annoCorrente ?? new Date().getFullYear(), 
-          meseCorrente: meseCorrente ?? new Date().getMonth() + 1 
+          meseCorrente: meseCorrente ?? new Date().getMonth() + 1,
+          massimaleAgente: body.massimaleAgente ?? 5,
+          massimaleUfficiale: body.massimaleUfficiale ?? 6,
+          distaccoMinimo: body.distaccoMinimo ?? 2,
+          permettiConsecutivi: body.permettiConsecutivi ?? false
         }
       })
 

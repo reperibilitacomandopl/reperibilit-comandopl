@@ -9,8 +9,14 @@ type Agent = {
 }
 
 type SettingsData = {
-  minUfficiali: number; usaProporzionale: boolean;
-  meseCorrente: number; annoCorrente: number
+  minUfficiali: number;
+  usaProporzionale: boolean;
+  meseCorrente: number;
+  annoCorrente: number;
+  massimaleAgente: number;
+  massimaleUfficiale: number;
+  distaccoMinimo: number;
+  permettiConsecutivi: boolean;
 }
 
 type PecConfig = {
@@ -21,7 +27,16 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<"algorithm" | "pec">("algorithm")
-  const [settings, setSettings] = useState<SettingsData>({ minUfficiali: 1, usaProporzionale: true, meseCorrente: 4, annoCorrente: 2026 })
+  const [settings, setSettings] = useState<SettingsData>({ 
+    minUfficiali: 1, 
+    usaProporzionale: true, 
+    meseCorrente: 4, 
+    annoCorrente: 2026,
+    massimaleAgente: 5,
+    massimaleUfficiale: 6,
+    distaccoMinimo: 2,
+    permettiConsecutivi: false
+  })
   const [agents, setAgents] = useState<Agent[]>([])
   const [pec, setPec] = useState<PecConfig>({ host: "", port: "465", user: "", pass: "", from: "" })
   const [showPecPass, setShowPecPass] = useState(false)
@@ -39,7 +54,11 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
           minUfficiali: data.settings.minUfficiali, 
           usaProporzionale: data.settings.usaProporzionale,
           meseCorrente: data.settings.meseCorrente,
-          annoCorrente: data.settings.annoCorrente
+          annoCorrente: data.settings.annoCorrente,
+          massimaleAgente: data.settings.massimaleAgente || 5,
+          massimaleUfficiale: data.settings.massimaleUfficiale || 6,
+          distaccoMinimo: data.settings.distaccoMinimo ?? 2,
+          permettiConsecutivi: data.settings.permettiConsecutivi || false
         })
         setAgents(data.agents)
         setPec(data.pecConfig)
@@ -207,17 +226,74 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
                       </select>
                     </div>
 
-                    <div className="bg-blue-50 rounded-2xl p-5 border border-blue-100">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle size={18} className="text-blue-500 shrink-0 mt-0.5" />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-blue-50 rounded-2xl p-5 border border-blue-100">
+                        <p className="text-sm font-bold text-blue-900 mb-1">Max Agente</p>
+                        <p className="text-[10px] text-blue-600 mb-3">Turni max mensili per agente</p>
+                        <select 
+                          value={settings.massimaleAgente} 
+                          onChange={e => setSettings(s => ({ ...s, massimaleAgente: parseInt(e.target.value) }))}
+                          className="bg-white border-2 border-blue-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-400 w-full"
+                        >
+                          {[3, 4, 5, 6, 7, 8].map(n => <option key={n} value={n}>{n} Turni</option>)}
+                        </select>
+                      </div>
+                      <div className="bg-blue-50 rounded-2xl p-5 border border-blue-100">
+                        <p className="text-sm font-bold text-blue-900 mb-1">Max Ufficiale</p>
+                        <p className="text-[10px] text-blue-600 mb-3">Turni max mensili per ufficiale</p>
+                        <select 
+                          value={settings.massimaleUfficiale} 
+                          onChange={e => setSettings(s => ({ ...s, massimaleUfficiale: parseInt(e.target.value) }))}
+                          className="bg-white border-2 border-blue-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-400 w-full"
+                        >
+                          {[4, 5, 6, 7, 8, 9, 10].map(n => <option key={n} value={n}>{n} Turni</option>)}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="bg-indigo-50 rounded-2xl p-5 border border-indigo-100">
+                      <p className="text-sm font-bold text-indigo-900 mb-1">Distanza Minima tra Turni</p>
+                      <p className="text-xs text-indigo-600 mb-4">Garantisce il riposo tra due reperibilità consecutive</p>
+                      <div className="flex items-center gap-4">
+                        {[0, 1, 2].map(days => (
+                          <button
+                            key={days}
+                            onClick={() => setSettings(s => ({ ...s, distaccoMinimo: days }))}
+                            className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all border-2 ${
+                              settings.distaccoMinimo === days
+                                ? "bg-indigo-600 border-indigo-600 text-white shadow-md"
+                                : "bg-white border-indigo-100 text-indigo-400 hover:border-indigo-300"
+                            }`}
+                          >
+                            {days === 0 ? "Consecutivi" : days === 1 ? "1 Giorno" : "2 Giorni"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                      <label className="flex items-center justify-between cursor-pointer">
                         <div>
-                          <p className="text-sm font-bold text-blue-800">Parametri Fissi (nel codice)</p>
-                          <div className="mt-2 text-xs text-blue-700 space-y-1">
-                            <p>• REP base Agente: <strong>5</strong> | REP base Ufficiale: <strong>6</strong></p>
-                            <p>• Min reperibili/giorno: <strong>7</strong> | Max: <strong>8</strong></p>
-                            <p>• Festivi target/agente: <strong>2</strong> (1 Sab + 1 Dom)</p>
-                            <p>• Distanziamento minimo: <strong>2 giorni</strong></p>
-                          </div>
+                          <p className="text-sm font-bold text-slate-800">Permetti Turni Consecutivi</p>
+                          <p className="text-xs text-slate-400 mt-0.5">Permette di avere REP in giorni seguiti (distanza 0)</p>
+                        </div>
+                        <div className={`w-12 h-7 rounded-full transition-colors relative ${settings.permettiConsecutivi ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                          onClick={() => setSettings(s => ({ ...s, permettiConsecutivi: !s.permettiConsecutivi }))}
+                        >
+                          <div className={`w-5 h-5 bg-white rounded-full shadow-md absolute top-1 transition-all ${settings.permettiConsecutivi ? 'left-6' : 'left-1'}`}></div>
+                        </div>
+                      </label>
+                    </div>
+
+                    <div className="bg-amber-50 rounded-2xl p-5 border border-amber-100">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-bold text-amber-800">Informazioni Algoritmo</p>
+                          <p className="mt-2 text-xs text-amber-700 leading-relaxed">
+                            L&apos;algoritmo cercherà di coprire ogni giorno con almeno <strong>{settings.minUfficiali} ufficiale</strong> e un totale di <strong>7-8 persone</strong>.<br/><br/>
+                            Se la copertura non è possibile con il distanziamento di 2 giorni, il sistema proverà automaticamente a scendere a <strong>1 giorno</strong> (o <strong>0</strong> se attivato) pur di non lasciare buchi nel calendario.
+                          </p>
                         </div>
                       </div>
                     </div>

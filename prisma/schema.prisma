@@ -68,6 +68,10 @@ model GlobalSettings {
   usaProporzionale Boolean  @default(true)
   annoCorrente     Int      @default(2026)
   meseCorrente     Int      @default(4)
+  massimaleAgente  Int      @default(5)
+  massimaleUfficiale Int    @default(6)
+  distaccoMinimo   Int      @default(2)
+  permettiConsecutivi Boolean @default(false)
 }
 
 model MonthStatus {

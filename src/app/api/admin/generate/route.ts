@@ -29,9 +29,11 @@ export async function POST(req: Request) {
     const month = reqMonth ? parseInt(reqMonth, 10) - 1 : ((settings?.meseCorrente ?? 4) - 1) // JS months are 0-indexed
     const daysInMonth = getDaysInMonth(month, year)
 
-    // === CONFIGURATION PARAMETERS ===
-    const repPerAgenteBase = 5     // Reperibilita' base per agente
-    const repPerUfficialeBase = 6  // Reperibilita' base per ufficiale
+    // === CONFIGURATION PARAMETERS (from DB settings) ===
+    const repPerAgenteBase = settings?.massimaleAgente ?? 5
+    const repPerUfficialeBase = settings?.massimaleUfficiale ?? 6
+    const minSpacingGlobal = settings?.distaccoMinimo ?? 2
+    const allowConsecutive = settings?.permettiConsecutivi ?? false
     const minGiorno = 7            // Min reperibili al giorno
     const maxGiorno = 8            // Max reperibili al giorno
     const usaProporzionale = true  // Proporzionalita' assenze attiva
@@ -214,8 +216,8 @@ export async function POST(req: Request) {
           if (isBlocked(uff.id, day)) continue
           if (day < daysInMonth && isBlocked(uff.id, day + 1)) continue
 
-          // Spacing rule
-          const tooClose = assignedDays[uff.id].some(d => Math.abs(day - d) <= 2)
+          // Spacing rule from settings
+          const tooClose = assignedDays[uff.id].some(d => Math.abs(day - d) <= minSpacingGlobal)
           if (tooClose) continue
 
           // Strict weekend: skip if already did a Sat/Sun
@@ -264,8 +266,8 @@ export async function POST(req: Request) {
         if (isBlocked(agent.id, day)) continue
         if (day < daysInMonth && isBlocked(agent.id, day + 1)) continue
 
-        // Spacing: at least 2 days gap
-        const tooClose = assignedDays[agent.id].some(d => Math.abs(day - d) <= 2)
+        // Spacing: dynamic gap from settings
+        const tooClose = assignedDays[agent.id].some(d => Math.abs(day - d) <= minSpacingGlobal)
         if (tooClose) continue
 
         // Weekend: max 1 Sabato e 1 Domenica per agente
@@ -327,8 +329,11 @@ export async function POST(req: Request) {
           if (isBlocked(agent.id, day)) continue
           if (day < daysInMonth && isBlocked(agent.id, day + 1)) continue
 
-          // Relaxed spacing: reduce minimum gap each pass
-          const minSpacing = Math.max(0, 2 - pass)
+          // Relaxed spacing: reduce minimum gap each pass, down to 1 or 0
+          // If distaccoMinimo is 2: Pass 1 -> 1 day, Pass 2 -> 0 days (if allowed)
+          let minSpacing = Math.max(0, minSpacingGlobal - pass)
+          if (minSpacing === 0 && !allowConsecutive) minSpacing = 1
+          
           const tooClose = assignedDays[agent.id].some(d => Math.abs(day - d) <= minSpacing)
           if (tooClose) continue
 
