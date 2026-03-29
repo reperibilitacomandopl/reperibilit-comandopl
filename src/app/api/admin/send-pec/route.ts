@@ -36,8 +36,8 @@ export async function POST(req: Request) {
     const shifts = await prisma.shift.findMany({
       where: {
         date: {
-          gte: new Date(Date.UTC(year, month, 1)),
-          lt: new Date(Date.UTC(year, month + 1, 1)),
+          gte: new Date(Date.UTC(year, month - 1, 1)),
+          lt: new Date(Date.UTC(year, month, 1)),
         },
         repType: { not: null } // Solo Reperibilità
       },
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
 
     // 5. Creazione Tabella HTML (semplificata e compatibile per tutti client di posta)
     // Genera l'intestazione dei giorni
-    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const daysInMonth = new Date(year, month, 0).getDate()
     let tableHeaders = `<th style="border: 1px solid #ddd; padding: 8px;">Personale</th>`
     for (let d = 1; d <= daysInMonth; d++) {
       tableHeaders += `<th style="border: 1px solid #ddd; padding: 8px; width: 25px;">${d}</th>`
@@ -73,7 +73,7 @@ export async function POST(req: Request) {
       let row = `<tr><td style="border: 1px solid #ddd; padding: 8px; font-weight: bold;">${agent.name} ${agent.isUfficiale ? '(UFF)' : ''}</td>`
       let hasReps = false
       for (let d = 1; d <= daysInMonth; d++) {
-        const dDate = new Date(Date.UTC(year, month, d)).toISOString()
+        const dDate = new Date(Date.UTC(year, month - 1, d)).toISOString()
         const agentShift = shifts.find(s => s.userId === agent.id && new Date(s.date).toISOString() === dDate)
         
         if (agentShift?.repType && agentShift.repType.includes("REP")) {
@@ -96,7 +96,7 @@ export async function POST(req: Request) {
 
     const htmlBodyBase = `
       <div style="font-family: Arial, sans-serif; color: #333;">
-        <h2 style="color: #1e3a8a;">Prospetto Reperibilità - Mese ${month + 1}/${year}</h2>
+        <h2 style="color: #1e3a8a;">Prospetto Reperibilità - Mese ${month}/${year}</h2>
         <p>In allegato il quadro generale delle <strong>Reperibilità</strong> per il mese di riferimento. Gli altri turni o assenze non sono riportati, al fine di garantire una chiara leggibilità esclusiva del servizio REP.</p>
         <div style="overflow-x: auto;">
           <table style="border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 20px;">
@@ -162,7 +162,7 @@ export async function POST(req: Request) {
         await transporter.sendMail({
           from: pecSettings.fromAddr || "comando@pec.it",
           to: agent.email,
-          subject: `Resoconto Reperibilità - ${month + 1}/${year}`,
+          subject: `Resoconto Reperibilità - ${month}/${year}`,
           html: agentHtml,
         })
         emailSentCount++

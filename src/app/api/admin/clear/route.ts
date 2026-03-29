@@ -57,9 +57,9 @@ export async function POST(req: Request) {
     // Aggiorna anche lo stato di pubblicazione se stiamo cancellando "tutto"
     if (type === "all") {
       await prisma.monthStatus.upsert({
-        where: { month_year: { month: month - 1, year } },
+        where: { month_year: { month, year } },
         update: { isPublished: false },
-        create: { month: month - 1, year, isPublished: false }
+        create: { month, year, isPublished: false }
       })
     }
 

@@ -49,7 +49,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ userId: 
     const validShifts = pubSet
       ? shifts.filter(s => {
           const d = new Date(s.date)
-          return pubSet.has(`${d.getUTCFullYear()}-${d.getUTCMonth()}`)
+          return pubSet.has(`${d.getUTCFullYear()}-${d.getUTCMonth() + 1}`)
         })
       : shifts
 
