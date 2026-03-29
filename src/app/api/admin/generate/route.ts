@@ -37,7 +37,6 @@ export async function POST(req: Request) {
     const minGiorno = 7            // Min reperibili al giorno
     const maxGiorno = 8            // Max reperibili al giorno
     const usaProporzionale = true  // Proporzionalita' assenze attiva
-    const festiviTarget = 2        // 2 festivi al mese: preferibilmente 1 Sab + 1 Dom
 
     // === LOAD AGENTS ===
     const agents = await prisma.user.findMany({
@@ -59,7 +58,6 @@ export async function POST(req: Request) {
       }
     })
 
-    // Build lookup: baseShifts[agentId][day] = "M7" / "P14" etc.
     const baseShifts: Record<string, Record<number, string>> = {}
     for (const agent of agents) {
       baseShifts[agent.id] = {}
@@ -86,7 +84,7 @@ export async function POST(req: Request) {
     // === BLOCKING FUNCTION ===
     function isBlocked(agentId: string, day: number): boolean {
       const shift = (baseShifts[agentId]?.[day] || "").toUpperCase().replace(/[()]/g, "")
-      if (!shift) return true // No shift = day off = blocked
+      if (!shift) return true 
       if (shift.startsWith("F") || shift.startsWith("R")) return true
       for (const bc of BLOCK_CODES) {
         if (shift === bc) return true
@@ -94,7 +92,7 @@ export async function POST(req: Request) {
       return false
     }
 
-    // === CALCULATE PROPORTIONAL TARGETS ===
+    // === CALCULATE TARGETS ===
     const repTarget: Record<string, number> = {}
     const fesTarget: Record<string, number> = {}
     const ferTarget: Record<string, number> = {}
@@ -102,15 +100,11 @@ export async function POST(req: Request) {
 
     for (const agent of agents) {
       const isUff = agent.isUfficiale
-      // Always respect settings as per user request, ignoring the default 8 in DB
       const baseTarget = isUff ? repPerUfficialeBase : repPerAgenteBase
 
-      // Count available days (not blocked)
       let availableDays = 0
       for (let d = 1; d <= daysInMonth; d++) {
-        if (!isBlocked(agent.id, d)) {
-          availableDays++
-        }
+        if (!isBlocked(agent.id, d)) availableDays++
       }
 
       if (usaProporzionale) {
@@ -125,11 +119,8 @@ export async function POST(req: Request) {
       }
 
       totalTargetGlobal += repTarget[agent.id]
-
-      // Festivi targets
-      // Strictly 1 Sat and 1 Dom
-      fesTarget[agent.id] = 2 // 1 Sab + 1 Dom
-      ferTarget[agent.id] = repTarget[agent.id] - 2
+      fesTarget[agent.id] = 2 
+      ferTarget[agent.id] = Math.max(0, repTarget[agent.id] - 2)
     }
 
     // === DAILY TARGETS ===
@@ -138,11 +129,8 @@ export async function POST(req: Request) {
     if (basePerDay < minGiorno) basePerDay = minGiorno
     if (basePerDay > maxGiorno) basePerDay = maxGiorno
 
-    for (let d = 1; d <= daysInMonth; d++) {
-      dayTarget[d] = basePerDay
-    }
+    for (let d = 1; d <= daysInMonth; d++) dayTarget[d] = basePerDay
 
-    // Distribute extra slots
     let extraNeeded = totalTargetGlobal - (basePerDay * daysInMonth)
     if (extraNeeded > 0) {
       for (let d = 1; d <= daysInMonth && extraNeeded > 0; d++) {
@@ -162,6 +150,7 @@ export async function POST(req: Request) {
     const assignedDays: Record<string, number[]> = {}
     const dayAssigned: Record<number, number> = {}
     const uffAssigned: Record<number, number> = {}
+    const repResults: Record<string, Record<number, string>> = {}
 
     for (const agent of agents) {
       repCount[agent.id] = 0
@@ -170,178 +159,138 @@ export async function POST(req: Request) {
       numSabati[agent.id] = 0
       numDomeniche[agent.id] = 0
       assignedDays[agent.id] = []
+      repResults[agent.id] = {}
     }
     for (let d = 1; d <= daysInMonth; d++) {
       dayAssigned[d] = 0
       uffAssigned[d] = 0
     }
 
-    // Result map
-    const repResults: Record<string, Record<number, string>> = {}
-    for (const agent of agents) repResults[agent.id] = {}
-
-    // === PRE-LOAD FIXED REPS (From Excel / Manual) ===
+    // === PRE-LOAD FIXED REPS ===
     for (const s of existingShifts) {
       if (s.repType?.toUpperCase().includes("REP") && repCount[s.userId] !== undefined) {
         const day = new Date(s.date).getUTCDate()
         const agent = agents.find(a => a.id === s.userId)
-        
         repResults[s.userId][day] = s.repType
         repCount[s.userId]++
         assignedDays[s.userId].push(day)
         dayAssigned[day]++
-        
-        if (agent?.isUfficiale) {
-          uffAssigned[day]++
-        }
-        
+        if (agent?.isUfficiale) uffAssigned[day]++
         if (isSab[day]) numSabati[s.userId]++
         if (isDom[day]) numDomeniche[s.userId]++
-        if (isFestivo[day]) repFesCount[s.userId]++
+        const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
+        if (isFestivo[day] || isVigilia) repFesCount[s.userId]++
         else repFerCount[s.userId]++
       }
     }
 
-    // === PHASE 0: ASSIGN 1 UFFICIALE PER DAY ===
+    // === PHASE 0: UFFICIALI ===
     const ufficiali = agents.filter(a => a.isUfficiale)
-    
-    if (ufficiali.length > 0) {
-      for (let day = 1; day <= daysInMonth; day++) {
-        if (uffAssigned[day] >= 1) continue // Skip if an officer is already assigned (fixed or manual)
-        
-        const candidates: { agentId: string, score: number }[] = []
+    for (let day = 1; day <= daysInMonth; day++) {
+      if (uffAssigned[day] >= 1) continue
+      const candidates: { agentId: string, score: number }[] = []
+      for (const uff of ufficiali) {
+        if (repCount[uff.id] >= repTarget[uff.id]) continue
+        if (repResults[uff.id][day]) continue
+        if (isBlocked(uff.id, day)) continue
+        const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
+        const tooClose = assignedDays[uff.id].some(d => Math.abs(day - d) <= minSpacingGlobal)
+        if (tooClose) continue
 
-        for (const uff of ufficiali) {
-          if (repCount[uff.id] >= repTarget[uff.id]) continue
-          if (repResults[uff.id][day]) continue
-          if (isBlocked(uff.id, day)) continue
-          
-          // Pre-festive check: if tomorrow is festive, today's night shift is festive
-          const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
+        if (isSab[day] && numSabati[uff.id] >= 1) continue
+        if (isDom[day] && numDomeniche[uff.id] >= 1) continue
 
-          // Spacing rule from settings
-          const tooClose = assignedDays[uff.id].some(d => Math.abs(day - d) <= minSpacingGlobal)
-          if (tooClose) continue
-
-          // Strict weekend rotation
-          if (isSab[day] && numSabati[uff.id] >= 1) continue
-          if (isDom[day] && numDomeniche[uff.id] >= 1) continue
-          
-          // If it's a Saturday, prioritize those who have 0 Saturdays
-          // If it's a Sunday, prioritize those who have 0 Sundays
-          let score = (repCount[uff.id] / Math.max(1, repTarget[uff.id])) * 10000
-          if (isSab[day]) score += numSabati[uff.id] * 50000
-          if (isDom[day]) score += numDomeniche[uff.id] * 50000
-          if (isVigilia) score += repFesCount[uff.id] * 5000
-
-          candidates.push({ agentId: uff.id, score })
+        let score = (repCount[uff.id] / Math.max(1, repTarget[uff.id])) * 10000
+        if (isSab[day]) score += numSabati[uff.id] * 50000
+        if (isDom[day]) score += numDomeniche[uff.id] * 50000
+        // Strict festive limit
+        if (isFestivo[day] || isVigilia) {
+          if (repFesCount[uff.id] >= 2) score += 2000000 
+          else if (repFesCount[uff.id] === 0) score -= 10000 // Priority to those with 0
         }
-
-        candidates.sort((a, b) => a.score - b.score)
-
-        if (candidates.length > 0) {
-          const best = candidates[0]
-          repResults[best.agentId][day] = "REP 22-07"
-          repCount[best.agentId]++
-          assignedDays[best.agentId].push(day)
-          dayAssigned[day]++
-          uffAssigned[day] = 1
-
-          const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
-          if (isFestivo[day] || isVigilia) repFesCount[best.agentId]++
-          else repFerCount[best.agentId]++
-          
-          if (isSab[day]) numSabati[best.agentId]++
-          if (isDom[day]) numDomeniche[best.agentId]++
-        }
+        candidates.push({ agentId: uff.id, score })
+      }
+      candidates.sort((a, b) => a.score - b.score)
+      if (candidates.length > 0) {
+        const best = candidates[0]
+        repResults[best.agentId][day] = "REP 22-07"
+        repCount[best.agentId]++
+        assignedDays[best.agentId].push(day)
+        dayAssigned[day]++
+        uffAssigned[day] = 1
+        const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
+        if (isFestivo[day] || isVigilia) repFesCount[best.agentId]++
+        else repFerCount[best.agentId]++
+        if (isSab[day]) numSabati[best.agentId]++
+        if (isDom[day]) numDomeniche[best.agentId]++
       }
     }
 
-    // === PHASE 1: MAIN GENERATION PASS ===
+    // === PHASE 1: MAIN ===
     for (let day = 1; day <= daysInMonth; day++) {
       let assignToday = dayAssigned[day]
-      const todayFes = isFestivo[day]
-
       const candidates: { agentId: string, score: number }[] = []
-
       for (const agent of agents) {
         if (repCount[agent.id] >= repTarget[agent.id]) continue
         if (repResults[agent.id][day]) continue 
-
         if (isBlocked(agent.id, day)) continue
         const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
-
-        // Spacing: dynamic gap from settings
         const tooClose = assignedDays[agent.id].some(d => Math.abs(day - d) <= minSpacingGlobal)
         if (tooClose) continue
 
-        // Weekend Equity Score
         let weekendPriority = 0
         if (isSab[day]) {
-          if (numSabati[agent.id] >= 1) weekendPriority = 1000000 // Already has Sat
-          else weekendPriority = -50000 // Needs Sat
+          if (numSabati[agent.id] >= 1) weekendPriority = 1000000
+          else weekendPriority = -50000
         }
         if (isDom[day]) {
-          if (numDomeniche[agent.id] >= 1) weekendPriority = 1000000 // Already has Dom
-          else weekendPriority = -50000 // Needs Dom
+          if (numDomeniche[agent.id] >= 1) weekendPriority = 1000000
+          else weekendPriority = -50000
         }
 
-        // Score (lower is better)
         let score = (repCount[agent.id] / Math.max(1, repTarget[agent.id])) * 10000
         score += weekendPriority
-
         if (isFestivo[day] || isVigilia) {
-          if (repFesCount[agent.id] >= 2) score += 5000 
+          if (repFesCount[agent.id] >= 2) score += 2000000
+          else if (repFesCount[agent.id] === 0) score -= 20000
         }
-
-        const baseShift = (baseShifts[agent.id]?.[day] || "").toUpperCase()
-        if (baseShift.startsWith("M")) score -= 500  
-        if (baseShift.startsWith("P")) score += 300   
-
         candidates.push({ agentId: agent.id, score })
       }
-
-      // Sort by score ascending
       candidates.sort((a, b) => a.score - b.score)
-
-      // Assign up to dayTarget
       for (const cand of candidates) {
         if (assignToday >= dayTarget[day]) break
-        // Skip high-penalty candidates if we already have minimum
         if (cand.score >= 1000000 && assignToday >= minGiorno) continue
-
         repResults[cand.agentId][day] = "REP 22-07"
         repCount[cand.agentId]++
         assignedDays[cand.agentId].push(day)
         dayAssigned[day]++
         assignToday++
-
         const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
-        if (todayFes || isVigilia) repFesCount[cand.agentId]++
+        if (isFestivo[day] || isVigilia) repFesCount[cand.agentId]++
         else repFerCount[cand.agentId]++
-        
         if (isSab[day]) numSabati[cand.agentId]++
         if (isDom[day]) numDomeniche[cand.agentId]++
       }
     }
 
-    // === PHASE 2: FILL PASS (Relaxed spacing) ===
+    // === PHASE 2: FILL ===
     for (let pass = 1; pass <= 2; pass++) {
       for (let day = 1; day <= daysInMonth; day++) {
         if (dayAssigned[day] >= minGiorno) continue
+        const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
+        const isFesOrVig = isFestivo[day] || isVigilia
 
         for (const agent of agents) {
           if (dayAssigned[day] >= minGiorno) break
           if (repCount[agent.id] >= repTarget[agent.id]) continue
           if (repResults[agent.id][day]) continue
           if (isBlocked(agent.id, day)) continue
-          if (day < daysInMonth && isBlocked(agent.id, day + 1)) continue
+          
+          // CRITICAL: Avoid giving 3rd festive in Phase 2 unless it's the only choice
+          if (isFesOrVig && repFesCount[agent.id] >= 2) continue
 
-          // Relaxed spacing: reduce minimum gap each pass, down to 1 or 0
-          // If distaccoMinimo is 2: Pass 1 -> 1 day, Pass 2 -> 0 days (if allowed)
           let minSpacing = Math.max(0, minSpacingGlobal - pass)
           if (minSpacing === 0 && !allowConsecutive) minSpacing = 1
-          
           const tooClose = assignedDays[agent.id].some(d => Math.abs(day - d) <= minSpacing)
           if (tooClose) continue
 
@@ -349,8 +298,7 @@ export async function POST(req: Request) {
           repCount[agent.id]++
           assignedDays[agent.id].push(day)
           dayAssigned[day]++
-
-          if (isFestivo[day]) repFesCount[agent.id]++
+          if (isFesOrVig) repFesCount[agent.id]++
           else repFerCount[agent.id]++
           if (isSab[day]) numSabati[agent.id]++
           if (isDom[day]) numDomeniche[agent.id]++
@@ -358,89 +306,30 @@ export async function POST(req: Request) {
       }
     }
 
-    // === SAVE TO DATABASE (OPTIMIZED) ===
-    // 1. Reset all REP assignments for this month to null first
+    // === SAVE ===
     await prisma.shift.updateMany({
       where: {
-        date: {
-          gte: new Date(Date.UTC(year, month, 1)),
-          lt: new Date(Date.UTC(year, month + 1, 1))
-        }
+        date: { gte: new Date(Date.UTC(year, month, 1)), lt: new Date(Date.UTC(year, month + 1, 1)) }
       },
       data: { repType: null }
     })
-
-    // 2. Prepare all upserts
     const upsertPromises: any[] = []
-    let totalAssigned = 0
-
     for (const agent of agents) {
       for (let day = 1; day <= daysInMonth; day++) {
         if (repResults[agent.id][day]) {
-          const shiftType = repResults[agent.id][day]
-          upsertPromises.push(
-            prisma.shift.upsert({
-              where: {
-                userId_date: {
-                  userId: agent.id,
-                  date: new Date(Date.UTC(year, month, day))
-                }
-              },
-              update: { repType: shiftType },
-              create: {
-                userId: agent.id,
-                date: new Date(Date.UTC(year, month, day)),
-                type: "",
-                repType: shiftType
-              }
-            })
-          )
-          totalAssigned++
+          upsertPromises.push(prisma.shift.upsert({
+            where: { userId_date: { userId: agent.id, date: new Date(Date.UTC(year, month, day)) } },
+            update: { repType: repResults[agent.id][day] },
+            create: { userId: agent.id, date: new Date(Date.UTC(year, month, day)), type: "", repType: repResults[agent.id][day] }
+          }))
         }
       }
     }
-
-    // Execute in chunks of 50 to avoid connection pool exhaustion but remain fast
     const chunkSize = 50
-    for (let i = 0; i < upsertPromises.length; i += chunkSize) {
-      await Promise.all(upsertPromises.slice(i, i + chunkSize))
-    }
+    for (let i = 0; i < upsertPromises.length; i += chunkSize) await Promise.all(upsertPromises.slice(i, i + chunkSize))
 
-    // Build summary
-    const summary = agents.map(a => ({
-      name: a.name,
-      total: repCount[a.id],
-      target: repTarget[a.id],
-      feriali: repFerCount[a.id],
-      festivi: repFesCount[a.id]
-    }))
-
-    // Days without enough REP
-    const emptyDays: number[] = []
-    const warningDays: number[] = []
-    for (let d = 1; d <= daysInMonth; d++) {
-      if (dayAssigned[d] === 0) emptyDays.push(d)
-      else if (dayAssigned[d] < minGiorno) warningDays.push(d)
-    }
-
-    // Warning about missing officers
-    const noOfficerDays: number[] = []
-    if (ufficiali.length > 0) {
-      for (let d = 1; d <= daysInMonth; d++) {
-        if (uffAssigned[d] === 0) noOfficerDays.push(d)
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      totalAssigned,
-      emptyDays,
-      warningDays,
-      noOfficerDays,
-      summary
-    })
+    return NextResponse.json({ success: true, summary: agents.map(a => ({ name: a.name, tot: repCount[a.id], fes: repFesCount[a.id] })) })
   } catch (error) {
-    console.error("[GENERATE ERROR]", error)
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 })
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Error" }, { status: 500 })
   }
 }
