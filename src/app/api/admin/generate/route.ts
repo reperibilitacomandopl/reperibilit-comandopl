@@ -314,9 +314,11 @@ export async function POST(req: Request) {
       data: { repType: null }
     })
     const upsertPromises: any[] = []
+    let totalAssignedInSave = 0
     for (const agent of agents) {
       for (let day = 1; day <= daysInMonth; day++) {
         if (repResults[agent.id][day]) {
+          totalAssignedInSave++
           upsertPromises.push(prisma.shift.upsert({
             where: { userId_date: { userId: agent.id, date: new Date(Date.UTC(year, month, day)) } },
             update: { repType: repResults[agent.id][day] },
@@ -328,7 +330,33 @@ export async function POST(req: Request) {
     const chunkSize = 50
     for (let i = 0; i < upsertPromises.length; i += chunkSize) await Promise.all(upsertPromises.slice(i, i + chunkSize))
 
-    return NextResponse.json({ success: true, summary: agents.map(a => ({ name: a.name, tot: repCount[a.id], fes: repFesCount[a.id] })) })
+    // Build summary & stats
+    const summary = agents.map(a => ({ name: a.name, tot: repCount[a.id], fes: repFesCount[a.id] }))
+    
+    // Days without enough REP
+    const emptyDays: number[] = []
+    const warningDays: number[] = []
+    for (let d = 1; d <= daysInMonth; d++) {
+      if (dayAssigned[d] === 0) emptyDays.push(d)
+      else if (dayAssigned[d] < minGiorno) warningDays.push(d)
+    }
+
+    // Warning about missing officers
+    const noOfficerDays: number[] = []
+    if (ufficiali.length > 0) {
+      for (let d = 1; d <= daysInMonth; d++) {
+        if (uffAssigned[d] === 0) noOfficerDays.push(d)
+      }
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      totalAssigned: totalAssignedInSave,
+      emptyDays,
+      warningDays,
+      noOfficerDays,
+      summary 
+    })
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Error" }, { status: 500 })
   }
