@@ -11,7 +11,7 @@ import { isHoliday } from "@/utils/holidays"
 
 type EditingCell = { agentId: string; agentName: string; day: number; currentType: string; warningMsg?: string } | null
 
-export default function AdminDashboard({ allAgents, shifts, currentYear, currentMonth, isPublished, currentView }: { allAgents: { id: string, name: string, matricola: string, isUfficiale: boolean, email: string | null, phone: string | null, qualifica: string | null, gradoLivello: number, squadra: string | null, massimale: number }[], shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], currentYear: number, currentMonth: number, isPublished: boolean, currentView?: string }) {
+export default function AdminDashboard({ allAgents, shifts, currentYear, currentMonth, isPublished, currentView, settings }: { allAgents: { id: string, name: string, matricola: string, isUfficiale: boolean, email: string | null, phone: string | null, qualifica: string | null, gradoLivello: number, squadra: string | null, massimale: number }[], shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], currentYear: number, currentMonth: number, isPublished: boolean, currentView?: string, settings?: { massimaleAgente: number, massimaleUfficiale: number } }) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
   const [uploadStatus, setUploadStatus] = useState("")
@@ -993,6 +993,16 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                         {di.day}
                       </th>
                     ))}
+                    <th className="px-1 pt-2 pb-0 text-center font-bold bg-purple-50 text-purple-700 border-b border-l-2 border-slate-300 min-w-[34px]" rowSpan={2} title="Reperibilità nei giorni Festivi e Weekend">
+                      <div className="flex flex-col items-center justify-center leading-none">
+                        FEST
+                      </div>
+                    </th>
+                    <th className="px-1 pt-2 pb-0 text-center font-bold bg-blue-50 text-blue-700 border-b border-slate-200 min-w-[34px]" rowSpan={2} title="Reperibilità nei giorni Feriali">
+                      <div className="flex flex-col items-center justify-center leading-none">
+                        FER
+                      </div>
+                    </th>
                     <th 
                       className="px-2 pt-2 pb-0 text-center font-bold bg-emerald-50 text-emerald-700 border-b border-l-2 border-slate-300 min-w-[44px] cursor-pointer hover:bg-emerald-100 transition-colors" 
                       rowSpan={2}
@@ -1025,7 +1035,24 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                   ) : (
                     <>
                       {sortedAgents.map((agent, idx) => {
+                        let repFest = 0
+                        let repFer = 0
                         const repDays: number[] = []
+                        const effectiveMassimale = agent.isUfficiale 
+                          ? (settings?.massimaleUfficiale ?? 6) 
+                          : (settings?.massimaleAgente ?? 5)
+                        
+                        // Pre-calculate stats for this agent
+                        dayInfo.forEach(di => {
+                          const targetDate = new Date(Date.UTC(currentYear, currentMonth - 1, di.day)).toISOString()
+                          const shift = shifts.find(s => s.userId === agent.id && new Date(s.date).toISOString() === targetDate)
+                          if (shift?.repType?.toLowerCase().includes("rep")) {
+                            repDays.push(di.day)
+                            if (di.isWeekend) repFest++
+                            else repFer++
+                          }
+                        })
+
                         return (
                           <tr key={agent.id} className={`${idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"} hover:bg-blue-50/30 transition-colors`}>
                             <td className={`px-2 py-1 font-semibold sticky left-0 z-10 border-r-2 border-slate-200 whitespace-nowrap text-[11px] ${idx % 2 === 0 ? "bg-white" : "bg-slate-50"} ${agent.isUfficiale ? "text-blue-700" : "text-slate-800"}`}>
@@ -1119,23 +1146,40 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                 </td>
                               )
                             })}
+                            <td className="px-1 py-1 text-center font-bold border-l-2 border-slate-200 text-[10px] text-purple-700 bg-purple-50/30">
+                              {repFest}
+                            </td>
+                            <td className="px-1 py-1 text-center font-bold border-slate-200 text-[10px] text-blue-700 bg-blue-50/30">
+                              {repFer}
+                            </td>
                             <td 
                               className={`px-2 py-1 text-center font-black border-l-2 border-slate-200 text-sm cursor-help transition-colors ${
-                                repDays.length > agent.massimale 
+                                repDays.length > effectiveMassimale 
                                   ? "text-red-700 bg-red-100 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.3)_inset]" 
                                   : repDays.length < 5 
                                     ? "text-amber-700 bg-amber-100 hover:bg-amber-200" 
                                     : "text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
                               }`}
                               title={
-                                repDays.length > agent.massimale 
-                                  ? `ATTENZIONE: Superato il massimale di ${agent.massimale}!\nGiorni: ${repDays.join(', ')}` 
+                                repDays.length > effectiveMassimale 
+                                  ? `ATTENZIONE: Superato il massimale di ${effectiveMassimale}!\nFestivi: ${repFest}, Feriali: ${repFer}` 
                                   : repDays.length > 0 
-                                    ? `Giorni in reperibilità: ${repDays.join(', ')}` 
+                                    ? `Giorni in reperibilità: ${repDays.join(', ')}\nFestivi: ${repFest}, Feriali: ${repFer}` 
                                     : "Nessuna reperibilità"
                               }
                             >
-                              {repDays.length > agent.massimale && "⚠️ "}{repDays.length}
+                              <div className="flex flex-col items-center">
+                                <span className="flex items-center gap-1">
+                                  {repDays.length > agent.massimale && "⚠️ "}{repDays.length}
+                                </span>
+                                {/* Visual balance indicator */}
+                                {repDays.length > 0 && (
+                                  <div className="w-full h-1 bg-slate-200 rounded-full mt-1 flex overflow-hidden max-w-[30px]">
+                                    <div className="h-full bg-purple-500" style={{ width: `${(repFest / repDays.length) * 100}%` }}></div>
+                                    <div className="h-full bg-blue-500" style={{ width: `${(repFer / repDays.length) * 100}%` }}></div>
+                                  </div>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         )

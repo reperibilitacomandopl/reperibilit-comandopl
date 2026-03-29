@@ -102,8 +102,8 @@ export async function POST(req: Request) {
 
     for (const agent of agents) {
       const isUff = agent.isUfficiale
-      // Use individual massimale from DB, fallback to defaults
-      const baseTarget = agent.massimale || (isUff ? repPerUfficialeBase : repPerAgenteBase)
+      // Always respect settings as per user request, ignoring the default 8 in DB
+      const baseTarget = isUff ? repPerUfficialeBase : repPerAgenteBase
 
       // Count available days (not blocked)
       let availableDays = 0

@@ -38,10 +38,13 @@ export default async function Home({ searchParams }: { searchParams: { view?: st
     }
   })
 
-  // Verify Publish status
-  const pubRec = await prisma.monthStatus.findUnique({
-    where: { month_year: { month: currentMonth, year: currentYear } }
-  })
+  // Verify Publish status and fetch settings
+  const [pubRec, settings] = await Promise.all([
+    prisma.monthStatus.findUnique({
+      where: { month_year: { month: currentMonth, year: currentYear } }
+    }),
+    prisma.globalSettings.findFirst()
+  ])
   const isPublished = pubRec ? pubRec.isPublished : false
 
   const isAdminView = role === "ADMIN" && view !== 'agent'
@@ -94,7 +97,7 @@ export default async function Home({ searchParams }: { searchParams: { view?: st
       {/* Main Content Area */}
       <main className={`flex-1 ${containerClass} py-4 sm:py-6 lg:py-8`}>
         {isAdminView ? (
-          <AdminDashboard allAgents={users as any} shifts={shifts} currentYear={currentYear} currentMonth={currentMonth} isPublished={isPublished} currentView={view} />
+          <AdminDashboard allAgents={users as any} shifts={shifts} currentYear={currentYear} currentMonth={currentMonth} isPublished={isPublished} currentView={view} settings={settings as any} />
         ) : (
           <DynamicAgentDashboard currentUser={{ id: session?.user?.id || "", matricola: matricola || "", name: name || "" }} shifts={shifts} allAgents={users as any} currentYear={currentYear} currentMonth={currentMonth} isPublished={isPublished} currentView={view} />
         )}

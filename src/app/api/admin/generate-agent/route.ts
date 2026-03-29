@@ -31,7 +31,9 @@ export async function POST(req: Request) {
     if (!agent) return NextResponse.json({ error: "Agent not found" }, { status: 404 })
 
     const isUff = agent.isUfficiale
-    const baseTarget = isUff ? 6 : 5
+    const baseTargetLimit = isUff ? (settings?.massimaleUfficiale ?? 6) : (settings?.massimaleAgente ?? 5)
+    const minSpacingGlobal = settings?.distaccoMinimo ?? 2
+    const allowConsecutive = settings?.permettiConsecutivi ?? false
 
     // Load this agent's current shifts to check blocks
     const agentShifts = await prisma.shift.findMany({
@@ -41,33 +43,41 @@ export async function POST(req: Request) {
       }
     })
 
-    // Build base shift map
+    // Build base shift map and count fixed REPs
     const baseShifts: Record<number, string> = {}
+    const fixedReps: number[] = []
     for (const s of agentShifts) {
       const day = new Date(s.date).getUTCDate()
       baseShifts[day] = s.type
+      // Keep "REP" (Imported) and "rep" (Manual) as fixed
+      if (s.repType === "REP" || s.repType === "rep") {
+        fixedReps.push(day)
+      }
     }
 
-    // 1. Clear this agent's old REP assignments for this month
+    // 1. Clear this agent's old AUTO-GENERATED REP assignments for this month
+    // Preserve "REP" and "rep"
     await prisma.shift.updateMany({
       where: {
         userId: agentId,
-        date: { gte: new Date(Date.UTC(year, month, 1)), lt: new Date(Date.UTC(year, month + 1, 1)) }
+        date: { gte: new Date(Date.UTC(year, month, 1)), lt: new Date(Date.UTC(year, month + 1, 1)) },
+        NOT: {
+          repType: { in: ["REP", "rep"] }
+        }
       },
       data: { repType: null }
     })
 
-    // 2. Check how many REPs are already assigned each day (by OTHER agents)
-    const allOtherReps = await prisma.shift.findMany({
+    // 2. Check how many REPs are already assigned each day (by ALL agents, including fixed for this agent)
+    const allReps = await prisma.shift.findMany({
       where: {
         repType: { not: null },
-        userId: { not: agentId },
         date: { gte: new Date(Date.UTC(year, month, 1)), lt: new Date(Date.UTC(year, month + 1, 1)) }
       }
     })
     const dayRepCount: Record<number, number> = {}
     for (let d = 1; d <= daysInMonth; d++) dayRepCount[d] = 0
-    for (const s of allOtherReps) {
+    for (const s of allReps) {
       const d = new Date(s.date).getUTCDate()
       dayRepCount[d] = (dayRepCount[d] || 0) + 1
     }
@@ -82,32 +92,38 @@ export async function POST(req: Request) {
       return false
     }
 
-    // Calculate target respecting individual massimale
-    const baseTargetLimit = agent.massimale || (isUff ? 6 : 5)
-    
     let availableDays = 0
     for (let d = 1; d <= daysInMonth; d++) {
       if (!isBlocked(d)) availableDays++
     }
+    
+    // Calculate target respecting individual settings
     const baselineDays = Math.max(1, daysInMonth - 6)
     let target = Math.round((availableDays / baselineDays) * baseTargetLimit)
     if (target > baseTargetLimit) target = baseTargetLimit
     if (availableDays > 0 && target < 1) target = 1
 
-    // Assign REPs
-    const assignedDays: number[] = []
-    let repCount = 0, numDom = 0
+    // Important: Subtract fixed REPs already assigned
+    let repCount = fixedReps.length
+    const assignedDays: number[] = [...fixedReps]
+    let numDom = 0
+    
+    // Count Sundays/Holidays in fixed reps
+    for (const d of fixedReps) {
+      if (isHoliday(new Date(year, month, d))) numDom++
+    }
 
-    // Phase 1: strict spacing (at least 2 days gap)
+    // Assign REPs (Phase 1: strict spacing)
     for (let day = 1; day <= daysInMonth; day++) {
       if (repCount >= target) break
+      if (assignedDays.includes(day)) continue // Already has a fixed rep
       if (isBlocked(day)) continue
       if (day < daysInMonth && isBlocked(day + 1)) continue
 
       const isFestivo = isHoliday(new Date(year, month, day))
       if (isFestivo && numDom >= 2) continue 
 
-      const tooClose = assignedDays.some(d => Math.abs(day - d) <= 2)
+      const tooClose = assignedDays.some(d => Math.abs(day - d) <= minSpacingGlobal)
       if (tooClose) continue
 
       if (dayRepCount[day] >= 8) continue
@@ -116,7 +132,7 @@ export async function POST(req: Request) {
       const shift = (baseShifts[day] || "").toUpperCase()
       if (shift.startsWith("P") && repCount < target - 1) {
         const hasMorningAhead = Array.from({ length: Math.min(5, daysInMonth - day) }, (_, i) => day + i + 1)
-          .some(d => !isBlocked(d) && (baseShifts[d] || "").toUpperCase().startsWith("M") && !assignedDays.some(ad => Math.abs(d - ad) <= 2))
+          .some(d => !isBlocked(d) && (baseShifts[d] || "").toUpperCase().startsWith("M") && !assignedDays.some(ad => Math.abs(d - ad) <= minSpacingGlobal))
         if (hasMorningAhead) continue
       }
 
@@ -133,7 +149,9 @@ export async function POST(req: Request) {
         if (isBlocked(day)) continue
         if (day < daysInMonth && isBlocked(day + 1)) continue
 
-        const minSpacing = Math.max(0, 2 - pass)
+        let minSpacing = Math.max(0, minSpacingGlobal - pass)
+        if (minSpacing === 0 && !allowConsecutive) minSpacing = 1
+        
         const tooClose = assignedDays.some(d => Math.abs(day - d) <= minSpacing)
         if (tooClose) continue
 
@@ -143,8 +161,9 @@ export async function POST(req: Request) {
       }
     }
 
-    // Save assignments to DB (Optimized)
-    const upsertPromises = assignedDays.map(day => 
+    // Save assignments to DB (only NEW ones)
+    const newAssignments = assignedDays.filter(d => !fixedReps.includes(d))
+    const upsertPromises = newAssignments.map(day => 
       prisma.shift.upsert({
         where: {
           userId_date: { userId: agentId, date: new Date(Date.UTC(year, month, day)) }
