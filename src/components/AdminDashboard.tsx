@@ -11,7 +11,7 @@ import { isHoliday } from "@/utils/holidays"
 
 type EditingCell = { agentId: string; agentName: string; day: number; currentType: string; warningMsg?: string } | null
 
-export default function AdminDashboard({ allAgents, shifts, currentYear, currentMonth, isPublished }: { allAgents: { id: string, name: string, matricola: string, isUfficiale: boolean, email: string | null, phone: string | null, qualifica: string | null, gradoLivello: number, squadra: string | null, massimale: number }[], shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], currentYear: number, currentMonth: number, isPublished: boolean }) {
+export default function AdminDashboard({ allAgents, shifts, currentYear, currentMonth, isPublished, currentView }: { allAgents: { id: string, name: string, matricola: string, isUfficiale: boolean, email: string | null, phone: string | null, qualifica: string | null, gradoLivello: number, squadra: string | null, massimale: number }[], shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], currentYear: number, currentMonth: number, isPublished: boolean, currentView?: string }) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
   const [uploadStatus, setUploadStatus] = useState("")
@@ -902,15 +902,48 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             <p className="text-xs text-slate-500 mt-1">{allAgents.length} agenti · {shifts.filter(s => s.repType?.includes("REP")).length} REP assegnate</p>
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex bg-slate-100 rounded-lg p-1 mr-4">
-              <Link href={`/?month=${prevMonth}&year=${prevYear}`} className="p-1.5 text-slate-500 hover:text-slate-900 rounded-md transition-all hover:bg-white border text-transparent border-transparent hover:border-slate-200 hover:shadow-sm">
-                <ChevronLeft size={16} className="text-slate-600" />
+            <div className="flex bg-slate-200/50 rounded-xl p-1.5 border border-slate-300/50 shadow-sm items-center">
+              <Link 
+                href={`/?month=${prevMonth}&year=${prevYear}${currentView ? `&view=${currentView}` : ''}`} 
+                className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-white rounded-lg transition-all"
+                title="Mese precedente"
+              >
+                <ChevronLeft size={20} />
               </Link>
-              <div className="px-3 py-1 text-sm font-bold text-slate-700 min-w-[120px] text-center uppercase tracking-wider">
-                {currentMonthName} {currentYear}
+              
+              <div className="flex items-center gap-1 px-2">
+                <select 
+                  value={currentMonth}
+                  onChange={(e) => {
+                    const m = e.target.value
+                    router.push(`/?month=${m}&year=${currentYear}${currentView ? `&view=${currentView}` : ''}`)
+                  }}
+                  className="bg-transparent border-none text-sm font-black text-slate-800 focus:ring-0 cursor-pointer uppercase py-1"
+                >
+                  {monthNames.map((name, i) => (
+                    <option key={name} value={i + 1}>{name}</option>
+                  ))}
+                </select>
+                <select 
+                  value={currentYear}
+                  onChange={(e) => {
+                    const y = e.target.value
+                    router.push(`/?month=${currentMonth}&year=${y}${currentView ? `&view=${currentView}` : ''}`)
+                  }}
+                  className="bg-transparent border-none text-sm font-black text-slate-500 focus:ring-0 cursor-pointer py-1"
+                >
+                  {[2024, 2025, 2026, 2027].map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
               </div>
-              <Link href={`/?month=${nextMonth}&year=${nextYear}`} className="p-1.5 text-slate-500 hover:text-slate-900 rounded-md transition-all hover:bg-white border text-transparent border-transparent hover:border-slate-200 hover:shadow-sm">
-                <ChevronRight size={16} className="text-slate-600" />
+
+              <Link 
+                href={`/?month=${nextMonth}&year=${nextYear}${currentView ? `&view=${currentView}` : ''}`} 
+                className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-white rounded-lg transition-all"
+                title="Mese successivo"
+              >
+                <ChevronRight size={20} />
               </Link>
             </div>
             <div className="hidden sm:flex items-center gap-3 text-[10px] font-bold text-slate-700 tracking-wide uppercase">

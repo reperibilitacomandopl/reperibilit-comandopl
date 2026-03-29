@@ -94,9 +94,9 @@ export default async function Home({ searchParams }: { searchParams: { view?: st
       {/* Main Content Area */}
       <main className={`flex-1 ${containerClass} py-4 sm:py-6 lg:py-8`}>
         {isAdminView ? (
-          <AdminDashboard allAgents={users as any} shifts={shifts} currentYear={currentYear} currentMonth={currentMonth} isPublished={isPublished} />
+          <AdminDashboard allAgents={users as any} shifts={shifts} currentYear={currentYear} currentMonth={currentMonth} isPublished={isPublished} currentView={view} />
         ) : (
-          <DynamicAgentDashboard currentUser={{ id: session?.user?.id || "", matricola: matricola || "", name: name || "" }} shifts={shifts} allAgents={users as any} currentYear={currentYear} currentMonth={currentMonth} isPublished={isPublished} />
+          <DynamicAgentDashboard currentUser={{ id: session?.user?.id || "", matricola: matricola || "", name: name || "" }} shifts={shifts} allAgents={users as any} currentYear={currentYear} currentMonth={currentMonth} isPublished={isPublished} currentView={view} />
         )}
       </main>
 

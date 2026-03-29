@@ -121,7 +121,7 @@ type AgendaItem = {
   note: string | null
 }
 
-export default function AgentDashboard({ currentUser, shifts, allAgents, currentYear, currentMonth, isPublished }: { currentUser: { id: string, matricola: string, name: string }, shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], allAgents: any[], currentYear: number, currentMonth: number, isPublished: boolean }) {
+export default function AgentDashboard({ currentUser, shifts, allAgents, currentYear, currentMonth, isPublished, currentView }: { currentUser: { id: string, matricola: string, name: string }, shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], allAgents: any[], currentYear: number, currentMonth: number, isPublished: boolean, currentView?: string }) {
   const router = useRouter()
   const [showSyncModal, setShowSyncModal] = useState(false)
   const [showAgenda, setShowAgenda] = useState(false)
@@ -414,12 +414,21 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
 
         <div className="flex gap-4">
           <Link 
-            href={`/?month=${prevMonth}&year=${prevYear}`}
+            href={`/?month=${prevMonth}&year=${prevYear}${currentView ? `&view=${currentView}` : ''}`}
             className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all shadow-sm"
           >
             <ChevronLeft size={18} />
             Mese Precedente
           </Link>
+          
+          <select 
+            value={currentMonth}
+            onChange={(e) => router.push(`/?month=${e.target.value}&year=${currentYear}${currentView ? `&view=${currentView}` : ''}`)}
+            className="px-6 py-3 bg-white border border-slate-200 text-slate-800 rounded-xl font-bold text-sm focus:ring-2 focus:ring-blue-500 cursor-pointer"
+          >
+            {monthNames.map((name, i) => <option key={name} value={i + 1}>{name}</option>)}
+          </select>
+
           <button 
             onClick={() => router.refresh()}
             className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-xl shadow-blue-200"
@@ -524,19 +533,40 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
               Ciao, {currentUser.name.split(' ')[0]}
             </h2>
             <div className="mt-4 flex items-center gap-2">
-              <div className="flex bg-white/10 backdrop-blur-md rounded-2xl p-1 border border-white/10 shadow-inner">
+              <div className="flex bg-white/10 backdrop-blur-md rounded-2xl p-1 border border-white/10 shadow-inner items-center">
                 <Link 
-                  href={`/?month=${prevMonth}&year=${prevYear}`} 
+                  href={`/?month=${prevMonth}&year=${prevYear}${currentView ? `&view=${currentView}` : ''}`} 
                   className="p-2 hover:bg-white/20 rounded-xl transition-all"
                   title="Mese precedente"
                 >
                   <ChevronLeft size={20} />
                 </Link>
-                <div className="px-6 py-2 text-sm font-black uppercase tracking-widest text-center min-w-[160px]">
-                  {currentMonthName} {currentYear}
+                
+                <div className="flex items-center">
+                  <select 
+                    value={currentMonth}
+                    onChange={(e) => router.push(`/?month=${e.target.value}&year=${currentYear}${currentView ? `&view=${currentView}` : ''}`)}
+                    className="bg-transparent border-none text-sm font-black uppercase tracking-widest text-center focus:ring-0 cursor-pointer py-2 pl-4 pr-8 appearance-none"
+                    style={{ backgroundPosition: 'right 0.5rem center' }}
+                  >
+                    {monthNames.map((name, i) => (
+                      <option key={name} value={i + 1} className="text-slate-900">{name}</option>
+                    ))}
+                  </select>
+                  <select 
+                    value={currentYear}
+                    onChange={(e) => router.push(`/?month=${currentMonth}&year=${e.target.value}${currentView ? `&view=${currentView}` : ''}`)}
+                    className="bg-transparent border-none text-sm font-black text-white/50 focus:ring-0 cursor-pointer py-2 pl-2 pr-8 appearance-none"
+                    style={{ backgroundPosition: 'right 0.5rem center' }}
+                  >
+                    {[2024, 2025, 2026, 2027].map(y => (
+                      <option key={y} value={y} className="text-slate-900">{y}</option>
+                    ))}
+                  </select>
                 </div>
+
                 <Link 
-                  href={`/?month=${nextMonth}&year=${nextYear}`} 
+                  href={`/?month=${nextMonth}&year=${nextYear}${currentView ? `&view=${currentView}` : ''}`} 
                   className="p-2 hover:bg-white/20 rounded-xl transition-all"
                   title="Mese successivo"
                 >
