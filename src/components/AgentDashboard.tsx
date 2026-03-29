@@ -523,8 +523,29 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
             <h2 className="text-4xl font-black mb-1 bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-200">
               Ciao, {currentUser.name.split(' ')[0]}
             </h2>
-            <p className="text-blue-200/60 text-sm max-w-md font-medium">
-          Consulta i tuoi turni e gestisci le tue disponibilità per {currentMonthName} {currentYear}.
+            <div className="mt-4 flex items-center gap-2">
+              <div className="flex bg-white/10 backdrop-blur-md rounded-2xl p-1 border border-white/10 shadow-inner">
+                <Link 
+                  href={`/?month=${prevMonth}&year=${prevYear}`} 
+                  className="p-2 hover:bg-white/20 rounded-xl transition-all"
+                  title="Mese precedente"
+                >
+                  <ChevronLeft size={20} />
+                </Link>
+                <div className="px-6 py-2 text-sm font-black uppercase tracking-widest text-center min-w-[160px]">
+                  {currentMonthName} {currentYear}
+                </div>
+                <Link 
+                  href={`/?month=${nextMonth}&year=${nextYear}`} 
+                  className="p-2 hover:bg-white/20 rounded-xl transition-all"
+                  title="Mese successivo"
+                >
+                  <ChevronRight size={20} />
+                </Link>
+              </div>
+            </div>
+            <p className="text-blue-200/60 text-sm max-w-md font-medium mt-4">
+              I tuoi turni e disponibilità per {currentMonthName}.
             </p>
             <p className="text-blue-300/40 text-[10px] font-bold uppercase tracking-widest mt-1">Polizia Locale di Altamura</p>
           </div>
