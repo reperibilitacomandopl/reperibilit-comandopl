@@ -5,6 +5,7 @@ import toast from "react-hot-toast"
 import { CalendarDays, AlertCircle, FileDown, Clock, ShieldCheck, Plus, ChevronLeft, ChevronRight, ListChecks, X, Smartphone, Monitor, Globe, Trash2, Search, BookOpen, Send, Phone, RefreshCw, ChevronDown } from "lucide-react"
 import { isHoliday } from "@/utils/holidays"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 // ====== CODICI AGENDA PERSONALE ======
 const AGENDA_CATEGORIES = [
@@ -121,6 +122,7 @@ type AgendaItem = {
 }
 
 export default function AgentDashboard({ currentUser, shifts, allAgents, currentYear, currentMonth, isPublished }: { currentUser: { id: string, matricola: string, name: string }, shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], allAgents: any[], currentYear: number, currentMonth: number, isPublished: boolean }) {
+  const router = useRouter()
   const [showSyncModal, setShowSyncModal] = useState(false)
   const [showAgenda, setShowAgenda] = useState(false)
   const [agendaEntries, setAgendaEntries] = useState<AgendaItem[]>([])
@@ -389,6 +391,45 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
     })
 
     doc.save(`Resoconto_${currentUser.matricola}_${currentMonth}_${currentYear}.pdf`)
+  }
+
+  if (!isPublished) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center animate-in fade-in zoom-in duration-700">
+        <div className="relative mb-8">
+          <div className="absolute inset-0 bg-blue-500 blur-3xl opacity-20 rounded-full animate-pulse"></div>
+          <div className="relative p-8 bg-white rounded-full shadow-2xl border-4 border-slate-50">
+            <CalendarDays size={64} className="text-blue-600" />
+            <div className="absolute -bottom-1 -right-1 p-2 bg-amber-500 rounded-full border-4 border-white shadow-lg shadow-amber-200">
+              <Clock size={20} className="text-white animate-spin-slow" />
+            </div>
+          </div>
+        </div>
+        
+        <h2 className="text-3xl font-black text-slate-800 mb-4 tracking-tight">Turni in fase di pubblicazione</h2>
+        <p className="text-slate-500 max-w-md mx-auto leading-relaxed mb-8">
+          L&apos;ufficio sta finalizzando la programmazione per il mese di <span className="font-bold text-slate-700">{currentMonthName} {currentYear}</span>. 
+          Riprova più tardi per consultare la tua agenda definitiva.
+        </p>
+
+        <div className="flex gap-4">
+          <Link 
+            href={`/?month=${prevMonth}&year=${prevYear}`}
+            className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all shadow-sm"
+          >
+            <ChevronLeft size={18} />
+            Mese Precedente
+          </Link>
+          <button 
+            onClick={() => router.refresh()}
+            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-xl shadow-blue-200"
+          >
+            <RefreshCw size={18} />
+            Aggiorna
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (

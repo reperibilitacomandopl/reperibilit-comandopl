@@ -40,7 +40,7 @@ export default async function Home({ searchParams }: { searchParams: { view?: st
 
   // Verify Publish status
   const pubRec = await prisma.monthStatus.findUnique({
-    where: { month_year: { month: currentMonth - 1, year: currentYear } }
+    where: { month_year: { month: currentMonth, year: currentYear } }
   })
   const isPublished = pubRec ? pubRec.isPublished : false
 
