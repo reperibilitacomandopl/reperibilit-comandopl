@@ -168,7 +168,7 @@ export async function POST(req: Request) {
 
     // === PRE-LOAD FIXED REPS ===
     for (const s of existingShifts) {
-      if (s.repType?.toUpperCase().includes("REP") && repCount[s.userId] !== undefined) {
+      if (s.repType?.toUpperCase().includes("REP") && repResults[s.userId] !== undefined) {
         const day = new Date(s.date).getUTCDate()
         const agent = agents.find(a => a.id === s.userId)
         repResults[s.userId][day] = s.repType
