@@ -106,11 +106,17 @@ export async function POST(req: Request) {
     // Important: Subtract fixed REPs already assigned
     let repCount = fixedReps.length
     const assignedDays: number[] = [...fixedReps]
+    let numSab = 0
     let numDom = 0
+    let numFes = 0
     
-    // Count Sundays/Holidays in fixed reps
+    // Count specific days in fixed reps
     for (const d of fixedReps) {
-      if (isHoliday(new Date(year, month, d))) numDom++
+      const date = new Date(Date.UTC(year, month, d))
+      const dow = date.getUTCDay()
+      if (dow === 6) numSab++
+      else if (dow === 0) numDom++
+      else if (isHoliday(date)) numFes++
     }
 
     // Assign REPs (Phase 1: strict spacing)
@@ -120,8 +126,17 @@ export async function POST(req: Request) {
       if (isBlocked(day)) continue
       if (day < daysInMonth && isBlocked(day + 1)) continue
 
-      const isFestivo = isHoliday(new Date(year, month, day))
-      if (isFestivo && numDom >= 2) continue 
+      const date = new Date(Date.UTC(year, month, day))
+      const dow = date.getUTCDay()
+      const isSabato = dow === 6
+      const isDomenica = dow === 0
+      const isFestInfrasett = !isSabato && !isDomenica && isHoliday(date)
+
+      // Strict weekend: max 1 Sabato e 1 Domenica
+      if (isSabato && numSab >= 1) continue
+      if (isDomenica && numDom >= 1) continue
+      // Limit midweek holidays as well (max 1 ideally)
+      if (isFestInfrasett && numFes >= 1) continue
 
       const tooClose = assignedDays.some(d => Math.abs(day - d) <= minSpacingGlobal)
       if (tooClose) continue
@@ -139,7 +154,9 @@ export async function POST(req: Request) {
       assignedDays.push(day)
       repCount++
       dayRepCount[day]++
-      if (isFestivo) numDom++
+      if (isSabato) numSab++
+      else if (isDomenica) numDom++
+      else if (isFestInfrasett) numFes++
     }
 
     // Phase 2: relax spacing
@@ -148,6 +165,18 @@ export async function POST(req: Request) {
         if (assignedDays.includes(day)) continue
         if (isBlocked(day)) continue
         if (day < daysInMonth && isBlocked(day + 1)) continue
+
+        const date = new Date(Date.UTC(year, month, day))
+        const dow = date.getUTCDay()
+        const isSabato = dow === 6
+        const isDomenica = dow === 0
+        const isFestInfrasett = !isSabato && !isDomenica && isHoliday(date)
+
+        // Still respect weekend/holiday limits in Phase 2 unless it's a desperate pass
+        // Actually, let's keep it strict for now as per user request
+        if (isSabato && numSab >= 1) continue
+        if (isDomenica && numDom >= 1) continue
+        if (isFestInfrasett && numFes >= 1) continue
 
         let minSpacing = Math.max(0, minSpacingGlobal - pass)
         if (minSpacing === 0 && !allowConsecutive) minSpacing = 1
@@ -158,6 +187,9 @@ export async function POST(req: Request) {
         assignedDays.push(day)
         repCount++
         dayRepCount[day]++
+        if (isSabato) numSab++
+        else if (isDomenica) numDom++
+        else if (isFestInfrasett) numFes++
       }
     }
 

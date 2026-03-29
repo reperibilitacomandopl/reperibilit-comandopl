@@ -1088,8 +1088,6 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                               const sType = (shift?.type || "").toUpperCase()
                               const rType = (shift?.repType || "") // Keep case for coloring
 
-                              if (rType.toLowerCase().includes("rep")) repDays.push(di.day)
-
                               let cellBg = di.isWeekend ? "bg-red-50/40" : ""
                               let badge = ""
                               let badgeClass = ""
