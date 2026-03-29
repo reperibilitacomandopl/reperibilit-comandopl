@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Settings, Users, Shield, Mail, Plus, Trash2, X, Save, Eye, EyeOff, ChevronDown, AlertCircle } from "lucide-react"
+import { Settings, Users, Shield, Mail, Plus, Trash2, X, Save, Eye, EyeOff, ChevronDown, AlertCircle, Loader2, BarChart3 } from "lucide-react"
+import StatisticsDashboard from "./StatisticsDashboard"
 
 type Agent = {
   id: string; name: string; matricola: string; isUfficiale: boolean;
@@ -19,6 +20,8 @@ type SettingsData = {
   permettiConsecutivi: boolean;
 }
 
+type TabType = "algorithm" | "pec" | "stats"
+
 type PecConfig = {
   host: string; port: string; user: string; pass: string; from: string
 }
@@ -26,7 +29,7 @@ type PecConfig = {
 export default function SettingsPanel({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<"algorithm" | "pec">("algorithm")
+  const [activeTab, setActiveTab] = useState<TabType>("algorithm")
   const [settings, setSettings] = useState<SettingsData>({ 
     minUfficiali: 1, 
     usaProporzionale: true, 
@@ -40,8 +43,6 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
   const [agents, setAgents] = useState<Agent[]>([])
   const [pec, setPec] = useState<PecConfig>({ host: "", port: "465", user: "", pass: "", from: "" })
   const [showPecPass, setShowPecPass] = useState(false)
-  const [showAddAgent, setShowAddAgent] = useState(false)
-  const [newAgent, setNewAgent] = useState({ matricola: "", name: "", password: "", isUfficiale: false })
   const [feedback, setFeedback] = useState("")
 
   const fetchData = useCallback(async () => {
@@ -86,8 +87,6 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
     setSaving(false)
   }
 
-
-
   const savePec = async () => {
     setSaving(true)
     try {
@@ -99,11 +98,6 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
     } catch { showFeedback("❌ Errore") }
     setSaving(false)
   }
-
-  const tabs = [
-    { key: "algorithm" as const, label: "Algoritmo", icon: Settings, emoji: "⚙️" },
-    { key: "pec" as const, label: "Email / PEC", icon: Mail, emoji: "📧" },
-  ]
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -137,20 +131,36 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
         )}
 
         {/* Tabs */}
-        <div className="flex border-b border-slate-100 bg-slate-50 px-4">
-          {tabs.map(tab => (
+        <div className="flex border-b border-slate-100 bg-slate-50 px-4 py-3">
+          <div className="flex gap-1 bg-slate-100 p-1.5 rounded-2xl">
             <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-2 px-5 py-3.5 text-sm font-bold transition-all border-b-2 -mb-px ${
-                activeTab === tab.key
-                  ? "border-blue-600 text-blue-700 bg-white rounded-t-xl"
-                  : "border-transparent text-slate-400 hover:text-slate-600"
+              onClick={() => setActiveTab("algorithm")}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                activeTab === "algorithm" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
               }`}
             >
-              <span>{tab.emoji}</span> {tab.label}
+              <Settings size={18} />
+              Algoritmo
             </button>
-          ))}
+            <button
+              onClick={() => setActiveTab("pec")}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                activeTab === "pec" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <Mail size={18} />
+              Configurazione PEC
+            </button>
+            <button
+              onClick={() => setActiveTab("stats")}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                activeTab === "stats" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <BarChart3 size={18} />
+              Statistiche
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -298,23 +308,15 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
                       </div>
                     </div>
                   </div>
-
-                  <button onClick={saveSettings} disabled={saving}
-                    className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl px-6 py-3 font-black text-sm transition-all flex items-center gap-2 shadow-lg shadow-blue-200"
-                  >
-                    <Save size={16} /> {saving ? 'Salvataggio...' : 'Salva Impostazioni'}
-                  </button>
                 </div>
               )}
 
-
-
               {/* TAB: PEC */}
               {activeTab === "pec" && (
-                <div className="space-y-6 max-w-xl">
+                <div className="space-y-6 max-w-xl animate-in fade-in duration-500">
                   <div>
                     <h3 className="text-lg font-black text-slate-900 mb-1">📧 Credenziali Email / PEC</h3>
-                    <p className="text-xs text-slate-400">Configura il server SMTP per l&apos;invio delle notifiche PEC ai destinatari</p>
+                    <p className="text-xs text-slate-400">Configura il server SMTP per l&apos;invio delle notifiche PEC</p>
                   </div>
 
                   <div className="space-y-3">
@@ -322,7 +324,7 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 ml-0.5">Server SMTP</label>
                       <input type="text" placeholder="Es: smtp.pec.aruba.it" value={pec.host}
                         onChange={e => setPec(p => ({ ...p, host: e.target.value }))}
-                        className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-400"
+                        className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-indigo-400"
                       />
                     </div>
 
@@ -331,14 +333,14 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 ml-0.5">Porta</label>
                         <input type="text" placeholder="465" value={pec.port}
                           onChange={e => setPec(p => ({ ...p, port: e.target.value }))}
-                          className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-400"
+                          className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-indigo-400"
                         />
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 ml-0.5">Indirizzo Mittente</label>
                         <input type="email" placeholder="nome@pec.it" value={pec.from}
                           onChange={e => setPec(p => ({ ...p, from: e.target.value }))}
-                          className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-400"
+                          className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-indigo-400"
                         />
                       </div>
                     </div>
@@ -347,7 +349,7 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 ml-0.5">Username / Email Account</label>
                       <input type="email" placeholder="account@pec.it" value={pec.user}
                         onChange={e => setPec(p => ({ ...p, user: e.target.value }))}
-                        className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-400"
+                        className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-indigo-400"
                       />
                     </div>
 
@@ -359,7 +361,7 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
                           placeholder="••••••••" 
                           value={pec.pass}
                           onChange={e => setPec(p => ({ ...p, pass: e.target.value }))}
-                          className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 py-3 pr-12 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-400"
+                          className="w-full bg-white border-2 border-slate-200 rounded-xl px-4 py-3 pr-12 text-sm font-bold text-slate-900 focus:outline-none focus:border-indigo-400"
                         />
                         <button type="button" onClick={() => setShowPecPass(!showPecPass)}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
@@ -368,26 +370,46 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
                         </button>
                       </div>
                     </div>
-
-                    <div className="bg-amber-50 rounded-2xl p-4 border border-amber-200">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle size={16} className="text-amber-500 shrink-0 mt-0.5" />
-                        <div className="text-xs text-amber-700">
-                          <p className="font-bold">Nota sulla sicurezza</p>
-                          <p className="mt-0.5">Le credenziali vengono salvate in modo sicuro nel Database di produzione (Supabase). Non sono visibili agli agenti.</p>
-                        </div>
-                      </div>
-                    </div>
                   </div>
-
-                  <button onClick={savePec} disabled={saving}
-                    className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl px-6 py-3 font-black text-sm transition-all flex items-center gap-2 shadow-lg shadow-blue-200"
-                  >
-                    <Save size={16} /> {saving ? 'Salvataggio...' : 'Salva Credenziali PEC'}
-                  </button>
+                  
+                  <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 flex items-start gap-3">
+                    <AlertCircle size={16} className="text-blue-500 shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-blue-700 leading-relaxed font-medium">
+                      Nota: Le credenziali sono salvate in modo sicuro e criptato nel database.
+                    </p>
+                  </div>
                 </div>
               )}
+
+              {/* TAB: STATS */}
+              {activeTab === "stats" && (
+                <StatisticsDashboard month={settings.meseCorrente} year={settings.annoCorrente} />
+              )}
             </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 rounded-b-3xl">
+          {activeTab !== "stats" ? (
+            <>
+              <button onClick={fetchData} className="px-6 py-2.5 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-100 transition-colors">
+                Annulla
+              </button>
+              <button
+                onClick={activeTab === "pec" ? savePec : saveSettings}
+                disabled={saving}
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-100 transition-all scale-100 active:scale-95"
+              >
+                {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                Salva Modifiche
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 text-xs text-slate-400 font-medium bg-slate-100/50 px-4 py-2 rounded-full">
+              <BarChart3 size={14} />
+              Statistiche aggiornate in tempo reale
+            </div>
           )}
         </div>
       </div>

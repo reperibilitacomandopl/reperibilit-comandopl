@@ -126,9 +126,10 @@ export async function POST(req: Request) {
 
       totalTargetGlobal += repTarget[agent.id]
 
-      // Festivi target: 2 per agent (1 Sab + 1 Dom idealmente)
-      fesTarget[agent.id] = festiviTarget
-      ferTarget[agent.id] = repTarget[agent.id] - fesTarget[agent.id]
+      // Festivi targets
+      // Strictly 1 Sat and 1 Dom
+      fesTarget[agent.id] = 2 // 1 Sab + 1 Dom
+      ferTarget[agent.id] = repTarget[agent.id] - 2
     }
 
     // === DAILY TARGETS ===
@@ -212,24 +213,26 @@ export async function POST(req: Request) {
 
         for (const uff of ufficiali) {
           if (repCount[uff.id] >= repTarget[uff.id]) continue
-          if (repResults[uff.id][day]) continue // Already has a shift this day
+          if (repResults[uff.id][day]) continue
           if (isBlocked(uff.id, day)) continue
-          if (day < daysInMonth && isBlocked(uff.id, day + 1)) continue
+          
+          // Pre-festive check: if tomorrow is festive, today's night shift is festive
+          const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
 
           // Spacing rule from settings
           const tooClose = assignedDays[uff.id].some(d => Math.abs(day - d) <= minSpacingGlobal)
           if (tooClose) continue
 
-          // Strict weekend: skip if already did a Sat/Sun
+          // Strict weekend rotation
           if (isSab[day] && numSabati[uff.id] >= 1) continue
           if (isDom[day] && numDomeniche[uff.id] >= 1) continue
-
+          
+          // If it's a Saturday, prioritize those who have 0 Saturdays
+          // If it's a Sunday, prioritize those who have 0 Sundays
           let score = (repCount[uff.id] / Math.max(1, repTarget[uff.id])) * 10000
-          score += isFestivo[day] ? repFesCount[uff.id] * 1000 : repFerCount[uff.id] * 1000
-
-          const baseShift = (baseShifts[uff.id]?.[day] || "").toUpperCase()
-          if (baseShift.startsWith("M")) score -= 500
-          if (baseShift.startsWith("P")) score += 300
+          if (isSab[day]) score += numSabati[uff.id] * 50000
+          if (isDom[day]) score += numDomeniche[uff.id] * 50000
+          if (isVigilia) score += repFesCount[uff.id] * 5000
 
           candidates.push({ agentId: uff.id, score })
         }
@@ -244,8 +247,10 @@ export async function POST(req: Request) {
           dayAssigned[day]++
           uffAssigned[day] = 1
 
-          if (isFestivo[day]) repFesCount[best.agentId]++
+          const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
+          if (isFestivo[day] || isVigilia) repFesCount[best.agentId]++
           else repFerCount[best.agentId]++
+          
           if (isSab[day]) numSabati[best.agentId]++
           if (isDom[day]) numDomeniche[best.agentId]++
         }
@@ -261,36 +266,37 @@ export async function POST(req: Request) {
 
       for (const agent of agents) {
         if (repCount[agent.id] >= repTarget[agent.id]) continue
-        if (repResults[agent.id][day]) continue // already assigned (e.g. ufficiale)
+        if (repResults[agent.id][day]) continue 
 
         if (isBlocked(agent.id, day)) continue
-        if (day < daysInMonth && isBlocked(agent.id, day + 1)) continue
+        const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
 
         // Spacing: dynamic gap from settings
         const tooClose = assignedDays[agent.id].some(d => Math.abs(day - d) <= minSpacingGlobal)
         if (tooClose) continue
 
-        // Weekend: max 1 Sabato e 1 Domenica per agente
-        let weekendPenalty = 0
-        if (isSab[day] && numSabati[agent.id] >= 1) weekendPenalty = 1000000
-        if (isDom[day] && numDomeniche[agent.id] >= 1) weekendPenalty = 1000000
+        // Weekend Equity Score
+        let weekendPriority = 0
+        if (isSab[day]) {
+          if (numSabati[agent.id] >= 1) weekendPriority = 1000000 // Already has Sat
+          else weekendPriority = -50000 // Needs Sat
+        }
+        if (isDom[day]) {
+          if (numDomeniche[agent.id] >= 1) weekendPriority = 1000000 // Already has Dom
+          else weekendPriority = -50000 // Needs Dom
+        }
 
         // Score (lower is better)
         let score = (repCount[agent.id] / Math.max(1, repTarget[agent.id])) * 10000
-        score += todayFes ? repFesCount[agent.id] * 1000 : repFerCount[agent.id] * 1000
-        score += weekendPenalty
+        score += weekendPriority
 
-        // Festivi balance: penalize if already at festivi target (2)
-        if (todayFes) {
-          if (repFesCount[agent.id] >= fesTarget[agent.id]) score += 5000
-        } else {
-          if (repFerCount[agent.id] >= ferTarget[agent.id]) score += 5000
+        if (isFestivo[day] || isVigilia) {
+          if (repFesCount[agent.id] >= 2) score += 5000 
         }
 
-        // STRONG preference for morning shifts (M7, M8, etc.) for night REP
         const baseShift = (baseShifts[agent.id]?.[day] || "").toUpperCase()
-        if (baseShift.startsWith("M")) score -= 500   // forte preferenza mattina
-        if (baseShift.startsWith("P")) score += 300   // penalità pomeriggio
+        if (baseShift.startsWith("M")) score -= 500  
+        if (baseShift.startsWith("P")) score += 300   
 
         candidates.push({ agentId: agent.id, score })
       }
@@ -310,8 +316,10 @@ export async function POST(req: Request) {
         dayAssigned[day]++
         assignToday++
 
-        if (todayFes) repFesCount[cand.agentId]++
+        const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
+        if (todayFes || isVigilia) repFesCount[cand.agentId]++
         else repFerCount[cand.agentId]++
+        
         if (isSab[day]) numSabati[cand.agentId]++
         if (isDom[day]) numDomeniche[cand.agentId]++
       }
