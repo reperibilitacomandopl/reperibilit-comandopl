@@ -464,9 +464,11 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
         }
         
         const result = await response.json()
-        setUploadStatus(`✅ Importati ${result.count} turni con successo!`)
+        const detail = result.importType === "base" ? "Turni Base" : "Reperibilità"
+        setUploadStatus(`✅ Importati ${result.count} ${detail} con successo!`)
+        toast.success(`Importazione ${detail} completata: ${result.count} record.`)
         router.refresh()
-        setTimeout(() => setUploadStatus(""), 4000)
+        setTimeout(() => setUploadStatus(""), 5000)
 
       } catch (err) {
         setUploadStatus(`❌ ${err instanceof Error ? err.message : "Errore lettura Excel"}`)
@@ -1045,8 +1047,6 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                 cellBg = "bg-emerald-100"
                                 badge = "REP"
                                 badgeClass = "bg-emerald-500 text-white font-black shadow-sm"
-                                badge = "REP"
-                                badgeClass = "bg-emerald-500 text-white font-black shadow-sm"
                               } else if (sType.startsWith("F") || sType === "104" || sType === "FERIE" || sType === "MALATTIA") {
                                 cellBg = "bg-amber-50"
                                 badge = sType.length > 3 ? sType.substring(0, 3) : sType
@@ -1087,10 +1087,22 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                               )
                             })}
                             <td 
-                              className={`px-2 py-1 text-center font-black border-l-2 border-slate-200 text-sm cursor-help transition-colors ${repDays.length < 5 ? "text-amber-700 bg-amber-100 hover:bg-amber-200 shadow-[inset_0_0_8px_rgba(251,191,36,0.5)]" : "text-emerald-700 bg-emerald-50 hover:bg-emerald-100"}`}
-                              title={repDays.length > 0 ? `Giorni in reperibilità:\n${repDays.join(', ')}${repDays.length < 5 ? '\n(Sotto la media, spazio disponibile)' : ''}` : "Sotto media (0 REP)"}
+                              className={`px-2 py-1 text-center font-black border-l-2 border-slate-200 text-sm cursor-help transition-colors ${
+                                repDays.length > agent.massimale 
+                                  ? "text-red-700 bg-red-100 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.3)_inset]" 
+                                  : repDays.length < 5 
+                                    ? "text-amber-700 bg-amber-100 hover:bg-amber-200" 
+                                    : "text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+                              }`}
+                              title={
+                                repDays.length > agent.massimale 
+                                  ? `ATTENZIONE: Superato il massimale di ${agent.massimale}!\nGiorni: ${repDays.join(', ')}` 
+                                  : repDays.length > 0 
+                                    ? `Giorni in reperibilità: ${repDays.join(', ')}` 
+                                    : "Nessuna reperibilità"
+                              }
                             >
-                              {repDays.length}
+                              {repDays.length > agent.massimale && "⚠️ "}{repDays.length}
                             </td>
                           </tr>
                         )

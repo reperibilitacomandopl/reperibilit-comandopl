@@ -100,7 +100,17 @@ export async function POST(req: Request) {
       totalImported += valueLines.length
     }
 
-    return NextResponse.json({ success: true, count: totalImported })
+    // Log the bulk action
+    await prisma.auditLog.create({
+      data: {
+        adminId: session.user.id!,
+        adminName: session.user.name!,
+        action: "BULK_IMPORT_SHIFTS",
+        details: `Importazione massiva completata (${importType === "base" ? "Turni Base" : "Reperibilità"}). Record interessati: ${totalImported}`
+      }
+    })
+
+    return NextResponse.json({ success: true, count: totalImported, importType })
   } catch (error) {
     console.error("[SHIFTS API ERROR]", error)
     return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 })
