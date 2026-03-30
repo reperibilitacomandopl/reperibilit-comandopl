@@ -775,7 +775,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
           <button 
             onClick={() => setShowSettings(true)}
-            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-sm"
+            className="flex items-center gap-2 bg-gradient-to-br from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm hover:shadow-md"
           >
             <Settings size={18} />
             Impostazioni
@@ -826,14 +826,14 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
           
           <button 
             onClick={() => { setShowVerbatelSync(true); setVerbatelScript(""); }}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-sm bg-orange-600 text-white hover:bg-orange-700"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-400 hover:to-orange-500 hover:shadow-md active:scale-95"
             title="Esporta i turni su Verbatel in automatico"
           >
             <RefreshCw size={18} />
             Sincronizza Verbatel
           </button>
 
-          <button
+          <button 
             disabled={isSendingAlert}
             onClick={async () => {
               if (!confirm('🚨 SEI SICURO di voler lanciare un ALLERTA EMERGENZA via Telegram a tutti i reperibili di oggi?')) return
@@ -849,10 +849,14 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 setIsSendingAlert(false)
               }
             }}
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-black transition-colors shadow-sm disabled:opacity-50 animate-pulse hover:animate-none"
+            className="flex items-center gap-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white px-5 py-2 rounded-xl text-sm font-black transition-all shadow-lg shadow-red-500/30 active:scale-95 disabled:opacity-50 hover:shadow-xl"
             title="Invia allerta immediata via Telegram ai reperibili di oggi"
           >
-            🚨 {isSendingAlert ? 'Invio...' : 'Allerta Emergenza'}
+            {isSendingAlert ? (
+              <><RefreshCw size={18} className="animate-spin" /> Invio in corso...</>
+            ) : (
+              <>🚨 Allerta Emergenza</>
+            )}
           </button>
           
           <button 
@@ -1519,8 +1523,9 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                             </span>
                           )}
                         </td>
-                        <td className="px-6 py-4 font-black text-black text-xs">
-                          {agent.qualifica || 'Agente'} {agent.isUfficiale && <span className="text-blue-700 ml-1 font-black bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">(UFF)</span>}
+                        <td className="px-6 py-4 font-black text-slate-800 text-xs">
+                          {agent.qualifica || 'Agente'} 
+                          {agent.isUfficiale && <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-black bg-blue-100 text-blue-800 border border-blue-200 uppercase tracking-widest shadow-sm">Ufficiale</span>}
                         </td>
                         <td className="px-6 py-4">
                           {editingAgent === agent.id ? (

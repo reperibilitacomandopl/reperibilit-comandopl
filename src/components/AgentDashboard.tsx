@@ -183,6 +183,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   }, [fetchDutyTeam, fetchSwaps])
 
   const handleRespondSwap = async (id: string, status: "ACCEPTED" | "REJECTED") => {
+    setSwapLoading(true)
     try {
       const res = await fetch(`/api/shifts/swap/${id}`, {
         method: 'PATCH',
@@ -198,6 +199,8 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
       }
     } catch {
       toast.error("Errore di connessione")
+    } finally {
+      setSwapLoading(false)
     }
   }
 
@@ -1109,15 +1112,18 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                         isIncoming ? (
                           <>
                             <button 
+                              disabled={swapLoading}
                               onClick={() => handleRespondSwap(req.id, "REJECTED")}
-                              className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                              className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               Rifiuta
                             </button>
                             <button 
+                              disabled={swapLoading}
                               onClick={() => handleRespondSwap(req.id, "ACCEPTED")}
-                              className="px-5 py-2 bg-indigo-600 text-white text-xs font-black rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all hover:scale-[1.05]"
+                              className="px-5 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white text-xs font-black rounded-xl hover:from-indigo-600 hover:to-indigo-700 shadow-lg shadow-indigo-100 transition-all hover:scale-[1.05] disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed flex items-center gap-1.5"
                             >
+                              {swapLoading ? <RefreshCw size={14} className="animate-spin" /> : null}
                               Accetta
                             </button>
                           </>

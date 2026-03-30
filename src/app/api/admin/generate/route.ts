@@ -34,9 +34,8 @@ export async function POST(req: Request) {
     const repPerUfficialeBase = settings?.massimaleUfficiale ?? 6
     const minSpacingGlobal = settings?.distaccoMinimo ?? 2
     const allowConsecutive = settings?.permettiConsecutivi ?? false
-    const minGiorno = 7            // Min reperibili al giorno
-    const maxGiorno = 8            // Max reperibili al giorno
-    const usaProporzionale = true  // Proporzionalita' assenze attiva
+    const usaProporzionale = settings?.usaProporzionale ?? true
+    const minUfficiali = settings?.minUfficiali ?? 1
 
     // === LOAD AGENTS ===
     const agents = await prisma.user.findMany({
@@ -126,18 +125,16 @@ export async function POST(req: Request) {
     // === DAILY TARGETS ===
     const dayTarget: Record<number, number> = {}
     let basePerDay = Math.floor(totalTargetGlobal / daysInMonth)
-    if (basePerDay < minGiorno) basePerDay = minGiorno
-    if (basePerDay > maxGiorno) basePerDay = maxGiorno
+    let minGiorno = basePerDay
+    const maxGiorno = basePerDay + 1
 
     for (let d = 1; d <= daysInMonth; d++) dayTarget[d] = basePerDay
 
     let extraNeeded = totalTargetGlobal - (basePerDay * daysInMonth)
     if (extraNeeded > 0) {
       for (let d = 1; d <= daysInMonth && extraNeeded > 0; d++) {
-        if (dayTarget[d] < maxGiorno) {
-          dayTarget[d]++
-          extraNeeded--
-        }
+        dayTarget[d]++
+        extraNeeded--
       }
     }
 
@@ -187,7 +184,7 @@ export async function POST(req: Request) {
     // === PHASE 0: UFFICIALI ===
     const ufficiali = agents.filter(a => a.isUfficiale)
     for (let day = 1; day <= daysInMonth; day++) {
-      if (uffAssigned[day] >= 1) continue
+      if (uffAssigned[day] >= minUfficiali) continue
       const candidates: { agentId: string, score: number }[] = []
       for (const uff of ufficiali) {
         if (repCount[uff.id] >= repTarget[uff.id]) continue
@@ -217,7 +214,7 @@ export async function POST(req: Request) {
         repCount[best.agentId]++
         assignedDays[best.agentId].push(day)
         dayAssigned[day]++
-        uffAssigned[day] = 1
+        uffAssigned[day]++
         const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
         if (isFestivo[day] || isVigilia) repFesCount[best.agentId]++
         else repFerCount[best.agentId]++
