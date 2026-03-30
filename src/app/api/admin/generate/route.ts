@@ -245,6 +245,7 @@ export async function POST(req: Request) {
     for (const agent of priorityAgents) {
       if (repCount[agent.id] >= repTarget[agent.id] || numSabati[agent.id] >= 1) continue
       for (const day of Saturdays) {
+        if (dayAssigned[day] >= dayTarget[day]) continue
         if (repResults[agent.id][day]) continue
         if (isBlocked(agent.id, day)) continue
         if (day < daysInMonth && isBlocked(agent.id, day + 1)) continue 
@@ -266,6 +267,7 @@ export async function POST(req: Request) {
     for (const agent of priorityAgents) {
       if (repCount[agent.id] >= repTarget[agent.id] || numDomeniche[agent.id] >= 1) continue
       for (const day of Sundays) {
+        if (dayAssigned[day] >= dayTarget[day]) continue
         if (repResults[agent.id][day]) continue
         if (isBlocked(agent.id, day)) continue
         if (day < daysInMonth && isBlocked(agent.id, day + 1)) continue 
@@ -287,6 +289,7 @@ export async function POST(req: Request) {
     for (const agent of priorityAgents) {
       if (repFesCount[agent.id] >= 1 || repCount[agent.id] >= repTarget[agent.id]) continue
       for (const day of MidweekHolidays) {
+        if (dayAssigned[day] >= dayTarget[day]) continue
         if (repResults[agent.id][day]) continue
         if (isBlocked(agent.id, day)) continue
         if (day < daysInMonth && isBlocked(agent.id, day + 1)) continue 
