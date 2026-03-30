@@ -189,6 +189,7 @@ export async function POST(req: Request) {
         if (repCount[uff.id] >= repTarget[uff.id]) continue
         if (repResults[uff.id][day]) continue
         if (isBlocked(uff.id, day)) continue
+        if (day < daysInMonth && isBlocked(uff.id, day + 1)) continue // Eve of blocked day
         const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
         const tooClose = assignedDays[uff.id].some(d => Math.abs(day - d) <= minSpacingGlobal)
         if (tooClose) continue
@@ -242,6 +243,7 @@ export async function POST(req: Request) {
       for (const day of festiveDaysList) {
         if (repResults[agent.id][day]) continue
         if (isBlocked(agent.id, day)) continue
+        if (day < daysInMonth && isBlocked(agent.id, day + 1)) continue // Eve of blocked day
         const tooClose = assignedDays[agent.id].some(d => Math.abs(day - d) <= minSpacingGlobal)
         if (tooClose) continue
         if (isSab[day] && numSabati[agent.id] >= 1) continue
@@ -276,6 +278,7 @@ export async function POST(req: Request) {
         if (repCount[agent.id] >= repTarget[agent.id]) continue
         if (repResults[agent.id][day]) continue 
         if (isBlocked(agent.id, day)) continue
+        if (day < daysInMonth && isBlocked(agent.id, day + 1)) continue // Eve of blocked day
         const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
         const tooClose = assignedDays[agent.id].some(d => Math.abs(day - d) <= minSpacingGlobal)
         if (tooClose) continue
@@ -328,6 +331,7 @@ export async function POST(req: Request) {
           if (repCount[agent.id] >= repTarget[agent.id]) continue
           if (repResults[agent.id][day]) continue
           if (isBlocked(agent.id, day)) continue
+          if (day < daysInMonth && isBlocked(agent.id, day + 1)) continue // Eve of blocked day
           
           // Phase 2: still avoid 3rd festive unless it's the last pass
           if (pass < 3 && isFesOrVig && repFesCount[agent.id] >= 2) continue
