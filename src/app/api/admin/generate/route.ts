@@ -223,84 +223,86 @@ export async function POST(req: Request) {
     }
 
     // === PHASE 0.5: FESTIVE FIRST PASS ===
-    // Priority 1: Ensure every UFFICIALE gets 1 Saturday and 1 Sunday (if possible)
-    const weekendDays: number[] = []
+    // === PHASE 0.5: UNIVERSAL WEEKEND PASS ===
+    // Aim for 1 Saturday AND 1 Sunday for EVERY agent (if mathematically possible)
+    // We sort by Officers first to give them priority, then random shuffle for fairness
+    const priorityAgents = [...agents].sort((a, b) => {
+      if (a.isUfficiale && !b.isUfficiale) return -1
+      if (!a.isUfficiale && b.isUfficiale) return 1
+      return Math.random() - 0.5
+    })
+
+    const Saturdays = []
+    const Sundays = []
+    const MidweekHolidays = []
     for (let d = 1; d <= daysInMonth; d++) {
-      if (isSab[d] || isDom[d]) weekendDays.push(d)
+      if (isSab[d]) Saturdays.push(d)
+      else if (isDom[d]) Sundays.push(d)
+      else if (isHoliday(new Date(year, month, d))) MidweekHolidays.push(d)
     }
 
-    for (const uff of ufficiali) {
-      if (repCount[uff.id] >= repTarget[uff.id]) continue
-      
-      // Try to give 1 Saturday and 1 Sunday (if not already assigned by imported shifts)
-      for (const day of weekendDays) {
-        if (repCount[uff.id] >= repTarget[uff.id]) break
-        if (isSab[day] && numSabati[uff.id] >= 1) continue
-        if (isDom[day] && numDomeniche[uff.id] >= 1) continue
-        
-        if (repResults[uff.id][day]) continue
-        if (isBlocked(uff.id, day)) continue
-        if (day < daysInMonth && isBlocked(uff.id, day + 1)) continue 
-        const tooClose = assignedDays[uff.id].some(d => Math.abs(day - d) <= minSpacingGlobal)
-        if (tooClose) continue
-
-        // Assign!
-        repResults[uff.id][day] = "REP 22-07"
-        repCount[uff.id]++
-        assignedDays[uff.id].push(day)
-        dayAssigned[day]++
-        uffAssigned[day]++
-        repFesCount[uff.id]++
-        if (isSab[day]) numSabati[uff.id]++
-        if (isDom[day]) numDomeniche[uff.id]++
-      }
-    }
-
-    // Priority 2: Ensure every other agent gets at least 1 festive (Sat, Sun, or Midweek Holiday)
-    const festiveDaysList: number[] = []
-    for (let d = 1; d <= daysInMonth; d++) {
-      const isVigilia = (d < daysInMonth && isHoliday(new Date(year, month, d + 1)))
-      if (isFestivo[d] || isSab[d] || isDom[d] || isVigilia) {
-        festiveDaysList.push(d)
-      }
-    }
-
-    for (const agent of agents) {
-      if (repFesCount[agent.id] >= 1) continue // already has at least 1 festive
-      if (repCount[agent.id] >= repTarget[agent.id]) continue
-
-      let bestDay = -1
-      let bestScore = Infinity
-      for (const day of festiveDaysList) {
+    // Pass 1: Try to give 1 Saturday to everyone
+    for (const agent of priorityAgents) {
+      if (repCount[agent.id] >= repTarget[agent.id] || numSabati[agent.id] >= 1) continue
+      for (const day of Saturdays) {
         if (repResults[agent.id][day]) continue
         if (isBlocked(agent.id, day)) continue
         if (day < daysInMonth && isBlocked(agent.id, day + 1)) continue 
         const tooClose = assignedDays[agent.id].some(d => Math.abs(day - d) <= minSpacingGlobal)
         if (tooClose) continue
-        
-        // Avoid saturating weekend caps for non-officers too early
-        if (isSab[day] && numSabati[agent.id] >= 1) continue
-        if (isDom[day] && numDomeniche[agent.id] >= 1) continue
 
-        let score = dayAssigned[day] * 100
-        score += repCount[agent.id] * 10
-        if (score < bestScore) {
-          bestScore = score
-          bestDay = day
-        }
-      }
-
-      if (bestDay > 0) {
-        repResults[agent.id][bestDay] = "REP 22-07"
+        repResults[agent.id][day] = "REP 22-07"
         repCount[agent.id]++
-        assignedDays[agent.id].push(bestDay)
-        dayAssigned[bestDay]++
+        assignedDays[agent.id].push(day)
+        dayAssigned[day]++
+        if (agent.isUfficiale) uffAssigned[day]++
         repFesCount[agent.id]++
-        if (agent.isUfficiale) uffAssigned[bestDay]++
-        if (isSab[bestDay]) numSabati[agent.id]++
-        if (isDom[bestDay]) numDomeniche[agent.id]++
+        numSabati[agent.id]++
+        break // Got our Saturday!
       }
     }
+
+    // Pass 2: Try to give 1 Sunday to everyone
+    for (const agent of priorityAgents) {
+      if (repCount[agent.id] >= repTarget[agent.id] || numDomeniche[agent.id] >= 1) continue
+      for (const day of Sundays) {
+        if (repResults[agent.id][day]) continue
+        if (isBlocked(agent.id, day)) continue
+        if (day < daysInMonth && isBlocked(agent.id, day + 1)) continue 
+        const tooClose = assignedDays[agent.id].some(d => Math.abs(day - d) <= minSpacingGlobal)
+        if (tooClose) continue
+
+        repResults[agent.id][day] = "REP 22-07"
+        repCount[agent.id]++
+        assignedDays[agent.id].push(day)
+        dayAssigned[day]++
+        if (agent.isUfficiale) uffAssigned[day]++
+        repFesCount[agent.id]++
+        numDomeniche[agent.id]++
+        break // Got our Sunday!
+      }
+    }
+
+    // Pass 3: Fill midweek holidays for those who still have 0 festive shifts total
+    for (const agent of priorityAgents) {
+      if (repFesCount[agent.id] >= 1 || repCount[agent.id] >= repTarget[agent.id]) continue
+      for (const day of MidweekHolidays) {
+        if (repResults[agent.id][day]) continue
+        if (isBlocked(agent.id, day)) continue
+        if (day < daysInMonth && isBlocked(agent.id, day + 1)) continue 
+        const tooClose = assignedDays[agent.id].some(d => Math.abs(day - d) <= minSpacingGlobal)
+        if (tooClose) continue
+
+        repResults[agent.id][day] = "REP 22-07"
+        repCount[agent.id]++
+        assignedDays[agent.id].push(day)
+        dayAssigned[day]++
+        if (agent.isUfficiale) uffAssigned[day]++
+        repFesCount[agent.id]++
+        break
+      }
+    }
+
 
     // === PHASE 1: MAIN ===
     for (let day = 1; day <= daysInMonth; day++) {
