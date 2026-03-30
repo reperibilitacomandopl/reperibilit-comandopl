@@ -2,9 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { isHoliday } from "@/utils/holidays"
-
-const BLOCK_CODES = ["F", "FERIE", "M", "MALATTIA", "104", "RR", "RP", "RPS", "CONGEDO",
-  "ASS", "INFR", "CS", "PNR", "SD", "RF", "AM", "AP"]
+import { BLOCK_CODES } from "@/utils/constants"
 
 function getDaysInMonth(month: number, year: number): number {
   return new Date(year, month + 1, 0).getDate()
@@ -101,6 +99,8 @@ export async function POST(req: Request) {
     const baselineDays = Math.max(1, daysInMonth - 6)
     let target = Math.round((availableDays / baselineDays) * baseTargetLimit)
     if (target > baseTargetLimit) target = baseTargetLimit
+    // Officers: always full target if they have enough available days
+    if (isUff && availableDays >= baseTargetLimit) target = baseTargetLimit
     if (availableDays > 0 && target < 1) target = 1
 
     // Important: Subtract fixed REPs already assigned
@@ -141,7 +141,7 @@ export async function POST(req: Request) {
       const tooClose = assignedDays.some(d => Math.abs(day - d) <= minSpacingGlobal)
       if (tooClose) continue
 
-      if (dayRepCount[day] >= 8) continue
+      if (dayRepCount[day] >= 10) continue
 
       // Prefer morning shifts
       const shift = (baseShifts[day] || "").toUpperCase()

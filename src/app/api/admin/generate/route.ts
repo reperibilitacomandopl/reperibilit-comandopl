@@ -2,10 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { isHoliday } from "@/utils/holidays"
-
-// Block codes from CONFIGURAZIONE - agent cannot do REP if their base shift is one of these
-const BLOCK_CODES = ["F", "FERIE", "M", "MALATTIA", "104", "RR", "RP", "RPS", "CONGEDO",
-  "ASS", "INFR", "CS", "PNR", "SD", "RF", "AM", "AP"]
+import { BLOCK_CODES } from "@/utils/constants"
 
 function getDaysInMonth(month: number, year: number): number {
   return new Date(year, month + 1, 0).getDate()
@@ -111,6 +108,8 @@ export async function POST(req: Request) {
         const rawTarget = (availableDays / baselineDays) * baseTarget
         let target = Math.round(rawTarget)
         if (target > baseTarget) target = baseTarget
+        // Officers: always full target if they have enough available days
+        if (isUff && availableDays >= baseTarget) target = baseTarget
         if (availableDays > 0 && target < 1) target = 1
         repTarget[agent.id] = target
       } else {
@@ -220,6 +219,52 @@ export async function POST(req: Request) {
         else repFerCount[best.agentId]++
         if (isSab[day]) numSabati[best.agentId]++
         if (isDom[day]) numDomeniche[best.agentId]++
+      }
+    }
+
+    // === PHASE 0.5: FESTIVE FIRST PASS ===
+    // Ensure every agent gets at least 1 festive/weekend shift before general distribution
+    const festiveDaysList: number[] = []
+    for (let d = 1; d <= daysInMonth; d++) {
+      const isVigilia = (d < daysInMonth && isHoliday(new Date(year, month, d + 1)))
+      if (isFestivo[d] || isSab[d] || isDom[d] || isVigilia) {
+        festiveDaysList.push(d)
+      }
+    }
+
+    for (const agent of agents) {
+      if (repFesCount[agent.id] >= 1) continue // already has at least 1 festive
+      if (repCount[agent.id] >= repTarget[agent.id]) continue
+
+      // Find best festive day for this agent
+      let bestDay = -1
+      let bestScore = Infinity
+      for (const day of festiveDaysList) {
+        if (repResults[agent.id][day]) continue
+        if (isBlocked(agent.id, day)) continue
+        const tooClose = assignedDays[agent.id].some(d => Math.abs(day - d) <= minSpacingGlobal)
+        if (tooClose) continue
+        if (isSab[day] && numSabati[agent.id] >= 1) continue
+        if (isDom[day] && numDomeniche[agent.id] >= 1) continue
+
+        // Prefer days with fewer assignments to spread load
+        let score = dayAssigned[day] * 100
+        score += repCount[agent.id] * 10
+        if (score < bestScore) {
+          bestScore = score
+          bestDay = day
+        }
+      }
+
+      if (bestDay > 0) {
+        repResults[agent.id][bestDay] = "REP 22-07"
+        repCount[agent.id]++
+        assignedDays[agent.id].push(bestDay)
+        dayAssigned[bestDay]++
+        repFesCount[agent.id]++
+        if (agent.isUfficiale) uffAssigned[bestDay]++
+        if (isSab[bestDay]) numSabati[agent.id]++
+        if (isDom[bestDay]) numDomeniche[agent.id]++
       }
     }
 
