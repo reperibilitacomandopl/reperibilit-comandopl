@@ -403,33 +403,32 @@ export async function POST(req: Request) {
       }
     }
 
-    // === PHASE 3: OFFICER RESCUE ===
-    // Extreme pass for officers that are STILL below target
-    for (const uff of ufficiali) {
-      if (repCount[uff.id] >= repTarget[uff.id]) continue
+    // === PHASE 3: GENERAL RESCUE (Recovery for everyone) ===
+    // Extreme pass for anyone that is STILL below target
+    for (const agent of agents) {
+      if (repCount[agent.id] >= repTarget[agent.id]) continue
 
       // Search every day possible
-      for (let day = 1; day <= daysInMonth && repCount[uff.id] < repTarget[uff.id]; day++) {
-        if (repResults[uff.id][day]) continue
-        if (isBlocked(uff.id, day)) continue
-        if (day < daysInMonth && isBlocked(uff.id, day + 1)) continue // Strict block
+      for (let day = 1; day <= daysInMonth && repCount[agent.id] < repTarget[agent.id]; day++) {
+        if (repResults[agent.id][day]) continue
+        if (isBlocked(agent.id, day)) continue
+        if (day < daysInMonth && isBlocked(agent.id, day + 1)) continue // Strict block
 
-        // Spacing: at least 1 day between shifts
-        const tooClose = assignedDays[uff.id].some(d => Math.abs(day - d) < 2) // < 2 means consecutive
+        // Spacing: at least 1 day between shifts (consecutive = distance < 2)
+        const tooClose = assignedDays[agent.id].some(d => Math.abs(day - d) < 2)
         if (tooClose) continue
 
-        // Slots: allow exceeding dayTarget as a last resort if it's an officer
-        // but try to keep it under maxGiorno or +1 if desperate
+        // Slots: allow exceeding dayTarget as a last resort
         if (dayAssigned[day] >= dayTarget[day] + 1) continue
 
-        repResults[uff.id][day] = "REP 22-07"
-        repCount[uff.id]++
-        assignedDays[uff.id].push(day)
+        repResults[agent.id][day] = "REP 22-07"
+        repCount[agent.id]++
+        assignedDays[agent.id].push(day)
         dayAssigned[day]++
-        uffAssigned[day]++
+        if (agent.isUfficiale) uffAssigned[day]++
         const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
-        if (isFestivo[day] || isVigilia) repFesCount[uff.id]++
-        else repFerCount[uff.id]++
+        if (isFestivo[day] || isVigilia) repFesCount[agent.id]++
+        else repFerCount[agent.id]++
       }
     }
 
