@@ -160,7 +160,7 @@ export async function POST(req: Request) {
     }
 
     // Phase 2: relax spacing
-    for (let pass = 1; pass <= 2 && repCount < target; pass++) {
+    for (let pass = 1; pass <= 3 && repCount < target; pass++) {
       for (let day = 1; day <= daysInMonth && repCount < target; day++) {
         if (assignedDays.includes(day)) continue
         if (isBlocked(day)) continue
@@ -172,17 +172,21 @@ export async function POST(req: Request) {
         const isDomenica = dow === 0
         const isFestInfrasett = !isSabato && !isDomenica && isHoliday(date)
 
-        // Still respect weekend/holiday limits in Phase 2 unless it's a desperate pass
-        // Actually, let's keep it strict for now as per user request
-        if (isSabato && numSab >= 1) continue
-        if (isDomenica && numDom >= 1) continue
-        if (isFestInfrasett && numFes >= 1) continue
+        // Phase 2: still avoid extra festive unless it's the last pass
+        if (pass < 3) {
+          if (isSabato && numSab >= 1) continue
+          if (isDomenica && numDom >= 1) continue
+          if (isFestInfrasett && numFes >= 1) continue
+        }
 
-        let minSpacing = Math.max(0, minSpacingGlobal - pass)
+        let minSpacing = Math.max(1, minSpacingGlobal - (pass - 1))
+        if (pass === 3) minSpacing = 1
         if (minSpacing === 0 && !allowConsecutive) minSpacing = 1
         
         const tooClose = assignedDays.some(d => Math.abs(day - d) <= minSpacing)
         if (tooClose) continue
+
+        if (dayRepCount[day] >= 10) continue
 
         assignedDays.push(day)
         repCount++

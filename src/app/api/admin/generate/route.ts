@@ -316,23 +316,26 @@ export async function POST(req: Request) {
     }
 
     // === PHASE 2: FILL ===
-    for (let pass = 1; pass <= 2; pass++) {
+    for (let pass = 1; pass <= 3; pass++) {
       for (let day = 1; day <= daysInMonth; day++) {
-        if (dayAssigned[day] >= minGiorno) continue
+        const currentDayTarget = dayTarget[day]
+        if (dayAssigned[day] >= currentDayTarget) continue
         const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
         const isFesOrVig = isFestivo[day] || isVigilia
 
         for (const agent of agents) {
-          if (dayAssigned[day] >= minGiorno) break
+          if (dayAssigned[day] >= currentDayTarget) break
           if (repCount[agent.id] >= repTarget[agent.id]) continue
           if (repResults[agent.id][day]) continue
           if (isBlocked(agent.id, day)) continue
           
-          // CRITICAL: Avoid giving 3rd festive in Phase 2 unless it's the only choice
-          if (isFesOrVig && repFesCount[agent.id] >= 2) continue
+          // Phase 2: still avoid 3rd festive unless it's the last pass
+          if (pass < 3 && isFesOrVig && repFesCount[agent.id] >= 2) continue
 
-          let minSpacing = Math.max(0, minSpacingGlobal - pass)
+          let minSpacing = Math.max(1, minSpacingGlobal - (pass - 1))
+          if (pass === 3) minSpacing = 1 
           if (minSpacing === 0 && !allowConsecutive) minSpacing = 1
+          
           const tooClose = assignedDays[agent.id].some(d => Math.abs(day - d) <= minSpacing)
           if (tooClose) continue
 
