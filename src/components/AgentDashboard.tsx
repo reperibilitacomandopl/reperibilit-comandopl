@@ -307,7 +307,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   })
 
   // Collect REP days for this agent
-  const repDays: { day: number; dayName: string; repType: string; baseType: string }[] = []
+  const repDays: { day: number; dayName: string; repType: string; baseType: string; shiftObj: any }[] = []
   dayInfo.forEach(di => {
     const targetDate = new Date(Date.UTC(currentYear, currentMonth - 1, di.day)).toISOString()
     const sObj = myShifts.find(s => new Date(s.date).toISOString() === targetDate)
@@ -316,7 +316,8 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
         day: di.day,
         dayName: di.name,
         repType: sObj.repType || "REP",
-        baseType: (sObj.type || "").toUpperCase()
+        baseType: (sObj.type || "").toUpperCase(),
+        shiftObj: sObj
       })
     }
   })
@@ -731,20 +732,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                     {isRep && sType && (
                       <span className="text-[7px] font-bold text-emerald-700 mt-0.5">base: {sType}</span>
                     )}
-                    {isRep && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedShiftForSwap(sObj);
-                          setShowSwapModal(true);
-                        }}
-                        className="w-full mt-2 group/swap flex items-center justify-center gap-1 bg-white/10 hover:bg-emerald-600 border border-emerald-400/30 text-emerald-700 hover:text-white py-1 rounded-lg text-[8px] font-black uppercase transition-all active:scale-95"
-                        title="Proponi uno scambio per questo turno"
-                      >
-                        <RefreshCw size={10} className="group-hover/swap:rotate-180 transition-transform duration-500" />
-                        Scambia
-                      </button>
-                    )}
                   </div>
                 )
               })}
@@ -922,10 +909,18 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                         <p className="text-[11px] text-slate-500">Turno Base: <span className="font-semibold">{rd.baseType}</span></p>
                       )}
                     </div>
-                    <div className="shrink-0">
-                      <span className="inline-block px-3 py-1 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider rounded-lg shadow-sm">
-                        REP
-                      </span>
+                    <div className="shrink-0 flex items-center gap-2">
+                       <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedShiftForSwap(rd.shiftObj);
+                          setShowSwapModal(true);
+                        }}
+                        className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-wider rounded-lg shadow-md transition-all active:scale-95 flex items-center gap-1.5 group"
+                      >
+                        <RefreshCw size={12} className="group-hover:rotate-180 transition-transform duration-500" />
+                        Scambia
+                      </button>
                     </div>
                   </div>
                 ))}
