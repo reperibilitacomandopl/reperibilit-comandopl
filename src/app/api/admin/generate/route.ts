@@ -44,24 +44,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Nessun agente trovato nel database" }, { status: 400 })
     }
 
-    // === LOAD BASE SHIFTS ===
+    // === LOAD BASE SHIFTS (including 1st of next month for 'eve' rules) ===
     const existingShifts = await prisma.shift.findMany({
       where: {
         date: {
           gte: new Date(Date.UTC(year, month, 1)),
-          lt: new Date(Date.UTC(year, month + 1, 1))
+          lt: new Date(Date.UTC(year, month + 1, 2)) // Fetch til 1st of NEXT month
         }
       }
     })
 
-    const baseShifts: Record<string, Record<number, string>> = {}
-    for (const agent of agents) {
-      baseShifts[agent.id] = {}
-    }
+    const baseShifts: Record<string, Record<string, string>> = {} // Use ISO string as key or day-month
+    for (const agent of agents) baseShifts[agent.id] = {}
+    
     for (const s of existingShifts) {
-      const day = new Date(s.date).getUTCDate()
+      const d = new Date(s.date)
+      const key = `${d.getUTCDate()}-${d.getUTCMonth()}`
       if (baseShifts[s.userId]) {
-        baseShifts[s.userId][day] = s.type
+        baseShifts[s.userId][key] = s.type
       }
     }
 
@@ -78,14 +78,25 @@ export async function POST(req: Request) {
     }
 
     // === BLOCKING FUNCTION ===
-    function isBlocked(agentId: string, day: number): boolean {
-      const shift = (baseShifts[agentId]?.[day] || "").toUpperCase().replace(/[()]/g, "")
-      if (!shift) return true 
+    // Can handle day > daysInMonth to check next month boundary
+    function isBlocked(agentId: string, d: number): boolean {
+      const checkDate = new Date(Date.UTC(year, month, d))
+      const key = `${checkDate.getUTCDate()}-${checkDate.getUTCMonth()}`
+      const shift = (baseShifts[agentId]?.[key] || "").toUpperCase().replace(/[()]/g, "")
+      
+      if (!shift) return false // If no data for next month yet, assume OK or handle as you wish. 
+                               // But user says they load it, so it should be there.
       if (shift.startsWith("F") || shift.startsWith("R")) return true
       for (const bc of BLOCK_CODES) {
         if (shift === bc) return true
       }
       return false
+    }
+
+    function isVigilia(d: number): boolean {
+      // Check if day d+1 is a holiday
+      const nextDayDate = new Date(Date.UTC(year, month, d + 1))
+      return isHoliday(nextDayDate)
     }
 
     // === CALCULATE TARGETS ===
@@ -173,8 +184,8 @@ export async function POST(req: Request) {
         dayAssigned[day]++
         if (agents.find(a => a.id === s.userId)?.isUfficiale) uffAssigned[day]++
         
-        const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
-        if (isFestivo[day] || isVigilia) repFesCount[s.userId]++
+        const isVig = isVigilia(day)
+        if (isFestivo[day] || isVig) repFesCount[s.userId]++
         else repFerCount[s.userId]++
       }
     }
@@ -190,17 +201,16 @@ export async function POST(req: Request) {
         if (repCount[uff.id] >= repTarget[uff.id]) continue
         if (repResults[uff.id][day]) continue
         if (isBlocked(uff.id, day)) continue
-        if (day < daysInMonth && isBlocked(uff.id, day + 1)) continue 
-        const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
+        if (isBlocked(uff.id, day + 1)) continue 
         const tooClose = assignedDays[uff.id].some(d => Math.abs(day - d) <= minSpacingGlobal)
         if (tooClose) continue
 
-        // Basic weekend cap in Phase 0 to encourage spreading, but we'll relax it later
         if (isSab[day] && numSabati[uff.id] >= 1) continue
         if (isDom[day] && numDomeniche[uff.id] >= 1) continue
 
+        const isVig = isVigilia(day)
         let score = (repCount[uff.id] / Math.max(1, repTarget[uff.id])) * 10000
-        if (isFestivo[day] || isVigilia) {
+        if (isFestivo[day] || isVig) {
           if (repFesCount[uff.id] >= 2) score += 2000000 
           else if (repFesCount[uff.id] === 0) score -= 10000 
         }
@@ -214,8 +224,8 @@ export async function POST(req: Request) {
         assignedDays[best.agentId].push(day)
         dayAssigned[day]++
         uffAssigned[day]++
-        const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
-        if (isFestivo[day] || isVigilia) repFesCount[best.agentId]++
+        const isVig = isVigilia(day)
+        if (isFestivo[day] || isVig) repFesCount[best.agentId]++
         else repFerCount[best.agentId]++
         if (isSab[day]) numSabati[best.agentId]++
         if (isDom[day]) numDomeniche[best.agentId]++
@@ -248,7 +258,7 @@ export async function POST(req: Request) {
         if (dayAssigned[day] >= dayTarget[day]) continue
         if (repResults[agent.id][day]) continue
         if (isBlocked(agent.id, day)) continue
-        if (day < daysInMonth && isBlocked(agent.id, day + 1)) continue 
+        if (isBlocked(agent.id, day + 1)) continue 
         const tooClose = assignedDays[agent.id].some(d => Math.abs(day - d) <= minSpacingGlobal)
         if (tooClose) continue
 
@@ -270,7 +280,7 @@ export async function POST(req: Request) {
         if (dayAssigned[day] >= dayTarget[day]) continue
         if (repResults[agent.id][day]) continue
         if (isBlocked(agent.id, day)) continue
-        if (day < daysInMonth && isBlocked(agent.id, day + 1)) continue 
+        if (isBlocked(agent.id, day + 1)) continue 
         const tooClose = assignedDays[agent.id].some(d => Math.abs(day - d) <= minSpacingGlobal)
         if (tooClose) continue
 
@@ -292,7 +302,7 @@ export async function POST(req: Request) {
         if (dayAssigned[day] >= dayTarget[day]) continue
         if (repResults[agent.id][day]) continue
         if (isBlocked(agent.id, day)) continue
-        if (day < daysInMonth && isBlocked(agent.id, day + 1)) continue 
+        if (isBlocked(agent.id, day + 1)) continue 
         const tooClose = assignedDays[agent.id].some(d => Math.abs(day - d) <= minSpacingGlobal)
         if (tooClose) continue
 
@@ -315,8 +325,8 @@ export async function POST(req: Request) {
         if (repCount[agent.id] >= repTarget[agent.id]) continue
         if (repResults[agent.id][day]) continue 
         if (isBlocked(agent.id, day)) continue
-        if (day < daysInMonth && isBlocked(agent.id, day + 1)) continue // Eve of blocked day
-        const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
+        if (isBlocked(agent.id, day + 1)) continue // Eve of blocked day
+        const isVig = isVigilia(day)
         const tooClose = assignedDays[agent.id].some(d => Math.abs(day - d) <= minSpacingGlobal)
         if (tooClose) continue
 
@@ -332,7 +342,7 @@ export async function POST(req: Request) {
 
         let score = (repCount[agent.id] / Math.max(1, repTarget[agent.id])) * 10000
         score += weekendPriority
-        if (isFestivo[day] || isVigilia) {
+        if (isFestivo[day] || isVig) {
           if (repFesCount[agent.id] >= 2) score += 2000000
           else if (repFesCount[agent.id] === 0) score -= 20000
         }
@@ -347,8 +357,8 @@ export async function POST(req: Request) {
         assignedDays[cand.agentId].push(day)
         dayAssigned[day]++
         assignToday++
-        const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
-        if (isFestivo[day] || isVigilia) repFesCount[cand.agentId]++
+        const isVig = isVigilia(day)
+        if (isFestivo[day] || isVig) repFesCount[cand.agentId]++
         else repFerCount[cand.agentId]++
         if (isSab[day]) numSabati[cand.agentId]++
         if (isDom[day]) numDomeniche[cand.agentId]++
@@ -379,7 +389,7 @@ export async function POST(req: Request) {
           if (repCount[agent.id] >= repTarget[agent.id]) continue
           if (repResults[agent.id][day]) continue
           if (isBlocked(agent.id, day)) continue
-          if (day < daysInMonth && isBlocked(agent.id, day + 1)) continue 
+          if (isBlocked(agent.id, day + 1)) continue 
           
           if (pass < 3 && isFesOrVig && repFesCount[agent.id] >= 2) continue
 

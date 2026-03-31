@@ -33,23 +33,30 @@ export async function POST(req: Request) {
     const minSpacingGlobal = settings?.distaccoMinimo ?? 2
     const allowConsecutive = settings?.permettiConsecutivi ?? false
 
-    // Load this agent's current shifts to check blocks
+    // Load this agent's current shifts to check blocks (including 1st of next month)
     const agentShifts = await prisma.shift.findMany({
       where: {
         userId: agentId,
-        date: { gte: new Date(Date.UTC(year, month, 1)), lt: new Date(Date.UTC(year, month + 1, 1)) }
+        date: { 
+          gte: new Date(Date.UTC(year, month, 1)), 
+          lt: new Date(Date.UTC(year, month + 1, 2)) 
+        }
       }
     })
 
     // Build base shift map and count fixed REPs
-    const baseShifts: Record<number, string> = {}
+    const baseShifts: Record<string, string> = {}
     const fixedReps: number[] = []
     for (const s of agentShifts) {
-      const day = new Date(s.date).getUTCDate()
-      baseShifts[day] = s.type
-      // Keep "REP" (Imported) and "rep" (Manual) as fixed
-      if (s.repType === "REP" || s.repType === "rep") {
-        fixedReps.push(day)
+      const d = new Date(s.date)
+      const key = `${d.getUTCDate()}-${d.getUTCMonth()}`
+      baseShifts[key] = s.type
+      
+      // Only treat current month's REPs as fixed for this run
+      if (d.getUTCMonth() === month) {
+        if (s.repType === "REP" || s.repType === "rep") {
+          fixedReps.push(d.getUTCDate())
+        }
       }
     }
 
@@ -80,14 +87,22 @@ export async function POST(req: Request) {
       dayRepCount[d] = (dayRepCount[d] || 0) + 1
     }
 
-    function isBlocked(day: number): boolean {
-      const shift = (baseShifts[day] || "").toUpperCase().replace(/[()]/g, "")
-      if (!shift) return true
+    function isBlocked(d: number): boolean {
+      const checkDate = new Date(Date.UTC(year, month, d))
+      const key = `${checkDate.getUTCDate()}-${checkDate.getUTCMonth()}`
+      const shift = (baseShifts[key] || "").toUpperCase().replace(/[()]/g, "")
+      if (!shift && d <= daysInMonth) return true
+      if (!shift && d > daysInMonth) return false // Assume OK if next month not yet loaded
       if (shift.startsWith("F") || shift.startsWith("R")) return true
       for (const bc of BLOCK_CODES) {
         if (shift === bc) return true
       }
       return false
+    }
+
+    function isVigilia(d: number): boolean {
+      const nextDayDate = new Date(Date.UTC(year, month, d + 1))
+      return isHoliday(nextDayDate)
     }
 
     let availableDays = 0
@@ -124,7 +139,7 @@ export async function POST(req: Request) {
       if (repCount >= target) break
       if (assignedDays.includes(day)) continue // Already has a fixed rep
       if (isBlocked(day)) continue
-      if (day < daysInMonth && isBlocked(day + 1)) continue
+      if (isBlocked(day + 1)) continue
 
       const date = new Date(Date.UTC(year, month, day))
       const dow = date.getUTCDay()
@@ -164,7 +179,7 @@ export async function POST(req: Request) {
       for (let day = 1; day <= daysInMonth && repCount < target; day++) {
         if (assignedDays.includes(day)) continue
         if (isBlocked(day)) continue
-        if (day < daysInMonth && isBlocked(day + 1)) continue
+        if (isBlocked(day + 1)) continue
 
         const date = new Date(Date.UTC(year, month, day))
         const dow = date.getUTCDay()
