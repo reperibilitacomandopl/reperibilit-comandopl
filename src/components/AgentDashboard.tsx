@@ -303,12 +303,22 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
     const d = i + 1
     const date = new Date(currentYear, currentMonth - 1, d)
     const isFestivo = isHoliday(date)
-    return { day: d, name: dayNames[date.getDay()], isWeekend: isFestivo }
+    return { day: d, name: dayNames[date.getDay()], isWeekend: isFestivo, isNextMonth: false }
+  })
+
+  // Add First Day of Next Month as "Ghost Day" for context
+  const nextDay1 = new Date(currentYear, currentMonth, 1)
+  dayInfo.push({ 
+    day: 1, 
+    name: dayNames[nextDay1.getDay()], 
+    isWeekend: isHoliday(nextDay1),
+    isNextMonth: true 
   })
 
   // Collect REP days for this agent
   const repDays: { day: number; dayName: string; repType: string; baseType: string; shiftObj: any }[] = []
   dayInfo.forEach(di => {
+    if (di.isNextMonth) return
     const targetDate = new Date(Date.UTC(currentYear, currentMonth - 1, di.day)).toISOString()
     const sObj = myShifts.find(s => new Date(s.date).toISOString() === targetDate)
     if (sObj?.repType?.toUpperCase().includes("REP")) {
@@ -673,16 +683,16 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
 
               {/* Day cells */}
               {dayInfo.map(di => {
-                const targetDate = new Date(Date.UTC(currentYear, currentMonth - 1, di.day)).toISOString()
+                const targetDate = new Date(Date.UTC(currentYear, di.isNextMonth ? currentMonth : currentMonth - 1, di.day)).toISOString()
                 const sObj = myShifts.find(s => new Date(s.date).toISOString() === targetDate)
                 const sType = (sObj?.type || "").toUpperCase()
                 const rType = (sObj?.repType || "").toUpperCase()
-                const dayAgendaItems = agendaEntries.filter(e => new Date(e.date).getUTCDate() === di.day)
+                const dayAgendaItems = di.isNextMonth ? [] : agendaEntries.filter(e => new Date(e.date).getUTCDate() === di.day)
 
                 const isRep = rType.includes("REP")
                 const isFerie = sType.startsWith("F") || sType === "104" || sType === "FERIE"
                 const isMalattia = sType.startsWith("M")
-                const isToday = new Date().getDate() === di.day && new Date().getMonth() === currentMonth - 1 && new Date().getFullYear() === currentYear
+                const isToday = !di.isNextMonth && new Date().getDate() === di.day && new Date().getMonth() === currentMonth - 1 && new Date().getFullYear() === currentYear
 
                 let cellBg = "bg-white hover:bg-slate-50"
                 let borderStyle = "border border-slate-100"
@@ -716,20 +726,24 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
 
                 return (
                   <div 
-                    key={di.day} 
-                    className={`relative rounded-xl p-2 h-20 flex flex-col items-center justify-start transition-all cursor-pointer ${cellBg} ${borderStyle}`}
-                    onClick={() => { setAgendaDate(String(di.day)); setShowAgenda(true) }}
+                    key={di.isNextMonth ? 'next-1' : di.day} 
+                    className={`relative rounded-xl p-2 h-20 flex flex-col items-center justify-start transition-all ${di.isNextMonth ? "bg-slate-100 opacity-40 grayscale cursor-not-allowed" : `cursor-pointer ${cellBg} ${borderStyle}`}`}
+                    onClick={() => { 
+                      if (di.isNextMonth) return
+                      setAgendaDate(String(di.day))
+                      setShowAgenda(true) 
+                    }}
                   >
-                    {isToday && (
+                    {isToday && !di.isNextMonth && (
                       <div className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
                     )}
-                    {dayAgendaItems.length > 0 && (
+                    {dayAgendaItems.length > 0 && !di.isNextMonth && (
                       <div className="absolute top-1 left-1 w-2 h-2 bg-purple-500 rounded-full" title={`${dayAgendaItems.length} voce/i agenda`}></div>
                     )}
-                    <span className={`text-sm font-black ${dayNumClass}`}>{di.day}</span>
-                    <span className={`text-[8px] uppercase font-bold tracking-widest ${di.isWeekend ? "text-red-400" : "text-slate-400"}`}>{di.name}</span>
+                    <span className={`text-sm font-black ${di.isNextMonth ? "text-slate-300" : dayNumClass}`}>{di.day}{di.isNextMonth ? '*' : ''}</span>
+                    <span className={`text-[8px] uppercase font-bold tracking-widest ${di.isNextMonth ? "text-slate-300" : (di.isWeekend ? "text-red-400" : "text-slate-400")}`}>{di.name}</span>
                     {badgeEl}
-                    {isRep && sType && (
+                    {isRep && sType && !di.isNextMonth && (
                       <span className="text-[7px] font-bold text-emerald-700 mt-0.5">base: {sType}</span>
                     )}
                   </div>

@@ -33,7 +33,7 @@ export default async function Home({ searchParams }: { searchParams: { view?: st
     where: {
       date: {
         gte: new Date(Date.UTC(currentYear, currentMonth - 1, 1)),
-        lt: new Date(Date.UTC(currentYear, currentMonth, 1)),
+        lt: new Date(Date.UTC(currentYear, currentMonth, 2)), // Fetch 1st day of the NEXT month for 'eve' logic
       }
     }
   })

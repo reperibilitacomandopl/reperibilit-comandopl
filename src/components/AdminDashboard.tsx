@@ -975,7 +975,16 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
               const d = i + 1
               const date = new Date(currentYear, currentMonth - 1, d)
               const isFestivo = isHoliday(date)
-              return { day: d, name: dayNames[date.getDay()], isWeekend: isFestivo }
+              return { day: d, name: dayNames[date.getDay()], isWeekend: isFestivo, isNextMonth: false }
+            })
+
+            // Add First Day of Next Month as "Ghost Day" for context
+            const nextDay1 = new Date(currentYear, currentMonth, 1)
+            dayInfo.push({ 
+              day: 1, 
+              name: dayNames[nextDay1.getDay()], 
+              isWeekend: isHoliday(nextDay1),
+              isNextMonth: true 
             })
 
             return (
@@ -992,9 +1001,13 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                         <span className="text-[10px] text-slate-400">{sortConfig?.key === 'name' ? (sortConfig.dir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    {dayInfo.map(di => (
-                      <th key={di.day} className={`px-0.5 pt-2 pb-0 text-center font-bold border-b border-slate-200 min-w-[38px] ${di.isWeekend ? "bg-red-50 text-red-600" : "bg-slate-50 text-slate-600"}`}>
-                        {di.day}
+                    {dayInfo.map((di, dIdx) => (
+                      <th 
+                        key={di.isNextMonth ? 'next-1' : di.day} 
+                        className={`px-0.5 pt-2 pb-0 text-center font-bold border-b border-slate-200 min-w-[38px] ${di.isNextMonth ? "bg-slate-200 text-slate-400 opacity-60" : (di.isWeekend ? "bg-red-50 text-red-600" : "bg-slate-50 text-slate-600")}`}
+                        title={di.isNextMonth ? `1 ${monthNames[nextMonth - 1]} (Contesto)` : ""}
+                      >
+                        {di.isNextMonth ? '1*' : di.day}
                       </th>
                     ))}
                     <th className="px-1 pt-2 pb-0 text-center font-bold bg-purple-50 text-purple-700 border-b border-l-2 border-slate-300 min-w-[34px]" rowSpan={2} title="Reperibilità nei giorni Festivi e Weekend">
@@ -1019,8 +1032,11 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                     </th>
                   </tr>
                   <tr>
-                    {dayInfo.map(di => (
-                      <th key={`dow-${di.day}`} className={`px-0.5 pb-1.5 pt-0 text-center font-medium text-[9px] border-b-2 border-slate-300 ${di.isWeekend ? "bg-red-50 text-red-400" : "bg-slate-50 text-slate-400"}`}>
+                    {dayInfo.map((di, dIdx) => (
+                      <th 
+                        key={di.isNextMonth ? 'next-dow-1' : `dow-${di.day}`} 
+                        className={`px-0.5 pb-1.5 pt-0 text-center font-medium text-[9px] border-b-2 border-slate-300 ${di.isNextMonth ? "bg-slate-100 text-slate-300 opacity-60" : (di.isWeekend ? "bg-red-50 text-red-400" : "bg-slate-50 text-slate-400")}`}
+                      >
                         {di.name}
                       </th>
                     ))}
@@ -1048,7 +1064,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                         
                         // Pre-calculate stats for this agent
                         dayInfo.forEach(di => {
-                          const targetDate = new Date(Date.UTC(currentYear, currentMonth - 1, di.day)).toISOString()
+                          const targetDate = new Date(Date.UTC(currentYear, di.isNextMonth ? currentMonth : currentMonth - 1, di.day)).toISOString()
                           const shift = shifts.find(s => s.userId === agent.id && new Date(s.date).toISOString() === targetDate)
                           if (shift?.repType?.toLowerCase().includes("rep")) {
                             repDays.push(di.day)
@@ -1086,7 +1102,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                               </div>
                             </td>
                             {dayInfo.map(di => {
-                              const targetDate = new Date(Date.UTC(currentYear, currentMonth - 1, di.day)).toISOString()
+                              const targetDate = new Date(Date.UTC(currentYear, di.isNextMonth ? currentMonth : currentMonth - 1, di.day)).toISOString()
                               const shift = shifts.find(s => s.userId === agent.id && new Date(s.date).toISOString() === targetDate)
                               
                               const sType = (shift?.type || "").toUpperCase()
@@ -1130,9 +1146,15 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
                               return (
                                 <td
-                                  key={di.day}
-                                  className={`px-0 py-0.5 text-center border-r border-slate-100 cursor-pointer hover:ring-2 hover:ring-blue-400 hover:ring-inset transition-all group/cell ${cellBg}`}
-                                  onClick={() => openCellEditor(agent.id, agent.name, di.day, rType || sType || "")}
+                                  key={di.isNextMonth ? 'next-cell-1' : di.day}
+                                  className={`px-0 py-0.5 text-center border-r border-slate-100 transition-all group/cell ${cellBg} ${di.isNextMonth ? "opacity-40 grayscale cursor-not-allowed" : "cursor-pointer hover:ring-2 hover:ring-blue-400 hover:ring-inset"}`}
+                                  onClick={() => {
+                                    if (di.isNextMonth) {
+                                      toast.error("Giorno di sola lettura (Mese successivo)");
+                                      return;
+                                    }
+                                    openCellEditor(agent.id, agent.name, di.day, rType || sType || "");
+                                  }}
                                 >
                                   <div className="relative w-full h-full flex items-center justify-center">
                                     {badge ? (
@@ -1203,7 +1225,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                           TOTALE GIORNO
                         </td>
                         {dayInfo.map(di => {
-                          const targetDate = new Date(Date.UTC(currentYear, currentMonth - 1, di.day)).toISOString()
+                          const targetDate = new Date(Date.UTC(currentYear, di.isNextMonth ? currentMonth : currentMonth - 1, di.day)).toISOString()
                           const dailyShifts = shifts.filter(s => s.repType?.includes("REP") && new Date(s.date).toISOString() === targetDate)
                           const count = dailyShifts.length
                           const isLow = count > 0 && count < 7

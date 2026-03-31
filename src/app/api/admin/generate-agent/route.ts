@@ -73,18 +73,26 @@ export async function POST(req: Request) {
       data: { repType: null }
     })
 
-    // 2. Check how many REPs are already assigned each day (by ALL agents, including fixed for this agent)
+    // 2. Check how many REPs are already assigned each day (by ALL agents)
     const allReps = await prisma.shift.findMany({
       where: {
         repType: { not: null },
         date: { gte: new Date(Date.UTC(year, month, 1)), lt: new Date(Date.UTC(year, month + 1, 1)) }
-      }
+      },
+      include: { user: { select: { isUfficiale: true } } }
     })
+    
     const dayRepCount: Record<number, number> = {}
-    for (let d = 1; d <= daysInMonth; d++) dayRepCount[d] = 0
+    const dayUffCount: Record<number, number> = {}
+    for (let d = 1; d <= daysInMonth; d++) {
+      dayRepCount[d] = 0
+      dayUffCount[d] = 0
+    }
+
     for (const s of allReps) {
       const d = new Date(s.date).getUTCDate()
-      dayRepCount[d] = (dayRepCount[d] || 0) + 1
+      dayRepCount[d]++
+      if (s.user?.isUfficiale) dayUffCount[d]++
     }
 
     function isBlocked(d: number): boolean {
@@ -157,6 +165,9 @@ export async function POST(req: Request) {
       if (tooClose) continue
 
       if (dayRepCount[day] >= 10) continue
+      
+      // LIMIT: Max 2 officers per day
+      if (isUff && dayUffCount[day] >= 2) continue
 
       // Prefer morning shifts
       const shift = (baseShifts[day] || "").toUpperCase()
@@ -202,10 +213,14 @@ export async function POST(req: Request) {
         if (tooClose) continue
 
         if (dayRepCount[day] >= 10) continue
+        
+        // LIMIT: Max 2 officers per day
+        if (isUff && dayUffCount[day] >= 2) continue
 
         assignedDays.push(day)
         repCount++
         dayRepCount[day]++
+        if (isUff) dayUffCount[day]++
         if (isSabato) numSab++
         else if (isDomenica) numDom++
         else if (isFestInfrasett) numFes++

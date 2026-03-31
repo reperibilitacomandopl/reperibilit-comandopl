@@ -320,7 +320,7 @@ export async function POST(req: Request) {
     // === PHASE 1: MAIN ===
     for (let day = 1; day <= daysInMonth; day++) {
       let assignToday = dayAssigned[day]
-      const candidates: { agentId: string, score: number }[] = []
+      const candidates: { agentId: string, isUfficiale: boolean, score: number }[] = []
       for (const agent of agents) {
         if (repCount[agent.id] >= repTarget[agent.id]) continue
         if (repResults[agent.id][day]) continue 
@@ -346,12 +346,16 @@ export async function POST(req: Request) {
           if (repFesCount[agent.id] >= 2) score += 2000000
           else if (repFesCount[agent.id] === 0) score -= 20000
         }
-        candidates.push({ agentId: agent.id, score })
+        candidates.push({ agentId: agent.id, isUfficiale: agent.isUfficiale, score })
       }
       candidates.sort((a, b) => a.score - b.score)
       for (const cand of candidates) {
         if (assignToday >= dayTarget[day]) break
         if (cand.score >= 1000000 && assignToday >= minGiorno) continue
+        
+        // LIMIT: Max 2 officers per day
+        if (cand.isUfficiale && uffAssigned[day] >= 2) continue
+
         repResults[cand.agentId][day] = "REP 22-07"
         repCount[cand.agentId]++
         assignedDays[cand.agentId].push(day)
@@ -362,6 +366,7 @@ export async function POST(req: Request) {
         else repFerCount[cand.agentId]++
         if (isSab[day]) numSabati[cand.agentId]++
         if (isDom[day]) numDomeniche[cand.agentId]++
+        if (cand.isUfficiale) uffAssigned[day]++
       }
     }
 
@@ -370,8 +375,8 @@ export async function POST(req: Request) {
       for (let day = 1; day <= daysInMonth; day++) {
         const currentDayTarget = dayTarget[day]
         if (dayAssigned[day] >= currentDayTarget) continue
-        const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
-        const isFesOrVig = isFestivo[day] || isVigilia
+        const isVig = isVigilia(day)
+        const isFesOrVig = isFestivo[day] || isVig
 
         // Re-sort candidates within the filler to prioritize those furthest from target or Officers
         const fillerCandidates = [...agents].sort((a, b) => {
@@ -391,6 +396,8 @@ export async function POST(req: Request) {
           if (isBlocked(agent.id, day)) continue
           if (isBlocked(agent.id, day + 1)) continue 
           
+          if (agent.isUfficiale && uffAssigned[day] >= 2) continue // LIMIT: Max 2 officers
+
           if (pass < 3 && isFesOrVig && repFesCount[agent.id] >= 2) continue
 
           let minSpacing = Math.max(1, minSpacingGlobal - (pass - 1))
@@ -414,17 +421,17 @@ export async function POST(req: Request) {
     }
 
     // === PHASE 3: GENERAL RESCUE (Recovery for everyone) ===
-    // Extreme pass for anyone that is STILL below target
     for (const agent of agents) {
       if (repCount[agent.id] >= repTarget[agent.id]) continue
 
-      // Search every day possible
       for (let day = 1; day <= daysInMonth && repCount[agent.id] < repTarget[agent.id]; day++) {
         if (repResults[agent.id][day]) continue
         if (isBlocked(agent.id, day)) continue
-        if (day < daysInMonth && isBlocked(agent.id, day + 1)) continue // Strict block
+        if (isBlocked(agent.id, day + 1)) continue // Expanded block check
 
-        // Spacing: at least 1 day between shifts (consecutive = distance < 2)
+        if (agent.isUfficiale && uffAssigned[day] >= 2) continue // LIMIT: Max 2 officers
+
+        // Spacing: at least 1 day between shifts
         const tooClose = assignedDays[agent.id].some(d => Math.abs(day - d) < 2)
         if (tooClose) continue
 
@@ -436,8 +443,8 @@ export async function POST(req: Request) {
         assignedDays[agent.id].push(day)
         dayAssigned[day]++
         if (agent.isUfficiale) uffAssigned[day]++
-        const isVigilia = (day < daysInMonth && isHoliday(new Date(year, month, day + 1)))
-        if (isFestivo[day] || isVigilia) repFesCount[agent.id]++
+        const isVig = isVigilia(day)
+        if (isFestivo[day] || isVig) repFesCount[agent.id]++
         else repFerCount[agent.id]++
       }
     }
