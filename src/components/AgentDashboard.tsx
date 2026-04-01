@@ -6,6 +6,7 @@ import { CalendarDays, AlertCircle, FileDown, Clock, ShieldCheck, Plus, ChevronL
 import { isHoliday } from "@/utils/holidays"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { isMalattia, isMattina } from "@/utils/shift-logic"
 
 // ====== CODICI AGENDA PERSONALE ======
 const AGENDA_CATEGORIES = [
@@ -691,7 +692,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
 
                 const isRep = rType.includes("REP")
                 const isFerie = sType.startsWith("F") || sType === "104" || sType === "FERIE"
-                const isMalattia = sType.startsWith("M")
+                const _isMalattia = isMalattia(sType)
                 const isToday = !di.isNextMonth && new Date().getDate() === di.day && new Date().getMonth() === currentMonth - 1 && new Date().getFullYear() === currentYear
 
                 let cellBg = "bg-white hover:bg-slate-50"
@@ -707,7 +708,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                   cellBg = "bg-amber-50 hover:bg-amber-100"
                   borderStyle = "border border-amber-200"
                   badgeEl = <span className="inline-block mt-1 px-2 py-0.5 text-[9px] font-bold bg-amber-500 text-white rounded-md">{sType}</span>
-                } else if (isMalattia) {
+                } else if (_isMalattia) {
                   cellBg = "bg-blue-50 hover:bg-blue-100"
                   borderStyle = "border border-blue-200"
                   badgeEl = <span className="inline-block mt-1 px-2 py-0.5 text-[9px] font-bold bg-blue-500 text-white rounded-md">{sType}</span>

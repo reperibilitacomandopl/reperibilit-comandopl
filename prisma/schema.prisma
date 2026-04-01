@@ -20,7 +20,14 @@ model User {
   qualifica    String?   @default("Agente di P.L.")
   gradoLivello Int       @default(13)
   massimale    Int       @default(8)
-  squadra      String?   // E.g., "SQUADRA A", "SQUADRA B"
+  squadra      String?   // E.g., "SQUADRA A", "SQUADRA B" (Testo libero storico)
+  servizio     String?   // E.g., "Viabilità", "Infortunistica"
+  
+  // Campi per Turnazione Dinamica
+  rotationGroupId String?
+  rotationGroup   RotationGroup? @relation(fields: [rotationGroupId], references: [id], onDelete: SetNull)
+  fixedRestDay    Int?           // 0=Dom, 1=Lun, 2=Mar, 3=Mer, 4=Gio, 5=Ven, 6=Sab
+  
   forcePasswordChange Boolean @default(true)
   telegramChatId        String?
   telegramLinkCode      String?
@@ -56,11 +63,60 @@ model Shift {
   type      String   @default("REP 22-07")  // Base shift: M7, P14, F, RR etc.
   repType   String?  // REP assignment: "REP 22-07" or null
   isSyncedToVerbatel Boolean @default(false)
+
+  // Campi per Ordine di Servizio (O.d.S.)
+  timeRange         String?  // Es. "08:00-14:00"
+  serviceCategoryId String?
+  serviceCategory   ServiceCategory? @relation(fields: [serviceCategoryId], references: [id], onDelete: SetNull)
+  serviceTypeId     String?
+  serviceType       ServiceType? @relation(fields: [serviceTypeId], references: [id], onDelete: SetNull)
+  vehicleId         String?
+  vehicle           Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  serviceDetails    String?  // Dettagli addizionali testuali
+
   swaps     ShiftSwapRequest[]
   createdAt DateTime @default(now())
   
   @@unique([userId, date])
 }
+
+model ServiceCategory {
+  id        String        @id @default(uuid())
+  name      String        @unique // Es. "Pronto Intervento", "Viabilità"
+  orderIndex Int          @default(0)
+  types     ServiceType[]
+  shifts    Shift[]
+}
+
+model ServiceType {
+  id          String          @id @default(uuid())
+  categoryId  String
+  category    ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name        String          // Es. "Piantone", "Centro Storico"
+  shifts      Shift[]
+
+  @@unique([categoryId, name])
+}
+
+model Vehicle {
+  id        String   @id @default(uuid())
+  name      String   @unique // Es. "Beta 101 Renault"
+  shifts    Shift[]
+}
+
+model RotationGroup {
+  id          String   @id @default(uuid())
+  name        String   @unique // "Turno A", "Turno B"
+  pattern     String   // DB-Stored JSON array: '["M","P","RP"...]' of exactly 28 elements ideally
+  mStartTime  String   @default("07:00")  // Orario inizio Mattina
+  mEndTime    String   @default("13:00")  // Orario fine Mattina
+  pStartTime  String   @default("13:00")  // Orario inizio Pomeriggio
+  pEndTime    String   @default("19:00")  // Orario fine Pomeriggio
+  startDate   DateTime @default(now())    // Giorno di ancora per il Giorno 1 del ciclo
+  users       User[]
+  createdAt   DateTime @default(now())
+}
+
 
 model GlobalSettings {
   id               Int      @id @default(1)

@@ -3,6 +3,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { isHoliday } from "@/utils/holidays"
 import { BLOCK_CODES } from "@/utils/constants"
+import { isAssenza, isMattina } from "@/utils/shift-logic"
 
 function getDaysInMonth(month: number, year: number): number {
   return new Date(year, month + 1, 0).getDate()
@@ -98,14 +99,10 @@ export async function POST(req: Request) {
     function isBlocked(d: number): boolean {
       const checkDate = new Date(Date.UTC(year, month, d))
       const key = `${checkDate.getUTCDate()}-${checkDate.getUTCMonth()}`
-      const shift = (baseShifts[key] || "").toUpperCase().replace(/[()]/g, "")
+      const shift = (baseShifts[key] || "").toUpperCase().trim()
       if (!shift && d <= daysInMonth) return true
       if (!shift && d > daysInMonth) return false // Assume OK if next month not yet loaded
-      if (shift.startsWith("F") || shift.startsWith("R")) return true
-      for (const bc of BLOCK_CODES) {
-        if (shift === bc) return true
-      }
-      return false
+      return isAssenza(shift)
     }
 
     function isVigilia(d: number): boolean {
@@ -173,7 +170,7 @@ export async function POST(req: Request) {
       const shift = (baseShifts[day] || "").toUpperCase()
       if (shift.startsWith("P") && repCount < target - 1) {
         const hasMorningAhead = Array.from({ length: Math.min(5, daysInMonth - day) }, (_, i) => day + i + 1)
-          .some(d => !isBlocked(d) && (baseShifts[d] || "").toUpperCase().startsWith("M") && !assignedDays.some(ad => Math.abs(d - ad) <= minSpacingGlobal))
+          .some(d => !isBlocked(d) && isMattina(baseShifts[d] || "") && !assignedDays.some(ad => Math.abs(d - ad) <= minSpacingGlobal))
         if (hasMorningAhead) continue
       }
 

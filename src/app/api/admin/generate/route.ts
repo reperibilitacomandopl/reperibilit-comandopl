@@ -3,6 +3,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { isHoliday } from "@/utils/holidays"
 import { BLOCK_CODES } from "@/utils/constants"
+import { isAssenza } from "@/utils/shift-logic"
 
 function getDaysInMonth(month: number, year: number): number {
   return new Date(year, month + 1, 0).getDate()
@@ -82,15 +83,10 @@ export async function POST(req: Request) {
     function isBlocked(agentId: string, d: number): boolean {
       const checkDate = new Date(Date.UTC(year, month, d))
       const key = `${checkDate.getUTCDate()}-${checkDate.getUTCMonth()}`
-      const shift = (baseShifts[agentId]?.[key] || "").toUpperCase().replace(/[()]/g, "")
+      const shift = (baseShifts[agentId]?.[key] || "").toUpperCase().trim()
       
       if (!shift) return false // If no data for next month yet, assume OK or handle as you wish. 
-                               // But user says they load it, so it should be there.
-      if (shift.startsWith("F") || shift.startsWith("R")) return true
-      for (const bc of BLOCK_CODES) {
-        if (shift === bc) return true
-      }
-      return false
+      return isAssenza(shift)
     }
 
     function isVigilia(d: number): boolean {

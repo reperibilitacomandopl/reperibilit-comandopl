@@ -23,17 +23,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Lo scambio deve essere prima accettato dal collega" }, { status: 400 })
     }
 
+    const sourceShift = swapRequest.shift
+    
     // Performance atomic swap in DB
-    const [updatedRequest, updatedShift] = await prisma.$transaction([
+    const transactions = [
       prisma.shiftSwapRequest.update({
         where: { id: swapId },
         data: { status: "APPROVED_BY_ADMIN" }
       }),
+      // Sposta la reperibilità (o l'intero turno identificativo) dal richiedente al destinatario
+      prisma.shift.upsert({
+        where: { userId_date: { userId: swapRequest.targetUserId, date: sourceShift.date } },
+        update: { repType: sourceShift.repType || sourceShift.type },
+        create: {
+          userId: swapRequest.targetUserId,
+          date: sourceShift.date,
+          type: "RIPOSO", // Fallback, verrà sovrascritto se c'è base
+          repType: sourceShift.repType || sourceShift.type
+        }
+      }),
+      // Pulisce il turno del richiedente originale
       prisma.shift.update({
-        where: { id: swapRequest.shiftId },
-        data: { userId: swapRequest.targetUserId }
+        where: { id: sourceShift.id },
+        data: { repType: null }
       })
-    ])
+    ]
+
+    const [updatedRequest, updatedShift, _] = await prisma.$transaction(transactions)
 
     return NextResponse.json({ success: true, request: updatedRequest, shift: updatedShift })
   } catch (err) {

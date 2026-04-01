@@ -2,12 +2,15 @@
 
 import toast from "react-hot-toast"
 import { useState, useRef, useMemo } from "react"
-import { Calendar as CalendarIcon, UploadCloud, Users, ChevronLeft, ChevronRight, Settings, FileDown, LogOut, CheckCircle2, RefreshCw, X, FileEdit, Trash2, Shield, AlertCircle, HelpCircle, EyeOff, Eye, Mail, Play, Plus } from "lucide-react"
+import { Calendar as CalendarIcon, UploadCloud, Users, ChevronLeft, ChevronRight, Settings, FileDown, LogOut, CheckCircle2, RefreshCw, X, FileEdit, Trash2, Shield, AlertCircle, HelpCircle, EyeOff, Eye, Mail, Play, Plus, ClipboardList, Printer } from "lucide-react"
 import SettingsPanel from "./SettingsPanel"
+import ServiceManagerPanel from "./ServiceManagerPanel"
+import ServiceOrderDashboard from "./ServiceOrderDashboard"
 import * as XLSX from "xlsx"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { isHoliday } from "@/utils/holidays"
+import { isMalattia, isMattina, isPomeriggio, isAssenza } from "@/utils/shift-logic"
 
 type EditingCell = { agentId: string; agentName: string; day: number; currentType: string; warningMsg?: string } | null
 
@@ -92,10 +95,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
     const nextShift = shifts.find(s => s.userId === agentId && new Date(s.date).toISOString() === nextDateStr)
 
     const isBlocked = (shiftType: string) => {
-      const s = shiftType.toUpperCase().replace(/[()]/g, "")
-      const blockCodes = ["F", "FERIE", "M", "MALATTIA", "104", "RR", "RP", "RPS", "CONGEDO", "ASS", "INFR", "CS", "PNR", "SD", "RF", "AM", "AP"]
-      if (s.startsWith("F") || s.startsWith("R")) return true
-      return blockCodes.includes(s)
+      const s = shiftType.toUpperCase().trim()
+      return isAssenza(s)
     }
 
     const tType = todayShift?.type || ""
@@ -744,6 +745,38 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             </button>
           </div>
           
+          <Link 
+            href="/assegna-turni"
+            className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-indigo-200"
+          >
+            <CalendarIcon size={18} />
+            Pianificazione Mensile
+          </Link>
+
+          <Link 
+            href="/squadre"
+            className="flex items-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-amber-200"
+          >
+            <Users size={18} />
+            Gestione Squadre
+          </Link>
+
+          <Link 
+            href="/gestione-operativa"
+            className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-blue-200"
+          >
+            <ClipboardList size={18} />
+            Gestione Operativa
+          </Link>
+
+          <Link 
+            href="/stampa-ods"
+            className="flex items-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-purple-200"
+          >
+            <Printer size={18} />
+            Stampa OdS
+          </Link>
+
           <button 
             onClick={() => setShowAnagrafica(true)}
             className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
@@ -1125,20 +1158,20 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                 cellBg = "bg-emerald-100"
                                 badge = "REP"
                                 badgeClass = "bg-emerald-500 text-white font-black shadow-sm"
-                              } else if (sType.startsWith("F") || sType === "104" || sType === "FERIE" || sType === "MALATTIA") {
+                              } else if (isMalattia(sType)) {
                                 cellBg = "bg-amber-50"
                                 badge = sType.length > 3 ? sType.substring(0, 3) : sType
                                 badgeClass = "bg-amber-400 text-amber-900 font-bold"
-                              } else if (sType.startsWith("R") && sType !== "REP") {
-                                cellBg = di.isWeekend ? "bg-red-50/40" : "bg-slate-100"
-                                badge = sType.length > 3 ? sType.substring(0, 3) : sType
-                                badgeClass = "bg-slate-300 text-slate-600 font-medium"
-                              } else if (sType.startsWith("M")) {
+                              } else if (isMattina(sType)) {
                                 badge = sType
                                 badgeClass = "bg-blue-400 text-white font-bold"
-                              } else if (sType.startsWith("P")) {
+                              } else if (isPomeriggio(sType)) {
                                 badge = sType
                                 badgeClass = "bg-indigo-300 text-indigo-900 font-bold"
+                              } else if (isAssenza(sType)) {
+                                cellBg = "bg-amber-50"
+                                badge = sType.length > 3 ? sType.substring(0, 3) : sType
+                                badgeClass = "bg-amber-200 text-amber-800 font-medium"
                               } else if (sType) {
                                 badge = sType.length > 4 ? sType.substring(0, 4) : sType
                                 badgeClass = "bg-slate-200 text-slate-700 font-medium"
@@ -1658,6 +1691,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
           </div>
         </div>
       )}
+      {/* Area anagrafica nascosta qui... rimossa per spazio modal */}
+
       {/* Settings Panel Modal */}
       {showSettings && <SettingsPanel onClose={() => { setShowSettings(false); router.refresh() }} />}
       {/* MODALE AUDIT LOG */}
