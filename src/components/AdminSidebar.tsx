@@ -36,10 +36,10 @@ const NAV_ITEMS = [
     description: "Drag & Drop Giornaliero",
   },
   {
-    label: "Anagrafica",
-    href: "/admin/anagrafica",
+    label: "Ufficio Comando",
+    href: "/admin/risorse",
     icon: Users,
-    description: "Gestione Personale & Squadre",
+    description: "Agenti, Squadre e Logistica",
   },
   {
     label: "Auto-Compilazione",

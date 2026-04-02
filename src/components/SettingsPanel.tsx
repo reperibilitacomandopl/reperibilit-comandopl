@@ -21,7 +21,7 @@ type SettingsData = {
   permettiConsecutivi: boolean;
 }
 
-type TabType = "algorithm" | "pec" | "stats" | "services"
+type TabType = "algorithm" | "pec" | "stats"
 
 type PecConfig = {
   host: string; port: string; user: string; pass: string; from: string
@@ -159,15 +159,6 @@ export default function SettingsPanel({ onClose, embedded }: { onClose: () => vo
             >
               <BarChart3 size={18} />
               Statistiche
-            </button>
-            <button
-              onClick={() => setActiveTab("services")}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                activeTab === "services" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <Layers size={18} />
-              Servizi e Veicoli
             </button>
           </div>
         </div>
@@ -393,11 +384,6 @@ export default function SettingsPanel({ onClose, embedded }: { onClose: () => vo
               {/* TAB: STATS */}
               {activeTab === "stats" && (
                 <StatisticsDashboard month={settings.meseCorrente} year={settings.annoCorrente} />
-              )}
-
-              {/* TAB: SERVICES */}
-              {activeTab === "services" && (
-                <ServicesSettings />
               )}
             </>
           )}

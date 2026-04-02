@@ -182,7 +182,7 @@ export default function ImpostazioniPanel() {
 
           {/* Squadre Manager Link */}
           <Link 
-            href="/admin/anagrafica" 
+            href="/admin/risorse" 
             className="flex items-center gap-3 p-4 bg-white rounded-xl border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all"
           >
             <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">

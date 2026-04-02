@@ -1,11 +1,11 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import AnagraficaPanel from "@/components/AnagraficaPanel"
+import RisorseTabs from "@/components/RisorseTabs"
 
 export const dynamic = "force-dynamic"
 
-export default async function AnagraficaPage() {
+export default async function RisorsePage() {
   const session = await auth()
   if (!session?.user || session.user.role !== "ADMIN") redirect("/login")
 
@@ -36,7 +36,7 @@ export default async function AnagraficaPage() {
 
   return (
     <div className="p-6 lg:p-8 relative z-10 h-full">
-      <AnagraficaPanel
+      <RisorseTabs
         agents={users as any}
         rotationGroups={rotationGroups}
         categories={categories}
