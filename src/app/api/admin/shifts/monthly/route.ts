@@ -37,6 +37,8 @@ export async function PUT(request: Request) {
     const { updates } = await request.json()
     // updates: { userId, date (YYYY-MM-DD), type }[]
     
+    const { normalizeShiftData } = await import("@/utils/sync-shift")
+
     // Process them transactionally or sequentially
     // To be safe with Postgres and Date matching, we do findFirst/upsert sequential
     for (const diff of updates) {
@@ -51,21 +53,38 @@ export async function PUT(request: Request) {
         where: { userId: diff.userId, date: targetDate }
       })
 
+      const normalized = normalizeShiftData({
+        macroType: diff.type,
+        timeRange: diff.timeRange || existing?.timeRange,
+        serviceCategoryId: existing?.serviceCategoryId,
+        serviceTypeId: existing?.serviceTypeId,
+        vehicleId: existing?.vehicleId,
+        repType: existing?.repType
+      })
+
       if (existing) {
         await prisma.shift.update({
           where: { id: existing.id },
           data: { 
-            type: diff.type.toUpperCase(),
-            timeRange: diff.timeRange || existing.timeRange
+             type: normalized.type,
+             timeRange: normalized.timeRange,
+             serviceCategoryId: normalized.serviceCategoryId,
+             serviceTypeId: normalized.serviceTypeId,
+             vehicleId: normalized.vehicleId,
+             repType: normalized.repType
           }
         })
       } else {
         await prisma.shift.create({
           data: {
-            userId: diff.userId,
-            date: targetDate,
-            type: diff.type.toUpperCase(),
-            timeRange: diff.timeRange
+             userId: diff.userId,
+             date: targetDate,
+             type: normalized.type,
+             timeRange: normalized.timeRange,
+             serviceCategoryId: normalized.serviceCategoryId,
+             serviceTypeId: normalized.serviceTypeId,
+             vehicleId: normalized.vehicleId,
+             repType: normalized.repType
           }
         })
       }

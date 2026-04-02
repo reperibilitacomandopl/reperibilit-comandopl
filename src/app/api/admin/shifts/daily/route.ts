@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { normalizeShiftData } from "@/utils/sync-shift"
 
 export async function GET(req: Request) {
   const session = await auth()
@@ -60,21 +61,34 @@ export async function PUT(req: Request) {
     const endDate = new Date(targetDate)
     endDate.setUTCHours(23, 59, 59, 999)
     
+    // Troviamo il turno esistente per preservare i metadati base (es. repType che non viene passato dal frontend operativo)
     const existingShift = await prisma.shift.findFirst({
        where: { userId, date: { gte: startDate, lte: endDate } }
     })
+
+    const rawMacro = type !== undefined ? type : (existingShift?.type || "M7");
+
+    const normalized = normalizeShiftData({
+      macroType: rawMacro,
+      timeRange: timeRange !== undefined ? timeRange : existingShift?.timeRange,
+      serviceCategoryId: serviceCategoryId !== undefined ? serviceCategoryId : existingShift?.serviceCategoryId,
+      serviceTypeId: serviceTypeId !== undefined ? serviceTypeId : existingShift?.serviceTypeId,
+      vehicleId: vehicleId !== undefined ? vehicleId : existingShift?.vehicleId,
+      repType: existingShift?.repType // Sala Operativa normally doesn't set repType, it inherits it
+    });
 
     let shift;
     if (existingShift) {
         shift = await prisma.shift.update({
            where: { id: existingShift.id },
            data: {
-             type: type !== undefined ? type : existingShift.type,
-             timeRange: timeRange !== undefined ? timeRange : existingShift.timeRange,
-             serviceCategoryId: serviceCategoryId !== undefined ? serviceCategoryId : existingShift.serviceCategoryId,
-             serviceTypeId: serviceTypeId !== undefined ? serviceTypeId : existingShift.serviceTypeId,
-             vehicleId: vehicleId !== undefined ? vehicleId : existingShift.vehicleId,
+             type: normalized.type,
+             timeRange: normalized.timeRange,
+             serviceCategoryId: normalized.serviceCategoryId,
+             serviceTypeId: normalized.serviceTypeId,
+             vehicleId: normalized.vehicleId,
              serviceDetails: serviceDetails !== undefined ? serviceDetails : existingShift.serviceDetails,
+             repType: normalized.repType
            }
         })
     } else {
@@ -82,12 +96,13 @@ export async function PUT(req: Request) {
           data: {
             userId,
             date: targetDate, // Mezzanotte UTC
-            type: type || "M7", 
-            timeRange,
-            serviceCategoryId,
-            serviceTypeId,
-            vehicleId,
-            serviceDetails
+            type: normalized.type, 
+            timeRange: normalized.timeRange,
+            serviceCategoryId: normalized.serviceCategoryId,
+            serviceTypeId: normalized.serviceTypeId,
+            vehicleId: normalized.vehicleId,
+            serviceDetails,
+            repType: normalized.repType
           }
         })
     }

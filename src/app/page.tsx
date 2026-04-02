@@ -1,10 +1,7 @@
 import { auth, signOut } from "@/auth"
-import AdminDashboard from "@/components/AdminDashboard"
 import { LogOut } from "lucide-react"
 import { redirect } from "next/navigation"
-import Link from "next/link"
 import DynamicAgentDashboard from "@/components/DynamicAgentDashboard"
-
 import { prisma } from "@/lib/prisma"
 
 export default async function Home({ searchParams }: { searchParams: { view?: string, month?: string, year?: string } }) {
@@ -18,11 +15,15 @@ export default async function Home({ searchParams }: { searchParams: { view?: st
   const monthStr = (await searchParams).month
   const yearStr = (await searchParams).year
 
+  // Admin users: redirect to the new sidebar layout (unless previewing agent view)
+  if (role === "ADMIN" && view !== "agent") {
+    redirect("/admin/pannello")
+  }
+
   // Default to current month/year if not specified
   const now = new Date()
   const currentYear = yearStr ? parseInt(yearStr, 10) : now.getFullYear()
-  const currentMonth = monthStr ? parseInt(monthStr, 10) : (now.getMonth() + 1) // 1-12
-
+  const currentMonth = monthStr ? parseInt(monthStr, 10) : (now.getMonth() + 1)
 
   const users = await prisma.user.findMany({
     where: { role: "AGENTE" },
@@ -33,24 +34,17 @@ export default async function Home({ searchParams }: { searchParams: { view?: st
     where: {
       date: {
         gte: new Date(Date.UTC(currentYear, currentMonth - 1, 1)),
-        lt: new Date(Date.UTC(currentYear, currentMonth, 2)), // Fetch 1st day of the NEXT month for 'eve' logic
+        lt: new Date(Date.UTC(currentYear, currentMonth, 2)),
       }
     }
   })
 
-  // Verify Publish status and fetch settings & config
-  const [pubRec, settings, rotationGroups, categories] = await Promise.all([
-    prisma.monthStatus.findUnique({
-      where: { month_year: { month: currentMonth, year: currentYear } }
-    }),
-    prisma.globalSettings.findFirst(),
-    prisma.rotationGroup.findMany({ orderBy: { name: 'asc' } }),
-    prisma.serviceCategory.findMany({ include: { types: true }, orderBy: { orderIndex: 'asc' } })
-  ])
+  const pubRec = await prisma.monthStatus.findUnique({
+    where: { month_year: { month: currentMonth, year: currentYear } }
+  })
   const isPublished = pubRec ? pubRec.isPublished : false
 
-  const isAdminView = role === "ADMIN" && view !== 'agent'
-  const containerClass = isAdminView ? "w-full max-w-full px-4 sm:px-6 lg:px-8" : "w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+  const containerClass = "w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -68,14 +62,6 @@ export default async function Home({ searchParams }: { searchParams: { view?: st
           </div>
           
           <div className="flex items-center gap-4">
-            {role === "ADMIN" && (
-               <div className="bg-slate-100 p-1 rounded-lg flex items-center border border-slate-200">
-                  <span className="text-[10px] font-black uppercase px-2 text-slate-400">Preview</span>
-                  <Link href="/?view=agent" className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${view === 'agent' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-800'}`}>Agente</Link>
-                  <Link href="/" className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${!view ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-800'}`}>Admin</Link>
-               </div>
-            )}
-
             <div className="text-right hidden sm:block">
               <p className="text-sm font-semibold text-slate-800">{name}</p>
               <p className="text-xs text-slate-500">Matr. {matricola} • {role}</p>
@@ -96,13 +82,9 @@ export default async function Home({ searchParams }: { searchParams: { view?: st
         </div>
       </header>
 
-      {/* Main Content Area */}
+      {/* Agent Dashboard */}
       <main className={`flex-1 ${containerClass} py-4 sm:py-6 lg:py-8`}>
-        {isAdminView ? (
-          <AdminDashboard allAgents={users as any} shifts={shifts} currentYear={currentYear} currentMonth={currentMonth} isPublished={isPublished} currentView={view} settings={settings as any} rotationGroups={rotationGroups} categories={categories} />
-        ) : (
-          <DynamicAgentDashboard currentUser={{ id: session?.user?.id || "", matricola: matricola || "", name: name || "" }} shifts={shifts} allAgents={users as any} currentYear={currentYear} currentMonth={currentMonth} isPublished={isPublished} currentView={view} />
-        )}
+        <DynamicAgentDashboard currentUser={{ id: session?.user?.id || "", matricola: matricola || "", name: name || "" }} shifts={shifts} allAgents={users as any} currentYear={currentYear} currentMonth={currentMonth} isPublished={isPublished} currentView={view} />
       </main>
 
       <footer className="border-t border-slate-200 bg-white mt-auto">
@@ -111,7 +93,7 @@ export default async function Home({ searchParams }: { searchParams: { view?: st
             Comando di Polizia Locale di Altamura
           </p>
           <p className="text-[10px] text-slate-300 font-medium">
-            Sistema Reperibilità v1.0
+            Sistema Reperibilità v2.0
           </p>
         </div>
       </footer>

@@ -28,7 +28,14 @@ export async function POST(req: Request) {
       // Pulisci solo il turno base
       await prisma.shift.updateMany({
         where: commonWhere,
-        data: { type: "" }
+        data: { 
+          type: "", 
+          timeRange: null, 
+          serviceCategoryId: null, 
+          serviceTypeId: null, 
+          vehicleId: null, 
+          serviceDetails: null 
+        }
       })
     } else if (type === "rep") {
       // Pulisci solo la reperibilità

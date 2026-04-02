@@ -6,9 +6,12 @@ import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, Printer, 
 export default function ServiceOrderDashboard({ onClose }: { onClose?: () => void }) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [loading, setLoading] = useState(true)
+  const [showConfig, setShowConfig] = useState(false)
   
   const [users, setUsers] = useState<any[]>([])
   const [shifts, setShifts] = useState<any[]>([])
+  const [categories, setCategories] = useState<any[]>([])
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
 
   const loadData = async () => {
     setLoading(true)
@@ -21,6 +24,10 @@ export default function ServiceOrderDashboard({ onClose }: { onClose?: () => voi
       const data = await res.json()
       if (data.users) setUsers(data.users)
       if (data.shifts) setShifts(data.shifts)
+      if (data.categories) {
+          setCategories(data.categories)
+          setSelectedCategories(data.categories.map((c: any) => c.name))
+      }
     } catch {}
     setLoading(false)
   }
@@ -50,9 +57,14 @@ export default function ServiceOrderDashboard({ onClose }: { onClose?: () => voi
     const gruppi: Record<string, any[]> = {}
     listaTurni.forEach(s => {
       const catName = s.serviceCategory ? s.serviceCategory.name : "ALTRI SERVIZI (Non Categorizzati)"
+      // Filtra in base alle categorie spuntate nella checklist
+      if (!selectedCategories.includes(catName) && s.serviceCategory) return;
+      
       if (!gruppi[catName]) gruppi[catName] = []
       gruppi[catName].push(s)
     })
+
+    if (Object.keys(gruppi).length === 0) return null;
 
     return (
       <div className="mb-0">
@@ -70,7 +82,7 @@ export default function ServiceOrderDashboard({ onClose }: { onClose?: () => voi
                 {servs.map((s, idx) => {
                   const u = users.find(u => u.id === s.userId)
                   if (!u) return null
-                  const qualifica = u.isUfficiale ? "Ufficiale" : (u.qualifica || "Agente")
+                  const qualifica = u.qualifica || (u.isUfficiale ? "Uff.le" : "Agente")
                   
                   // LOGICA ORARIO DINAMICA: priorità al timeRange salvato, poi alla squadra dell'agente
                   let orario = s.timeRange
@@ -137,10 +149,35 @@ export default function ServiceOrderDashboard({ onClose }: { onClose?: () => voi
         </div>
 
         <div className="flex gap-2">
+          <button onClick={() => setShowConfig(!showConfig)} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-bold flex items-center gap-2">⚙️ Filtra Servizi</button>
           <button onClick={printDocument} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-bold flex items-center gap-2"><Printer size={16}/> Stampa PDF</button>
           {onClose && <button onClick={onClose} className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg"><X size={20}/></button>}
         </div>
       </div>
+
+      {/* PANNELLO CHECKLIST CATEGORIE (Simile alla foto) */}
+      {showConfig && !loading && (
+        <div className="bg-white border-b-4 border-slate-200 p-6 print:hidden shadow-inner max-h-64 overflow-y-auto">
+           <h3 className="text-lg font-black text-slate-800 mb-4">Seleziona Servizi da visualizzare (Checklist)</h3>
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 border border-slate-200 rounded-none overflow-hidden">
+              {categories.map((c, i) => (
+                <div 
+                  key={c.id} 
+                  onClick={() => {
+                    if (selectedCategories.includes(c.name)) setSelectedCategories(selectedCategories.filter(x => x !== c.name))
+                    else setSelectedCategories([...selectedCategories, c.name])
+                  }}
+                  className={`flex justify-between items-center p-3 border-b border-r border-slate-200 cursor-pointer hover:bg-blue-50 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}
+                >
+                  <span className="font-bold text-slate-900 text-sm">{c.name}</span>
+                  {selectedCategories.includes(c.name) && (
+                    <span className="text-black font-black text-lg">✔</span>
+                  )}
+                </div>
+              ))}
+           </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex-1 flex items-center justify-center"><Loader2 size={40} className="animate-spin text-slate-400" /></div>
@@ -175,7 +212,7 @@ export default function ServiceOrderDashboard({ onClose }: { onClose?: () => voi
                       {reperibili.map((s, idx) => {
                         const u = users.find(u => u.id === s.userId)
                         if (!u) return null
-                        const qualifica = u.isUfficiale ? "Ufficiale" : (u.qualifica || "Agente")
+                        const qualifica = u.qualifica || (u.isUfficiale ? "Uff.le" : "Agente")
                         
                         return (
                           <tr key={s.id} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50"}>

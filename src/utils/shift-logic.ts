@@ -28,7 +28,8 @@ export const isPomeriggio = (code: string | null | undefined): boolean => {
 
 export const isAssenza = (code: string | null | undefined): boolean => {
   if (!code) return false;
-  const c = code.toUpperCase().trim();
+  // Rimuovi eventuali parentesi per far combaciare (F) con F
+  const c = code.toUpperCase().replace(/[()]/g, '').trim();
   const assenze = ["F", "FERIE", "104", "RR", "RP", "RPS", "CONGEDO", "ASS", "INFR", "CS", "PNR", "SD", "RF", "AM", "AP"];
   return assenze.includes(c) || isMalattia(c);
 };

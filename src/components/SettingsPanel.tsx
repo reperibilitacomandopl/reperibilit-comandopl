@@ -27,7 +27,7 @@ type PecConfig = {
   host: string; port: string; user: string; pass: string; from: string
 }
 
-export default function SettingsPanel({ onClose }: { onClose: () => void }) {
+export default function SettingsPanel({ onClose, embedded }: { onClose: () => void; embedded?: boolean }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>("algorithm")
@@ -100,10 +100,9 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
     setSaving(false)
   }
 
-  return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}
-        style={{ animation: 'fadeInUp 0.3s ease-out' }}
+  const innerContent = (
+      <div className={`bg-white ${embedded ? 'rounded-2xl' : 'rounded-3xl shadow-2xl'} w-full ${embedded ? '' : 'max-w-4xl max-h-[90vh]'} overflow-hidden flex flex-col`} onClick={e => e.stopPropagation()}
+        style={embedded ? undefined : { animation: 'fadeInUp 0.3s ease-out' }}
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 p-6 text-white relative overflow-hidden">
@@ -428,6 +427,15 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
           )}
         </div>
       </div>
+  )
+
+  if (embedded) {
+    return innerContent
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={onClose}>
+      {innerContent}
     </div>
   )
 }
