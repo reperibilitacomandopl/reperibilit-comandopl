@@ -49,7 +49,7 @@ export async function PUT(req: Request) {
 
   try {
     const body = await req.json()
-    const { date, userId, type, timeRange, serviceCategoryId, serviceTypeId, vehicleId, serviceDetails } = body
+    const { date, userId, type, timeRange, serviceCategoryId, serviceTypeId, vehicleId, serviceDetails, patrolGroupId } = body
 
     // Crea la data esattamente a mezzanotte UTC come fa l'importazione Excel
     const [y, m, d] = date.split("-").map(Number)
@@ -88,6 +88,7 @@ export async function PUT(req: Request) {
              serviceTypeId: normalized.serviceTypeId,
              vehicleId: normalized.vehicleId,
              serviceDetails: serviceDetails !== undefined ? serviceDetails : existingShift.serviceDetails,
+             patrolGroupId: patrolGroupId !== undefined ? patrolGroupId : existingShift.patrolGroupId,
              repType: normalized.repType
            }
         })
@@ -102,6 +103,7 @@ export async function PUT(req: Request) {
             serviceTypeId: normalized.serviceTypeId,
             vehicleId: normalized.vehicleId,
             serviceDetails,
+            patrolGroupId,
             repType: normalized.repType
           }
         })

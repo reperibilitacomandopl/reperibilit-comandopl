@@ -44,27 +44,41 @@ export default function ServiceOrderDashboard({ onClose }: { onClose?: () => voi
     window.print()
   }
 
-  // Raggruppiamo i turni in: MATTINO, POMERIGGIO, REPERIBILITA NOTTURNA
-  const mattinieri = shifts.filter(s => s.type.startsWith("M"))
-  const pomeridiani = shifts.filter(s => s.type.startsWith("P"))
-  const reperibili = shifts.filter(s => s.repType != null && s.repType.includes("REP"))
+  // Raggruppiamo i turni in: MATTINO, POMERIGGIO, REPERIBILITA NOTTURNA + ASSENTI
+  const isWorking = (type: string) => {
+    const t = (type || "").toUpperCase().replace(/[()]/g, "").trim()
+    return /^[MPN]\d/.test(t)
+  }
+
+  const presentShifts = shifts.filter(s => isWorking(s.type))
+  const absentShifts = shifts.filter(s => !isWorking(s.type))
+  const mattinieri = presentShifts.filter(s => /^M/i.test((s.type||"").replace(/[()]/g,"")))
+  const pomeridiani = presentShifts.filter(s => /^P/i.test((s.type||"").replace(/[()]/g,"")))
+  const reperibili = presentShifts.filter(s => s.repType != null && s.repType.includes("REP"))
 
   // Funzione helper per renderizzare una Macro Fascia Oraria (Mattino/Pomeriggio)
   const renderFascia = (titolo: string, listaTurni: any[]) => {
     if (listaTurni.length === 0) return null
 
-    // Raggruppiamo per ServiceCategory.name, o "Non Assegnato"
-    const gruppi: Record<string, any[]> = {}
-    listaTurni.forEach(s => {
-      const catName = s.serviceCategory ? s.serviceCategory.name : "ALTRI SERVIZI (Non Categorizzati)"
-      // Filtra in base alle categorie spuntate nella checklist
-      if (!selectedCategories.includes(catName) && s.serviceCategory) return;
-      
-      if (!gruppi[catName]) gruppi[catName] = []
-      gruppi[catName].push(s)
-    })
+    // Separa Ufficiali da Agenti
+    const ufficiali = listaTurni.filter(s => {
+        const u = users.find(user => user.id === s.userId);
+        return u?.isUfficiale;
+    });
 
-    if (Object.keys(gruppi).length === 0) return null;
+    const agenti = listaTurni.filter(s => {
+        const u = users.find(user => user.id === s.userId);
+        return !u?.isUfficiale;
+    });
+
+    // Raggruppiamo gli AGENTI per ServiceCategory.name
+    const gruppiAgenti: Record<string, any[]> = {}
+    agenti.forEach(s => {
+      const catName = s.serviceCategory ? s.serviceCategory.name : "ALTRI SERVIZI"
+      if (!selectedCategories.includes(catName) && s.serviceCategory) return;
+      if (!gruppiAgenti[catName]) gruppiAgenti[catName] = []
+      gruppiAgenti[catName].push(s)
+    })
 
     return (
       <div className="mb-0">
@@ -72,61 +86,97 @@ export default function ServiceOrderDashboard({ onClose }: { onClose?: () => voi
           <h2 className="font-black text-blue-900 tracking-widest uppercase text-lg">{titolo}</h2>
         </div>
 
-        {Object.entries(gruppi).map(([catName, servs]) => (
+        {/* TABELLA UFFICIALI (Se presenti) */}
+        {ufficiali.length > 0 && (
+          <div className="border-b-2 border-slate-200">
+            <div className="bg-blue-50 text-blue-800 py-1 px-4 text-[10px] font-black uppercase tracking-widest border-b border-slate-200">
+              Ufficiali di Servizio / Coordinamento
+            </div>
+            <table className="w-full text-sm">
+              <tbody>
+                {ufficiali.map((s, idx) => renderShiftRow(s, idx))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* GRUPPI AGENTI PER CATEGORIA */}
+        {Object.entries(gruppiAgenti).map(([catName, servs]) => (
           <div key={catName}>
-            <div className="bg-purple-100/50 border-b border-slate-200 text-center py-1 font-bold text-purple-900 italic">
+            <div className="bg-purple-100/50 border-b border-slate-200 text-center py-1 font-bold text-purple-900 italic text-xs">
               {catName}
             </div>
             <table className="w-full text-sm border-b border-slate-300">
               <tbody>
                 {servs.map((s, idx) => {
-                  const u = users.find(u => u.id === s.userId)
-                  if (!u) return null
-                  const qualifica = u.qualifica || (u.isUfficiale ? "Uff.le" : "Agente")
-                  
-                  // LOGICA ORARIO DINAMICA: priorità al timeRange salvato, poi alla squadra dell'agente
-                  let orario = s.timeRange
-                  if (!orario && u.rotationGroup) {
-                    if (s.type.startsWith("M")) orario = `${u.rotationGroup.mStartTime}-${u.rotationGroup.mEndTime}`
-                    else if (s.type.startsWith("P")) orario = `${u.rotationGroup.pStartTime}-${u.rotationGroup.pEndTime}`
-                  }
-                  
-                  // Fallback se ancora nullo: prova a dedurre dal codice (es. M7,30 -> 07:30)
-                  if (!orario) {
-                    const match = s.type.match(/([MP])(\d+)(?:,(\d+))?/)
-                    if (match) {
-                      const [,, h, m] = match
-                      const hour = h.padStart(2, "0")
-                      const min = (m || "00").padEnd(2, "0")
-                      const endHour = parseInt(h) + 6
-                      orario = `${hour}:${min}-${String(endHour).padStart(2, "0")}:${min}`
-                    } else {
-                      orario = (s.type === "M7" ? "07:00-13:00" : s.type === "M8" ? "08:00-14:00" : s.type.startsWith("P") ? "14:00-20:00" : "-")
-                    }
-                  }
-                  
-                  return (
-                    <tr key={s.id} className={idx % 2 === 0 ? "bg-white" : "bg-blue-50/20"}>
-                      <td className="py-1 px-4 border-r border-slate-200 w-1/4 font-semibold text-slate-800">
-                        <span className="text-[10px] text-slate-500 font-normal mr-2">{qualifica}</span>
-                        {u.name}
-                      </td>
-                      <td className="py-1 px-4 border-r border-slate-200 w-[120px] text-center font-mono text-xs">
-                        {orario}
-                      </td>
-                      <td className="py-1 px-4 w-1/2">
-                        {s.serviceType ? s.serviceType.name : "Servizio Generico"}
-                        {s.vehicle && <span className="ml-2 font-bold text-slate-600">({s.vehicle.name})</span>}
-                        {s.serviceDetails && <span className="ml-2 italic text-slate-500">- {s.serviceDetails}</span>}
-                      </td>
-                    </tr>
-                  )
+                  // Se il turno precedente ha lo stesso patrolGroupId, visualizziamo senza il bordo superiore (o come blocco unico)
+                  const prevShift = servs[idx - 1];
+                  const isLinked = s.patrolGroupId && prevShift && s.patrolGroupId === prevShift.patrolGroupId;
+                  return renderShiftRow(s, idx, isLinked);
                 })}
               </tbody>
             </table>
           </div>
         ))}
       </div>
+    )
+  }
+
+  // Helper per renderizzare la singola riga di turno (riutilizzabile)
+  const renderShiftRow = (s: any, idx: number, isLinked: boolean = false) => {
+    const u = users.find(u => u.id === s.userId)
+    if (!u) return null
+    const qualifica = u.qualifica || (u.isUfficiale ? "Uff.le" : "Agente")
+    
+    let orario = s.timeRange
+    if (!orario && u.rotationGroup) {
+      if (s.type.startsWith("M")) orario = `${u.rotationGroup.mStartTime}-${u.rotationGroup.mEndTime}`
+      else if (s.type.startsWith("P")) orario = `${u.rotationGroup.pStartTime}-${u.rotationGroup.pEndTime}`
+    }
+    
+    if (!orario) {
+      const match = s.type.match(/([MP])(\d+)(?:,(\d+))?/)
+      if (match) {
+        const [,, h, m] = match
+        const hour = h.padStart(2, "0")
+        const min = (m || "00").padEnd(2, "0")
+        const endHour = parseInt(h) + 6
+        orario = `${hour}:${min}-${String(endHour).padStart(2, "0")}:${min}`
+      } else {
+        orario = (s.type.startsWith("M") ? "07:00-13:00" : s.type.startsWith("P") ? "14:00-20:00" : "-")
+      }
+    }
+    
+    // Se è collegato, nascondiamo il nome del servizio e il veicolo nella riga successiva per non duplicare
+    const hideServiceInfo = isLinked;
+
+    return (
+      <tr key={s.id} className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/20"} ${isLinked ? 'border-t border-dashed border-slate-200' : 'border-t border-slate-300'}`}>
+        <td className={`py-1 px-4 border-r border-slate-200 w-1/4 font-semibold text-slate-800 ${isLinked ? 'pl-8' : ''}`}>
+          {isLinked && <span className="text-slate-300 mr-2">↳</span>}
+          <span className="text-[10px] text-slate-500 font-normal mr-2">{qualifica}</span>
+          {u.name}
+          {u.servizio && (
+            <span className="ml-2 text-[9px] font-bold text-blue-700 bg-blue-100 border border-blue-200 px-1.5 py-0.5 rounded">
+              {u.servizio}
+            </span>
+          )}
+        </td>
+        <td className="py-1 px-4 border-r border-slate-200 w-[120px] text-center font-mono text-xs">
+          {orario}
+        </td>
+        <td className="py-1 px-4 w-1/2">
+          {!hideServiceInfo ? (
+            <>
+              <span className="font-bold">{s.serviceType ? s.serviceType.name : (u.servizio ? u.servizio : "Servizio")}</span>
+              {s.vehicle && <span className="ml-2 text-slate-600">({s.vehicle.name})</span>}
+              {s.serviceDetails && <span className="ml-2 italic text-slate-500">- {s.serviceDetails}</span>}
+            </>
+          ) : (
+            <span className="text-[10px] text-slate-400 italic">(Equipaggio sopra indicato)</span>
+          )}
+        </td>
+      </tr>
     )
   }
 
@@ -240,6 +290,34 @@ export default function ServiceOrderDashboard({ onClose }: { onClose?: () => voi
                 </div>
               )}
             </div>
+
+            {/* SEZIONE ASSENTI */}
+            {absentShifts.length > 0 && (
+              <div className="mt-8">
+                <div className="bg-rose-50 border-2 border-rose-200 rounded-lg overflow-hidden">
+                  <div className="bg-rose-500 text-white text-center py-2">
+                    <h2 className="font-black tracking-widest uppercase text-sm">Personale Assente / Non Disponibile ({absentShifts.length})</h2>
+                  </div>
+                  <div className="p-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {absentShifts.map(s => {
+                        const u = users.find(u => u.id === s.userId)
+                        if (!u) return null
+                        return (
+                          <div key={s.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-rose-100">
+                            <div>
+                              <span className="font-bold text-slate-800 text-sm">{u.name}</span>
+                              {u.servizio && <span className="ml-2 text-[9px] font-bold text-rose-600 bg-rose-50 px-1 py-0.5 rounded">{u.servizio}</span>}
+                            </div>
+                            <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded">{s.type}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* FIRME */}
             <div className="mt-16 flex justify-end">

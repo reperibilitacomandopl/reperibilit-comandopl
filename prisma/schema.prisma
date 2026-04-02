@@ -43,6 +43,7 @@ model User {
   absences      Absence[]
   shifts        Shift[]
   agendaEntries AgendaEntry[] @relation("agendaEntries")
+  patrolTemplates PatrolTemplate[] @relation("PatrolMembers")
   createdAt     DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
@@ -77,11 +78,26 @@ model Shift {
   vehicleId         String?
   vehicle           Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   serviceDetails    String?  // Dettagli addizionali testuali
+  patrolGroupId     String?  // Per raggruppare visivamente 2 o più agenti sulla stessa riga (Pattuglia Formata)
 
   swaps     ShiftSwapRequest[]
   createdAt DateTime @default(now())
   
   @@unique([userId, date])
+}
+
+model PatrolTemplate {
+  id                String   @id @default(uuid())
+  name              String   @unique // Es. "Pattuglia Viabilità 1"
+  serviceCategoryId String?
+  serviceCategory   ServiceCategory? @relation(fields: [serviceCategoryId], references: [id], onDelete: SetNull)
+  serviceTypeId     String?
+  serviceType       ServiceType? @relation(fields: [serviceTypeId], references: [id], onDelete: SetNull)
+  vehicleId         String?
+  vehicle           Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  preferredShift    String?  @default("ALL") // "M", "P", "ALL"
+  members           User[]   @relation("PatrolMembers")
+  createdAt         DateTime @default(now())
 }
 
 model ServiceCategory {
@@ -91,6 +107,7 @@ model ServiceCategory {
   types     ServiceType[]
   shifts    Shift[]
   defaultUsers User[] @relation("DefaultCategory")
+  patrolTemplates PatrolTemplate[]
 }
 
 model ServiceType {
@@ -100,6 +117,7 @@ model ServiceType {
   name        String          // Es. "Piantone", "Centro Storico"
   shifts      Shift[]
   defaultUsers User[] @relation("DefaultType")
+  patrolTemplates PatrolTemplate[]
 
   @@unique([categoryId, name])
 }
@@ -108,6 +126,7 @@ model Vehicle {
   id        String   @id @default(uuid())
   name      String   @unique // Es. "Beta 101 Renault"
   shifts    Shift[]
+  patrolTemplates PatrolTemplate[]
 }
 
 model RotationGroup {

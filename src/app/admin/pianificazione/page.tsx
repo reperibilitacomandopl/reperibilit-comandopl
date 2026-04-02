@@ -20,6 +20,12 @@ export default async function PianificazionePage({ searchParams }: { searchParam
     prisma.user.findMany({
       where: { role: "AGENTE" },
       orderBy: { name: "asc" },
+      select: { 
+        id: true, name: true, matricola: true, isUfficiale: true, 
+        email: true, phone: true, qualifica: true, gradoLivello: true, 
+        squadra: true, massimale: true, defaultServiceCategoryId: true, 
+        defaultServiceTypeId: true, rotationGroupId: true 
+      }
     }),
     prisma.shift.findMany({
       where: {

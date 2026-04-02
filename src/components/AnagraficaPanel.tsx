@@ -9,7 +9,7 @@ interface AnagraficaPanelProps {
   agents: {
     id: string; name: string; matricola: string; isUfficiale: boolean;
     email: string | null; phone: string | null; qualifica: string | null;
-    gradoLivello: number; squadra: string | null; massimale: number;
+    gradoLivello: number; squadra: string | null; servizio: string | null; massimale: number;
     defaultServiceCategoryId?: string | null; defaultServiceTypeId?: string | null;
     rotationGroupId?: string | null;
     rotationGroup?: { id: string; name: string } | null;
@@ -31,6 +31,7 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
   const [tempName, setTempName] = useState("")
   const [tempMatricola, setTempMatricola] = useState("")
   const [tempSquadra, setTempSquadra] = useState("")
+  const [tempServizio, setTempServizio] = useState("")
   const [tempRotationGroup, setTempRotationGroup] = useState("")
   const [tempDefaultCategoryId, setTempDefaultCategoryId] = useState("")
   const [tempDefaultTypeId, setTempDefaultTypeId] = useState("")
@@ -63,6 +64,7 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
     setTempName(agent.name)
     setTempMatricola(agent.matricola)
     setTempSquadra(agent.squadra || "")
+    setTempServizio(agent.servizio || "")
     setTempRotationGroup(agent.rotationGroupId || "")
     setTempDefaultCategoryId(agent.defaultServiceCategoryId || "")
     setTempDefaultTypeId(agent.defaultServiceTypeId || "")
@@ -81,6 +83,7 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
         name: tempName,
         matricola: tempMatricola,
         squadra: tempSquadra,
+        servizio: tempServizio,
         rotationGroupId: tempRotationGroup || null,
         defaultServiceCategoryId: tempDefaultCategoryId || null,
         defaultServiceTypeId: tempDefaultTypeId || null,
@@ -227,11 +230,11 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredAgents.map(agent => (
-                <tr key={agent.id} className={`${editingAgent === agent.id ? "bg-amber-50/80 border-y-2 border-amber-200 shadow-inner" : "hover:bg-blue-50/30"} transition-all`}>
+                <tr key={agent.id} className={`${editingAgent === agent.id ? "bg-slate-50/90 border-y-2 border-slate-300 shadow-md" : "hover:bg-blue-50/30"} transition-all`}>
                   {/* Matricola */}
                   <td className="px-5 py-3.5">
                     {editingAgent === agent.id ? (
-                      <input type="text" value={tempMatricola} onChange={e => setTempMatricola(e.target.value.toUpperCase())} className="border-2 border-amber-300 rounded-lg px-2 py-1.5 w-24 text-sm font-black outline-none focus:border-amber-500" />
+                      <input type="text" value={tempMatricola} onChange={e => setTempMatricola(e.target.value.toUpperCase())} className="border border-slate-300 rounded-lg px-2 py-1.5 w-24 text-sm font-black outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white text-slate-800" />
                     ) : (
                       <span className="text-xs font-mono font-black text-slate-800">{agent.matricola}</span>
                     )}
@@ -240,7 +243,7 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
                   {/* Nome */}
                   <td className="px-5 py-3.5">
                     {editingAgent === agent.id ? (
-                      <input type="text" value={tempName} onChange={e => setTempName(e.target.value.toUpperCase())} className="border-2 border-amber-300 rounded-lg px-2 py-1.5 w-48 text-sm font-black outline-none focus:border-amber-500" />
+                      <input type="text" value={tempName} onChange={e => setTempName(e.target.value.toUpperCase())} className="border border-slate-300 rounded-lg px-2 py-1.5 w-48 text-sm font-black outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white text-slate-800" />
                     ) : (
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-slate-800">{agent.name}</span>
@@ -253,21 +256,30 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
                   <td className="px-5 py-3.5">
                     {editingAgent === agent.id ? (
                       <div className="flex flex-col gap-2 min-w-[200px]">
-                        <div>
-                          <label className="block text-[9px] font-black text-amber-700 uppercase mb-1">Turnazione Base</label>
-                          <select value={tempRotationGroup} onChange={e => setTempRotationGroup(e.target.value)} className="border-2 border-amber-300 rounded-lg px-2 py-1.5 w-full text-xs font-black outline-none focus:border-amber-500 bg-white">
-                            <option value="">(Libero) Testo: {agent.squadra || ""}</option>
-                            {rotationGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                          </select>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[9px] font-black text-slate-600 uppercase mb-1">Squadra/Turnazione</label>
+                            <select value={tempRotationGroup} onChange={e => setTempRotationGroup(e.target.value)} className="border border-slate-300 rounded-lg px-2 py-1.5 w-full text-xs font-bold outline-none focus:border-blue-500 bg-white text-slate-800 focus:ring-1 focus:ring-blue-500 mb-1">
+                              <option value="">(Libera) Text: {agent.squadra || ""}</option>
+                              {rotationGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                            </select>
+                            {!tempRotationGroup && (
+                               <input type="text" value={tempSquadra} onChange={e => setTempSquadra(e.target.value.toUpperCase())} placeholder="Es. Squadra A" className="border border-slate-300 rounded-lg px-2 py-1.5 w-full text-xs font-bold outline-none focus:border-blue-500 bg-white text-slate-800 focus:ring-1 focus:ring-blue-500" />
+                            )}
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-black text-slate-600 uppercase mb-1">Servizio Text</label>
+                            <input type="text" value={tempServizio} onChange={e => setTempServizio(e.target.value)} placeholder="Es. Viabilità" className="border border-slate-300 rounded-lg px-2 py-1.5 w-full text-xs font-bold outline-none focus:border-blue-500 bg-white text-slate-800 focus:ring-1 focus:ring-blue-500" />
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-[9px] font-black text-amber-700 uppercase mb-1">Servizio di Default</label>
-                          <select value={tempDefaultCategoryId} onChange={e => { setTempDefaultCategoryId(e.target.value); setTempDefaultTypeId("") }} className="border-2 border-amber-300 rounded-lg px-2 py-1.5 w-full text-[10px] font-black mb-1 outline-none bg-white">
+                        <div className="pt-2 border-t border-slate-200">
+                          <label className="block text-[9px] font-black text-slate-600 uppercase mb-1">Servizio di Default OdS</label>
+                          <select value={tempDefaultCategoryId} onChange={e => { setTempDefaultCategoryId(e.target.value); setTempDefaultTypeId("") }} className="border border-slate-300 rounded-lg px-2 py-1.5 w-full text-[10px] font-bold mb-1 outline-none bg-white text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                             <option value="">Nessun Servizio</option>
                             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                           </select>
                           {tempDefaultCategoryId && (
-                            <select value={tempDefaultTypeId} onChange={e => setTempDefaultTypeId(e.target.value)} className="border-2 border-amber-300 rounded-lg px-2 py-1.5 w-full text-[10px] font-black text-blue-700 outline-none bg-white">
+                            <select value={tempDefaultTypeId} onChange={e => setTempDefaultTypeId(e.target.value)} className="border border-slate-300 rounded-lg px-2 py-1.5 w-full text-[10px] font-bold text-blue-700 outline-none bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                               <option value="">Generico</option>
                               {categories.find((c: any) => c.id === tempDefaultCategoryId)?.types.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
                             </select>
@@ -275,10 +287,15 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-col gap-1">
+                      <div className="flex flex-col flex-wrap gap-1 items-start">
                         <span className="text-[10px] bg-slate-100 text-slate-800 font-black px-2.5 py-1.5 rounded-lg border border-slate-200 inline-block">
                           {agent.rotationGroup?.name || agent.squadra || "Senza Squadra"}
                         </span>
+                        {agent.servizio && (
+                           <span className="text-[9px] font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded border border-indigo-200 inline-block">
+                             {agent.servizio}
+                           </span>
+                        )}
                         {agent.defaultServiceCategoryId && (
                           <span className="text-[9px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-200 inline-block">
                             {categories.find(c => c.id === agent.defaultServiceCategoryId)?.name}
@@ -297,7 +314,7 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
                   {/* REP / Max */}
                   <td className="px-5 py-3.5">
                     {editingAgent === agent.id ? (
-                      <input type="number" value={tempMassimale} onChange={e => setTempMassimale(parseInt(e.target.value))} className="border-2 border-amber-300 rounded-lg px-2 py-1.5 w-16 text-sm font-black outline-none focus:border-amber-500" />
+                      <input type="number" value={tempMassimale} onChange={e => setTempMassimale(parseInt(e.target.value))} className="border border-slate-300 rounded-lg px-2 py-1.5 w-16 text-sm font-black outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white text-slate-800" />
                     ) : (
                       <span className="font-black px-2.5 py-1 rounded-lg text-xs border bg-slate-50 text-slate-800 border-slate-200">
                         {agent.massimale}
@@ -309,15 +326,15 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
                   <td className="px-5 py-3.5">
                     {editingAgent === agent.id ? (
                       <div className="flex flex-col gap-2">
-                        <input type="email" value={tempEmail} onChange={e => setTempEmail(e.target.value)} placeholder="Email..." className="border-2 border-amber-300 rounded-lg px-2 py-1.5 text-xs font-bold outline-none w-48" />
-                        <input type="tel" value={tempPhone} onChange={e => setTempPhone(e.target.value)} placeholder="Telefono..." className="border-2 border-amber-300 rounded-lg px-2 py-1.5 text-xs font-bold outline-none w-40" />
-                        <div className="flex items-center gap-2 mt-1 pt-2 border-t border-amber-200">
-                          <input type="text" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Nuova Password" className="border-2 border-amber-400 rounded-lg px-2 py-1.5 text-xs font-bold w-32 bg-white" />
+                        <input type="email" value={tempEmail} onChange={e => setTempEmail(e.target.value)} placeholder="Email..." className="border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-bold outline-none w-48 focus:border-blue-500 bg-white text-slate-800 focus:ring-1 focus:ring-blue-500" />
+                        <input type="tel" value={tempPhone} onChange={e => setTempPhone(e.target.value)} placeholder="Telefono..." className="border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-bold outline-none w-40 focus:border-blue-500 bg-white text-slate-800 focus:ring-1 focus:ring-blue-500" />
+                        <div className="flex items-center gap-2 mt-1 pt-2 border-t border-slate-200">
+                          <input type="text" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Nuova Password" className="border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-bold w-32 bg-white text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
                           <button onClick={async () => {
                             if (!newPass) return toast.error("Inserisci una password")
                             const res = await fetch("/api/admin/users", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: agent.id, action: "resetPassword", newPassword: newPass }) })
                             if (res.ok) { toast.success("Password aggiornata!"); setNewPass("") }
-                          }} className="text-[10px] font-black text-amber-800 bg-amber-100 px-3 py-1.5 rounded-lg border border-amber-300 hover:bg-amber-200 transition-all">Reset</button>
+                          }} className="text-[10px] font-black text-slate-800 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-200 transition-all">Reset</button>
                         </div>
                       </div>
                     ) : (

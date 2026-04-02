@@ -13,7 +13,6 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Radio,
 } from "lucide-react"
 
 const NAV_ITEMS = [
@@ -24,16 +23,16 @@ const NAV_ITEMS = [
     description: "Overview e KPI",
   },
   {
-    label: "Pianificazione OdS",
+    label: "Pianificazione Turni",
     href: "/admin/pianificazione",
     icon: CalendarDays,
-    description: "Griglia Turni & Reperibilità",
+    description: "Griglia Mensile & Reperibilità",
   },
   {
-    label: "Sala Operativa",
-    href: "/admin/operativa",
-    icon: Radio,
-    description: "Drag & Drop Giornaliero",
+    label: "Ordine di Servizio",
+    href: "/admin/ods",
+    icon: Shield,
+    description: "Pianificazione Drag & Drop",
   },
   {
     label: "Ufficio Comando",

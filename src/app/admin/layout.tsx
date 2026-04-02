@@ -26,8 +26,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       />
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto bg-slate-100 relative">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-200/50 via-transparent to-transparent pointer-events-none"></div>
+      <main className="flex-1 overflow-y-auto bg-slate-950 relative">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/10 via-transparent to-transparent pointer-events-none"></div>
         {children}
       </main>
     </div>

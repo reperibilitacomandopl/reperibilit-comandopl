@@ -23,6 +23,7 @@ export default async function RisorsePage() {
         qualifica: true,
         gradoLivello: true,
         squadra: true,
+        servizio: true,
         massimale: true,
         defaultServiceCategoryId: true,
         defaultServiceTypeId: true,

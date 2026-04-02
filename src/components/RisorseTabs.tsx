@@ -4,9 +4,11 @@ import { useState } from "react"
 import { Users, Briefcase } from "lucide-react"
 import AnagraficaPanel from "./AnagraficaPanel"
 import ServicesSettings from "./ServicesSettings"
+import PatrolSettingsPanel from "./PatrolSettingsPanel"
+import { Shield } from "lucide-react"
 
 export default function RisorseTabs({ agents, rotationGroups, categories }: any) {
-  const [activeTab, setActiveTab] = useState<"personale" | "servizi">("personale")
+  const [activeTab, setActiveTab] = useState<"personale" | "servizi" | "pattuglie">("personale")
 
   return (
     <div className="space-y-6">
@@ -34,6 +36,15 @@ export default function RisorseTabs({ agents, rotationGroups, categories }: any)
           <Briefcase size={18} />
           Servizi e Autoparco
         </button>
+        <button
+          onClick={() => setActiveTab("pattuglie")}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+            activeTab === "pattuglie" ? "bg-white text-indigo-600 shadow-sm shadow-indigo-100" : "text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          <Shield size={18} />
+          Pattuglie Fisse
+        </button>
       </div>
 
       <div className="mt-4">
@@ -46,6 +57,12 @@ export default function RisorseTabs({ agents, rotationGroups, categories }: any)
         {activeTab === "servizi" && (
           <div className="animate-in fade-in duration-500 bg-white p-6 md:p-10 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50">
             <ServicesSettings />
+          </div>
+        )}
+
+        {activeTab === "pattuglie" && (
+          <div className="animate-in fade-in duration-500 bg-white p-6 md:p-10 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-indigo-100/50">
+            <PatrolSettingsPanel />
           </div>
         )}
       </div>

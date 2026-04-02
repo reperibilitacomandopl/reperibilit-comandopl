@@ -7,10 +7,10 @@ import SettingsPanel from "./SettingsPanel"
 import ServiceManagerPanel from "./ServiceManagerPanel"
 import ServiceOrderDashboard from "./ServiceOrderDashboard"
 import * as XLSX from "xlsx"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
-import { isHoliday } from "@/utils/holidays"
-import { isMalattia, isMattina, isPomeriggio, isAssenza } from "@/utils/shift-logic"
+import { isHoliday } from "../utils/holidays"
+import { isMalattia, isMattina, isPomeriggio, isAssenza } from "../utils/shift-logic"
 
 type EditingCell = { agentId: string; agentName: string; day: number; currentType: string; warningMsg?: string } | null
 
@@ -81,6 +81,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+  const pathname = usePathname()
 
   const handleToggleUff = async (userId: string) => {
     setIsTogglingUff(userId)
@@ -466,7 +467,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
         
         setUploadStatus(`Trovati ${shiftsData.length} turni. Invio in corso...`)
         
-        const response = await fetch('/api/admin/shifts', {
+        const response = await fetch('/api/admin/shifts/import', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ shifts: shiftsData, importType: type })
@@ -954,7 +955,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
           <div className="flex items-center gap-4">
             <div className="flex bg-slate-200/50 rounded-xl p-1.5 border border-slate-300/50 shadow-sm items-center">
               <Link 
-                href={`/?month=${prevMonth}&year=${prevYear}${currentView ? `&view=${currentView}` : ''}`} 
+                href={`${pathname}?month=${prevMonth}&year=${prevYear}${currentView ? `&view=${currentView}` : ''}`} 
                 className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-white rounded-lg transition-all"
                 title="Mese precedente"
               >
@@ -966,7 +967,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                   value={currentMonth}
                   onChange={(e) => {
                     const m = e.target.value
-                    router.push(`/?month=${m}&year=${currentYear}${currentView ? `&view=${currentView}` : ''}`)
+                    router.push(`${pathname}?month=${m}&year=${currentYear}${currentView ? `&view=${currentView}` : ''}`)
                   }}
                   className="bg-transparent border-none text-sm font-black text-slate-800 focus:ring-0 cursor-pointer uppercase py-1"
                 >
@@ -978,7 +979,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                   value={currentYear}
                   onChange={(e) => {
                     const y = e.target.value
-                    router.push(`/?month=${currentMonth}&year=${y}${currentView ? `&view=${currentView}` : ''}`)
+                    router.push(`${pathname}?month=${currentMonth}&year=${y}${currentView ? `&view=${currentView}` : ''}`)
                   }}
                   className="bg-transparent border-none text-sm font-black text-slate-500 focus:ring-0 cursor-pointer py-1"
                 >
@@ -989,7 +990,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
               </div>
 
               <Link 
-                href={`/?month=${nextMonth}&year=${nextYear}${currentView ? `&view=${currentView}` : ''}`} 
+                href={`${pathname}?month=${nextMonth}&year=${nextYear}${currentView ? `&view=${currentView}` : ''}`} 
                 className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-white rounded-lg transition-all"
                 title="Mese successivo"
               >

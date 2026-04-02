@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import toast from "react-hot-toast"
-import { CalendarDays, AlertCircle, FileDown, Clock, ShieldCheck, Plus, ChevronLeft, ChevronRight, ListChecks, X, Smartphone, Monitor, Globe, Trash2, Search, BookOpen, Send, Phone, RefreshCw, ChevronDown } from "lucide-react"
+import { CalendarDays, AlertCircle, FileDown, Clock, ShieldCheck, Plus, ChevronLeft, ChevronRight, ListChecks, X, Smartphone, Monitor, Globe, Trash2, Search, BookOpen, Send, Phone, RefreshCw, ChevronDown, CheckCircle2, Car, MapPin, Users } from "lucide-react"
 import { isHoliday } from "@/utils/holidays"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -148,6 +148,9 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   const [targetColleagueId, setTargetColleagueId] = useState('')
   const [swapLoading, setSwapLoading] = useState(false)
   
+  // Daily OdS State
+  const [myOds, setMyOds] = useState<any>(null)
+
   const myShifts = shifts.filter(s => s.userId === currentUser.id)
 
   // Fetch Duty Team if Officer
@@ -181,6 +184,11 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   useEffect(() => {
     fetchDutyTeam()
     fetchSwaps()
+    fetch('/api/my-ods').then(res => res.json()).then(data => {
+      if(data.success && data.shift && (data.shift.timeRange || data.shift.serviceCategoryId)) {
+        setMyOds({ shift: data.shift, partners: data.partners })
+      }
+    }).catch(()=>{})
   }, [fetchDutyTeam, fetchSwaps])
 
   const handleRespondSwap = async (id: string, status: "ACCEPTED" | "REJECTED") => {
@@ -616,6 +624,57 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
           </div>
         </div>
       </div>
+
+      {/* DAILY ODS WIDGET (Il mio servizio per oggi) */}
+      {myOds && (
+        <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl shadow-blue-100/30 overflow-hidden animate-in zoom-in-95 duration-500">
+           <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                 <div className="p-3 bg-blue-100 rounded-2xl text-blue-600"><CheckCircle2 size={24}/></div>
+                 <div>
+                    <h3 className="font-black text-xl text-slate-900">Il Tuo Ordine di Servizio (Oggi)</h3>
+                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Turno Assegnato: {myOds.shift.timeRange || myOds.shift.type}</p>
+                 </div>
+              </div>
+           </div>
+           <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+              
+              <div className="flex flex-col gap-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                 <div className="flex items-center gap-2 text-slate-400 font-bold uppercase text-[10px] tracking-widest mb-1"><MapPin size={14}/> Servizio / Zona</div>
+                 <h4 className="font-black text-slate-800 text-lg leading-tight">
+                    {myOds.shift.serviceCategory?.name || "Non specificato"}
+                    {myOds.shift.serviceType && <span className="block text-blue-600 text-sm mt-1">{myOds.shift.serviceType.name}</span>}
+                 </h4>
+                 {myOds.shift.serviceDetails && <p className="text-sm font-medium text-slate-600 italic bg-white p-2 rounded-xl mt-2 border border-slate-200">{myOds.shift.serviceDetails}</p>}
+              </div>
+
+              <div className="flex flex-col gap-2 p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                 <div className="flex items-center gap-2 text-emerald-600 font-bold uppercase text-[10px] tracking-widest mb-1"><Car size={14}/> Auto Assegnata</div>
+                 {myOds.shift.vehicle ? (
+                   <h4 className="font-black text-emerald-800 text-lg leading-tight">{myOds.shift.vehicle.name}</h4>
+                 ) : (
+                   <span className="font-bold text-emerald-700/60 text-sm">Nessun veicolo (A piedi o Centrale)</span>
+                 )}
+              </div>
+
+              <div className="flex flex-col gap-2 p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                 <div className="flex items-center gap-2 text-amber-600 font-bold uppercase text-[10px] tracking-widest mb-1"><Users size={14}/> Colleghi di Pattuglia</div>
+                 {myOds.partners?.length > 0 ? (
+                   <div className="space-y-2">
+                     {myOds.partners.map((p:any) => (
+                       <div key={p.id} className="font-black text-amber-900 bg-white px-3 py-2 border border-amber-200 rounded-xl flex items-center justify-between">
+                         {p.user.name} <span className="text-[10px] font-bold text-amber-600">Matr. {p.user.matricola}</span>
+                       </div>
+                     ))}
+                   </div>
+                 ) : (
+                   <span className="font-bold text-amber-700/60 text-sm mt-1">Lavori in autonomia</span>
+                 )}
+              </div>
+
+           </div>
+        </div>
+      )}
 
       {/* Calendar Section */}
       <div className="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden">

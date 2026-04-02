@@ -12,7 +12,7 @@ export async function PUT(req: Request) {
 
   try {
     const body = await req.json()
-    const { userId, email, phone, name, matricola, squadra, massimale, action, newPassword, defaultServiceCategoryId, defaultServiceTypeId, rotationGroupId } = body
+    const { userId, email, phone, name, matricola, squadra, servizio, massimale, action, newPassword, defaultServiceCategoryId, defaultServiceTypeId, rotationGroupId } = body
     
     if (!userId) return NextResponse.json({ error: "Missing userId" }, { status: 400 })
 
@@ -45,6 +45,7 @@ export async function PUT(req: Request) {
         name: name || undefined,
         matricola: matricola || undefined,
         squadra: squadra === undefined ? undefined : (squadra || null),
+        servizio: servizio === undefined ? undefined : (servizio || null),
         massimale: massimale !== undefined ? parseInt(massimale, 10) : undefined,
         defaultServiceCategoryId: defaultServiceCategoryId === undefined ? undefined : (defaultServiceCategoryId || null),
         defaultServiceTypeId: defaultServiceTypeId === undefined ? undefined : (defaultServiceTypeId || null),
@@ -56,6 +57,7 @@ export async function PUT(req: Request) {
     if (name) changes.push(`Nome: ${name}`)
     if (matricola) changes.push(`Matricola: ${matricola}`)
     if (squadra !== undefined) changes.push(`Squadra: ${squadra || 'Nessuna'}`)
+    if (servizio !== undefined) changes.push(`Servizio: ${servizio || 'Nessuno'}`)
     if (massimale !== undefined) changes.push(`Massimale: ${massimale}`)
     if (email !== undefined) changes.push(`Email: ${email || 'Rossa'}`)
     if (phone !== undefined) changes.push(`Phone: ${phone || 'Rossa'}`)
