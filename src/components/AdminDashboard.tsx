@@ -14,7 +14,17 @@ import { isMalattia, isMattina, isPomeriggio, isAssenza } from "@/utils/shift-lo
 
 type EditingCell = { agentId: string; agentName: string; day: number; currentType: string; warningMsg?: string } | null
 
-export default function AdminDashboard({ allAgents, shifts, currentYear, currentMonth, isPublished, currentView, settings }: { allAgents: { id: string, name: string, matricola: string, isUfficiale: boolean, email: string | null, phone: string | null, qualifica: string | null, gradoLivello: number, squadra: string | null, massimale: number }[], shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], currentYear: number, currentMonth: number, isPublished: boolean, currentView?: string, settings?: { massimaleAgente: number, massimaleUfficiale: number } }) {
+export default function AdminDashboard({ allAgents, shifts, currentYear, currentMonth, isPublished, currentView, settings, rotationGroups, categories }: { 
+  allAgents: { id: string, name: string, matricola: string, isUfficiale: boolean, email: string | null, phone: string | null, qualifica: string | null, gradoLivello: number, squadra: string | null, massimale: number, defaultServiceCategoryId?: string | null, defaultServiceTypeId?: string | null, rotationGroupId?: string | null }[], 
+  shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], 
+  currentYear: number, 
+  currentMonth: number, 
+  isPublished: boolean, 
+  currentView?: string, 
+  settings?: { massimaleAgente: number, massimaleUfficiale: number },
+  rotationGroups?: any[],
+  categories?: any[]
+}) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
   const [uploadStatus, setUploadStatus] = useState("")
@@ -31,6 +41,9 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
   const [tempName, setTempName] = useState("")
   const [tempMatricola, setTempMatricola] = useState("")
   const [tempSquadra, setTempSquadra] = useState("")
+  const [tempRotationGroup, setTempRotationGroup] = useState("")
+  const [tempDefaultCategoryId, setTempDefaultCategoryId] = useState("")
+  const [tempDefaultTypeId, setTempDefaultTypeId] = useState("")
   const [tempMassimale, setTempMassimale] = useState(8)
   const [newPass, setNewPass] = useState("")
   const [showAddUser, setShowAddUser] = useState(false)
@@ -1272,8 +1285,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
                           return (
                             <td 
-                              key={di.day} 
-                              className={`px-0 py-1.5 text-center font-black text-sm cursor-help hover:opacity-80 transition-opacity ${isGood ? "bg-emerald-100 text-emerald-700" : isLow ? "bg-amber-100 text-amber-700" : isBad ? "bg-red-100 text-red-700" : ""}`}
+                              key={di.isNextMonth ? `next-tot-1` : `tot-${di.day}`} 
+                              className={`px-0 py-1.5 text-center font-black text-sm cursor-help hover:opacity-80 transition-opacity ${di.isNextMonth ? "opacity-30" : ""} ${isGood ? "bg-emerald-100 text-emerald-700" : isLow ? "bg-amber-100 text-amber-700" : isBad ? "bg-red-100 text-red-700" : ""}`}
                               title={agentsOnCall ? `In turno il ${di.day}:\n${agentsOnCall}` : "Nessuno in turno"}
                             >
                               {count || ""}
@@ -1315,8 +1328,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
                           return (
                             <td 
-                              key={`uff-${di.day}`} 
-                              className={`px-0 py-1.5 text-center font-black text-xs cursor-help ${
+                              key={di.isNextMonth ? `next-uff-1` : `uff-${di.day}`} 
+                              className={`px-0 py-1.5 text-center font-black text-xs cursor-help ${di.isNextMonth ? "opacity-30" : ""} ${
                                 isZero 
                                   ? (substituteInfo 
                                     ? "bg-yellow-400 text-yellow-900 shadow-[0_0_10px_rgba(250,204,21,0.5)_inset]" 
@@ -1568,14 +1581,40 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                         </td>
                         <td className="px-6 py-4">
                           {editingAgent === agent.id ? (
-                            <>
-                              <label className="block text-[9px] font-black text-amber-700 uppercase mb-1 tracking-tighter">Squadra</label>
-                              <input type="text" value={tempSquadra} onChange={e => setTempSquadra(e.target.value.toUpperCase())} className="border-2 border-amber-300 rounded-lg px-2 py-1.5 w-32 text-sm font-black text-black outline-none focus:border-amber-500" />
-                            </>
+                            <div className="flex flex-col gap-2 min-w-[200px]">
+                              <div>
+                                <label className="block text-[9px] font-black text-amber-700 uppercase mb-1 tracking-tighter">Turnazione Base</label>
+                                <select value={tempRotationGroup} onChange={e => setTempRotationGroup(e.target.value)} className="border-2 border-amber-300 rounded-lg px-2 py-1.5 w-full text-xs font-black text-black outline-none focus:border-amber-500 bg-white">
+                                  <option value="">(Libero) Testo: {agent.squadra || ""}</option>
+                                  {rotationGroups?.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[9px] font-black text-amber-700 uppercase mb-1 tracking-tighter">Servizio di Default</label>
+                                <select value={tempDefaultCategoryId} onChange={e => { setTempDefaultCategoryId(e.target.value); setTempDefaultTypeId(""); }} className="border-2 border-amber-300 rounded-lg px-2 py-1.5 w-full text-[10px] font-black text-black mb-1 outline-none bg-white">
+                                  <option value="">Nessun Servizio</option>
+                                  {categories?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                                {tempDefaultCategoryId && (
+                                  <select value={tempDefaultTypeId} onChange={e => setTempDefaultTypeId(e.target.value)} className="border-2 border-amber-300 rounded-lg px-2 py-1.5 w-full text-[10px] font-black text-blue-700 outline-none bg-white">
+                                    <option value="">Generico</option>
+                                    {categories?.find(c => c.id === tempDefaultCategoryId)?.types.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                  </select>
+                                )}
+                              </div>
+                            </div>
                           ) : (
-                            <span className="text-[10px] bg-slate-100 text-black font-black px-2.5 py-1.5 rounded-lg tracking-tight uppercase border border-slate-300 shadow-sm">
-                              {agent.squadra || "Senza Squadra"}
-                            </span>
+                            <div className="flex flex-col gap-1 items-start">
+                              <span className="text-[10px] bg-slate-100 text-black font-black px-2.5 py-1.5 rounded-lg tracking-tight uppercase border border-slate-300 shadow-sm">
+                                {agent.rotationGroupId ? (rotationGroups?.find(g => g.id === agent.rotationGroupId)?.name || "Ignoto") : (agent.squadra || "Senza Squadra / Libero")}
+                              </span>
+                              {(agent.defaultServiceCategoryId) && (
+                                <span className="text-[9px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-200">
+                                   {categories?.find(c => c.id === agent.defaultServiceCategoryId)?.name}
+                                   {agent.defaultServiceTypeId && ` ▶ ${categories?.find(c => c.id === agent.defaultServiceCategoryId)?.types.find((t: any) => t.id === agent.defaultServiceTypeId)?.name}`}
+                                </span>
+                              )}
+                            </div>
                           )}
                         </td>
                         <td className="px-6 py-4 font-black text-slate-800 text-xs">
@@ -1637,7 +1676,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                 const res = await fetch('/api/admin/users', {
                                   method: 'PUT',
                                   headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ userId: agent.id, name: tempName, matricola: tempMatricola, squadra: tempSquadra, massimale: tempMassimale, email: tempEmail, phone: tempPhone })
+                                  body: JSON.stringify({ userId: agent.id, name: tempName, matricola: tempMatricola, squadra: tempSquadra, rotationGroupId: tempRotationGroup || null, defaultServiceCategoryId: tempDefaultCategoryId || null, defaultServiceTypeId: tempDefaultTypeId || null, massimale: tempMassimale, email: tempEmail, phone: tempPhone })
                                 })
                                 if (res.ok) {
                                   setEditingAgent(null)
@@ -1655,6 +1694,9 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                   setTempName(agent.name)
                                   setTempMatricola(agent.matricola)
                                   setTempSquadra(agent.squadra || "")
+                                  setTempRotationGroup(agent.rotationGroupId || "")
+                                  setTempDefaultCategoryId(agent.defaultServiceCategoryId || "")
+                                  setTempDefaultTypeId(agent.defaultServiceTypeId || "")
                                   setTempMassimale(agent.massimale)
                                   setTempEmail(agent.email || "")
                                   setTempPhone(agent.phone || "")

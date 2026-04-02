@@ -12,7 +12,7 @@ export async function PUT(req: Request) {
 
   try {
     const body = await req.json()
-    const { userId, email, phone, name, matricola, squadra, massimale, action, newPassword } = body
+    const { userId, email, phone, name, matricola, squadra, massimale, action, newPassword, defaultServiceCategoryId, defaultServiceTypeId, rotationGroupId } = body
     
     if (!userId) return NextResponse.json({ error: "Missing userId" }, { status: 400 })
 
@@ -45,7 +45,10 @@ export async function PUT(req: Request) {
         name: name || undefined,
         matricola: matricola || undefined,
         squadra: squadra === undefined ? undefined : (squadra || null),
-        massimale: massimale !== undefined ? parseInt(massimale, 10) : undefined
+        massimale: massimale !== undefined ? parseInt(massimale, 10) : undefined,
+        defaultServiceCategoryId: defaultServiceCategoryId === undefined ? undefined : (defaultServiceCategoryId || null),
+        defaultServiceTypeId: defaultServiceTypeId === undefined ? undefined : (defaultServiceTypeId || null),
+        rotationGroupId: rotationGroupId === undefined ? undefined : (rotationGroupId || null)
       }
     })
 

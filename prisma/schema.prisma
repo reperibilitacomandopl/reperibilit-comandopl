@@ -26,6 +26,10 @@ model User {
   // Campi per Turnazione Dinamica
   rotationGroupId String?
   rotationGroup   RotationGroup? @relation(fields: [rotationGroupId], references: [id], onDelete: SetNull)
+  defaultServiceCategoryId String?
+  defaultServiceCategory   ServiceCategory? @relation("DefaultCategory", fields: [defaultServiceCategoryId], references: [id], onDelete: SetNull)
+  defaultServiceTypeId     String?
+  defaultServiceType       ServiceType? @relation("DefaultType", fields: [defaultServiceTypeId], references: [id], onDelete: SetNull)
   fixedRestDay    Int?           // 0=Dom, 1=Lun, 2=Mar, 3=Mer, 4=Gio, 5=Ven, 6=Sab
   
   forcePasswordChange Boolean @default(true)
@@ -86,6 +90,7 @@ model ServiceCategory {
   orderIndex Int          @default(0)
   types     ServiceType[]
   shifts    Shift[]
+  defaultUsers User[] @relation("DefaultCategory")
 }
 
 model ServiceType {
@@ -94,6 +99,7 @@ model ServiceType {
   category    ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   name        String          // Es. "Piantone", "Centro Storico"
   shifts      Shift[]
+  defaultUsers User[] @relation("DefaultType")
 
   @@unique([categoryId, name])
 }

@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, User, Shield, Car, Save, Settings } from "lucide-react"
+import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, User, Shield, Car, Printer, RefreshCw, GripVertical, Info, Clock, AlertTriangle } from "lucide-react"
 import toast from "react-hot-toast"
 import Link from "next/link"
+import { isAssenza, formatShiftCode } from "@/utils/shift-logic"
 
 export default function ServiceManagerPanel({ onClose }: { onClose?: () => void }) {
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -41,12 +42,17 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
     setCurrentDate(next)
   }
 
-  const assignService = async (userId: string, targetTypeString: string, categoryId: string | null = null, typeId: string | null = null) => {
-    // Aggiorna shift per l'utente, preservando eventuali altri dati. 
-    // TargetTypeString è il "macro turno" es. M7, P14 o NULL (se si vuole pulire)
+  const assignService = async (userId: string, targetTypeString: string, categoryId: string | null = null, typeId: string | null = null, vehicleId: string | null = null) => {
     const y = currentDate.getFullYear()
     const m = String(currentDate.getMonth() + 1).padStart(2, "0")
     const d = String(currentDate.getDate()).padStart(2, "0")
+
+    // Trova i valori esistenti per preservare vehicleId se non stiamo cambiando macro categoria (M7/P14)
+    const existingObj = shifts.find(s => s.userId === userId)
+    let newVehicleId = vehicleId;
+    if(vehicleId === undefined && existingObj?.vehicleId) {
+        newVehicleId = existingObj.vehicleId;
+    }
 
     try {
       const res = await fetch("/api/admin/shifts/daily", {
@@ -57,11 +63,11 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
           date: `${y}-${m}-${d}`,
           type: targetTypeString,
           serviceCategoryId: categoryId,
-          serviceTypeId: typeId
+          serviceTypeId: typeId,
+          vehicleId: newVehicleId
         })
       })
       if (!res.ok) throw new Error("Errore salvataggio")
-      toast.success("Servizio assegnato!")
       loadData()
     } catch (e) {
       console.error(e)
@@ -70,261 +76,283 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
   }
 
   // --- Drag and Drop logic
-  const handleDragStart = (e: React.DragEvent, userId: string, sourceGroup: string) => {
+  const handleDragStart = (e: React.DragEvent, userId: string) => {
     e.dataTransfer.setData("userId", userId)
-    e.dataTransfer.setData("source", sourceGroup) // Es. "unassigned", o l'id del box
   }
-
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault() }
 
-  const handleDrop = (e: React.DragEvent, targetBaseType: string, targetCatId: string | null, targetTypeId: string | null) => {
+  const handleDropToService = (e: React.DragEvent, shiftTypeRange: string, catId: string, typeId: string) => {
     e.preventDefault()
     const userId = e.dataTransfer.getData("userId")
     if (userId) {
-      assignService(userId, targetBaseType, targetCatId, targetTypeId)
+      const userShift = shifts.find(s => s.userId === userId)
+      let finalType = shiftTypeRange === "M" ? "M7" : shiftTypeRange === "P" ? "P14" : shiftTypeRange;
+      
+      // Preserve original shift code if it aligns with the macro-phase (M vs P) to preserve 7,30 or 15,30
+      if (userShift && userShift.type.startsWith(shiftTypeRange) && userShift.type !== "M" && userShift.type !== "P") {
+          finalType = userShift.type;
+      }
+
+      assignService(userId, finalType, catId, typeId)
+      toast.success("Agente riassegnato al servizio")
     }
   }
 
-  const handleRemoveService = (userId: string) => {
-    assignService(userId, "M7", null, null) // Da capire se resettare a un turno base
+  const handleRemoveService = (userId: string, originalTimeRange: string) => {
+    assignService(userId, originalTimeRange, null, null, null)
   }
 
-  // Costruiamo le liste per la UI:
-  // 1. Personale Indisponibile (Ferie, Malattia, Riposo) / Assenti
+  // Identificazione stati agenti
   const indisponibili = users.filter(u => 
-    absences.some(a => a.userId === u.id) || 
-    shifts.some(s => s.userId === u.id && ["F", "M", "RR", "RP", "104"].includes(s.type))
+    shifts.some(s => s.userId === u.id && isAssenza(s.type))
   )
 
-  // 2. Personale Disponibile (Senza Servizio specifico assegnato ma magari con turno base M7/P14)
-  const disponibili = users.filter(u => {
+  const disponibiliNonAssegnati = users.filter(u => {
     if (indisponibili.includes(u)) return false
     const shift = shifts.find(s => s.userId === u.id)
-    if (!shift) return true // Turno non definito
-    if (shift.serviceTypeId) return false // Ha già un servizio assegnato
+    if (!shift) return true // Nessun turno
+    if (shift.serviceTypeId) return false // Già in un servizio
     return true
+  }).sort((a,b) => {
+      // Ordiniamo prima quelli he hanno "M7" o "P14" (turni generici ma senza destinazione)
+      const sa = shifts.find(s => s.userId === a.id)?.type || ""
+      const sb = shifts.find(s => s.userId === b.id)?.type || ""
+      return sa.localeCompare(sb)
   })
 
-  // 3. Servizi Assegnati raggruppati. E.g. per ogni Macro Turno (M7, M8, P14) -> Categorie -> Tipi
+  // Funzione Rendering Blocco Fase (Mattino / Pomeriggio)
+  const renderFaseBlocco = (titolo: string, filtroTurni: string[]) => {
+      return (
+        <div className="flex-1 flex flex-col min-w-[350px]">
+            <div className="bg-slate-900 border-b-2 border-blue-600 px-4 py-2 flex items-center justify-between sticky top-0 z-10 shadow-lg">
+                <span className="font-black text-slate-100 tracking-widest text-sm uppercase">{titolo}</span>
+                <span className="text-[10px] text-blue-400 font-bold bg-slate-800 px-2 py-0.5 rounded-full border border-slate-700">
+                   {shifts.filter(s => filtroTurni.some(t => s.type.startsWith(t)) && s.serviceTypeId).length} In Servizio
+                </span>
+            </div>
+            
+            <div className="flex-1 bg-slate-100 p-3 space-y-4 overflow-y-auto custom-scrollbar relative">
+                {categories.length === 0 && <div className="text-center text-slate-400 text-xs italic mt-10">Nessuna Categoria Servizio Rilevata</div>}
+                
+                {categories.map(cat => (
+                    <div key={cat.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div className="bg-slate-800 text-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider flex items-center justify-between">
+                            <span className="text-slate-200">{cat.name}</span>
+                        </div>
+                        
+                        <div className="p-2 space-y-2">
+                            {cat.types.map((tipo: any) => {
+                                // Trova agenti assegnati a questo Tipo e a questi Filtri (M P) e NON indisponibili
+                                const agentiInQuestoServizio = shifts.filter(s => {
+                                    if(indisponibili.some(indisp => indisp.id === s.userId)) return false;
+                                    return s.serviceTypeId === tipo.id && filtroTurni.some(t => s.type.startsWith(t));
+                                })
+                                
+                                return (
+                                <div key={tipo.id} className="border border-slate-200 rounded-lg overflow-hidden transition-all group-hover:border-blue-400">
+                                    <div 
+                                        onDragOver={handleDragOver} 
+                                        onDrop={e => handleDropToService(e, filtroTurni[0], cat.id, tipo.id)}
+                                        className="bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 border-b border-slate-200 flex justify-between items-center"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Shield size={14} className="text-blue-500" />
+                                            {tipo.name}
+                                        </div>
+                                        <span className="text-[10px] text-slate-400 italic">Trascina Agente Qui</span>
+                                    </div>
+                                    
+                                    <div className="bg-white divide-y divide-slate-100">
+                                        {agentiInQuestoServizio.map(shiftAssegnato => {
+                                            const agente = users.find(u => u.id === shiftAssegnato.userId)
+                                            if(!agente) return null
+                                            const timeRangeStr = shiftAssegnato.timeRange || (shiftAssegnato.type==="M7" ? "07:00-13:00" : shiftAssegnato.type==="M8" ? "08:00-14:00" : "14:00-20:00")
+
+                                            return (
+                                                <div key={agente.id} className="p-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-slate-50 transition-colors">
+                                                    <div className="flex items-center gap-3">
+                                                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)]"></div>
+                                                       <div className="flex flex-col">
+                                                           <span className="text-xs font-black text-slate-800 tracking-wide uppercase">{agente.name}</span>
+                                                           <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Clock size={10}/> {timeRangeStr}</span>
+                                                       </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        {/* Assegnazione Auto Veloce */}
+                                                        <select 
+                                                            value={shiftAssegnato.vehicleId || ""}
+                                                            onChange={(e) => assignService(agente.id, shiftAssegnato.type, cat.id, tipo.id, e.target.value)}
+                                                            className="text-[10px] bg-slate-100 font-bold px-2 py-1.5 rounded-md border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-700 max-w-[120px] truncate"
+                                                        >
+                                                            <option value="">+ Veicolo</option>
+                                                            {vehicles.map(v => (
+                                                                <option key={v.id} value={v.id}>{v.name}</option>
+                                                            ))}
+                                                        </select>
+
+                                                        <button 
+                                                            onClick={() => handleRemoveService(agente.id, shiftAssegnato.type)} 
+                                                            className="text-slate-300 hover:text-red-500 p-1.5 bg-slate-50 hover:bg-red-50 rounded-md transition-colors"
+                                                            title="Sgancia da questo servizio"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                        {agentiInQuestoServizio.length === 0 && (
+                                            <div className="p-3 text-center text-[10px] uppercase font-bold tracking-widest text-slate-300 bg-slate-50 border-t border-dashed border-slate-200">
+                                                Nessun equipaggio
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+      )
+  }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-32px)] sm:h-[calc(100vh-2rem)] bg-slate-50 relative animate-in fade-in duration-300">
-      {/* Header a contrasto alto */}
-      <div className="bg-[#1e293b] text-white p-3 flex flex-col sm:flex-row sm:items-center justify-between shrink-0 shadow-md z-10">
-        <div className="flex items-center gap-3 mb-2 sm:mb-0">
-          <CalendarIcon className="text-blue-400" />
-          <h2 className="text-xl font-bold uppercase tracking-wide">Gestione Operativa</h2>
+    <div className="flex flex-col h-full bg-slate-900 overflow-hidden relative font-sans">
+      
+      {/* HEADER COMMAND CENTER */}
+      <div className="bg-[#0f172a] text-slate-200 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between shrink-0 border-b border-slate-800 z-20 shadow-2xl">
+        <div className="flex items-center gap-4 mb-3 sm:mb-0">
+          <div className="bg-blue-600 p-2 rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.4)]">
+             <CalendarIcon className="text-white" size={24} />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black tracking-wider text-white">SALA OPERATIVA</h1>
+            <p className="text-[10px] sm:text-xs text-slate-400 font-bold tracking-widest uppercase">Pianificazione OdS e Pattuglie</p>
+          </div>
         </div>
         
-        <div className="flex items-center bg-slate-800 border border-slate-700 rounded-lg p-1 shadow-inner">
-          <button onClick={() => changeDate(-1)} className="p-2 hover:bg-slate-700 rounded transition-colors"><ChevronLeft size={20}/></button>
-          <div className="px-6 font-bold tracking-wide text-sm sm:text-base">
-            {currentDate.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }).toUpperCase()}
-          </div>
-          <button onClick={() => changeDate(1)} className="p-2 hover:bg-slate-700 rounded transition-colors"><ChevronRight size={20}/></button>
-        </div>
+        <div className="flex items-center gap-4">
+            <div className="flex items-center bg-slate-800 border border-slate-700 rounded-xl p-1 shadow-inner">
+                <button onClick={() => changeDate(-1)} className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-300 hover:text-white"><ChevronLeft size={20}/></button>
+                <div className="px-6 font-black tracking-widest uppercase text-white shadow-sm">
+                    {currentDate.toLocaleDateString("it-IT", { weekday: "short", day: "2-digit", month: "short" })}
+                </div>
+                <button onClick={() => changeDate(1)} className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-300 hover:text-white"><ChevronRight size={20}/></button>
+            </div>
 
-        <div className="hidden sm:block">
-          {onClose ? (
-            <button onClick={onClose} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-bold border border-slate-600">Chiudi</button>
-          ) : (
-            <Link href="/" className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-bold flex items-center gap-2 border border-slate-600">
-              <ChevronLeft size={16}/> Torna alla Dashboard
+            <Link href="/stampa-ods" className="hidden sm:flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm">
+               <Printer size={16}/> Stampa OdS
             </Link>
-          )}
+
+            {onClose && (
+                <button onClick={onClose} className="hidden sm:flex px-4 py-2.5 bg-slate-800 hover:bg-rose-900 border border-slate-700 text-slate-200 hover:text-rose-200 rounded-xl text-xs font-bold uppercase transition-all shadow-sm">
+                    Chiudi
+                </button>
+            )}
         </div>
       </div>
 
       {loading ? (
-        <div className="flex-1 flex items-center justify-center"><Loader2 size={40} className="animate-spin text-blue-600" /></div>
+        <div className="flex-1 flex flex-col items-center justify-center bg-slate-900 relative">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-slate-900 to-slate-900"></div>
+            <Loader2 size={48} className="animate-spin text-blue-500 mb-4 relative z-10" />
+            <p className="text-slate-400 font-bold uppercase tracking-widest text-xs relative z-10 animate-pulse">Sincronizzazione Database...</p>
+        </div>
       ) : (
-        <div className="flex-1 flex flex-col sm:flex-row overflow-hidden p-2 gap-2">
+        <div className="flex-1 flex overflow-hidden">
           
-          {/* COLONNA 1: PERSONALE (20-25%) */}
-          <div className="w-full sm:w-[22%] flex flex-col gap-2 min-w-[280px]">
-            {/* Indisponibili */}
-            <div className="flex-1 flex flex-col bg-white border-2 border-slate-200 shadow-sm overflow-hidden">
-              <div className="bg-[#2a4365] text-white p-2 font-bold flex items-center gap-2 shrink-0">
-                <User size={16} /> <span>Anagrafica ({disponibili.length})</span>
-              </div>
-              <div className="flex-1 overflow-y-auto p-1 custom-scrollbar">
-                
-                {/* Gruppo Indisponibili/Assenti - High Contrast */}
-                <div className="bg-[#1e293b] text-white text-xs font-bold p-1.5 uppercase mb-1 flex justify-between">
-                  <span>Non lavorativo</span>
-                </div>
-                <div className="space-y-0.5 mb-3">
-                  {indisponibili.map(u => {
-                    const ass = absences.find(a => a.userId === u.id)?.code
-                    const sh = shifts.find(s => s.userId === u.id)?.type
-                    const motive = ass || sh || "Assente"
-                    return (
-                      <div key={u.id} className="flex items-center justify-between px-2 py-1.5 bg-slate-100 border-b border-white opacity-80">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                          <span className="text-xs font-bold text-slate-700">{u.name.toUpperCase()}</span>
-                        </div>
-                        <span className="text-[10px] font-bold text-slate-500">{motive}</span>
-                      </div>
-                    )
-                  })}
-                  {indisponibili.length === 0 && <div className="text-xs text-slate-400 p-2 italic">Nessun assente</div>}
-                </div>
-
-                {/* Gruppo Disponibili */}
-                <div className="bg-[#2a4365] text-white text-xs font-bold p-1.5 uppercase mb-1 flex justify-between">
-                  <span>Personale Disponibile</span>
-                  <span className="bg-white text-[#2a4365] px-2 rounded-sm text-[10px]">DA ASSEGNARE</span>
-                </div>
-                <div className="space-y-0.5">
-                  {disponibili.map(u => {
-                    const s = shifts.find(sh => sh.userId === u.id)
-                    const badge = s?.type || "?"
-                    return (
-                      <div 
-                        key={u.id}
-                        draggable 
-                        onDragStart={(e) => handleDragStart(e, u.id, "avail")}
-                        className="flex items-center justify-between px-2 py-1.5 bg-white hover:bg-blue-50 border-b border-slate-100 cursor-grab active:cursor-grabbing transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                          <span className="text-xs font-bold text-slate-800">{u.name.toUpperCase()}</span>
-                        </div>
-                        <span className="text-[10px] font-bold px-1.5 bg-slate-200 text-slate-700 rounded">{badge}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* COLONNA 2: SERVIZI ASSEGNATI (55%) */}
-          <div className="flex-1 bg-white border border-slate-300 shadow-sm flex flex-col overflow-hidden">
-            <div className="bg-[#e2e8f0] border-b-2 border-slate-300 p-2 font-bold text-slate-800 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2"><Shield size={16} className="text-blue-700"/> Riepilogo Servizi Assegnati</div>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-2 bg-[#f8fafc] custom-scrollbar">
-              {["M7", "M8", "P14"].map(macro => {
-                 // Estrai soli i turni di questo macro che hanno un servizio
-                 const assignedShifts = shifts.filter(s => s.type === macro && s.serviceTypeId !== null)
-                 const title = macro === 'M7' ? 'Mattina 7 - M7' : macro === 'M8' ? 'Mattina 8 - M8' : 'Pomeriggio 14 - P14'
+          {/* SIDEBAR FORZE A DISPOSIZIONE */}
+          <div className="w-[280px] bg-slate-800/50 border-r border-slate-800 flex flex-col shrink-0">
+             <div className="p-4 border-b border-slate-800 bg-slate-900/50">
+                 <h3 className="text-slate-200 font-black text-sm uppercase tracking-widest flex items-center gap-2">
+                     <User size={16} className="text-blue-500"/> Forze in Campo
+                 </h3>
+                 <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mt-1">Trascina nei box a destra</p>
+             </div>
+             
+             <div className="flex-1 overflow-y-auto p-2 custom-scrollbar space-y-4">
                  
-                 // Raggruppa gli assegnati per tipo servizio
-                 const groupedByType = categories.flatMap(cat => cat.types).map(type => {
-                   return {
-                     type,
-                     catId: categories.find(c => c.types.some((t: any) => t.id === type.id))?.id,
-                     users: assignedShifts.filter(s => s.serviceTypeId === type.id)
-                   }
-                 }).filter(g => g.users.length > 0) // Mostra solo tipi con utenti!
+                 {/* Disabili / Assenti */}
+                 <div>
+                     <div className="flex items-center gap-2 px-2 mb-2">
+                         <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
+                         <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Fuori Servizio ({indisponibili.length})</span>
+                     </div>
+                     <div className="space-y-1">
+                         {indisponibili.map(u => {
+                            const motive = absences.find(a => a.userId === u.id)?.code || shifts.find(s => s.userId === u.id)?.type || "NON DISP."
+                            return (
+                                <div key={u.id} className="bg-slate-800/40 border border-slate-700/50 rounded-lg p-2 flex justify-between items-center opacity-70">
+                                    <span className="text-xs font-bold text-slate-400 uppercase">{u.name}</span>
+                                    <span className="text-[10px] font-black text-rose-400 bg-rose-400/10 px-1.5 rounded">{motive}</span>
+                                </div>
+                            )
+                         })}
+                     </div>
+                 </div>
 
-                 return (
-                   <div key={macro} className="mb-4 bg-white border border-slate-300 shadow-sm pb-1">
-                     <div className="bg-[#1e293b] text-white p-1.5 text-sm font-bold uppercase tracking-wider pl-3">
-                       {title}
+                 {/* Disponibili Da Piazzare */}
+                 <div>
+                     <div className="flex items-center gap-2 px-2 mb-2">
+                         <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]"></div>
+                         <span className="text-[10px] text-slate-300 font-black uppercase tracking-wider">A Disposizione ({disponibiliNonAssegnati.length})</span>
                      </div>
-                     
-                     <div className="p-1 space-y-1">
-                       {groupedByType.length === 0 ? (
-                         <div className="text-xs text-slate-400 p-3 italic text-center">Nessun servizio assegnato.</div>
-                       ) : (
-                         groupedByType.map(group => (
-                           <div key={group.type.id} className="mb-2">
-                             {/* Intestazione del Servizio con onDrop (puoi trascinare altri qui dentro) */}
-                             <div 
-                               onDragEnter={handleDragOver} onDragOver={handleDragOver} onDrop={e => handleDrop(e, macro, group.catId || null, group.type.id)}
-                               className="bg-[#f1f5f9] border-l-4 border-green-500 font-bold px-2 py-1 flex items-center justify-between"
-                             >
-                               <span className="text-[#2a4365] text-xs uppercase">{group.type.name}</span>
-                               <span className="text-[10px] text-slate-400 mr-2 opacity-0 hover:opacity-100 transition-opacity">(Dropzone)</span>
+                     <div className="space-y-1.5">
+                         {disponibiliNonAssegnati.map(u => {
+                            const baseShift = shifts.find(s => s.userId === u.id)?.type || "?"
+                            return (
+                                <div 
+                                    key={u.id} 
+                                    draggable 
+                                    onDragStart={e => handleDragStart(e, u.id)}
+                                    className="bg-slate-800 border border-slate-700 rounded-lg p-2.5 flex justify-between items-center cursor-grab active:cursor-grabbing hover:border-blue-500 transition-colors hover:shadow-[0_0_10px_rgba(59,130,246,0.2)] group"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <GripVertical size={14} className="text-slate-600 group-hover:text-blue-400"/>
+                                        <span className="text-xs font-bold text-slate-200 uppercase">{u.name}</span>
+                                    </div>
+                                    <span className={`text-[10px] font-black px-1.5 rounded ${baseShift.startsWith("M") ? 'bg-blue-900/50 text-blue-300 border border-blue-800' : baseShift.startsWith("P") ? 'bg-yellow-900/50 text-yellow-300 border border-yellow-800' : 'bg-slate-700 text-slate-400 border border-slate-600'}`}>
+                                        {baseShift}
+                                    </span>
+                                </div>
+                            )
+                         })}
+                         {disponibiliNonAssegnati.length === 0 && (
+                             <div className="text-center p-4 bg-emerald-900/20 border border-emerald-900/30 rounded-lg">
+                                 <CheckCircle size={24} className="text-emerald-500 mx-auto mb-2 opacity-50"/>
+                                 <p className="text-[10px] text-emerald-400 font-black tracking-widest uppercase opacity-70">Tutti operativi</p>
                              </div>
-                             
-                             {/* Lista Agenti (Stripe Azure) */}
-                             {group.users.map((s, i) => (
-                               <div key={s.id} className={`flex items-center justify-between px-3 py-1.5 text-xs font-bold ${i % 2 === 0 ? 'bg-[#e0f2fe]' : 'bg-white'} border-b border-sky-100 group`}>
-                                 <div className="flex items-center gap-2">
-                                   <User size={14} className="text-blue-600" />
-                                   <span className="text-slate-800 uppercase">{users.find(u => u.id === s.userId)?.name || "Ignoto"}</span>
-                                 </div>
-                                 <div className="flex items-center gap-2">
-                                    <select 
-                                      className="text-[10px] py-0.5 px-1 bg-white border border-slate-300 rounded text-slate-700 shadow-sm"
-                                      value={s.vehicleId || ""}
-                                      onChange={(e) => {
-                                        fetch("/api/admin/shifts/daily", {
-                                          method: "PUT",
-                                          body: JSON.stringify({ userId: s.userId, date: `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,"0")}-${String(currentDate.getDate()).padStart(2,"0")}`, vehicleId: e.target.value })
-                                        });
-                                        const newShifts = [...shifts];
-                                        const idx = newShifts.findIndex(sh => sh.id === s.id);
-                                        if(idx > -1) { newShifts[idx] = {...newShifts[idx], vehicleId: e.target.value}; setShifts(newShifts); }
-                                      }}
-                                    >
-                                      <option value="">Nessun Veicolo</option>
-                                      {vehicles.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                                    </select>
-                                    <button onClick={() => handleRemoveService(s.userId)} className="text-red-500 hover:text-red-700 ml-2" title="Rimuovi dal servizio">✕</button>
-                                 </div>
-                               </div>
-                             ))}
-                           </div>
-                         ))
-                       )}
+                         )}
                      </div>
-                   </div>
-                 )
-              })}
-            </div>
+                 </div>
+
+             </div>
           </div>
 
-          {/* COLONNA 3: TIPI SERVIZIO (Tavolozza - 23%) */}
-          <div className="w-full sm:w-[23%] flex flex-col bg-slate-100 border-2 border-slate-300 shadow-sm overflow-hidden min-w-[280px]">
-            <div className="bg-[#2a4365] text-white p-2 font-bold flex items-center justify-between shrink-0">
-              <span className="flex items-center gap-2"><Car size={16}/> Modelli Servizi</span>
-            </div>
-            <div className="flex-1 overflow-y-auto p-1 custom-scrollbar">
-              
-              {categories.length === 0 && (
-                <div className="p-4 text-center text-sm text-slate-500 italic">
-                  Imposta prima Categorie e Tipi nelle Impostazioni.
-                </div>
-              )}
-
-              {categories.length > 0 && ["M7", "M8", "P14"].map(macro => {
-                const title = macro === 'M7' ? 'Mattina 7' : macro === 'M8' ? 'Mattina 8' : 'Pomeriggio'
-                const bgColor = macro === 'P14' ? 'bg-[#b91c1c]' : 'bg-[#1e40af]' // Rosso per piaggio, blu per mattina
-                return (
-                  <div key={macro} className="mb-2">
-                    <div className={`${bgColor} text-white font-bold p-1.5 text-xs flex justify-between uppercase`}>
-                      <span>{title} - {macro}</span>
-                      <ChevronRight size={14}/>
-                    </div>
-                    <div className="bg-white border-x border-b border-slate-300">
-                      {categories.map(cat => (
-                         cat.types.map((type: any) => (
-                           <div 
-                             key={type.id}
-                             onDragEnter={handleDragOver} onDragOver={handleDragOver} onDrop={e => handleDrop(e, macro, cat.id, type.id)}
-                             className="px-2 py-1.5 flex items-center justify-between border-b border-slate-200 text-xs font-bold text-slate-700 hover:bg-green-50 hover:text-green-800 transition-colors group cursor-pointer"
-                             title={`Rilascia agente qui per assegnarlo a ${type.name} per ${macro}`}
-                           >
-                              <div className="flex items-center gap-1.5"><span className="text-green-500 text-[10px]">»</span> {type.name}</div>
-                              <span className="text-[10px] px-1 py-0.5 border border-slate-200 rounded opacity-0 group-hover:opacity-100 bg-white">Trascina qui</span>
-                           </div>
-                         ))
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+          {/* MAIN OPERATIONAL BOARDS */}
+          <div className="flex-1 overflow-x-auto flex flex-col bg-slate-900 relative">
+             <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-slate-800 to-transparent opacity-50 pointer-events-none"></div>
+             
+             <div className="flex flex-1 gap-1 p-2 md:p-3 overflow-x-auto h-full items-stretch">
+                {renderFaseBlocco("Turno Mattina", ["M"])}
+                {renderFaseBlocco("Turno Pomeriggio", ["P"])}
+             </div>
           </div>
 
         </div>
       )}
     </div>
+  )
+}
+
+function CheckCircle(props: any) {
+  return (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+      <polyline points="22 4 12 14.01 9 11.01"></polyline>
+    </svg>
   )
 }

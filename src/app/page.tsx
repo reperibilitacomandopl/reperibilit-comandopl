@@ -38,12 +38,14 @@ export default async function Home({ searchParams }: { searchParams: { view?: st
     }
   })
 
-  // Verify Publish status and fetch settings
-  const [pubRec, settings] = await Promise.all([
+  // Verify Publish status and fetch settings & config
+  const [pubRec, settings, rotationGroups, categories] = await Promise.all([
     prisma.monthStatus.findUnique({
       where: { month_year: { month: currentMonth, year: currentYear } }
     }),
-    prisma.globalSettings.findFirst()
+    prisma.globalSettings.findFirst(),
+    prisma.rotationGroup.findMany({ orderBy: { name: 'asc' } }),
+    prisma.serviceCategory.findMany({ include: { types: true }, orderBy: { orderIndex: 'asc' } })
   ])
   const isPublished = pubRec ? pubRec.isPublished : false
 
@@ -97,7 +99,7 @@ export default async function Home({ searchParams }: { searchParams: { view?: st
       {/* Main Content Area */}
       <main className={`flex-1 ${containerClass} py-4 sm:py-6 lg:py-8`}>
         {isAdminView ? (
-          <AdminDashboard allAgents={users as any} shifts={shifts} currentYear={currentYear} currentMonth={currentMonth} isPublished={isPublished} currentView={view} settings={settings as any} />
+          <AdminDashboard allAgents={users as any} shifts={shifts} currentYear={currentYear} currentMonth={currentMonth} isPublished={isPublished} currentView={view} settings={settings as any} rotationGroups={rotationGroups} categories={categories} />
         ) : (
           <DynamicAgentDashboard currentUser={{ id: session?.user?.id || "", matricola: matricola || "", name: name || "" }} shifts={shifts} allAgents={users as any} currentYear={currentYear} currentMonth={currentMonth} isPublished={isPublished} currentView={view} />
         )}

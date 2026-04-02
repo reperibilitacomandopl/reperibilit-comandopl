@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Loader2, ChevronLeft, ChevronRight, Save } from "lucide-react"
 import toast from "react-hot-toast"
 import Link from "next/link"
-import { formatShiftCode } from "@/utils/shift-logic"
+import { formatShiftCode, isAssenza } from "@/utils/shift-logic"
 
 export default function MonthlyShiftPlanner() {
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -176,7 +176,7 @@ export default function MonthlyShiftPlanner() {
           
           // Non sovrascriviamo ferie, malattie e permessi
           const existing = nextGrid[u.id][dStr]
-          if (existing && ["F", "MAL", "104", "Permesso", "RR"].includes(existing)) return
+          if (existing && isAssenza(existing)) return
 
           // LOGICA RIPOSO DINAMICO (Legato alla domenica lavorativa)
           // Se l'agente ha un giorno di riposo fisso (es. Lunedì = 1)

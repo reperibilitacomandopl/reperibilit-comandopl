@@ -27,9 +27,7 @@ export async function GET(req: Request) {
         where: { date: { gte: startDate, lte: endDate } },
         include: { serviceCategory: true, serviceType: true, vehicle: true }
       }),
-      prisma.absence.findMany({ 
-        where: { date: { gte: startDate, lte: endDate } } 
-      }),
+      Promise.resolve([]), // Removed invalid prisma.absence call to preserve array restructuring index
       prisma.serviceCategory.findMany({
         include: { types: true },
         orderBy: { orderIndex: "asc" }
