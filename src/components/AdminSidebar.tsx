@@ -13,44 +13,41 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Printer,
+  FileText,
 } from "lucide-react"
 
-const NAV_ITEMS = [
+type NavSection = {
+  title: string
+  accent: string
+  items: { label: string; href: string; icon: any; description: string }[]
+}
+
+const NAV_SECTIONS: NavSection[] = [
   {
-    label: "Pannello Comando",
-    href: "/admin/pannello",
-    icon: LayoutDashboard,
-    description: "Overview e KPI",
+    title: "Operatività",
+    accent: "text-blue-400",
+    items: [
+      { label: "Pannello Comando", href: "/admin/pannello", icon: LayoutDashboard, description: "Overview e KPI" },
+      { label: "Pianificazione Mensile", href: "/admin/pianificazione", icon: CalendarDays, description: "Griglia Turni & Reperibilità" },
+      { label: "Ordine di Servizio", href: "/admin/ods", icon: FileText, description: "Assegnazione Giornaliera" },
+      { label: "Stampa OdS", href: "/admin/stampa-ods", icon: Printer, description: "Anteprima e Stampa PDF" },
+    ],
   },
   {
-    label: "Pianificazione Turni",
-    href: "/admin/pianificazione",
-    icon: CalendarDays,
-    description: "Griglia Mensile & Reperibilità",
+    title: "Setup & Risorse",
+    accent: "text-emerald-400",
+    items: [
+      { label: "Ufficio Comando", href: "/admin/risorse", icon: Users, description: "Agenti, Squadre e Logistica" },
+      { label: "Generatore Ciclico", href: "/admin/auto-compila", icon: Wand2, description: "Auto-Compilazione Turni" },
+    ],
   },
   {
-    label: "Ordine di Servizio",
-    href: "/admin/ods",
-    icon: Shield,
-    description: "Pianificazione Drag & Drop",
-  },
-  {
-    label: "Ufficio Comando",
-    href: "/admin/risorse",
-    icon: Users,
-    description: "Agenti, Squadre e Logistica",
-  },
-  {
-    label: "Auto-Compilazione",
-    href: "/admin/auto-compila",
-    icon: Wand2,
-    description: "Generatore Ciclico Turni",
-  },
-  {
-    label: "Impostazioni",
-    href: "/admin/impostazioni",
-    icon: Settings,
-    description: "Export, Audit & Config",
+    title: "Sistema",
+    accent: "text-amber-400",
+    items: [
+      { label: "Impostazioni", href: "/admin/impostazioni", icon: Settings, description: "Config, Audit & Export" },
+    ],
   },
 ]
 
@@ -88,54 +85,54 @@ export default function AdminSidebar({ userName, userMatricola, signOutAction }:
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto custom-scrollbar">
-        {NAV_ITEMS.map((item) => {
-          const isActive =
-            pathname === item.href || pathname?.startsWith(item.href + "/")
-          const Icon = item.icon
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              title={collapsed ? item.label : undefined}
-              className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 relative ${
-                isActive
-                  ? "bg-blue-600/15 text-blue-400 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.25)]"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
-              }`}
-            >
-              {/* Active Indicator Bar */}
-              {isActive && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-blue-500 rounded-r-full shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
-              )}
-
-              <Icon
-                size={20}
-                className={`shrink-0 transition-colors ${
-                  isActive
-                    ? "text-blue-400"
-                    : "text-slate-500 group-hover:text-slate-300"
-                }`}
-              />
-
-              {!collapsed && (
-                <div className="overflow-hidden">
-                  <span
-                    className={`text-[13px] font-bold block truncate ${
-                      isActive ? "text-blue-300" : ""
+      <nav className="flex-1 py-4 px-2 space-y-5 overflow-y-auto custom-scrollbar">
+        {NAV_SECTIONS.map((section) => (
+          <div key={section.title}>
+            {!collapsed && (
+              <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] px-3 mb-2 ${section.accent}`}>
+                {section.title}
+              </h3>
+            )}
+            <div className="space-y-0.5">
+              {section.items.map((item) => {
+                const isActive = pathname === item.href || pathname?.startsWith(item.href + "/")
+                const Icon = item.icon
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    title={collapsed ? item.label : undefined}
+                    className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 relative ${
+                      isActive
+                        ? "bg-blue-600/15 text-blue-400 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.25)]"
+                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
                     }`}
                   >
-                    {item.label}
-                  </span>
-                  <span className="text-[10px] text-slate-600 font-medium block truncate">
-                    {item.description}
-                  </span>
-                </div>
-              )}
-            </Link>
-          )
-        })}
+                    {isActive && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-blue-500 rounded-r-full shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
+                    )}
+                    <Icon
+                      size={20}
+                      className={`shrink-0 transition-colors ${
+                        isActive ? "text-blue-400" : "text-slate-500 group-hover:text-slate-300"
+                      }`}
+                    />
+                    {!collapsed && (
+                      <div className="overflow-hidden">
+                        <span className={`text-[13px] font-bold block truncate ${isActive ? "text-blue-300" : ""}`}>
+                          {item.label}
+                        </span>
+                        <span className="text-[10px] text-slate-600 font-medium block truncate">
+                          {item.description}
+                        </span>
+                      </div>
+                    )}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Collapse toggle */}

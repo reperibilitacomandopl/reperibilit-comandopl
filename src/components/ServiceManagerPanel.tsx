@@ -382,7 +382,7 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
                 <Wand2 size={16}/> {loading ? "..." : "AUTOCONFIGURA"}
             </button>
 
-            <Link href="/stampa-ods" className="hidden sm:flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm">
+            <Link href="/admin/stampa-ods" className="hidden sm:flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-sm">
                <Printer size={16}/> Stampa OdS
             </Link>
 

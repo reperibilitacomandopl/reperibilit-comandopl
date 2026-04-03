@@ -131,9 +131,9 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {[
-            { label: "Pianificazione OdS", desc: "Griglia Turni & Reperibilità", href: "/admin/pianificazione", icon: CalendarDays, accent: "blue" },
-            { label: "Sala Operativa", desc: "Assegnazione Giornaliera", href: "/admin/operativa", icon: Shield, accent: "emerald" },
-            { label: "Auto-Compilazione", desc: "Genera Turni del Mese", href: "/admin/auto-compila", icon: Clock, accent: "violet" },
+            { label: "Pianificazione Mensile", desc: "Griglia Turni & Reperibilità", href: "/admin/pianificazione", icon: CalendarDays, accent: "blue" },
+            { label: "Ordine di Servizio", desc: "Assegnazione Giornaliera", href: "/admin/ods", icon: Shield, accent: "emerald" },
+            { label: "Generatore Ciclico", desc: "Auto-Compilazione Turni", href: "/admin/auto-compila", icon: Clock, accent: "violet" },
           ].map((action) => {
             const Icon = action.icon
             return (

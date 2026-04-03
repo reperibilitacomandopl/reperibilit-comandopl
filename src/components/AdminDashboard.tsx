@@ -760,7 +760,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
           </div>
           
           <Link 
-            href="/assegna-turni"
+            href="/admin/auto-compila"
             className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-indigo-200"
           >
             <CalendarIcon size={18} />
@@ -768,7 +768,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
           </Link>
 
           <Link 
-            href="/squadre"
+            href="/admin/risorse"
             className="flex items-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-amber-200"
           >
             <Users size={18} />
@@ -776,7 +776,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
           </Link>
 
           <Link 
-            href="/gestione-operativa"
+            href="/admin/ods"
             className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-blue-200"
           >
             <ClipboardList size={18} />
@@ -784,7 +784,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
           </Link>
 
           <Link 
-            href="/stampa-ods"
+            href="/admin/stampa-ods"
             className="flex items-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-purple-200"
           >
             <Printer size={18} />
