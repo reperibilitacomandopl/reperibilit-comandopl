@@ -57,7 +57,7 @@ export default function ImpostazioniPanel() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-black text-slate-900 tracking-tight">Impostazioni</h1>
-        <p className="text-sm text-slate-500 mt-1 font-medium">Configurazione di sistema, audit log e integrazioni</p>
+        <p className="text-sm text-slate-600 mt-1 font-bold">Configurazione di sistema, audit log e integrazioni</p>
       </div>
 
       {/* Tab Navigation */}
@@ -89,7 +89,7 @@ export default function ImpostazioniPanel() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-800">Ultime 100 Azioni Amministrative</h2>
-            <button onClick={loadAuditLogs} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-600 transition-colors flex items-center gap-1.5">
+            <button onClick={loadAuditLogs} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-800 transition-colors flex items-center gap-1.5">
               <RefreshCw size={12} className={isLoadingAudit ? "animate-spin" : ""} /> Aggiorna
             </button>
           </div>
@@ -123,7 +123,7 @@ export default function ImpostazioniPanel() {
                   </div>
                   <p className="text-sm text-slate-700 font-medium">{log.details}</p>
                   {log.targetName && (
-                    <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">
+                    <p className="text-[10px] text-slate-700 font-bold uppercase mt-1">
                       Target: <span className="text-slate-700">{log.targetName}</span>
                     </p>
                   )}

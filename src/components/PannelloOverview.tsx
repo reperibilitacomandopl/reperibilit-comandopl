@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { ChevronDown, ChevronUp } from "lucide-react"
 import {
   Users,
   Shield,
@@ -41,6 +42,8 @@ const MESI = ["", "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", 
 
 export default function PannelloOverview({ totalAgents, todayShifts, isPublished, currentMonth, currentYear, settings, totalVehicles, pendingSwaps }: PannelloOverviewProps) {
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [collapsedPattuglie, setCollapsedPattuglie] = useState(false)
+  const [collapsedEccezioni, setCollapsedEccezioni] = useState(false)
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 30000) // aggiorna ogni 30 sec
@@ -125,13 +128,13 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
               <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -translate-y-8 translate-x-8 group-hover:scale-125 transition-transform duration-500" />
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-3">
-                  <span className={`text-xs font-bold uppercase tracking-widest ${card.textColor} opacity-80`}>
+                  <span className={`text-xs font-black uppercase tracking-widest ${card.textColor} opacity-95`}>
                     {card.label}
                   </span>
-                  <Icon size={20} className={`${card.textColor} opacity-60`} />
+                  <Icon size={20} className={`${card.textColor} opacity-80`} />
                 </div>
                 <p className={`text-4xl font-black ${card.textColor} tracking-tight`}>{card.value}</p>
-                <p className={`text-[11px] mt-2 ${card.textColor} opacity-70 font-medium`}>{card.sub}</p>
+                <p className={`text-[11px] mt-2 ${card.textColor} opacity-90 font-bold`}>{card.sub}</p>
               </div>
             </div>
           )
@@ -175,14 +178,15 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
         
         {/* Colonna Operativa */}
         <div className="lg:col-span-2 space-y-6">
-          <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+          <button onClick={() => setCollapsedPattuglie(!collapsedPattuglie)} className="flex items-center gap-2 w-full text-left hover:bg-slate-50 rounded-xl p-2 -ml-2 transition-colors">
             <Shield size={24} className="text-emerald-500" />
-            Pattuglie e Servizi Assegnati
-          </h2>
+            <h2 className="text-xl font-black text-slate-900 flex-1">Pattuglie e Servizi Assegnati</h2>
+            {collapsedPattuglie ? <ChevronDown size={20} className="text-slate-400" /> : <ChevronUp size={20} className="text-slate-400" />}
+          </button>
 
-          {operativiOggi === 0 ? (
+          {collapsedPattuglie ? null : operativiOggi === 0 ? (
             <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center">
-               <p className="text-slate-400 font-bold uppercase tracking-widest">Nessuna unità operativa in servizio</p>
+               <p className="text-slate-500 font-black uppercase tracking-widest">Nessuna unità operativa in servizio</p>
             </div>
           ) : (
             // Raggruppiamo i turni operativi per Categoria, poi per orari/tipo.
@@ -248,14 +252,16 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
 
         {/* Colonna Eccezioni */}
         <div className="space-y-6">
-          <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+          <button onClick={() => setCollapsedEccezioni(!collapsedEccezioni)} className="flex items-center gap-2 w-full text-left hover:bg-slate-50 rounded-xl p-2 -ml-2 transition-colors">
             <AlertTriangle size={24} className="text-amber-500" />
-            Eccezioni & Gestione
-          </h2>
+            <h2 className="text-xl font-black text-slate-900 flex-1">Eccezioni & Gestione</h2>
+            {collapsedEccezioni ? <ChevronDown size={20} className="text-slate-400" /> : <ChevronUp size={20} className="text-slate-400" />}
+          </button>
           
+          {!collapsedEccezioni && (
           <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-5">
-             <h3 className="font-bold text-amber-900 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
-               Assenti (<span className="text-rose-600">{assentiOggi}</span>)
+             <h3 className="font-black text-amber-900 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
+               Assenti (<span className="text-rose-700 font-black">{assentiOggi}</span>)
              </h3>
              {assentiOggi === 0 ? (
                <p className="text-amber-700/60 text-sm font-medium italic">Nessun dipendente assente oggi.</p>
@@ -264,14 +270,15 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
                  {todayShifts.filter(s => isAssenza(s.type)).map(s => (
                    <div key={s.userId} className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-amber-50 shadow-sm">
                       <span className="font-bold text-slate-700 text-sm">{s.user.name}</span>
-                      <span className="text-[10px] font-black uppercase px-2 py-1 bg-amber-100 text-amber-800 rounded">
-                        {isMalattia(s.type) ? <span className="text-rose-600">MALATTIA</span> : s.type}
-                      </span>
-                   </div>
+                       <span className="text-[11px] font-black uppercase px-2 py-1 bg-amber-100 text-amber-900 rounded">
+                         {isMalattia(s.type) ? <span className="text-rose-700 font-black">MALATTIA</span> : s.type}
+                       </span>
+                    </div>
                  ))}
                </div>
              )}
           </div>
+          )}
         </div>
       </div>
     </div>

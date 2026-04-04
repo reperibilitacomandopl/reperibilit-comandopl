@@ -130,7 +130,7 @@ export default function ServicesSettings() {
               ))}
               {categories.length === 0 && (
                 <div className="text-center py-10">
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Nessuna categoria</p>
+                  <p className="text-xs text-slate-600 font-bold uppercase tracking-widest">Nessuna categoria</p>
                 </div>
               )}
             </ul>
@@ -192,7 +192,7 @@ export default function ServicesSettings() {
               )))}
               {categories.length === 0 && (
                 <div className="text-center py-10">
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Nessun servizio definito</p>
+                  <p className="text-xs text-slate-600 font-bold uppercase tracking-widest">Nessun servizio definito</p>
                 </div>
               )}
             </ul>

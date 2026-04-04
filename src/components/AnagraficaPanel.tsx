@@ -168,7 +168,7 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
           <option value="ALL">Tutte le Qualifiche</option>
           {uniqueQualifiche.map(q => <option key={q} value={q}>{q}</option>)}
         </select>
-        <span className="text-xs font-bold text-slate-400 ml-auto">
+        <span className="text-xs font-bold text-slate-600 ml-auto">
           {filteredAgents.length} risultati
         </span>
       </div>
@@ -339,7 +339,7 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
                       </div>
                     ) : (
                       <div className="flex flex-col gap-0.5">
-                        <span className={agent.email ? "text-xs font-semibold text-slate-700" : "text-slate-400 italic text-[10px]"}>{agent.email || "No Email"}</span>
+                        <span className={agent.email ? "text-xs font-semibold text-slate-700" : "text-slate-500 italic text-[10px]"}>{agent.email || "No Email"}</span>
                         <span className="text-[10px] font-semibold text-slate-500">{agent.phone || ""}</span>
                       </div>
                     )}
