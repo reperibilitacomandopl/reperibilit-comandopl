@@ -20,7 +20,9 @@ export default async function AgentDossierPage({ params }: { params: Promise<{ i
     include: {
       agentBalances: { where: { year } },
       agentRequests: { orderBy: { date: "desc" } },
-      absences: { where: { date: { gte: new Date(`${year}-01-01`), lte: new Date(`${year}-12-31`) } } }
+      absences: { where: { date: { gte: new Date(`${year}-01-01`), lte: new Date(`${year}-12-31`) } } },
+      rotationGroup: true,
+      defaultServiceCategory: true
     }
   })
 
@@ -48,16 +50,31 @@ export default async function AgentDossierPage({ params }: { params: Promise<{ i
   return (
     <div className="p-6 lg:p-8 space-y-6 animate-in fade-in">
       {/* Header */}
-      <div className="flex items-center gap-4 border-b border-slate-200 pb-6">
-         <Link href="/admin/risorse" className="p-3 bg-white border border-slate-200 hover:bg-slate-50 transition-colors rounded-xl text-slate-500">
-            <ArrowLeft size={20} />
-         </Link>
-         <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600">
-            <User size={32} />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-6">
+         <div className="flex items-center gap-4">
+            <Link href="/admin/risorse" className="p-3 bg-white border border-slate-200 hover:bg-slate-50 transition-colors rounded-xl text-slate-500">
+               <ArrowLeft size={20} />
+            </Link>
+            <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600">
+               <User size={32} />
+            </div>
+            <div>
+               <h1 className="text-3xl font-black tracking-tight text-slate-900">{agent.name}</h1>
+               <p className="text-sm font-bold text-slate-500 tracking-wide uppercase">Matricola: {agent.matricola} • {agent.qualifica}</p>
+            </div>
          </div>
-         <div>
-            <h1 className="text-3xl font-black tracking-tight text-slate-900">{agent.name}</h1>
-            <p className="text-sm font-bold text-slate-500 tracking-wide uppercase">Matricola: {agent.matricola} • {agent.qualifica}</p>
+         {/* Assegnazione Operativa (Punto Zero) */}
+         <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex gap-6 mt-4 md:mt-0">
+            <div>
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Motore Ciclico (Squadra)</p>
+               <p className="text-sm font-black text-slate-800">{agent.rotationGroup?.name || agent.squadra || "Non Assegnata"}</p>
+            </div>
+            <div>
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Sezione OdS di Default</p>
+               <p className="text-sm font-black text-slate-800">
+                 {agent.defaultServiceCategory?.name || agent.servizio || "Nessuna Sezione Base"} 
+               </p>
+            </div>
          </div>
       </div>
 

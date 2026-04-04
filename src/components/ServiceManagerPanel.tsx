@@ -297,13 +297,21 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
                        </span>
                        <div className="flex items-center gap-2">
                          <input 
+                            title="Orario Turno (Modificabile)"
                             type="text" 
                             defaultValue={timeRangeStr}
-                            onBlur={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, e.target.value)}
-                            className="text-[10px] font-bold text-slate-500 bg-transparent border-none p-0 focus:ring-0 w-24"
+                            onBlur={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, e.target.value, shiftAssegnato.serviceDetails)}
+                            className="text-[10px] font-bold text-slate-500 bg-transparent border-none p-0 focus:ring-0 w-[65px] hover:bg-slate-100 rounded focus:bg-white"
                             placeholder="hh:mm-hh:mm"
                          />
-                         {agente.servizio && <span className="text-[8px] font-bold text-blue-400 bg-blue-50 px-1 py-0.5 rounded border border-blue-100">{agente.servizio}</span>}
+                         <input
+                            title="Dettaglio / Note Servizio"
+                            type="text"
+                            defaultValue={shiftAssegnato.serviceDetails || agente.servizio || ""}
+                            onBlur={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, timeRangeStr, e.target.value)}
+                            className="text-[9px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-1 py-0.5 rounded focus:ring-0 w-[120px] focus:bg-white hover:border-blue-300"
+                            placeholder="Es. Fiera, Piantone..."
+                         />
                        </div>
                    </div>
                 </div>
@@ -311,7 +319,7 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
                 <div className="flex items-center gap-2 shrink-0">
                     <select 
                         value={shiftAssegnato.vehicleId || ""}
-                        onChange={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, e.target.value)}
+                        onChange={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, e.target.value, timeRangeStr, shiftAssegnato.serviceDetails)}
                         className="text-[10px] bg-slate-100 font-bold px-2 py-1.5 rounded-md border border-slate-200 focus:border-blue-500 transition-all text-slate-700 max-w-[120px] truncate"
                     >
                         <option value="">+ Veicolo</option>
