@@ -36,13 +36,14 @@ export default function SquadreManager() {
   const [editPStart, setEditPStart] = useState("13:00")
   const [editPEnd, setEditPEnd] = useState("19:00")
   const [editStartDate, setEditStartDate] = useState(new Date().toISOString().split('T')[0])
+  const [editName, setEditName] = useState("")
 
   const loadData = async () => {
     setLoading(true)
     try {
       const [gRes, uRes] = await Promise.all([
         fetch("/api/admin/rotation-groups"),
-        fetch("/api/admin/shifts/monthly?year=2026&month=1") // Solo per avere la lista users
+        fetch("/api/admin/users")
       ])
       const gData = await gRes.json()
       const uData = await uRes.json()
@@ -91,21 +92,21 @@ export default function SquadreManager() {
     } catch { toast.error("Errore eliminazione") }
   }
 
-  const savePattern = async (groupId: string) => {
+  const savePattern = async () => {
+    if (!editingPatternId) return
     try {
-      const group = groups.find(g => g.id === groupId)
       await fetch("/api/admin/rotation-groups", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          id: groupId, 
-          name: group?.name, 
+        body: JSON.stringify({
+          id: editingPatternId,
+          name: editName,
           pattern: editPattern,
           mStartTime: editMStart,
           mEndTime: editMEnd,
           pStartTime: editPStart,
           pEndTime: editPEnd,
-          startDate: new Date(editStartDate).toISOString()
+          startDate: editStartDate
         })
       })
       toast.success("Sequenza e orari salvati!")
@@ -175,6 +176,7 @@ export default function SquadreManager() {
     setEditPStart(group.pStartTime || "13:00")
     setEditPEnd(group.pEndTime || "19:00")
     setEditStartDate(group.startDate ? new Date(group.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0])
+    setEditName(group.name)
   }
 
   if (loading) {
@@ -379,8 +381,15 @@ export default function SquadreManager() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="bg-[#1e293b] text-white p-4 flex justify-between items-center rounded-t-xl">
-              <h3 className="text-lg font-bold">
-                Editor Sequenza - {groups.find(g => g.id === editingPatternId)?.name}
+              <h3 className="text-lg font-bold flex flex-col md:flex-row md:items-center gap-3 w-full max-w-2xl">
+                <span>Gestione Modello:</span>
+                <input 
+                  type="text" 
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  className="bg-slate-700/50 border border-slate-600 rounded px-3 py-1 font-bold text-white outline-none focus:border-blue-500 min-w-0 flex-1 h-9"
+                  placeholder="Es. Turno A 08-14"
+                />
               </h3>
               <button onClick={() => setEditingPatternId(null)} className="p-1 hover:bg-slate-700 rounded"><X size={20} /></button>
             </div>
@@ -450,7 +459,7 @@ export default function SquadreManager() {
 
               <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-slate-200">
                 <button onClick={() => setEditingPatternId(null)} className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-lg">Annulla</button>
-                <button onClick={() => savePattern(editingPatternId)} className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg flex items-center gap-2">
+                <button onClick={() => savePattern()} className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg flex items-center gap-2">
                   <Check size={16} /> Salva Sequenza
                 </button>
               </div>

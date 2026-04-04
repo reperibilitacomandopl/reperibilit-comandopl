@@ -5,10 +5,11 @@ import { Users, Briefcase } from "lucide-react"
 import AnagraficaPanel from "./AnagraficaPanel"
 import ServicesSettings from "./ServicesSettings"
 import PatrolSettingsPanel from "./PatrolSettingsPanel"
-import { Shield } from "lucide-react"
+import SquadreManager from "./SquadreManager"
+import { Shield, RotateCcw } from "lucide-react"
 
 export default function RisorseTabs({ agents, rotationGroups, categories }: any) {
-  const [activeTab, setActiveTab] = useState<"personale" | "servizi" | "pattuglie">("personale")
+  const [activeTab, setActiveTab] = useState<"personale" | "cicli" | "servizi" | "pattuglie">("personale")
 
   return (
     <div className="space-y-6">
@@ -25,7 +26,16 @@ export default function RisorseTabs({ agents, rotationGroups, categories }: any)
           }`}
         >
           <Users size={18} />
-          Organico e Squadre
+          Anagrafica Agenti
+        </button>
+        <button
+          onClick={() => setActiveTab("cicli")}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+            activeTab === "cicli" ? "bg-white text-orange-600 shadow-sm shadow-orange-100" : "text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          <RotateCcw size={18} />
+          Motori Ciclici (Turni)
         </button>
         <button
           onClick={() => setActiveTab("servizi")}
@@ -65,6 +75,12 @@ export default function RisorseTabs({ agents, rotationGroups, categories }: any)
             <PatrolSettingsPanel />
           </div>
         )}
+        {activeTab === "cicli" && (
+          <div className="animate-in fade-in duration-500 bg-white p-6 md:p-10 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-orange-100/50">
+            <SquadreManager />
+          </div>
+        )}
+
       </div>
     </div>
   )
