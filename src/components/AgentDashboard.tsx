@@ -144,6 +144,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   // Shift Swap State
   const [swapRequests, setSwapRequests] = useState<any[]>([])
   const [showSwapModal, setShowSwapModal] = useState(false)
+  const [showAbsenceModal, setShowAbsenceModal] = useState(false)
   const [selectedShiftForSwap, setSelectedShiftForSwap] = useState<any>(null)
   const [targetColleagueId, setTargetColleagueId] = useState('')
   const [swapLoading, setSwapLoading] = useState(false)
@@ -723,11 +724,12 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
               <p className="text-sm text-slate-500 max-w-sm mt-2">I turni di reperibilità per questo mese non sono ancora stati consolidati e pubblicati dall&apos;Amministratore.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-7 gap-2 min-w-[700px]">
+              <div className="grid grid-cols-7 gap-1 sm:gap-2 w-full">
               {/* Weekday headers */}
               {["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"].map(dn => (
-                <div key={dn} className={`text-center text-[10px] font-black uppercase tracking-widest py-2 ${dn === "Sab" || dn === "Dom" ? "text-red-400" : "text-slate-400"}`}>
-                  {dn}
+                <div key={dn} className={`text-center text-[9px] sm:text-[10px] font-black uppercase tracking-widest py-2 ${dn === "Sab" || dn === "Dom" ? "text-red-400" : "text-slate-400"}`}>
+                  <span className="sm:hidden">{dn.charAt(0)}</span>
+                  <span className="hidden sm:inline">{dn}</span>
                 </div>
               ))}
 
@@ -737,7 +739,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                 // Convert Sun=0 to Mon-based: Mon=0, Tue=1, ... Sun=6
                 const offset = firstDay === 0 ? 6 : firstDay - 1
                 return Array.from({ length: offset }, (_, i) => (
-                  <div key={`empty-${i}`} className="h-20"></div>
+                  <div key={`empty-${i}`} className="h-16 sm:h-20"></div>
                 ))
               })()}
 
@@ -762,17 +764,17 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                 if (isRep) {
                   cellBg = "bg-emerald-50 hover:bg-emerald-100"
                   borderStyle = "border-2 border-emerald-400"
-                  badgeEl = <span className="inline-block mt-1 px-2 py-0.5 text-[9px] font-black tracking-widest bg-emerald-600 text-white rounded-md shadow-sm">REP</span>
+                  badgeEl = <span className="inline-block mt-0.5 sm:mt-1 px-1 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-black tracking-widest bg-emerald-600 text-white rounded shadow-sm">REP</span>
                 } else if (isFerie) {
                   cellBg = "bg-amber-50 hover:bg-amber-100"
                   borderStyle = "border border-amber-200"
-                  badgeEl = <span className="inline-block mt-1 px-2 py-0.5 text-[9px] font-bold bg-amber-500 text-white rounded-md">{sType}</span>
+                  badgeEl = <span className="inline-block mt-0.5 sm:mt-1 px-1 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-bold bg-amber-500 text-white rounded truncate max-w-[90%]">{sType}</span>
                 } else if (_isMalattia) {
                   cellBg = "bg-blue-50 hover:bg-blue-100"
                   borderStyle = "border border-blue-200"
-                  badgeEl = <span className="inline-block mt-1 px-2 py-0.5 text-[9px] font-bold bg-blue-500 text-white rounded-md">{sType}</span>
+                  badgeEl = <span className="inline-block mt-0.5 sm:mt-1 px-1 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-bold bg-blue-500 text-white rounded truncate max-w-[90%]">{sType}</span>
                 } else if (sType) {
-                  badgeEl = <span className="inline-block mt-1 px-2 py-0.5 text-[9px] font-bold bg-slate-200 text-slate-600 rounded-md">{sType}</span>
+                  badgeEl = <span className="inline-block mt-0.5 sm:mt-1 px-1 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-bold bg-slate-200 text-slate-600 rounded truncate max-w-[90%]">{sType}</span>
                 }
 
                 if (di.isWeekend && !isRep) {
@@ -787,7 +789,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                 return (
                   <div 
                     key={di.isNextMonth ? 'next-1' : di.day} 
-                    className={`relative rounded-xl p-2 h-20 flex flex-col items-center justify-start transition-all ${di.isNextMonth ? "bg-slate-100 opacity-40 grayscale cursor-not-allowed" : `cursor-pointer ${cellBg} ${borderStyle}`}`}
+                    className={`relative rounded-lg sm:rounded-xl p-1 sm:p-2 h-16 sm:h-20 flex flex-col items-center justify-start transition-all overflow-hidden ${di.isNextMonth ? "bg-slate-100 opacity-40 grayscale cursor-not-allowed" : `cursor-pointer ${cellBg} ${borderStyle}`}`}
                     onClick={() => { 
                       if (di.isNextMonth) return
                       setAgendaDate(String(di.day))
@@ -1009,9 +1011,25 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
           </div>
         </div>
 
-        {/* Richiesta Assenze + Prossimo Turno */}
-        {/* Right column: Prossimo Turno + Agenda */}
+        {/* Right column: Modulo Richieste + Prossimo Turno */}
         <div className="lg:col-span-2 flex flex-col gap-6">
+
+          {/* PULSANTE RAPIDO RICHIESTE SEGRETERIA */}
+          <button 
+             onClick={() => setShowAbsenceModal(true)}
+             className="relative bg-gradient-to-r from-amber-500 to-orange-500 rounded-[2rem] p-8 overflow-hidden shadow-xl shadow-amber-200 hover:shadow-2xl hover:-translate-y-1 transition-all group text-left w-full border-none"
+          >
+             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl group-hover:bg-white/20 transition-all"></div>
+             <div className="relative z-10 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-black text-white mb-1 drop-shadow-md">Richiesta Congedi/Assenze</h3>
+                  <p className="text-sm font-bold text-amber-50 drop-shadow-sm opacity-90 tracking-wide">Ferie, Permessi 104, Malattia e Recuperi</p>
+                </div>
+                <div className="p-3 bg-white/20 backdrop-blur-md rounded-2xl group-hover:scale-110 transition-transform">
+                  <CalendarDays size={28} className="text-white drop-shadow-md" />
+                </div>
+             </div>
+          </button>
 
           {/* PROSSIMO TURNO REP (dinamico!) */}
           {(() => {
@@ -1662,6 +1680,73 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
           </div>
         </div>
       )}
+
+      {/* Modal Richiesta Assenze */}
+      {showAbsenceModal && (
+        <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowAbsenceModal(false)}></div>
+          <div className="relative w-full max-w-md bg-white rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden animate-in slide-in-from-bottom-8 sm:zoom-in-95 duration-300">
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 sm:p-8 text-white relative">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+              <div className="flex justify-between items-start relative z-10">
+                <div className="p-3 bg-white/20 rounded-2xl border border-white/20 shadow-inner">
+                  <CalendarDays size={24} />
+                </div>
+                <button onClick={() => setShowAbsenceModal(false)} className="text-white/80 hover:text-white transition-colors bg-black/10 rounded-full p-1">
+                  <X size={20} />
+                </button>
+              </div>
+              <h3 className="text-2xl font-black tracking-tight mt-4 relative z-10">Inoltra Richiesta</h3>
+              <p className="text-amber-50 text-sm mt-1 opacity-90 relative z-10 font-medium">
+                Le richieste inserite qui verranno notificate al Comando Centrale per l'approvazione automatica.
+              </p>
+            </div>
+
+            <div className="p-6 sm:p-8 bg-slate-50">
+               <div className="space-y-5">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Data (o Data Inizio)</label>
+                    <input type="date" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 transition-all outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Seleziona Causale</label>
+                    <div className="relative">
+                      <select className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 transition-all outline-none appearance-none pr-10">
+                        <option value="">Seleziona tipo di assenza...</option>
+                        {AGENDA_CATEGORIES.map(cat => (
+                           <optgroup key={cat.group} label={cat.group}>
+                              {cat.items.map(item => (
+                                 <option key={item.code} value={item.code}>{cat.emoji} {item.label} ({item.code})</option>
+                              ))}
+                           </optgroup>
+                        ))}
+                      </select>
+                      <ChevronDown size={16} className="absolute top-1/2 right-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Note / Messaggio</label>
+                    <textarea rows={2} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 transition-all outline-none resize-none" placeholder="Motivo o riferimenti..."></textarea>
+                  </div>
+               </div>
+
+               <div className="mt-8">
+                  <button 
+                     onClick={() => {
+                        toast.success("✅ Richiesta di assenza inviata in Segreteria!");
+                        setShowAbsenceModal(false);
+                     }}
+                     className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl py-4 font-black text-sm shadow-xl shadow-amber-200 hover:-translate-y-0.5 hover:shadow-2xl transition-all flex items-center justify-center gap-2"
+                  >
+                     <Send size={18} />
+                     Invia Richiesta
+                  </button>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

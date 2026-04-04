@@ -11,22 +11,35 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
+  CarFront
 } from "lucide-react"
 import Link from "next/link"
-import { isAssenza } from "@/utils/shift-logic"
+import { isAssenza, isMalattia } from "@/utils/shift-logic"
 
 interface PannelloOverviewProps {
   totalAgents: number
-  todayShifts: { userId: string; type: string; repType: string | null; user: { name: string; isUfficiale: boolean } }[]
+  totalVehicles: number
+  pendingSwaps: number
+  todayShifts: { 
+    userId: string; 
+    type: string; 
+    repType: string | null; 
+    timeRange: string | null;
+    serviceCategory: { name: string } | null;
+    serviceType: { name: string } | null;
+    vehicle: { name: string } | null;
+    patrolGroupId: string | null;
+    user: { name: string; isUfficiale: boolean; qualifica: string | null } 
+  }[]
   isPublished: boolean
   currentMonth: number
   currentYear: number
-  settings: { massimaleAgente: number; massimaleUfficiale: number } | null
+  settings: { massimaleAgente: number; massimaleUfficiale: number; minUfficiali: number } | null
 }
 
 const MESI = ["", "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
 
-export default function PannelloOverview({ totalAgents, todayShifts, isPublished, currentMonth, currentYear, settings }: PannelloOverviewProps) {
+export default function PannelloOverview({ totalAgents, todayShifts, isPublished, currentMonth, currentYear, settings, totalVehicles, pendingSwaps }: PannelloOverviewProps) {
   const [currentTime, setCurrentTime] = useState(new Date())
 
   useEffect(() => {
@@ -37,43 +50,45 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
   // Calcola statistiche giornaliere
   const assentiOggi = todayShifts.filter(s => isAssenza(s.type)).length
   const operativiOggi = totalAgents - assentiOggi
-  const mattina = todayShifts.filter(s => s.type.startsWith("M")).length
-  const pomeriggio = todayShifts.filter(s => s.type.startsWith("P")).length
-  const repOggi = todayShifts.filter(s => s.repType?.toLowerCase().includes("rep")).length
+  const malattieOggi = todayShifts.filter(s => isMalattia(s.type)).length
   const ufficialiOggi = todayShifts.filter(s => s.user.isUfficiale && !isAssenza(s.type)).length
+  const veicoliInUsoCount = new Set(todayShifts.filter(s => s.vehicle?.name).map(s => s.vehicle!.name)).size
+  
+  const targetUfficiali = settings?.minUfficiali ?? 1
+  const ufficialiStatusOk = ufficialiOggi >= targetUfficiali
 
   const cards = [
     {
-      label: "Organico Totale",
-      value: totalAgents,
-      icon: Users,
-      color: "from-slate-600 to-slate-700",
-      textColor: "text-slate-100",
-      sub: `${ufficialiOggi} ufficiali in servizio`,
-    },
-    {
-      label: "Operativi Oggi",
+      label: "Forze sul Campo",
       value: operativiOggi,
       icon: Activity,
       color: "from-emerald-500 to-emerald-700",
       textColor: "text-emerald-50",
-      sub: `${mattina} mattina • ${pomeriggio} pomerig.`,
+      sub: `${assentiOggi} assenti totali`,
     },
     {
-      label: "Assenti Oggi",
-      value: assentiOggi,
-      icon: AlertTriangle,
-      color: assentiOggi > 3 ? "from-rose-500 to-rose-700" : "from-amber-500 to-amber-600",
-      textColor: assentiOggi > 3 ? "text-rose-50" : "text-amber-50",
-      sub: assentiOggi === 0 ? "Nessuna assenza registrata" : "Ferie, malattie, permessi",
-    },
-    {
-      label: "Reperibili Oggi",
-      value: repOggi,
+      label: "Ufficiali Copertura",
+      value: ufficialiOggi,
       icon: Shield,
-      color: "from-violet-500 to-violet-700",
-      textColor: "text-violet-50",
-      sub: `Target: ${settings?.massimaleAgente ?? 5} agenti`,
+      color: ufficialiStatusOk ? "from-blue-500 to-blue-700" : "from-rose-500 to-rose-700",
+      textColor: ufficialiStatusOk ? "text-blue-50" : "text-rose-50",
+      sub: ufficialiStatusOk ? `Target min. ${targetUfficiali} raggiunto` : `ATTENZIONE: Sotto target (${targetUfficiali})`,
+    },
+    {
+      label: "Stato Autoparco",
+      value: veicoliInUsoCount,
+      icon: CarFront,
+      color: "from-slate-600 to-slate-800",
+      textColor: "text-slate-50",
+      sub: `${totalVehicles - veicoliInUsoCount} veicoli liberi`,
+    },
+    {
+      label: pendingSwaps > 0 ? "Eccezioni / Scambi" : "Eccezioni / Malattie",
+      value: pendingSwaps > 0 ? pendingSwaps : malattieOggi,
+      icon: AlertTriangle,
+      color: pendingSwaps > 0 ? "from-amber-500 to-amber-700" : (malattieOggi > 0 ? "from-rose-500 to-rose-700" : "from-teal-500 to-teal-700"),
+      textColor: "text-white",
+      sub: pendingSwaps > 0 ? "Richieste in attesa di approvazione" : (malattieOggi > 0 ? "Malattie registrate oggi" : "Tutto regolare"),
     },
   ]
 
@@ -155,58 +170,110 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
         </div>
       </div>
 
-      {/* Today Detail */}
-      {todayShifts.length > 0 && (
-        <div>
-          <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <Clock size={20} className="text-slate-400" />
-            Dettaglio Turni di Oggi
+      {/* Pattuglie / Cockpit Operativo */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Colonna Operativa */}
+        <div className="lg:col-span-2 space-y-6">
+          <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+            <Shield size={24} className="text-emerald-500" />
+            Pattuglie e Servizi Assegnati
           </h2>
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Agente</th>
-                    <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Turno</th>
-                    <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Reperibilità</th>
-                    <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Stato</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {todayShifts.map((s, i) => (
-                    <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-4 py-2.5 font-semibold text-slate-800 flex items-center gap-2">
-                        {s.user.isUfficiale && <span className="text-[9px] bg-blue-100 text-blue-700 px-1 rounded font-black">UFF</span>}
-                        {s.user.name}
-                      </td>
-                      <td className="px-4 py-2.5 text-center">
-                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold ${s.type.startsWith("M") ? "bg-blue-100 text-blue-700" : s.type.startsWith("P") ? "bg-indigo-100 text-indigo-700" : isAssenza(s.type) ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>
-                          {s.type}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-center">
-                        {s.repType ? (
-                          <span className="inline-block px-2 py-0.5 rounded text-xs font-black bg-violet-100 text-violet-700">{s.repType}</span>
-                        ) : (
-                          <span className="text-slate-300">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2.5 text-center">
-                        {isAssenza(s.type) ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-500"><XCircle size={12}/> Assente</span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-500"><CheckCircle2 size={12}/> Operativo</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+
+          {operativiOggi === 0 ? (
+            <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center">
+               <p className="text-slate-400 font-bold uppercase tracking-widest">Nessuna unità operativa in servizio</p>
             </div>
+          ) : (
+            // Raggruppiamo i turni operativi per Categoria, poi per orari/tipo.
+            (() => {
+              const opShifts = todayShifts.filter(s => !isAssenza(s.type))
+              const categories = [...new Set(opShifts.map(s => s.serviceCategory?.name || "Servizio Generico"))]
+              
+              return categories.map(cat => (
+                <div key={cat} className="space-y-3">
+                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest border-b-2 border-slate-100 pb-2 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    {cat}
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Le pattuglie in questa categoria raggruppate per orario/veicolo/servizio */}
+                    {(() => {
+                      const shiftsInCat = opShifts.filter(s => (s.serviceCategory?.name || "Servizio Generico") === cat)
+                      
+                      // Raggruppa per un mix di parametri per simulare l'entità "Pattuglia".
+                      // Se manca un patrolGroupId, useremo type+cat+vehc
+                      const grouped: Record<string, typeof shiftsInCat> = {}
+                      shiftsInCat.forEach(s => {
+                         const gId = s.patrolGroupId || `${s.type}-${s.serviceType?.name || 'Base'}-${s.vehicle?.name || 'N/A'}`
+                         if (!grouped[gId]) grouped[gId] = []
+                         grouped[gId].push(s)
+                      })
+
+                      return Object.values(grouped).map((group, idx) => (
+                        <div key={idx} className="bg-white border-2 border-slate-100 hover:border-emerald-200 rounded-2xl p-4 shadow-sm transition-all hover:shadow-md">
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                               <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 font-black text-[10px] uppercase rounded mb-1">{group[0].type}</span>
+                               <h4 className="font-bold text-slate-800 leading-tight block">{group[0].serviceType?.name || "Pattugliamento"}</h4>
+                               {group[0].timeRange && <p className="text-xs text-slate-500 font-bold mt-0.5">{group[0].timeRange}</p>}
+                            </div>
+                            {group[0].vehicle && (
+                               <div className="flex items-center gap-1.5 bg-slate-800 text-slate-100 px-2.5 py-1 rounded-lg text-xs font-black shadow-sm">
+                                  <CarFront size={14} className="opacity-80" />
+                                  {group[0].vehicle.name}
+                               </div>
+                            )}
+                          </div>
+                          
+                          <div className="space-y-1.5 pt-2 border-t border-slate-50">
+                             {group.map(member => (
+                                <div key={member.userId} className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                   {member.user.isUfficiale && <span className="text-[9px] bg-blue-100 text-blue-700 px-1 rounded font-black">UFF</span>}
+                                   {member.user.name}
+                                   {member.repType && <span className="ml-auto text-[9px] font-black text-violet-600 bg-violet-100 px-1.5 py-0.5 rounded uppercase">Eredità {member.repType}</span>}
+                                </div>
+                             ))}
+                          </div>
+                        </div>
+                      ))
+                    })()}
+                  </div>
+                </div>
+              ))
+            })()
+          )}
+        </div>
+
+        {/* Colonna Eccezioni */}
+        <div className="space-y-6">
+          <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+            <AlertTriangle size={24} className="text-amber-500" />
+            Eccezioni & Gestione
+          </h2>
+          
+          <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-5">
+             <h3 className="font-bold text-amber-900 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
+               Assenti (<span className="text-rose-600">{assentiOggi}</span>)
+             </h3>
+             {assentiOggi === 0 ? (
+               <p className="text-amber-700/60 text-sm font-medium italic">Nessun dipendente assente oggi.</p>
+             ) : (
+               <div className="space-y-2">
+                 {todayShifts.filter(s => isAssenza(s.type)).map(s => (
+                   <div key={s.userId} className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-amber-50 shadow-sm">
+                      <span className="font-bold text-slate-700 text-sm">{s.user.name}</span>
+                      <span className="text-[10px] font-black uppercase px-2 py-1 bg-amber-100 text-amber-800 rounded">
+                        {isMalattia(s.type) ? <span className="text-rose-600">MALATTIA</span> : s.type}
+                      </span>
+                   </div>
+                 ))}
+               </div>
+             )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }

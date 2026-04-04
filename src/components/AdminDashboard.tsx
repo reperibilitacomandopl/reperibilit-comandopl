@@ -11,6 +11,7 @@ import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { isHoliday } from "../utils/holidays"
 import { isMalattia, isMattina, isPomeriggio, isAssenza } from "../utils/shift-logic"
+import { AGENDA_CATEGORIES, getCategoryColor } from "../utils/agenda-codes"
 
 type EditingCell = { agentId: string; agentName: string; day: number; currentType: string; warningMsg?: string } | null
 
@@ -78,6 +79,11 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
   const [pendingSwaps, setPendingSwaps] = useState<any[]>([])
   const [isLoadingSwaps, setIsLoadingSwaps] = useState(false)
   const [importType, setImportType] = useState<"base" | "rep">("base")
+
+  // Bulk Absence Modal
+  const [showBulkAbsence, setShowBulkAbsence] = useState(false)
+  const [bulkData, setBulkData] = useState({ agentId: "", startDate: "", endDate: "", code: "" })
+  const [isSavingBulk, setIsSavingBulk] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
@@ -155,6 +161,45 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       toast.error("Errore nel salvataggio")
     } finally {
       setIsSavingCell(false)
+    }
+  }
+
+  // === BULK EDITING ===
+  const handleBulkSave = async () => {
+    if (!bulkData.agentId || !bulkData.startDate || !bulkData.endDate || !bulkData.code) {
+      toast.error("Compila tutti i campi!")
+      return
+    }
+    const start = new Date(bulkData.startDate)
+    const end = new Date(bulkData.endDate)
+    if (end < start) {
+      toast.error("La data di fine non può essere precedente all'inizio")
+      return
+    }
+
+    if (!confirm(`Sei sicuro di voler inserire "${bulkData.code}" per il periodo selezionato? Sovrascriverà i turni attuali.`)) return
+
+    setIsSavingBulk(true)
+    try {
+      const res = await fetch('/api/admin/bulk-shifts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: bulkData.agentId,
+          startDate: bulkData.startDate,
+          endDate: bulkData.endDate,
+          type: bulkData.code
+        })
+      })
+      if (!res.ok) throw new Error("Errore salvataggio massivo")
+      toast.success("Assenze inserite con successo!")
+      setShowBulkAbsence(false)
+      setBulkData({ agentId: "", startDate: "", endDate: "", code: "" })
+      router.refresh()
+    } catch {
+      toast.error("Errore durante l'inserimento")
+    } finally {
+      setIsSavingBulk(false)
     }
   }
 
@@ -793,10 +838,19 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
           <button 
             onClick={() => setShowAnagrafica(true)}
-            className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-indigo-200"
           >
             <Users size={18} />
             Anagrafica
+          </button>
+
+          <button 
+            onClick={() => setShowBulkAbsence(true)}
+            className="flex items-center gap-2 bg-teal-50 hover:bg-teal-100 text-teal-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-teal-200 shadow-sm"
+            title="Inserimento massivo ferie, congedi e malattie per un periodo lungo"
+          >
+            <CalendarIcon size={18} />
+            Assenze Multiple
           </button>
 
           <button 
@@ -1391,17 +1445,48 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             <div className="p-5">
               <p className="text-xs text-slate-500 mb-3">Valore attuale: <strong>{editingCell.currentType || "(vuoto)"}</strong></p>
 
-              <div className="text-xs font-semibold text-slate-600 mb-2">Inserimento rapido:</div>
+              <div className="text-xs font-semibold text-slate-600 mb-2">Operativi veloci:</div>
               <div className="flex flex-wrap gap-2 mb-4">
-                {["REP", "F", "M", "104", "RR", "RP", "FERIE", "MALATTIA", "CS"].map(code => (
+                {["REP"].map(code => (
                   <button
                     key={code}
                     disabled={isSavingCell}
                     onClick={() => saveCellEdit(code)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 bg-white border-2 border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-colors disabled:opacity-50 shadow-sm"
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-purple-700 bg-purple-50 border-2 border-purple-200 hover:border-purple-400 hover:bg-purple-100 transition-colors disabled:opacity-50 shadow-sm"
                   >
                     {code}
                   </button>
+                ))}
+              </div>
+
+              <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar mb-4 space-y-4">
+                {AGENDA_CATEGORIES.map(cat => (
+                  <div key={cat.group}>
+                    <div className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1.5 uppercase">
+                      <span>{cat.emoji}</span> {cat.group}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {cat.items.map(item => (
+                        <button
+                          key={item.shortCode}
+                          disabled={isSavingCell}
+                          onClick={() => saveCellEdit(item.shortCode)}
+                          className={`px-2 py-1 rounded select-none text-[10px] font-bold border-2 disabled:opacity-50 transition-colors ${
+                            cat.color === 'amber' ? 'text-amber-700 bg-white border-amber-200 hover:bg-amber-50' :
+                            cat.color === 'rose' ? 'text-rose-700 bg-white border-rose-200 hover:bg-rose-50' :
+                            cat.color === 'blue' ? 'text-blue-700 bg-white border-blue-200 hover:bg-blue-50' :
+                            cat.color === 'red' ? 'text-red-700 bg-white border-red-200 hover:bg-red-50' :
+                            cat.color === 'teal' ? 'text-teal-700 bg-white border-teal-200 hover:bg-teal-50' :
+                            cat.color === 'indigo' ? 'text-indigo-700 bg-white border-indigo-200 hover:bg-indigo-50' :
+                            'text-slate-700 bg-white border-slate-200 hover:bg-slate-50'
+                          }`}
+                          title={item.label}
+                        >
+                          {item.shortCode}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
 
@@ -1950,6 +2035,131 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
                  ⚠️ L'approvazione sposta definitivamente la titolarità del turno nel calendario ufficiale. L'operazione non è reversibile automaticamente.
                </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Modal Assenze Multiple */}
+      {showBulkAbsence && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowBulkAbsence(false)}></div>
+          <div className="relative w-full max-w-3xl bg-white rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            <div className="bg-gradient-to-r from-teal-600 to-emerald-600 p-6 text-white flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-xl">
+                  <CalendarIcon size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black uppercase tracking-tight">Gestione Assenze Multiple</h3>
+                  <p className="text-teal-100 text-xs font-bold uppercase tracking-widest opacity-80">Inserimento massivo ferie, malattie e permessi lungi</p>
+                </div>
+              </div>
+              <button onClick={() => setShowBulkAbsence(false)} className="text-white/60 hover:text-white transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Agente</label>
+                    <div className="relative">
+                      <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <select
+                        value={bulkData.agentId}
+                        onChange={e => setBulkData({ ...bulkData, agentId: e.target.value })}
+                        className="w-full pl-10 pr-4 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
+                      >
+                        <option value="">Seleziona un Agente...</option>
+                        {allAgents
+                           .filter(a => roleFilter === "ALL" || (roleFilter === "UFF" && a.isUfficiale) || (roleFilter === "AGT" && !a.isUfficiale))
+                           .sort((a,b) => a.name.localeCompare(b.name))
+                           .map(agent => (
+                          <option key={agent.id} value={agent.id}>{agent.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Da</label>
+                      <input 
+                        type="date"
+                        value={bulkData.startDate}
+                        onChange={e => setBulkData({ ...bulkData, startDate: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-2">A</label>
+                      <input 
+                        type="date"
+                        value={bulkData.endDate}
+                        onChange={e => setBulkData({ ...bulkData, endDate: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-teal-50 p-4 rounded-xl border border-teal-100">
+                    <p className="text-xs text-teal-800 font-bold mb-1">Riepilogo Selezione:</p>
+                    {bulkData.code ? (
+                       <p className="text-sm">Inserimento causale <strong className="bg-teal-200 px-1 rounded text-teal-900">{bulkData.code}</strong></p>
+                    ) : (
+                       <p className="text-sm text-teal-600 italic">Scegli una causale dal pannello a destra.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-2xl border-2 border-slate-100 h-[300px] overflow-y-auto custom-scrollbar">
+                   <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Prontuario Causali</h4>
+                   <div className="space-y-4">
+                    {AGENDA_CATEGORIES.map(cat => (
+                      <div key={`bulk-${cat.group}`}>
+                        <div className="text-xs font-bold text-slate-600 mb-2 flex items-center gap-1.5 uppercase">
+                          <span>{cat.emoji}</span> {cat.group}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {cat.items.map(item => (
+                            <button
+                              key={`bulk-${item.shortCode}`}
+                              onClick={() => setBulkData({ ...bulkData, code: item.shortCode })}
+                              className={`px-2 py-1 rounded select-none text-[10px] font-bold border-2 transition-all ${
+                                bulkData.code === item.shortCode 
+                                  ? 'border-teal-500 bg-teal-100 text-teal-800 scale-105 shadow-sm' 
+                                  : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                              }`}
+                              title={item.label}
+                            >
+                              {item.shortCode}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                   </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-6 border-t border-slate-100 flex justify-end gap-3 shrink-0">
+               <button 
+                 onClick={() => setShowBulkAbsence(false)}
+                 className="px-6 py-2 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-200 transition-colors"
+               >
+                 Annulla
+               </button>
+               <button 
+                 onClick={handleBulkSave}
+                 disabled={isSavingBulk || !bulkData.agentId || !bulkData.startDate || !bulkData.endDate || !bulkData.code}
+                 className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-2 rounded-xl text-sm font-black shadow-lg shadow-teal-100 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center gap-2"
+               >
+                 {isSavingBulk ? <RefreshCw className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}
+                 INSERISCI ASSENZE
+               </button>
             </div>
           </div>
         </div>

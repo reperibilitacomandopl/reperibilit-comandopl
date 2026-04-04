@@ -14,7 +14,7 @@ export default async function PannelloPage() {
   const currentMonth = now.getMonth() + 1
 
   // Fetch lightweight data for overview
-  const [totalAgents, todayShifts, monthStatus, settings] = await Promise.all([
+  const [totalAgents, todayShifts, monthStatus, settings, totalVehicles, pendingSwaps] = await Promise.all([
     prisma.user.count({ where: { role: "AGENTE" } }),
     prisma.shift.findMany({
       where: {
@@ -23,12 +23,20 @@ export default async function PannelloPage() {
           lt: new Date(Date.UTC(currentYear, now.getMonth(), now.getDate() + 1)),
         },
       },
-      include: { user: { select: { name: true, isUfficiale: true } } },
+      include: { 
+        user: { select: { name: true, isUfficiale: true, qualifica: true } },
+        vehicle: true,
+        serviceCategory: true,
+        serviceType: true
+      },
+      orderBy: { patrolGroupId: 'asc' }
     }),
     prisma.monthStatus.findUnique({
       where: { month_year: { month: currentMonth, year: currentYear } },
     }),
     prisma.globalSettings.findFirst(),
+    prisma.vehicle.count(),
+    prisma.shiftSwapRequest.count({ where: { status: "PENDING" } })
   ])
 
   return (
@@ -40,6 +48,8 @@ export default async function PannelloPage() {
         currentMonth={currentMonth}
         currentYear={currentYear}
         settings={settings as any}
+        totalVehicles={totalVehicles}
+        pendingSwaps={pendingSwaps}
       />
     </div>
   )
