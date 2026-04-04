@@ -4,6 +4,21 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { logAudit } from "@/lib/audit"
 
+export async function GET(req: Request) {
+  const session = await auth()
+  if (session?.user?.role !== "ADMIN") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+  try {
+    const users = await prisma.user.findMany({
+      where: { role: "AGENTE" },
+      orderBy: { name: "asc" }
+    })
+    return NextResponse.json({ users })
+  } catch (error) {
+    return NextResponse.json({ error: "Internal Error" }, { status: 500 })
+  }
+}
 export async function PUT(req: Request) {
   const session = await auth()
   if (session?.user?.role !== "ADMIN") {

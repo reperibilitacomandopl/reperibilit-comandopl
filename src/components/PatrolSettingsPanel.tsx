@@ -92,34 +92,34 @@ export default function PatrolSettingsPanel() {
       <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-200/40">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="col-span-full lg:col-span-2">
-            <label className="block text-xs font-black text-slate-600 uppercase tracking-wide mb-2">Nome Pattuglia</label>
-            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Es. Viabilità Centro 1" className="w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 font-bold outline-none"/>
+            <label className="block text-[11px] font-black text-slate-900 uppercase tracking-wide mb-2">Nome Pattuglia</label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Es. Viabilità Centro 1" className="w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 font-bold outline-none text-slate-900"/>
           </div>
           
           <div>
-            <label className="block text-xs font-black text-slate-600 uppercase tracking-wide mb-2">Agente 1</label>
-            <select value={selectedAgent1} onChange={e => setSelectedAgent1(e.target.value)} className="w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 font-bold outline-none bg-white">
+            <label className="block text-[11px] font-black text-slate-900 uppercase tracking-wide mb-2">Agente 1</label>
+            <select value={selectedAgent1} onChange={e => setSelectedAgent1(e.target.value)} className="w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 font-bold outline-none bg-white text-slate-900">
               <option value="">-- Seleziona --</option>
               {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-black text-slate-600 uppercase tracking-wide mb-2">Agente 2</label>
-            <select value={selectedAgent2} onChange={e => setSelectedAgent2(e.target.value)} className="w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 font-bold outline-none bg-white">
+            <label className="block text-[11px] font-black text-slate-900 uppercase tracking-wide mb-2">Agente 2</label>
+            <select value={selectedAgent2} onChange={e => setSelectedAgent2(e.target.value)} className="w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 font-bold outline-none bg-white text-slate-900">
               <option value="">-- Seleziona --</option>
               {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </div>
 
           <div className="col-span-1 lg:col-span-2">
-            <label className="block text-xs font-black text-slate-600 uppercase tracking-wide mb-2">Servizio Predefinito</label>
+            <label className="block text-[11px] font-black text-slate-900 uppercase tracking-wide mb-2">Servizio Predefinito</label>
             <div className="flex gap-2">
-              <select value={selectedCategory} onChange={e => {setSelectedCategory(e.target.value); setSelectedType("")}} className="flex-1 rounded-2xl border-2 border-slate-200 px-3 py-3 text-xs focus:border-indigo-500 font-bold outline-none bg-white">
+              <select value={selectedCategory} onChange={e => {setSelectedCategory(e.target.value); setSelectedType("")}} className="flex-1 rounded-2xl border-2 border-slate-200 px-3 py-3 text-xs focus:border-indigo-500 font-bold outline-none bg-white text-slate-900">
                 <option value="">Nessuno</option>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               {selectedCategory && (
-                <select value={selectedType} onChange={e => setSelectedType(e.target.value)} className="flex-1 rounded-2xl border-2 border-slate-200 px-3 py-3 text-xs focus:border-indigo-500 font-bold text-indigo-700 outline-none bg-white">
+                <select value={selectedType} onChange={e => setSelectedType(e.target.value)} className="flex-1 rounded-2xl border-2 border-slate-200 px-3 py-3 text-xs focus:border-indigo-500 font-black text-indigo-800 outline-none bg-white">
                   <option value="">Generico</option>
                   {categories.find(c => c.id === selectedCategory)?.types.map((t:any) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
@@ -128,16 +128,16 @@ export default function PatrolSettingsPanel() {
           </div>
 
           <div>
-            <label className="block text-xs font-black text-slate-600 uppercase tracking-wide mb-2">Veicolo Fisso</label>
-            <select value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} className="w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 font-bold outline-none bg-white">
+            <label className="block text-[11px] font-black text-slate-900 uppercase tracking-wide mb-2">Veicolo Fisso</label>
+            <select value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} className="w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 font-bold outline-none bg-white text-slate-900">
               <option value="">Nessuno</option>
               {vehicles.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
             </select>
           </div>
 
           <div>
-            <label className="block text-xs font-black text-slate-600 uppercase tracking-wide mb-2">Turno Preferito</label>
-            <select value={preferredShift} onChange={e => setPreferredShift(e.target.value)} className="w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 font-bold outline-none bg-white">
+            <label className="block text-[11px] font-black text-slate-900 uppercase tracking-wide mb-2">Turno Preferito</label>
+            <select value={preferredShift} onChange={e => setPreferredShift(e.target.value)} className="w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-sm focus:border-indigo-500 font-bold outline-none bg-white text-slate-900">
               <option value="ALL">Qualsiasi Turno</option>
               <option value="M">Mattina (es. M7, M8)</option>
               <option value="P">Pomeriggio (es. P14)</option>
@@ -155,28 +155,28 @@ export default function PatrolSettingsPanel() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {patrols.map(p => (
           <div key={p.id} className="bg-white border rounded-[2rem] p-5 shadow-sm hover:shadow-xl hover:border-indigo-200 transition-all border-slate-200 group flex flex-col relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-400 to-purple-500"></div>
+            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 to-purple-600"></div>
             
             <div className="flex justify-between items-start mt-2 border-b border-slate-100 pb-4 mb-4">
-              <h4 className="font-black text-slate-800 text-base leading-tight pr-6">{p.name}</h4>
-              <button onClick={() => deletePatrol(p.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1 rounded-lg hover:bg-red-50 shrink-0">
+              <h4 className="font-black text-slate-900 text-base leading-tight pr-6">{p.name}</h4>
+              <button onClick={() => deletePatrol(p.id)} className="text-slate-400 hover:text-red-600 transition-colors p-1 rounded-lg hover:bg-red-50 shrink-0">
                 <Trash2 size={16}/>
               </button>
             </div>
 
             <div className="flex-1 space-y-3">
               <div className="flex items-center gap-2">
-                <Users size={14} className="text-slate-400" />
+                <Users size={14} className="text-slate-600" />
                 <div className="flex flex-col">
                   {p.members.map((m:any) => (
-                    <span key={m.id} className="text-xs font-bold text-slate-700">{m.name} <span className="text-[10px] text-slate-400 font-mono ml-1">({m.matricola})</span></span>
+                    <span key={m.id} className="text-[13px] font-black text-slate-900">{m.name} <span className="text-[11px] text-indigo-700 font-mono ml-1">({m.matricola})</span></span>
                   ))}
                 </div>
               </div>
 
               {p.serviceCategory && (
                 <div className="mt-3">
-                  <span className="text-[10px] font-black text-blue-700 bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-lg inline-block">
+                  <span className="text-[11px] font-black text-blue-900 bg-blue-100 border border-blue-200 px-2.5 py-1 rounded-lg inline-block shadow-sm">
                     Servizio: {p.serviceCategory.name} {p.serviceType ? ` > ${p.serviceType.name}` : ""}
                   </span>
                 </div>
@@ -184,13 +184,13 @@ export default function PatrolSettingsPanel() {
 
               {p.vehicle && (
                 <div className="mt-2">
-                  <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-lg inline-block">
+                  <span className="text-[11px] font-black text-emerald-900 bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg inline-block shadow-sm">
                     Auto: {p.vehicle.name}
                   </span>
                 </div>
               )}
               
-              <div className="mt-2 text-[10px] font-bold text-slate-500">
+              <div className="mt-2 text-[11px] font-black text-slate-700">
                 Periodo: {p.preferredShift === 'ALL' ? 'Sempre' : p.preferredShift === 'M' ? 'Mattina' : 'Pomeriggio'}
               </div>
             </div>
@@ -198,9 +198,9 @@ export default function PatrolSettingsPanel() {
         ))}
         {patrols.length === 0 && (
           <div className="col-span-full py-10 flex flex-col items-center justify-center text-center opacity-50">
-            <Shield size={48} className="text-slate-300 mb-3" />
-            <p className="font-bold text-slate-500 text-lg">Nessuna pattuglia fissa configurata</p>
-            <p className="text-sm text-slate-400 max-w-sm mt-1">Crea dei modelli qui sopra per velocizzare la generazione dell'Ordine di Servizio automatico.</p>
+            <Shield size={48} className="text-slate-400 mb-3" />
+            <p className="font-black text-slate-600 text-lg">Nessuna pattuglia fissa configurata</p>
+            <p className="text-sm font-bold text-slate-500 max-w-sm mt-1">Crea dei modelli qui sopra per velocizzare la generazione dell'Ordine di Servizio automatico.</p>
           </div>
         )}
       </div>

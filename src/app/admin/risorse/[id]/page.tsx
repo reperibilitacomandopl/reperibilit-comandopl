@@ -5,6 +5,8 @@ import Link from "next/link"
 import { ArrowLeft, User, CalendarDays, Calculator } from "lucide-react"
 import { FERIE_CODES, PERMESSI_104_CODES, FESTIVITA_CODES, getLabel } from "@/utils/agenda-codes"
 
+import OperativeAssignmentEditor from "@/components/OperativeAssignmentEditor"
+
 export const dynamic = "force-dynamic"
 
 export default async function AgentDossierPage({ params }: { params: Promise<{ id: string }> }) {
@@ -27,6 +29,9 @@ export default async function AgentDossierPage({ params }: { params: Promise<{ i
   })
 
   if (!agent) redirect("/admin/risorse")
+
+  const rotationGroups = await prisma.rotationGroup.findMany({ orderBy: { name: 'asc' } })
+  const serviceCategories = await prisma.serviceCategory.findMany({ include: { types: true }, orderBy: { orderIndex: 'asc' } })
 
   // Fallback balance se non presente
   let balance = agent.agentBalances?.[0]
@@ -64,18 +69,11 @@ export default async function AgentDossierPage({ params }: { params: Promise<{ i
             </div>
          </div>
          {/* Assegnazione Operativa (Punto Zero) */}
-         <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex gap-6 mt-4 md:mt-0">
-            <div>
-               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Motore Ciclico (Squadra)</p>
-               <p className="text-sm font-black text-slate-800">{agent.rotationGroup?.name || agent.squadra || "Non Assegnata"}</p>
-            </div>
-            <div>
-               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Sezione OdS di Default</p>
-               <p className="text-sm font-black text-slate-800">
-                 {agent.defaultServiceCategory?.name || agent.servizio || "Nessuna Sezione Base"} 
-               </p>
-            </div>
-         </div>
+         <OperativeAssignmentEditor 
+            agent={agent} 
+            rotationGroups={rotationGroups} 
+            categories={serviceCategories} 
+         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
