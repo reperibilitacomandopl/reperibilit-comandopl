@@ -61,6 +61,32 @@ export const isLavoro = (code: string | null | undefined): boolean => {
   return isMattina(code) || isPomeriggio(code);
 };
 
+/**
+ * Assenze che devono essere PROTETTE dai reset automatici.
+ * (Ferie, Malattia, 104, Missioni, Corso, etc.)
+ * Esclude esplicitamente i riposi generati (RP, RR).
+ */
+export const isAssenzaProtetta = (code: string | null | undefined): boolean => {
+  if (!code) return false;
+  const c = code.toUpperCase().replace(/[()]/g, '').trim();
+  
+  // Lista di codici da PROTEGGERE (NON cancellare al reset)
+  const protette = [
+    // Ferie
+    "F", "FERIE", "FERIE_AP", "FEST_SOP",
+    // Permessi
+    "104", "MOT_PERS", "ELETT",
+    // Congedi
+    "CONG_PAT", "CONG_PAR", "CONGEDO",
+    // Altro
+    "CORSO", "SMART", "MISSIONE",
+    // Storici (esclusi RP/RR)
+    "ASS", "INFR", "CS", "PNR", "SD", "RF", "AM", "AP"
+  ];
+  
+  return protette.includes(c) || isMalattia(c);
+};
+
 export const formatShiftCode = (prefix: string, timeStr: string | null | undefined): string => {
   if (!timeStr) return prefix;
   const [h, m] = timeStr.split(':');

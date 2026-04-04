@@ -10,30 +10,56 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { year, groupId } = await request.json()
-    if (!year) {
-      return NextResponse.json({ error: "Anno mancante" }, { status: 400 })
+    const { year, groupId, target } = await request.json()
+    if (!year || !groupId) {
+      return NextResponse.json({ error: "Parametri mancanti (anno o gruppo)" }, { status: 400 })
     }
 
-    // 1. Carica Utenti (tutti o solo un gruppo specifico)
+    // 1. Carica il Gruppo di Rotazione "Master" (quello selezionato nel menu a tendina)
+    const masterGroup = await prisma.rotationGroup.findUnique({
+      where: { id: groupId }
+    })
+    if (!masterGroup) {
+      return NextResponse.json({ error: "Turno non trovato" }, { status: 404 })
+    }
+    
+    let pattern: string[] = []
+    try {
+      pattern = JSON.parse(masterGroup.pattern)
+    } catch {
+      return NextResponse.json({ error: "Pattern del turno non valido" }, { status: 400 })
+    }
+    if (pattern.length === 0) {
+      return NextResponse.json({ error: "Il pattern del turno è vuoto" }, { status: 400 })
+    }
+
+    const anchor = new Date(masterGroup.startDate)
+
+    // 2. Carica Utenti Filtrati per 'target'
+    let userWhere: any = { rotationGroupId: { not: null } }
+    
+    if (target && target !== "ALL") {
+      if (target.startsWith("GROUP_")) {
+        userWhere = { rotationGroupId: target.replace("GROUP_", "") }
+      } else {
+        // È un singolo ID utente
+        userWhere = { id: target }
+      }
+    }
+
     const users = await prisma.user.findMany({
-      where: (groupId && groupId !== "ALL") ? { rotationGroupId: groupId } : { 
-        rotationGroupId: { not: null } 
-      },
-      include: { rotationGroup: true }
+      where: userWhere
     })
 
     if (users.length === 0) {
-      return NextResponse.json({ error: "Nessun agente trovato per la generazione annuale" }, { status: 404 })
+      return NextResponse.json({ error: "Nessun agente trovato per il target selezionato" }, { status: 404 })
     }
 
     let totalCreatedOrUpdated = 0
 
-    // 2. Itera su ogni utente
+    // 3. Itera su ogni utente
     for (const user of users) {
-      if (!user.rotationGroup) continue
-      
-      const group = user.rotationGroup
+      const group = masterGroup // Usiamo il gruppo MASTER (quello selezionato nel wizard)
       let pattern: string[] = []
       try {
         pattern = JSON.parse(group.pattern)

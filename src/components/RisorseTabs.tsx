@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Users, Briefcase } from "lucide-react"
 import AnagraficaPanel from "./AnagraficaPanel"
 import ServicesSettings from "./ServicesSettings"
@@ -9,7 +10,21 @@ import SquadreManager from "./SquadreManager"
 import { Shield, RotateCcw } from "lucide-react"
 
 export default function RisorseTabs({ agents, rotationGroups, categories }: any) {
-  const [activeTab, setActiveTab] = useState<"personale" | "cicli" | "servizi" | "pattuglie">("personale")
+  const searchParams = useSearchParams()
+  const initialTab = searchParams.get("tab") as any
+  const [activeTab, setActiveTab] = useState<"personale" | "cicli" | "servizi" | "pattuglie">(
+    initialTab && ["personale", "cicli", "servizi", "pattuglie"].includes(initialTab) 
+      ? initialTab 
+      : "personale"
+  )
+
+  // Opzionale: aggiorna il tab se il parametro cambia (es. navigazione interna)
+  useEffect(() => {
+    const tab = searchParams.get("tab")
+    if (tab && ["personale", "cicli", "servizi", "pattuglie"].includes(tab)) {
+      setActiveTab(tab as any)
+    }
+  }, [searchParams])
 
   return (
     <div className="space-y-6">

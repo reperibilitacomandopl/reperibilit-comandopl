@@ -17,6 +17,11 @@ export default function MonthlyShiftPlanner() {
   const [originalGrid, setOriginalGrid] = useState<Record<string, Record<string, string>>>({})
   const [isGeneratingAnnual, setIsGeneratingAnnual] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
+  
+  // --- STATO RESET GENERALE ---
+  const [isGeneralResetOpen, setIsGeneralResetOpen] = useState(false)
+  const [selectedMonths, setSelectedMonths] = useState<number[]>([])
+  const [isExecutingGeneralReset, setIsExecutingGeneralReset] = useState(false)
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth() + 1
@@ -125,6 +130,42 @@ export default function MonthlyShiftPlanner() {
     setIsResetting(false)
   }
 
+  const handleGeneralReset = async () => {
+    if (selectedMonths.length === 0) {
+      toast.error("Seleziona almeno un mese")
+      return
+    }
+
+    const monthsStr = selectedMonths
+      .sort((a, b) => a - b)
+      .map(m => new Date(year, m - 1, 1).toLocaleDateString("it-IT", { month: "long" }))
+      .join(", ")
+
+    if (!confirm(`⚠ ATTENZIONE: Stai per resettare i turni di ${selectedMonths.length} mesi (${monthsStr}) dell'anno ${year}.\n\nLe assenze protette (Ferie, Malattia, 104, etc.) VERRANNO PRESERVATE.\n\nVuoi procedere?`)) return
+    if (!confirm(`CONFERMA FINALE: Procedere con il reset massivo di ${selectedMonths.length} mesi?`)) return
+
+    setIsExecutingGeneralReset(true)
+    try {
+      const res = await fetch("/api/admin/shifts/monthly", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ year, months: selectedMonths })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(`Reset completato! Rimossi ${data.count} turni in ${selectedMonths.length} mesi.`, { duration: 5000 })
+        setIsGeneralResetOpen(false)
+        setSelectedMonths([])
+        loadData()
+      } else {
+        toast.error(data.error || "Errore durante il reset")
+      }
+    } catch {
+      toast.error("Errore di rete")
+    }
+    setIsExecutingGeneralReset(false)
+  }
+
   const applyAnnualGeneration = async () => {
     if (!confirm(`Stai per generare i turni per TUTTO L'ANNO ${year}. Questa operazione potrebbe richiedere alcuni secondi e non sovrascriverà le assenze già caricate. Procedere?`)) return
     
@@ -133,7 +174,7 @@ export default function MonthlyShiftPlanner() {
       const res = await fetch("/api/admin/shifts/annual", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ year, groupId: wizardGroupId })
+        body: JSON.stringify({ year, groupId: wizardGroupId, target: wizardTarget })
       })
       const data = await res.json()
       if (res.ok) {
@@ -306,6 +347,16 @@ export default function MonthlyShiftPlanner() {
           >
             {isResetting ? <Loader2 className="animate-spin" size={16}/> : <RotateCcw size={16}/>} Reset Mese
           </button>
+          
+          <button 
+            onClick={() => {
+              setSelectedMonths([month]) // Pre-seleziona il mese corrente
+              setIsGeneralResetOpen(true)
+            }}
+            className="px-4 py-2 bg-rose-700 hover:bg-rose-600 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg transition-all active:scale-95 border border-rose-800"
+          >
+            <FilterX size={16}/> Reset Generale
+          </button>
           <button 
             onClick={saveChanges} disabled={saving}
             className="px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white rounded-lg text-sm font-bold flex items-center gap-2"
@@ -385,7 +436,10 @@ export default function MonthlyShiftPlanner() {
               {isGeneratingAnnual ? <Loader2 className="animate-spin" size={16}/> : <RotateCcw size={16}/>} GENERA TUTTO L'ANNO {year}
             </button>
             
-            <Link href="/squadre" className="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg text-sm">
+            <Link 
+              href="/admin/risorse?tab=cicli" 
+              className="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg text-sm shadow-md transition-all active:scale-95 flex items-center gap-2"
+            >
               ⚙ Gestisci Squadre
             </Link>
             
@@ -481,6 +535,98 @@ export default function MonthlyShiftPlanner() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODALE RESET GENERALE --- */}
+      {isGeneralResetOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
+            <div className="bg-rose-700 p-6 text-white text-center">
+              <div className="bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={32} className="text-white" />
+              </div>
+              <h3 className="text-2xl font-black uppercase tracking-tight">Reset Generale</h3>
+              <p className="text-rose-100 text-sm font-medium mt-1 opacity-90 italic">Pulisci i turni di più mesi contemporaneamente</p>
+            </div>
+
+            <div className="p-8">
+              <div className="flex justify-between items-center mb-6">
+                <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Seleziona Mesi ({year})</span>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setSelectedMonths(Array.from({length: 12}, (_, i) => i + 1))}
+                    className="text-[10px] font-black uppercase text-blue-600 hover:underline"
+                  >
+                    Tutti
+                  </button>
+                  <button 
+                    onClick={() => setSelectedMonths([])}
+                    className="text-[10px] font-black uppercase text-slate-400 hover:underline"
+                  >
+                    Nessuno
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 mb-8">
+                {Array.from({length: 12}, (_, i) => {
+                  const mNum = i + 1
+                  const mName = new Date(year, i, 1).toLocaleDateString("it-IT", { month: "short" })
+                  const isSelected = selectedMonths.includes(mNum)
+                  return (
+                    <button
+                      key={mNum}
+                      onClick={() => {
+                        setSelectedMonths(prev => 
+                          prev.includes(mNum) ? prev.filter(m => m !== mNum) : [...prev, mNum]
+                        )
+                      }}
+                      className={`py-3 px-2 rounded-xl text-xs font-black uppercase transition-all border-2 ${
+                        isSelected 
+                          ? "bg-rose-50 border-rose-600 text-rose-700 shadow-sm" 
+                          : "bg-slate-50 border-slate-100 text-slate-400 hover:border-slate-300"
+                      }`}
+                    >
+                      {mName}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-8 rounded-r-xl">
+                <div className="flex gap-3">
+                  <div className="shrink-0 text-amber-500">⚠</div>
+                  <p className="text-[11px] font-bold text-amber-800 leading-relaxed uppercase">
+                    Verranno cancellati solo i turni e i riposi generati (RP, RR). 
+                    Le Ferie e le altre assenze giustificate rimarranno intatte.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={handleGeneralReset}
+                  disabled={isExecutingGeneralReset || selectedMonths.length === 0}
+                  className="w-full py-4 bg-rose-700 hover:bg-rose-800 text-white font-black rounded-2xl shadow-xl shadow-rose-200 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 text-sm uppercase tracking-widest"
+                >
+                  {isExecutingGeneralReset ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <>ESEGUI RESET MASSIVO ({selectedMonths.length})</>
+                  )}
+                </button>
+                
+                <button
+                  onClick={() => setIsGeneralResetOpen(false)}
+                  disabled={isExecutingGeneralReset}
+                  className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl text-xs uppercase tracking-widest transition-all"
+                >
+                  Annulla
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
