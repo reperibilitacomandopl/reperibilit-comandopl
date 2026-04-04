@@ -123,7 +123,8 @@ export async function POST(req: Request) {
           serviceTypeId: u.serviceTypeId,
           vehicleId: u.vehicleId,
           timeRange: u.timeRange,
-          patrolGroupId: u.patrolGroupId
+          patrolGroupId: u.patrolGroupId,
+          serviceDetails: u.serviceDetails
         }
       })
     }

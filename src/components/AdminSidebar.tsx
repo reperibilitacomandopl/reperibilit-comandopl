@@ -40,6 +40,7 @@ const NAV_SECTIONS: NavSection[] = [
     accent: "text-emerald-400",
     items: [
       { label: "Ufficio Comando", href: "/admin/risorse", icon: Users, description: "Agenti, Squadre e Logistica" },
+      { label: "Sezioni & Servizi", href: "/admin/sezioni", icon: Users, description: "Servizi OdS di Default" },
       { label: "Generatore Ciclico", href: "/admin/auto-compila", icon: Wand2, description: "Auto-Compilazione Turni" },
     ],
   },

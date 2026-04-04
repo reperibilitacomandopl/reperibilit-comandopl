@@ -291,7 +291,7 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
                         <span className="text-[10px] bg-slate-100 text-slate-800 font-black px-2.5 py-1.5 rounded-lg border border-slate-200 inline-block">
                           {agent.rotationGroup?.name || agent.squadra || "Senza Squadra"}
                         </span>
-                        {agent.servizio && (
+                        {agent.servizio && !agent.defaultServiceCategoryId && (
                            <span className="text-[9px] font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded border border-indigo-200 inline-block">
                              {agent.servizio}
                            </span>
