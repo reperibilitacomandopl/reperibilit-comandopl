@@ -44,10 +44,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, message: "Nessun turno trovato per questa data." })
     }
 
-    // 2. Fetch all Patrol Templates
-    const patrolTemplates = await prisma.patrolTemplate.findMany({
-      include: { members: true }
-    })
+    // 2. Fetch all Patrol Templates and Service Categories/Types
+    const [patrolTemplates, serviceCategories] = await Promise.all([
+      prisma.patrolTemplate.findMany({ include: { members: true } }),
+      prisma.serviceCategory.findMany({ include: { types: true } })
+    ])
 
     // Prepare updates
     const updates: any[] = []
@@ -103,10 +104,21 @@ export async function POST(req: Request) {
       const isWorking = classifyShift(s.type) !== "OFF"
       
       if (isWorking) {
+        let catId = s.user.defaultServiceCategoryId || s.serviceCategoryId
+        let typeId = s.user.defaultServiceTypeId || s.serviceTypeId
+
+        // Se l'agente appartiene a una macro-sezione ma non ha sottomansione, assegnala in automatico
+        if (catId && !typeId) {
+          const catDef = serviceCategories.find(c => c.id === catId)
+          if (catDef && catDef.types && catDef.types.length > 0) {
+            typeId = catDef.types[0].id
+          }
+        }
+
         updates.push({
           id: s.id,
-          serviceCategoryId: s.user.defaultServiceCategoryId || s.serviceCategoryId,
-          serviceTypeId: s.user.defaultServiceTypeId || s.serviceTypeId,
+          serviceCategoryId: catId,
+          serviceTypeId: typeId,
           timeRange: getTimeRangeFromShiftType(s.type) || s.timeRange,
           patrolGroupId: null, // Reset eventuali vecchi gruppi se rigenerato
           serviceDetails: s.user.servizio || null // Pre-compila con la sezione di appartenenza!
