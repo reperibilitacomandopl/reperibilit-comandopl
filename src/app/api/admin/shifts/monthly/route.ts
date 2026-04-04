@@ -96,3 +96,43 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Internal Error" }, { status: 500 })
   }
 }
+
+export async function DELETE(request: Request) {
+  const session = await auth()
+  if (!session || session.user.role !== "ADMIN") return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
+
+  try {
+    const { year, month, userId } = await request.json()
+    if (!year || !month) return NextResponse.json({ error: "Parametri mancanti" }, { status: 400 })
+
+    const startDate = new Date(Date.UTC(year, month - 1, 1))
+    const endDate = new Date(Date.UTC(year, month, 12, 0, 0, 0)) // Range largo per sicurezza
+    // Fix range: ultimo del mese
+    const lastDay = new Date(Date.UTC(year, month, 0, 23, 59, 59))
+
+    const { isAssenza } = await import("@/utils/shift-logic")
+
+    const where: any = {
+      date: { gte: startDate, lte: lastDay }
+    }
+    if (userId) where.userId = userId
+
+    const allInMonth = await prisma.shift.findMany({ where })
+    
+    // Filtriamo quelli che NON sono assenze (Ferie, Malattia, 104, etc.)
+    const idsToDelete = allInMonth
+      .filter(s => !isAssenza(s.type))
+      .map(s => s.id)
+
+    if (idsToDelete.length > 0) {
+      await prisma.shift.deleteMany({
+        where: { id: { in: idsToDelete } }
+      })
+    }
+
+    return NextResponse.json({ success: true, count: idsToDelete.length })
+  } catch (error) {
+    console.error("[MONTHLY SHIFTS DELETE]", error)
+    return NextResponse.json({ error: "Internal Error" }, { status: 500 })
+  }
+}

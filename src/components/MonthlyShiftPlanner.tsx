@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Loader2, ChevronLeft, ChevronRight, Save } from "lucide-react"
+import { Loader2, ChevronLeft, ChevronRight, Save, Trash2, CalendarClock, RotateCcw, Wand2, FilterX } from "lucide-react"
 import toast from "react-hot-toast"
 import Link from "next/link"
 import { formatShiftCode, isAssenza, isMalattia, isMattina, isPomeriggio } from "@/utils/shift-logic"
@@ -15,6 +15,8 @@ export default function MonthlyShiftPlanner() {
   // Map of userId -> "YYYY-MM-DD" -> type
   const [grid, setGrid] = useState<Record<string, Record<string, string>>>({})
   const [originalGrid, setOriginalGrid] = useState<Record<string, Record<string, string>>>({})
+  const [isGeneratingAnnual, setIsGeneratingAnnual] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth() + 1
@@ -103,6 +105,50 @@ export default function MonthlyShiftPlanner() {
     setSaving(false)
   }
 
+  const handleResetMonth = async (specificUserId?: string) => {
+    const targetName = specificUserId ? "questo agente" : "tutto il mese"
+    if (!confirm(`Sei sicuro di voler resettare tutti i turni di ${targetName} per ${currentDate.toLocaleDateString("it-IT", { month: "long", year: "numeric" })}? Le assenze (Ferie, Malattia) non verranno eliminate.`)) return
+    
+    setIsResetting(true)
+    try {
+      const res = await fetch("/api/admin/shifts/monthly", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ year, month, userId: specificUserId })
+      })
+      if (!res.ok) throw new Error()
+      toast.success("Reset completato!")
+      loadData()
+    } catch {
+      toast.error("Errore durante il reset")
+    }
+    setIsResetting(false)
+  }
+
+  const applyAnnualGeneration = async () => {
+    if (!confirm(`Stai per generare i turni per TUTTO L'ANNO ${year}. Questa operazione potrebbe richiedere alcuni secondi e non sovrascriverà le assenze già caricate. Procedere?`)) return
+    
+    setIsGeneratingAnnual(true)
+    try {
+      const res = await fetch("/api/admin/shifts/annual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ year, groupId: wizardGroupId })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(`Generazione completata! ${data.count} turni creati/aggiornati per ${data.agentsCount} agenti.`)
+        loadData()
+        setShowWizard(false)
+      } else {
+        toast.error(data.error || "Errore")
+      }
+    } catch {
+      toast.error("Errore di rete")
+    }
+    setIsGeneratingAnnual(false)
+  }
+
   // --- WIZARD AUTOMAZIONE TURNI (DINAMICO DA DB) ---
   const [showWizard, setShowWizard] = useState(false)
   const [wizardTarget, setWizardTarget] = useState("ALL")
@@ -188,17 +234,18 @@ export default function MonthlyShiftPlanner() {
             prevSunday.setDate(dateObj.getDate() - (dateObj.getDay() || 7)) // Torna alla domenica (0)
             
             // Calcola l'indice del pattern per quella domenica
+            // Usiamo Math.round per evitare problemi con l'ora legale (DST)
             const diffSun = prevSunday.getTime() - new Date(year, month - 1, 1).getTime()
-            const daysDiffSun = Math.floor(diffSun / (1000 * 60 * 60 * 24))
+            const daysDiffSun = Math.round(diffSun / (1000 * 60 * 60 * 24))
             const sunPatternIdx = ((startIndex + daysDiffSun) % pattern.length + pattern.length) % pattern.length
             const sunType = pattern[sunPatternIdx]
 
             // Se la domenica precedente era lavorativa, metti riposo oggi
-            if (sunType === "M" || sunType === "P") {
+            if (isMattina(sunType) || isPomeriggio(sunType)) {
               nextGrid[u.id][dStr] = "RP"
               return
             }
-            // Altrimenti (domenica era RP), proseguiamo col pattern standard per oggi
+            // Altrimenti (domenica era RP), proseguiamo col pattern standard per oggi nel blocco successivo
           }
           
           // Usa l'offset calcolato per allineare il pattern
@@ -248,7 +295,15 @@ export default function MonthlyShiftPlanner() {
             onClick={() => setShowWizard(!showWizard)}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold flex items-center gap-2"
           >
-            ✨ Auto-Compila Turni
+            <CalendarClock size={16}/> Auto-Compila
+          </button>
+          
+          <button 
+            onClick={() => handleResetMonth()}
+            disabled={isResetting}
+            className="px-4 py-2 bg-slate-700 hover:bg-rose-800 text-white rounded-lg text-sm font-bold flex items-center gap-2 border border-slate-600 transition-colors"
+          >
+            {isResetting ? <Loader2 className="animate-spin" size={16}/> : <RotateCcw size={16}/>} Reset Mese
           </button>
           <button 
             onClick={saveChanges} disabled={saving}
@@ -316,12 +371,20 @@ export default function MonthlyShiftPlanner() {
           <div className="flex gap-2 items-center">
             <button 
               onClick={applyAutomation}
-              className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-lg transition-all active:scale-95 text-sm"
+              className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-lg transition-all active:scale-95 text-sm flex items-center gap-2"
             >
-              ▶ COMPILA GRIGLIA
+              <Wand2 size={16}/> COMPILA GRIGLIA MESE
+            </button>
+
+            <button 
+              onClick={applyAnnualGeneration}
+              disabled={isGeneratingAnnual}
+              className="px-8 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-lg transition-all active:scale-95 text-sm flex items-center gap-2"
+            >
+              {isGeneratingAnnual ? <Loader2 className="animate-spin" size={16}/> : <RotateCcw size={16}/>} GENERA TUTTO L'ANNO {year}
             </button>
             
-            <Link href="/squadre" className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-sm">
+            <Link href="/squadre" className="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg text-sm">
               ⚙ Gestisci Squadre
             </Link>
             
@@ -372,8 +435,15 @@ export default function MonthlyShiftPlanner() {
               <tbody>
                 {filteredUsers.map((u, idx) => (
                   <tr key={u.id} className={`${idx % 2 === 0 ? 'bg-slate-50' : 'bg-white'} hover:bg-blue-50/50 transition-colors`}>
-                    <td className="p-1.5 border-b border-r-2 border-slate-300 sticky left-0 z-10 font-bold text-slate-900 text-xs shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)] bg-inherit uppercase">
-                      {u.name}
+                    <td className="p-1.5 border-b border-r-2 border-slate-300 sticky left-0 z-10 font-bold text-slate-900 text-xs shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)] bg-inherit uppercase flex items-center justify-between group">
+                      <span>{u.name}</span>
+                      <button 
+                        onClick={() => handleResetMonth(u.id)}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-600 transition-all"
+                        title="Resetta mese per questo agente"
+                      >
+                        <Trash2 size={12} />
+                      </button>
                     </td>
                     {daysArray.map(day => {
                       const dStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
