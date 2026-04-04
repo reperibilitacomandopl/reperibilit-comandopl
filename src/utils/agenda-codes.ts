@@ -69,3 +69,41 @@ export function getCategoryColor(codeOrShortCode: string) {
   }
   return "slate"
 }
+
+/**
+ * Converte un codice (Verbatel o shortCode) nello shortCode unificato per il calendario.
+ * Es: "0015" → "FERIE", "0031" → "104", "MALATTIA" → "MALATTIA"
+ * Se il codice non è mappato, restituisce il codice originale (retrocompatibilità).
+ */
+export function getShortCode(codeOrShortCode: string): string {
+  for (const cat of AGENDA_CATEGORIES) {
+    for (const item of cat.items) {
+      if (item.code === codeOrShortCode) return item.shortCode
+      if (item.shortCode === codeOrShortCode) return item.shortCode
+    }
+  }
+  return codeOrShortCode // fallback: restituisci com'è
+}
+
+/**
+ * Ottiene il label leggibile da un codice qualsiasi.
+ * Es: "0015" → "Ferie Anno Corrente", "FERIE" → "Ferie Anno Corrente"
+ */
+export function getLabel(codeOrShortCode: string): string {
+  for (const cat of AGENDA_CATEGORIES) {
+    for (const item of cat.items) {
+      if (item.code === codeOrShortCode || item.shortCode === codeOrShortCode) return item.label
+    }
+  }
+  return codeOrShortCode
+}
+
+/**
+ * Lista completa di tutti gli shortCode di assenza (per filtri e totalizzatori).
+ */
+export const FERIE_CODES = ["FERIE", "FERIE_AP"]
+export const PERMESSI_104_CODES = ["104"]
+export const FESTIVITA_CODES = ["FEST_SOP"]
+export const MALATTIA_CODES = ["MALATTIA", "MAL_FIGLIO"]
+export const RECUPERO_CODES = ["RR", "RP"]
+export const CONGEDO_CODES = ["CONG_PAT", "CONG_PAR"]

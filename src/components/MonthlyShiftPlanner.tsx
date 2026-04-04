@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Loader2, ChevronLeft, ChevronRight, Save } from "lucide-react"
 import toast from "react-hot-toast"
 import Link from "next/link"
-import { formatShiftCode, isAssenza } from "@/utils/shift-logic"
+import { formatShiftCode, isAssenza, isMalattia, isMattina, isPomeriggio } from "@/utils/shift-logic"
 
 export default function MonthlyShiftPlanner() {
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -385,10 +385,13 @@ export default function MonthlyShiftPlanner() {
                       
                       let colorClass = "text-slate-800"
                       let bgClass = ""
-                      if (val === "RP") { colorClass = "text-red-700 font-black"; bgClass = "bg-red-100" }
-                      else if (val === "F" || val === "RR" || val === "MAL" || val === "104") { colorClass = "text-red-600 font-black"; bgClass = "bg-red-50" }
-                      else if (val.startsWith("M")) { colorClass = "text-blue-800 font-black"; bgClass = "bg-blue-50" }
-                      else if (val.startsWith("P")) { colorClass = "text-purple-800 font-black"; bgClass = "bg-purple-50" }
+                      
+                      const s = val.toUpperCase()
+                      if (isMalattia(s)) { colorClass = "text-amber-700 font-black"; bgClass = "bg-amber-50" }
+                      else if (isAssenza(s)) { colorClass = "text-red-600 font-black"; bgClass = "bg-red-50" }
+                      else if (isMattina(s)) { colorClass = "text-blue-800 font-black"; bgClass = "bg-blue-50" }
+                      else if (isPomeriggio(s)) { colorClass = "text-purple-800 font-black"; bgClass = "bg-purple-50" }
+                      else if (s === "RP") { colorClass = "text-red-700 font-black"; bgClass = "bg-red-100" }
 
                       return (
                         <td key={day} className={`border-b border-r border-slate-200 relative p-0 m-0 ${isEdited ? 'ring-2 ring-inset ring-yellow-400' : ''} ${bgClass} ${isWeekend && !bgClass ? 'bg-red-50/30' : ''}`}>
@@ -397,7 +400,7 @@ export default function MonthlyShiftPlanner() {
                             value={val}
                             onChange={(e) => handleCellChange(u.id, day, e.target.value)}
                             className={`w-full h-full p-1.5 text-center text-xs outline-none bg-transparent uppercase focus:bg-blue-100 focus:ring-2 focus:ring-blue-400 ${colorClass}`}
-                            maxLength={4}
+                            maxLength={10}
                             placeholder="-"
                           />
                         </td>

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import { ArrowLeft, User, CalendarDays, Calculator } from "lucide-react"
+import { FERIE_CODES, PERMESSI_104_CODES, FESTIVITA_CODES, getLabel } from "@/utils/agenda-codes"
 
 export const dynamic = "force-dynamic"
 
@@ -33,10 +34,11 @@ export default async function AgentDossierPage({ params }: { params: Promise<{ i
      })
   }
 
-  // Calculate used leaves based on calendar ABSENCES
+  // Calcola assenze consumate usando gli shortCode unificati
   const absences: any[] = agent.absences || []
-  const usedFerie = absences.filter((a: any) => a.code.startsWith("F") || a.code === "FERIE" || a.code === "0015" || a.code === "0016").length
-  const used104 = absences.filter((a: any) => a.code === "104" || a.code === "0031").length
+  const usedFerie = absences.filter((a: any) => FERIE_CODES.includes(a.code)).length
+  const used104 = absences.filter((a: any) => PERMESSI_104_CODES.includes(a.code)).length
+  const usedFestivita = absences.filter((a: any) => FESTIVITA_CODES.includes(a.code)).length
   
   const remainFerie = balance.ferieTotali - usedFerie
   const remain104 = balance.permessi104Totali - used104
@@ -99,12 +101,12 @@ export default async function AgentDossierPage({ params }: { params: Promise<{ i
                  <div className="space-y-2">
                     <div className="flex justify-between items-center text-sm">
                        <span className="font-bold text-slate-700">🎄 Festività Soppresse</span>
-                       <span className="font-black text-slate-900">{balance.festivitaTotali} <span className="text-slate-400 font-bold">totali</span></span>
+                       <span className="font-black text-slate-900">{balance.festivitaTotali - usedFestivita} <span className="text-slate-400 font-bold">su {balance.festivitaTotali}</span></span>
                     </div>
                     <div className="h-4 bg-slate-100 rounded-full overflow-hidden">
-                       <div className="h-full bg-gradient-to-r from-rose-400 to-rose-500 rounded-full transition-all" style={{ width: '0%' }}></div>
+                       <div className="h-full bg-gradient-to-r from-rose-400 to-rose-500 rounded-full transition-all" style={{ width: `${Math.min(100, (usedFestivita / balance.festivitaTotali) * 100)}%` }}></div>
                     </div>
-                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wide">Consumo calcolato dal calendario</p>
+                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wide">Consumate: {usedFestivita} giornate</p>
                  </div>
                </div>
             </div>

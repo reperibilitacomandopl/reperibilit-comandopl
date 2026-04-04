@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
+import { getShortCode } from '@/utils/agenda-codes'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -16,7 +17,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: "Stato non valido" }, { status: 400 })
     }
 
-    const request = await (prisma as any).agentRequest.findUnique({ where: { id: id } })
+    const request = await (prisma as any).agentRequest.findUnique({ where: { id } })
     if (!request) {
       return NextResponse.json({ error: "Richiesta non trovata" }, { status: 404 })
     }
@@ -25,11 +26,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: "La richiesta è già stata processata" }, { status: 400 })
     }
 
+    // ⭐ TRADUZIONE CODICE: Verbatel → shortCode per il calendario
+    // Es: "0015" diventa "FERIE", "0031" diventa "104"
+    const calendarCode = getShortCode(request.code)
+
     // Processa la transazione
     await prisma.$transaction(async (tx: any) => {
       // 1. Aggiorna lo stato della richiesta
       await tx.agentRequest.update({
-        where: { id: id },
+        where: { id },
         data: { status, reviewedBy: session.user.name || "Admin" }
       })
 
@@ -39,7 +44,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         start.setUTCHours(0,0,0,0)
 
         const end = request.endDate ? new Date(request.endDate) : new Date(request.date)
-        end.setUTCHours(23,59,59,999)
+        end.setUTCHours(0,0,0,0) // allinea a mezzanotte, non 23:59
 
         // a) Rimuovi tutti i turni in quel range per evitare doppioni
         await tx.shift.deleteMany({
@@ -49,25 +54,25 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           }
         })
 
-        // b) Genera il blocco delle assenze
-        const datesToInsert = []
-        let currentIter = new Date(start)
+        // b) Genera il blocco delle assenze giorno per giorno
+        const datesToInsert: Date[] = []
+        const currentIter = new Date(start)
         while (currentIter <= end) {
           datesToInsert.push(new Date(currentIter))
           currentIter.setUTCDate(currentIter.getUTCDate() + 1)
         }
 
         for (const targetDate of datesToInsert) {
+           // Scrive lo shortCode (es. "FERIE") in entrambe le tabelle
            await tx.absence.upsert({
               where: { userId_date: { userId: request.userId, date: targetDate } },
-              update: { code: request.code, source: "MANUAL" },
-              create: { userId: request.userId, date: targetDate, code: request.code, source: "MANUAL" }
+              update: { code: calendarCode, source: "MANUAL" },
+              create: { userId: request.userId, date: targetDate, code: calendarCode, source: "MANUAL" }
            })
-           // Upsert a shift in that place to maintain calendar consistency with the code
            await tx.shift.upsert({
              where: { userId_date: { userId: request.userId, date: targetDate } },
-             update: { type: request.code, repType: null, isSyncedToVerbatel: false, timeRange: null, serviceCategoryId: null, vehicleId: null, patrolGroupId: null },
-             create: { userId: request.userId, date: targetDate, type: request.code }
+             update: { type: calendarCode, repType: null, isSyncedToVerbatel: false, timeRange: null, serviceCategoryId: null, vehicleId: null, patrolGroupId: null },
+             create: { userId: request.userId, date: targetDate, type: calendarCode }
            })
         }
 
@@ -78,7 +83,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             adminName: session.user.name || "Sistema",
             action: "APPROVE_ABSENCE_REQUEST",
             targetId: request.userId,
-            details: `Approvata assenza ${request.code} per range ${start.toISOString()} a ${end.toISOString()} (Ref Req: ${request.id})`
+            details: `Approvata assenza ${calendarCode} (orig: ${request.code}) dal ${start.toISOString().split('T')[0]} al ${end.toISOString().split('T')[0]} (Ref: ${request.id})`
           }
         })
       }

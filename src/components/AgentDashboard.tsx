@@ -146,6 +146,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   const [showSwapModal, setShowSwapModal] = useState(false)
   const [showAbsenceModal, setShowAbsenceModal] = useState(false)
   const [reqDate, setReqDate] = useState('')
+  const [reqEndDate, setReqEndDate] = useState('')
   const [reqCode, setReqCode] = useState('')
   const [reqNotes, setReqNotes] = useState('')
   const [reqLoading, setReqLoading] = useState(false)
@@ -756,7 +757,8 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                 const dayAgendaItems = di.isNextMonth ? [] : agendaEntries.filter(e => new Date(e.date).getUTCDate() === di.day)
 
                 const isRep = rType.includes("REP")
-                const isFerie = sType.startsWith("F") || sType === "104" || sType === "FERIE"
+                const FERIE_ALL = ["F", "FERIE", "FERIE_AP", "FEST_SOP", "104", "MOT_PERS", "ELETT", "CONG_PAT", "CONG_PAR"]
+                const isFerie = FERIE_ALL.includes(sType) || sType.startsWith("F")
                 const _isMalattia = isMalattia(sType)
                 const isToday = !di.isNextMonth && new Date().getDate() === di.day && new Date().getMonth() === currentMonth - 1 && new Date().getFullYear() === currentYear
 
@@ -1709,8 +1711,12 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
             <div className="p-6 sm:p-8 bg-slate-50">
                <div className="space-y-5">
                   <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Data (o Data Inizio)</label>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Data Inizio</label>
                     <input type="date" value={reqDate} onChange={e => setReqDate(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 transition-all outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Data Fine <span className="text-slate-300 normal-case">(opzionale, se periodo)</span></label>
+                    <input type="date" value={reqEndDate} onChange={e => setReqEndDate(e.target.value)} min={reqDate} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 transition-all outline-none" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Seleziona Causale</label>
@@ -1747,13 +1753,13 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                            const res = await fetch("/api/requests", {
                              method: "POST",
                              headers: { "Content-Type": "application/json" },
-                             body: JSON.stringify({ date: reqDate, code: reqCode, notes: reqNotes })
+                             body: JSON.stringify({ date: reqDate, endDate: reqEndDate || null, code: reqCode, notes: reqNotes })
                            })
                            const data = await res.json()
                            if (!res.ok) throw new Error(data.error || "Errore")
                            toast.success("✅ Richiesta inviata!");
                            setShowAbsenceModal(false);
-                           setReqDate(''); setReqCode(''); setReqNotes('');
+                           setReqDate(''); setReqEndDate(''); setReqCode(''); setReqNotes('');
                         } catch (err: any) {
                            toast.error(err.message)
                         } finally {
