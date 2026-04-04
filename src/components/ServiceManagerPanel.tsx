@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, User, Shield, Car, Printer, RefreshCw, GripVertical, Info, Clock, AlertTriangle, Wand2, Radio, Copy, ClipboardPaste, ChevronDown, ChevronUp, CalendarCheck } from "lucide-react"
+import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, User, Shield, Car, Printer, RefreshCw, GripVertical, Info, Clock, AlertTriangle, Wand2, Radio, Copy, ClipboardPaste, ChevronDown, ChevronUp, CalendarCheck, RotateCcw, PanelLeftClose, PanelLeft } from "lucide-react"
 import toast from "react-hot-toast"
 import Link from "next/link"
 import { isAssenza, formatShiftCode } from "../utils/shift-logic"
@@ -27,6 +27,8 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
   // Collapsible state
   const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>({})
   const [collapsedFuoriServizio, setCollapsedFuoriServizio] = useState(false)
+  const [collapsedADisposizione, setCollapsedADisposizione] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   // Copy/Paste: intera giornata
   const [copiedDay, setCopiedDay] = useState<{ date: string; assignments: any[] } | null>(null)
@@ -138,6 +140,18 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
       toast.success("Agente riassegnato al servizio")
     }
   }
+  
+  const handleDropToSidebar = (e: React.DragEvent) => {
+    e.preventDefault()
+    const userId = e.dataTransfer.getData("userId")
+    if (userId) {
+      const userShift = shifts.find(s => s.userId === userId)
+      if (userShift && userShift.serviceCategoryId) {
+        handleRemoveService(userId, userShift.type)
+        toast.success("Agente rimosso dal servizio")
+      }
+    }
+  }
 
   const handleDropToCategory = (e: React.DragEvent, shiftTypeRange: string, catId: string) => {
     e.preventDefault()
@@ -176,6 +190,40 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
       toast.error("Errore di rete")
     }
     setLoading(false)
+  }
+
+  // Ripristina OdS — rimuove tutte le assegnazioni servizio
+  const resetOds = async () => {
+    if (!confirm("ATTENZIONE: Questo rimuoverà TUTTE le assegnazioni servizio per la data selezionata. I turni base (M/P/RP) resteranno intatti. Procedere?")) return
+    setLoading(true)
+    const y = currentDate.getFullYear()
+    const m = String(currentDate.getMonth() + 1).padStart(2, "0")
+    const d = String(currentDate.getDate()).padStart(2, "0")
+    const dateStr = `${y}-${m}-${d}`
+    
+    let count = 0
+    const assignedShifts = shifts.filter(s => s.serviceTypeId && !isAssenza(s.type))
+    for (const s of assignedShifts) {
+      try {
+        await fetch("/api/admin/shifts/daily", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: s.userId,
+            date: dateStr,
+            type: s.type,
+            serviceCategoryId: null,
+            serviceTypeId: null,
+            vehicleId: null,
+            timeRange: s.timeRange,
+            serviceDetails: null
+          })
+        })
+        count++
+      } catch {}
+    }
+    toast.success(`Ripristinato! ${count} assegnazioni rimosse.`)
+    loadData()
   }
 
   const handleRemoveService = (userId: string, originalTimeRange: string) => {
@@ -291,7 +339,7 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
     if (indisponibili.includes(u)) return false
     const shift = shifts.find(s => s.userId === u.id)
     if (!shift) return true
-    if (shift.serviceTypeId) return false
+    if (shift.serviceTypeId || shift.serviceCategoryId) return false
     return true
   }).sort((a,b) => {
       const sa = shifts.find(s => s.userId === a.id)?.type || ""
@@ -423,9 +471,10 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
     const timeRangeStr = shiftAssegnato.timeRange || (shiftAssegnato.type==="M7" ? "07:00-13:00" : shiftAssegnato.type==="M8" ? "08:00-14:00" : "14:00-20:00")
 
     return (
-        <div key={agente.id} className="p-2 flex flex-col hover:bg-slate-50 transition-colors">
+        <div key={agente.id} draggable onDragStart={e => handleDragStart(e, agente.id)} className="p-2 flex flex-col hover:bg-blue-50 transition-colors cursor-grab active:cursor-grabbing group/card">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-50 pb-2 mb-2">
                 <div className="flex items-center gap-3">
+                   <GripVertical size={12} className="text-slate-300 group-hover/card:text-blue-400 shrink-0" />
                    <div className={`w-1.5 h-1.5 rounded-full shadow-[0_0_5px_rgba(16,185,129,0.8)] ${agente.isUfficiale ? 'bg-blue-500' : 'bg-emerald-500'}`}></div>
                    <div className="flex flex-col">
                        <span className="text-[12px] font-black text-slate-900 tracking-wide uppercase">
@@ -579,6 +628,16 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
                 <Wand2 size={16}/> {loading ? "..." : "AUTOCONFIGURA"}
             </button>
 
+            {/* RIPRISTINA ODS */}
+            <button 
+                onClick={resetOds}
+                disabled={loading}
+                className="flex items-center gap-1.5 bg-rose-700 hover:bg-rose-600 text-white border border-rose-600 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all disabled:opacity-50"
+                title="Rimuovi tutte le assegnazioni servizio per oggi"
+            >
+                <RotateCcw size={14}/> Ripristina
+            </button>
+
             <Link href="/admin/stampa-ods" className="hidden sm:flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm">
                <Printer size={14}/> Stampa
             </Link>
@@ -601,14 +660,26 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
         <div className="flex-1 flex overflow-hidden">
           
           {/* SIDEBAR FORZE A DISPOSIZIONE */}
-          <div className="w-[280px] bg-slate-800/50 border-r border-slate-800 flex flex-col shrink-0">
-             <div className="p-4 border-b border-slate-800 bg-slate-900/50">
-                 <h3 className="text-white font-black text-sm uppercase tracking-widest flex items-center gap-2">
-                     <User size={16} className="text-blue-400"/> Forze in Campo
-                 </h3>
-                 <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mt-1">Trascina nei box a destra • ← → per navigare</p>
+          <div 
+            className={`${sidebarCollapsed ? 'w-[48px]' : 'w-[280px]'} bg-slate-800/50 border-r border-slate-800 flex flex-col shrink-0 transition-all duration-300`}
+            onDragOver={handleDragOver}
+            onDrop={handleDropToSidebar}
+          >
+             <div className="p-2 border-b border-slate-800 bg-slate-900/50 flex items-center gap-2">
+                 <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)} className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-white shrink-0" title={sidebarCollapsed ? 'Espandi sidebar' : 'Riduci sidebar'}>
+                   {sidebarCollapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
+                 </button>
+                 {!sidebarCollapsed && (
+                   <div className="overflow-hidden">
+                     <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2">
+                         Forze in Campo
+                     </h3>
+                     <p className="text-slate-400 text-[9px] font-bold uppercase tracking-wider">Trascina • ← → naviga</p>
+                   </div>
+                 )}
              </div>
              
+             {!sidebarCollapsed && (
              <div className="flex-1 overflow-y-auto p-2 custom-scrollbar space-y-4">
                  
                  {/* Fuori Servizio (Collassabile) */}
@@ -641,10 +712,15 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
 
                  {/* Disponibili Da Piazzare */}
                  <div>
-                     <div className="flex items-center gap-2 px-2 mb-2">
+                     <button 
+                       onClick={() => setCollapsedADisposizione(!collapsedADisposizione)}
+                       className="flex items-center gap-2 px-2 mb-2 w-full hover:bg-slate-700/30 rounded py-1 transition-colors"
+                     >
                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]"></div>
-                         <span className="text-[11px] text-white font-black uppercase tracking-wider">A Disposizione ({disponibiliNonAssegnati.length})</span>
-                     </div>
+                         <span className="text-[11px] text-white font-black uppercase tracking-wider flex-1 text-left">A Disposizione ({disponibiliNonAssegnati.length})</span>
+                         {collapsedADisposizione ? <ChevronDown size={12} className="text-slate-500" /> : <ChevronUp size={12} className="text-slate-500" />}
+                     </button>
+                     {!collapsedADisposizione && (
                      <div className="space-y-1.5">
                          {disponibiliNonAssegnati.map(u => {
                             const baseShift = shifts.find(s => s.userId === u.id)?.type || "?"
@@ -690,9 +766,11 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
                              </div>
                          )}
                      </div>
+                     )}
                  </div>
 
              </div>
+             )}
           </div>
 
           {/* MAIN OPERATIONAL BOARDS */}
