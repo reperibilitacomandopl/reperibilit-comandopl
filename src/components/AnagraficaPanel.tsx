@@ -354,6 +354,7 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
                       </div>
                     ) : (
                       <div className="flex items-center justify-end gap-2">
+                        <button onClick={() => router.push(`/admin/risorse/${agent.id}`)} className="text-[11px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-100 border border-indigo-200 hover:bg-indigo-600 hover:text-white px-3 py-2.5 rounded-xl transition-all shadow-sm shadow-indigo-100">Fascicolo</button>
                         <button onClick={() => startEdit(agent)} className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl transition-all shadow-sm">Modifica</button>
                         <button onClick={() => deleteAgent(agent)} title="Elimina" className="p-2 text-red-500 bg-red-50 hover:bg-red-600 hover:text-white rounded-xl transition-all border border-red-100">
                           <Trash2 size={14} />

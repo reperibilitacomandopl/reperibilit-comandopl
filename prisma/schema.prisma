@@ -46,6 +46,8 @@ model User {
   patrolTemplates PatrolTemplate[] @relation("PatrolMembers")
   createdAt     DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  agentRequests AgentRequest[] @relation("AgentRequests")
+  agentBalances AgentBalance[] @relation("AgentBalances")
 }
 
 model Absence {
@@ -232,4 +234,32 @@ model ShiftSwapRequest {
 
   @@index([requesterId])
   @@index([targetUserId])
+}
+
+model AgentRequest {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation("AgentRequests", fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime
+  endDate     DateTime?
+  code        String    // F, M, 104, ecc.
+  notes       String?   // optional note from agent
+  status      String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  reviewedBy  String?   // Admin Name
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model AgentBalance {
+  id                String @id @default(uuid())
+  userId            String
+  user              User   @relation("AgentBalances", fields: [userId], references: [id], onDelete: Cascade)
+  year              Int
+  ferieTotali       Int    @default(28) 
+  festivitaTotali   Int    @default(4)  
+  permessi104Totali Int    @default(36) 
+  
+  @@unique([userId, year])
 }

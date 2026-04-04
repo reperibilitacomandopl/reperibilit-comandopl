@@ -145,6 +145,10 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   const [swapRequests, setSwapRequests] = useState<any[]>([])
   const [showSwapModal, setShowSwapModal] = useState(false)
   const [showAbsenceModal, setShowAbsenceModal] = useState(false)
+  const [reqDate, setReqDate] = useState('')
+  const [reqCode, setReqCode] = useState('')
+  const [reqNotes, setReqNotes] = useState('')
+  const [reqLoading, setReqLoading] = useState(false)
   const [selectedShiftForSwap, setSelectedShiftForSwap] = useState<any>(null)
   const [targetColleagueId, setTargetColleagueId] = useState('')
   const [swapLoading, setSwapLoading] = useState(false)
@@ -1706,12 +1710,12 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                <div className="space-y-5">
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Data (o Data Inizio)</label>
-                    <input type="date" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 transition-all outline-none" />
+                    <input type="date" value={reqDate} onChange={e => setReqDate(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 transition-all outline-none" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Seleziona Causale</label>
                     <div className="relative">
-                      <select className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 transition-all outline-none appearance-none pr-10">
+                      <select value={reqCode} onChange={e => setReqCode(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 transition-all outline-none appearance-none pr-10">
                         <option value="">Seleziona tipo di assenza...</option>
                         {AGENDA_CATEGORIES.map(cat => (
                            <optgroup key={cat.group} label={cat.group}>
@@ -1726,20 +1730,40 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Note / Messaggio</label>
-                    <textarea rows={2} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 transition-all outline-none resize-none" placeholder="Motivo o riferimenti..."></textarea>
+                    <textarea value={reqNotes} onChange={e => setReqNotes(e.target.value)} rows={2} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 transition-all outline-none resize-none" placeholder="Motivo o riferimenti..."></textarea>
                   </div>
                </div>
 
                <div className="mt-8">
                   <button 
-                     onClick={() => {
-                        toast.success("✅ Richiesta di assenza inviata in Segreteria!");
-                        setShowAbsenceModal(false);
+                     disabled={reqLoading}
+                     onClick={async () => {
+                        if (!reqDate || !reqCode) {
+                          toast.error("Compila la data e la causale");
+                          return;
+                        }
+                        setReqLoading(true);
+                        try {
+                           const res = await fetch("/api/requests", {
+                             method: "POST",
+                             headers: { "Content-Type": "application/json" },
+                             body: JSON.stringify({ date: reqDate, code: reqCode, notes: reqNotes })
+                           })
+                           const data = await res.json()
+                           if (!res.ok) throw new Error(data.error || "Errore")
+                           toast.success("✅ Richiesta inviata!");
+                           setShowAbsenceModal(false);
+                           setReqDate(''); setReqCode(''); setReqNotes('');
+                        } catch (err: any) {
+                           toast.error(err.message)
+                        } finally {
+                           setReqLoading(false);
+                        }
                      }}
-                     className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl py-4 font-black text-sm shadow-xl shadow-amber-200 hover:-translate-y-0.5 hover:shadow-2xl transition-all flex items-center justify-center gap-2"
+                     className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl py-4 font-black text-sm shadow-xl shadow-amber-200 hover:-translate-y-0.5 hover:shadow-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                      <Send size={18} />
-                     Invia Richiesta
+                     {reqLoading ? "Invio in corso..." : "Invia Richiesta"}
                   </button>
                </div>
             </div>

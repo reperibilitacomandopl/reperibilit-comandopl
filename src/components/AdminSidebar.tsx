@@ -30,6 +30,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Pannello Comando", href: "/admin/pannello", icon: LayoutDashboard, description: "Overview e KPI" },
       { label: "Pianificazione Mensile", href: "/admin/pianificazione", icon: CalendarDays, description: "Griglia Turni & Reperibilità" },
+      { label: "Richieste Agenti", href: "/admin/richieste", icon: FileText, description: "Inbox Ferie e Permessi" },
       { label: "Ordine di Servizio", href: "/admin/ods", icon: FileText, description: "Assegnazione Giornaliera" },
       { label: "Stampa OdS", href: "/admin/stampa-ods", icon: Printer, description: "Anteprima e Stampa PDF" },
     ],
