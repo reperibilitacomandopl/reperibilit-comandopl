@@ -78,7 +78,9 @@ export async function POST(request: Request) {
             const sunIdx = ((daysSun % 28) + 28) % 28
             const sunVal = pattern[sunIdx]
             
-            if (isMattina(sunVal) || isPomeriggio(sunVal)) {
+            // Se la domenica precedente era lavorativa, metti riposo oggi
+            // Nota che sunVal === "M" o "P" è necessario perché nel pattern i turni sono 'M' o 'P'
+            if (sunVal === "M" || sunVal === "P" || isMattina(sunVal) || isPomeriggio(sunVal)) {
               finalType = "RP"
             }
           }

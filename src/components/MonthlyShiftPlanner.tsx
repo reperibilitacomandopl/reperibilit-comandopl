@@ -241,7 +241,8 @@ export default function MonthlyShiftPlanner() {
             const sunType = pattern[sunPatternIdx]
 
             // Se la domenica precedente era lavorativa, metti riposo oggi
-            if (isMattina(sunType) || isPomeriggio(sunType)) {
+            // Nota: sunType === "M" è necessario perché nel pattern la mattina è indicata come "M"
+            if (sunType === "M" || isMattina(sunType) || isPomeriggio(sunType)) {
               nextGrid[u.id][dStr] = "RP"
               return
             }
