@@ -257,9 +257,19 @@ model AgentBalance {
   userId            String
   user              User   @relation("AgentBalances", fields: [userId], references: [id], onDelete: Cascade)
   year              Int
-  ferieTotali       Int    @default(28) 
-  festivitaTotali   Int    @default(4)  
-  permessi104Totali Int    @default(36) 
+  details           BalanceDetail[]
   
   @@unique([userId, year])
+}
+
+model BalanceDetail {
+  id               String       @id @default(uuid())
+  balanceId        String
+  balance          AgentBalance @relation(fields: [balanceId], references: [id], onDelete: Cascade)
+  code             String       // e.g. "0015", "0112"
+  label            String?
+  initialValue     Float        @default(0) // Initial balance (G or H)
+  unit             String       @default("DAYS") // "DAYS" or "HOURS"
+  
+  @@unique([balanceId, code])
 }

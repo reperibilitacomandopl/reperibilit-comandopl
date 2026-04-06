@@ -2,11 +2,12 @@
 
 import toast from "react-hot-toast"
 import { useState, useRef, useMemo } from "react"
-import { Calendar as CalendarIcon, UploadCloud, Users, ChevronLeft, ChevronRight, Settings, FileDown, LogOut, CheckCircle2, RefreshCw, X, FileEdit, Trash2, Shield, AlertCircle, HelpCircle, EyeOff, Eye, Mail, Play, Plus, ClipboardList, Printer } from "lucide-react"
+import { Calendar as CalendarIcon, UploadCloud, Users, ChevronLeft, ChevronRight, Settings, FileDown, LogOut, CheckCircle2, RefreshCw, X, FileEdit, Trash2, Shield, AlertCircle, HelpCircle, EyeOff, Eye, Mail, Play, Plus, ClipboardList, Printer, Hash } from "lucide-react"
 import SettingsPanel from "./SettingsPanel"
 import ServiceManagerPanel from "./ServiceManagerPanel"
 import ServiceOrderDashboard from "./ServiceOrderDashboard"
 import * as XLSX from "xlsx"
+import AdminInitialBalances from "./AdminInitialBalances"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { isHoliday } from "../utils/holidays"
@@ -84,6 +85,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
   const [showBulkAbsence, setShowBulkAbsence] = useState(false)
   const [bulkData, setBulkData] = useState({ agentId: "", startDate: "", endDate: "", code: "" })
   const [isSavingBulk, setIsSavingBulk] = useState(false)
+  const [showBalances, setShowBalances] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
@@ -880,6 +882,14 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
           >
             <Settings size={18} />
             Impostazioni
+          </button>
+
+          <button 
+            onClick={() => setShowBalances(true)}
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm hover:shadow-md"
+          >
+            <Hash size={18} />
+            Saldi Iniziali
           </button>
 
           <button 
@@ -2160,6 +2170,24 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                  {isSavingBulk ? <RefreshCw className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}
                  INSERISCI ASSENZE
                </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modale Saldi Iniziali */}
+      {showBalances && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+          <div className="bg-slate-50 w-full max-w-[95vw] max-h-[95vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-white/20">
+            <div className="p-4 bg-white border-b border-slate-200 flex justify-between items-center">
+              <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                <Hash className="text-indigo-600" size={24} /> Gestione Saldi Annuali
+              </h2>
+              <button onClick={() => setShowBalances(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                <X size={24} className="text-slate-500" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-6">
+              <AdminInitialBalances />
             </div>
           </div>
         </div>
