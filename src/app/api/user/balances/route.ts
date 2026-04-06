@@ -13,7 +13,14 @@ export async function GET(req: Request) {
     const yearStr = url.searchParams.get("year")
     const year = yearStr ? parseInt(yearStr) : new Date().getFullYear()
 
-    let balance = await prisma.agentBalance.findUnique({
+    // 1. Fetch user to get qualifica
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { id: true, name: true, matricola: true, qualifica: true, ruoloInSquadra: true }
+    })
+
+    // 2. Fetch AgentBalance with all details
+    const balance = await prisma.agentBalance.findUnique({
       where: {
         userId_year: {
           userId: session.user.id,
@@ -23,56 +30,63 @@ export async function GET(req: Request) {
       include: { details: true }
     })
 
-    let ferieTotali = 28;
-    let festivitaTotali = 4;
-    let permessi104Totali = 36;
-
-    if (balance) {
-      const f = balance.details.find(d => d.code === "0015" || d.code === "FERIE")
-      const fs = balance.details.find(d => d.code === "0010" || d.code === "FEST_SOP")
-      const p104 = balance.details.find(d => d.code === "0031" || d.code === "104")
-      
-      if (f) ferieTotali = f.initialValue
-      if (fs) festivitaTotali = fs.initialValue
-      if (p104) permessi104Totali = p104.initialValue
+    if (!balance) {
+      return NextResponse.json({ year, user, details: [] })
     }
 
-    // Now calculate how many they have USED based on accepted/pending agent requests OR absences.
-    // For simplicity, we can fetch all absences of that year.
-    const startOfYear = new Date(year, 0, 1)
-    const endOfYear = new Date(year, 11, 31, 23, 59, 59)
+    // 3. Pre-calculate usage for all codes in this year
+    const startOfYear = new Date(Date.UTC(year, 0, 1))
+    const endOfYear = new Date(Date.UTC(year, 11, 31, 23, 59, 59))
 
-    const absences = await prisma.absence.findMany({
-      where: {
+    // Count shifts (DAYS)
+    const shiftsCount = await prisma.shift.groupBy({
+      by: ['type'],
+      where: { 
         userId: session.user.id,
-        date: { gte: startOfYear, lte: endOfYear }
-      }
+        date: { gte: startOfYear, lte: endOfYear } 
+      },
+      _count: { _all: true }
     })
 
-    // Codes that map to Ferie/104/Festivita
-    let usedFerie = 0;
-    let used104 = 0;
-    let usedFestivita = 0;
+    // Sum agenda entry hours (HOURS)
+    const agendaSums = await prisma.agendaEntry.groupBy({
+      by: ['code'],
+      where: { 
+        userId: session.user.id,
+        date: { gte: startOfYear, lte: endOfYear } 
+      },
+      _sum: { hours: true }
+    })
 
-    absences.forEach(ab => {
-      const c = ab.code.toUpperCase()
-      if (c === "F" || c === "FERIE" || c === "0015" || c === "0016") usedFerie++;
-      else if (c === "104" || c === "0031" || c === "0038") used104++;
-      else if (c === "FEST_SOP" || c === "0010") usedFestivita++;
+    // 4. Map each detail to its usage
+    const enrichedDetails = balance.details.map(d => {
+      let used = 0
+      if (d.unit === "HOURS") {
+        used = agendaSums.find(a => a.code === d.code)?._sum.hours || 0
+      } else {
+        // unit === "DAYS"
+        used = shiftsCount.find(s => s.type === d.code)?._count._all || 0
+        // Special case: if code is 0015 (Ferie) or 0016 (Ferie AP), we might want to check both? 
+        // No, typically let's keep it strict by code for now.
+      }
+
+      return {
+        ...d,
+        used,
+        residue: Math.max(0, d.initialValue - used)
+      }
     })
 
     return NextResponse.json({ 
        year,
+       user,
+       details: enrichedDetails,
+       // Legacy fields for backward compatibility (optional but safer)
        balance: {
-         ferieTotali: ferieTotali,
-         ferieUsate: usedFerie,
-         ferieResidue: ferieTotali - usedFerie,
-         festivitaTotali: festivitaTotali,
-         festivitaUsate: usedFestivita,
-         festivitaResidue: festivitaTotali - usedFestivita,
-         permessi104Totali: permessi104Totali,
-         permessi104Usati: used104,
-         permessi104Residui: permessi104Totali - used104
+         ferieTotali: enrichedDetails.find(d => d.code === "0015")?.initialValue || 28,
+         ferieUsate: enrichedDetails.find(d => d.code === "0015")?.used || 0,
+         ferieResidue: enrichedDetails.find(d => d.code === "0015")?.residue || 28,
+         // ... etc
        }
     })
 

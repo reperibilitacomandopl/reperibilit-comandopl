@@ -27,7 +27,12 @@ export async function PUT(req: Request) {
 
   try {
     const body = await req.json()
-    const { userId, email, phone, name, matricola, squadra, servizio, massimale, action, newPassword, defaultServiceCategoryId, defaultServiceTypeId, rotationGroupId } = body
+    const { 
+      userId, email, phone, name, matricola, squadra, servizio, 
+      massimale, action, newPassword, defaultServiceCategoryId, 
+      defaultServiceTypeId, rotationGroupId, qualifica,
+      dataAssunzione, scadenzaPatente, scadenzaPortoArmi, noteInterne
+    } = body
     
     if (!userId) return NextResponse.json({ error: "Missing userId" }, { status: 400 })
 
@@ -64,7 +69,12 @@ export async function PUT(req: Request) {
         massimale: massimale !== undefined ? parseInt(massimale, 10) : undefined,
         defaultServiceCategoryId: defaultServiceCategoryId === undefined ? undefined : (defaultServiceCategoryId || null),
         defaultServiceTypeId: defaultServiceTypeId === undefined ? undefined : (defaultServiceTypeId || null),
-        rotationGroupId: rotationGroupId === undefined ? undefined : (rotationGroupId || null)
+        rotationGroupId: rotationGroupId === undefined ? undefined : (rotationGroupId || null),
+        qualifica: qualifica === undefined ? undefined : (qualifica || null),
+        dataAssunzione: dataAssunzione ? new Date(dataAssunzione) : (dataAssunzione === null ? null : undefined),
+        scadenzaPatente: scadenzaPatente ? new Date(scadenzaPatente) : (scadenzaPatente === null ? null : undefined),
+        scadenzaPortoArmi: scadenzaPortoArmi ? new Date(scadenzaPortoArmi) : (scadenzaPortoArmi === null ? null : undefined),
+        noteInterne: noteInterne === undefined ? undefined : (noteInterne || null)
       }
     })
 
@@ -74,8 +84,7 @@ export async function PUT(req: Request) {
     if (squadra !== undefined) changes.push(`Squadra: ${squadra || 'Nessuna'}`)
     if (servizio !== undefined) changes.push(`Servizio: ${servizio || 'Nessuno'}`)
     if (massimale !== undefined) changes.push(`Massimale: ${massimale}`)
-    if (email !== undefined) changes.push(`Email: ${email || 'Rossa'}`)
-    if (phone !== undefined) changes.push(`Phone: ${phone || 'Rossa'}`)
+    if (qualifica !== undefined) changes.push(`Qualifica: ${qualifica}`)
 
     await logAudit({
       adminId: session.user.id!,
@@ -100,7 +109,10 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { matricola, name, password, isUfficiale, squadra, massimale } = await req.json()
+    const { 
+      matricola, name, password, isUfficiale, squadra, massimale,
+      qualifica, dataAssunzione, scadenzaPatente, scadenzaPortoArmi
+    } = await req.json()
     if (!matricola || !name || !password) return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
 
     const hashed = await bcrypt.hash(password, 10)
@@ -113,7 +125,11 @@ export async function POST(req: Request) {
         role: "AGENTE",
         isUfficiale: isUfficiale || false,
         squadra: squadra || null,
-        massimale: massimale ? parseInt(massimale, 10) : 8
+        massimale: massimale ? parseInt(massimale, 10) : 8,
+        qualifica: qualifica || "Agente di P.L.",
+        dataAssunzione: dataAssunzione ? new Date(dataAssunzione) : null,
+        scadenzaPatente: scadenzaPatente ? new Date(scadenzaPatente) : null,
+        scadenzaPortoArmi: scadenzaPortoArmi ? new Date(scadenzaPortoArmi) : null
       }
     })
 

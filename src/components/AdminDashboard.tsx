@@ -2,7 +2,7 @@
 
 import toast from "react-hot-toast"
 import { useState, useRef, useMemo } from "react"
-import { Calendar as CalendarIcon, UploadCloud, Users, ChevronLeft, ChevronRight, Settings, FileDown, LogOut, CheckCircle2, RefreshCw, X, FileEdit, Trash2, Shield, AlertCircle, HelpCircle, EyeOff, Eye, Mail, Play, Plus, ClipboardList, Printer, Hash } from "lucide-react"
+import { Calendar as CalendarIcon, UploadCloud, Users, ChevronLeft, ChevronRight, Settings, FileDown, LogOut, CheckCircle2, RefreshCw, X, FileEdit, Trash2, Shield, AlertCircle, HelpCircle, EyeOff, Eye, Mail, Play, Plus, ClipboardList, Printer, Hash, Phone, Award, Calendar, FileText, MapPin, Briefcase } from "lucide-react"
 import SettingsPanel from "./SettingsPanel"
 import ServiceManagerPanel from "./ServiceManagerPanel"
 import ServiceOrderDashboard from "./ServiceOrderDashboard"
@@ -17,7 +17,17 @@ import { AGENDA_CATEGORIES, getCategoryColor } from "../utils/agenda-codes"
 type EditingCell = { agentId: string; agentName: string; day: number; currentType: string; warningMsg?: string } | null
 
 export default function AdminDashboard({ allAgents, shifts, currentYear, currentMonth, isPublished, currentView, settings, rotationGroups, categories }: { 
-  allAgents: { id: string, name: string, matricola: string, isUfficiale: boolean, email: string | null, phone: string | null, qualifica: string | null, gradoLivello: number, squadra: string | null, massimale: number, defaultServiceCategoryId?: string | null, defaultServiceTypeId?: string | null, rotationGroupId?: string | null }[], 
+  allAgents: { 
+    id: string, name: string, matricola: string, isUfficiale: boolean, 
+    email: string | null, phone: string | null, qualifica: string | null, 
+    gradoLivello: number, squadra: string | null, massimale: number, 
+    defaultServiceCategoryId?: string | null, defaultServiceTypeId?: string | null, 
+    rotationGroupId?: string | null,
+    dataAssunzione?: string | Date | null,
+    scadenzaPatente?: string | Date | null,
+    scadenzaPortoArmi?: string | Date | null,
+    noteInterne?: string | null
+  }[], 
   shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], 
   currentYear: number, 
   currentMonth: number, 
@@ -56,10 +66,18 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
   const [searchQuery, setSearchQuery] = useState("")
   const [roleFilter, setRoleFilter] = useState<"ALL"|"UFF"|"AGT">("ALL")
   
-  // Anagrafica advanced filters
+  // Anagrafica advanced filters & state
   const [anagSearchQuery, setAnagSearchQuery] = useState("")
   const [anagSquadraFilter, setAnagSquadraFilter] = useState("ALL")
   const [anagQualificaFilter, setAnagQualificaFilter] = useState("ALL")
+  const [selectedAgentForDetails, setSelectedAgentForDetails] = useState<any | null>(null)
+
+  // New Personnel Fields
+  const [tempDataAssunzione, setTempDataAssunzione] = useState("")
+  const [tempScadenzaPatente, setTempScadenzaPatente] = useState("")
+  const [tempScadenzaPortoArmi, setTempScadenzaPortoArmi] = useState("")
+  const [tempNoteInterne, setTempNoteInterne] = useState("")
+  const [tempQualifica, setTempQualifica] = useState("")
 
   // Audit Log
   const [showAuditLog, setShowAuditLog] = useState(false)
@@ -1535,301 +1553,281 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
       {/* === ANAGRAFICA MODAL === */}
       {showAnagrafica && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 lg:p-6" onClick={() => setShowAnagrafica(false)}>
-          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-7xl max-h-[95vh] flex flex-col overflow-hidden border border-slate-200" onClick={e => e.stopPropagation()}>
-            <div className="bg-slate-800 px-6 py-5 text-white flex justify-between items-center shrink-0">
-              <div>
-                <h2 className="font-bold text-xl flex items-center gap-2"><Users size={22} className="text-blue-400" /> Anagrafica Personale</h2>
-                <p className="text-slate-400 text-xs mt-1">Gestisci i recapiti e le credenziali degli agenti. Le email sono necessarie per la ricezione delle PEC.</p>
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 lg:p-6" onClick={() => setShowAnagrafica(false)}>
+          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-7xl max-h-[95vh] flex flex-col overflow-hidden border border-white/20 animate-in zoom-in-95 duration-500" onClick={e => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="bg-slate-900 px-8 py-6 text-white flex justify-between items-center shrink-0 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+              <div className="relative z-10">
+                <h2 className="font-black text-2xl flex items-center gap-3 uppercase tracking-tight">
+                  <Users size={28} className="text-blue-400" /> 
+                  Gestione Personale
+                </h2>
+                <p className="text-slate-400 text-xs mt-1 font-bold tracking-widest uppercase opacity-70">Anagrafica, Qualifiche e Scadenze Operative</p>
               </div>
-              <button onClick={() => setShowAnagrafica(false)} className="text-slate-400 hover:text-white transition-colors bg-white/10 p-2 rounded-full">
-                <X size={20} />
-              </button>
+              <div className="flex items-center gap-4 relative z-10">
+                <button 
+                  onClick={() => setShowAddUser(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-200 transition-all active:scale-95 flex items-center gap-2"
+                >
+                  <Plus size={16} /> Aggiungi Agente
+                </button>
+                <button 
+                  onClick={() => setShowAnagrafica(false)} 
+                  className="text-slate-400 hover:text-white transition-all bg-white/10 p-3 rounded-2xl hover:scale-110 active:scale-95"
+                >
+                  <X size={24} />
+                </button>
+              </div>
             </div>
-            <div className="bg-white border-b border-slate-200 px-6 py-3 flex flex-wrap gap-4 items-center shrink-0">
-              <input 
-                type="text" 
-                placeholder="Cerca matr. o nome..." 
-                value={anagSearchQuery}
-                onChange={e => setAnagSearchQuery(e.target.value)}
-                className="px-3 py-1.5 text-sm border border-slate-300 rounded focus:outline-none focus:border-blue-500 font-medium w-48"
-              />
-              <select
-                value={anagSquadraFilter}
-                onChange={e => setAnagSquadraFilter(e.target.value)}
-                className="px-3 py-1.5 text-sm border border-slate-300 rounded focus:outline-none focus:border-blue-500 font-semibold cursor-pointer max-w-[180px]"
-              >
-                <option value="ALL">Tutte le Squadre</option>
-                {uniqueSquadre.map(sq => (
-                  <option key={sq} value={sq}>{sq}</option>
-                ))}
-              </select>
-              <select
-                value={anagQualificaFilter}
-                onChange={e => setAnagQualificaFilter(e.target.value)}
-                className="px-3 py-1.5 text-sm border border-slate-300 rounded focus:outline-none focus:border-blue-500 font-semibold cursor-pointer max-w-[180px]"
-              >
-                <option value="ALL">Tutte le Qualifiche</option>
-                {uniqueQualifiche.map(q => (
-                  <option key={q} value={q}>{q}</option>
-                ))}
-              </select>
-              <div className="ml-auto text-xs font-bold text-slate-500">
-                {filteredAnagraficaAgents.length} {filteredAnagraficaAgents.length === 1 ? 'risultato' : 'risultati'}
+
+            {/* Filters Bar */}
+            <div className="bg-white border-b border-slate-100 px-8 py-4 flex flex-wrap gap-6 items-center shrink-0 shadow-sm relative z-20">
+              <div className="relative group">
+                <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18} />
+                <input 
+                  type="text" 
+                  placeholder="Cerca matricola o nome..." 
+                  value={anagSearchQuery}
+                  onChange={e => setAnagSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 py-2.5 text-sm bg-slate-50 border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-blue-500 focus:bg-white font-black text-slate-700 w-64 transition-all"
+                />
+              </div>
+              
+              <div className="flex gap-3">
+                <select
+                  value={anagSquadraFilter}
+                  onChange={e => setAnagSquadraFilter(e.target.value)}
+                  className="px-4 py-2.5 text-xs bg-slate-50 border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-blue-500 font-black text-slate-700 cursor-pointer transition-all uppercase"
+                >
+                  <option value="ALL">TUTTE LE SQUADRE</option>
+                  {uniqueSquadre.map(sq => (
+                    <option key={sq} value={sq}>{sq}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={anagQualificaFilter}
+                  onChange={e => setAnagQualificaFilter(e.target.value)}
+                  className="px-4 py-2.5 text-xs bg-slate-50 border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-blue-500 font-black text-slate-700 cursor-pointer transition-all uppercase"
+                >
+                  <option value="ALL">TUTTE LE QUALIFICHE</option>
+                  {uniqueQualifiche.map(q => (
+                    <option key={q} value={q}>{q}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="ml-auto flex items-center gap-4">
+                <div className="text-[10px] font-black text-slate-400 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200 uppercase tracking-widest">
+                  {filteredAnagraficaAgents.length} {filteredAnagraficaAgents.length === 1 ? 'Operatore' : 'Operatori'}
+                </div>
               </div>
             </div>
             
-            <div className="p-6 overflow-y-auto bg-slate-50 flex-1 custom-scrollbar">
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
-                <table className="w-full text-left text-sm whitespace-nowrap min-w-[1200px]">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 text-xs uppercase tracking-wider">
-                    <tr>
-                      <th className="px-6 py-4 font-bold">Matr.</th>
-                      <th className="px-6 py-4 font-bold">Agente</th>
-                      <th className="px-6 py-4 font-bold">Squadra</th>
-                      <th className="px-6 py-4 font-bold">Qualifica</th>
-                      <th className="px-6 py-4 font-bold">REP / Max</th>
-                      <th className="px-6 py-4 font-bold">Email (PEC)</th>
-                      <th className="px-6 py-4 text-right font-bold">Azioni</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {/* Add User Row */}
-                    <tr className="bg-blue-50/50">
-                      <td colSpan={7} className="px-6 py-4 bg-slate-50/50">
-                         <button 
-                            onClick={() => setShowAddUser(!showAddUser)} 
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-sm transition-all ${showAddUser ? 'text-slate-600 bg-slate-200' : 'text-blue-700 bg-blue-100 hover:bg-blue-200 shadow-sm'}`}
-                         >
-                            <Plus size={18} /> {showAddUser ? "Chiudi Inserimento" : "Aggiungi Nuovo Dipendente"}
-                         </button>
-                      </td>
-                    </tr>
-                    {showAddUser && (
-                      <tr className="bg-blue-50/80 animate-in fade-in slide-in-from-top-1 border-b-2 border-blue-200">
-                        <td className="px-6 py-6">
-                          <label className="block text-[9px] font-black text-blue-700 uppercase mb-1 tracking-tighter">Matricola</label>
-                          <input type="text" placeholder="Es. 123" value={tempMatricola} onChange={e => setTempMatricola(e.target.value.toUpperCase())} className="border-2 border-blue-300 rounded-lg px-2 py-1.5 w-24 text-sm font-black text-black focus:border-blue-500 outline-none" />
-                        </td>
-                        <td className="px-6 py-6">
-                          <label className="block text-[9px] font-black text-blue-700 uppercase mb-1 tracking-tighter">Nome Completo</label>
-                          <input type="text" placeholder="COGNOME NOME" value={tempName} onChange={e => setTempName(e.target.value.toUpperCase())} className="border-2 border-blue-300 rounded-lg px-2 py-1.5 w-56 text-sm font-black text-black focus:border-blue-500 outline-none" />
-                        </td>
-                        <td className="px-6 py-6">
-                          <label className="block text-[9px] font-black text-blue-700 uppercase mb-1 tracking-tighter">Squadra</label>
-                          <input type="text" placeholder="Es. SQUADRA A" value={tempSquadra} onChange={e => setTempSquadra(e.target.value.toUpperCase())} className="border-2 border-blue-300 rounded-lg px-2 py-1.5 w-32 text-sm font-black text-black focus:border-blue-500 outline-none" />
-                        </td>
-                        <td className="px-6 py-6 text-xs text-slate-500 italic font-bold">Predefinito</td>
-                        <td className="px-6 py-6">
-                          <label className="block text-[9px] font-black text-blue-700 uppercase mb-1 tracking-tighter">Max REP</label>
-                          <input type="number" value={tempMassimale} onChange={e => setTempMassimale(parseInt(e.target.value))} className="border-2 border-blue-300 rounded-lg px-2 py-1.5 w-16 text-sm font-black text-black focus:border-blue-500 outline-none" />
-                        </td>
-                        <td className="px-6 py-6">
-                            <label className="block text-[9px] font-black text-blue-700 uppercase mb-1 tracking-tighter">Password Iniziale</label>
-                            <input type="password" placeholder="Min. 6 car." value={newPass} onChange={e => setNewPass(e.target.value)} className="border-2 border-blue-300 rounded-lg px-2 py-1.5 w-40 text-sm font-black text-black focus:border-blue-500 outline-none" />
-                        </td>
-                        <td className="px-6 py-6 text-right align-bottom">
-                           <button 
-                            disabled={isSavingUser || !tempMatricola || !tempName || !newPass}
-                            onClick={async () => {
-                              setIsSavingUser(true)
-                              const res = await fetch('/api/admin/users', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ matricola: tempMatricola, name: tempName, squadra: tempSquadra, massimale: tempMassimale, password: newPass })
-                              })
-                              if (res.ok) {
-                                setShowAddUser(false)
-                                setTempMatricola(""); setTempName(""); setTempSquadra(""); setNewPass("")
-                                router.refresh()
-                              } else {
-                                const d = await res.json()
-                                toast.error(d.error || "Errore creazione")
-                              }
-                              setIsSavingUser(false)
-                            }}
-                            className="bg-blue-700 text-white px-6 py-2.5 rounded-xl text-xs font-black hover:bg-black transition-all shadow-md disabled:opacity-50"
-                           >SALVA ORA</button>
-                        </td>
-                      </tr>
-                    )}
-                    {filteredAnagraficaAgents.map(agent => (
-                      <tr key={agent.id} className={`${editingAgent === agent.id ? 'bg-amber-50/80 border-y-2 border-amber-200 shadow-inner' : 'hover:bg-blue-50/30'} transition-all`}>
-                        <td className="px-6 py-4">
-                          {editingAgent === agent.id ? (
-                            <>
-                              <label className="block text-[9px] font-black text-amber-700 uppercase mb-1 tracking-tighter">Matricola</label>
-                              <input type="text" value={tempMatricola} onChange={e => setTempMatricola(e.target.value.toUpperCase())} className="border-2 border-amber-300 rounded-lg px-2 py-1.5 w-24 text-sm font-black text-black outline-none focus:border-amber-500" />
-                            </>
-                          ) : (
-                            <span className="text-xs font-mono text-black font-black">{agent.matricola}</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 font-black text-black">
-                          {editingAgent === agent.id ? (
-                            <>
-                              <label className="block text-[9px] font-black text-amber-700 uppercase mb-1 tracking-tighter">Agente</label>
-                              <input type="text" value={tempName} onChange={e => setTempName(e.target.value.toUpperCase())} className="border-2 border-amber-300 rounded-lg px-2 py-1.5 w-48 text-sm font-black text-black outline-none focus:border-amber-500" />
-                            </>
-                          ) : (
-                            <span className="text-sm">{agent.name}</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          {editingAgent === agent.id ? (
-                            <div className="flex flex-col gap-2 min-w-[200px]">
-                              <div>
-                                <label className="block text-[9px] font-black text-amber-700 uppercase mb-1 tracking-tighter">Turnazione Base</label>
-                                <select value={tempRotationGroup} onChange={e => setTempRotationGroup(e.target.value)} className="border-2 border-amber-300 rounded-lg px-2 py-1.5 w-full text-xs font-black text-black outline-none focus:border-amber-500 bg-white">
-                                  <option value="">(Libero) Testo: {agent.squadra || ""}</option>
-                                  {rotationGroups?.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-black text-amber-700 uppercase mb-1 tracking-tighter">Servizio di Default</label>
-                                <select value={tempDefaultCategoryId} onChange={e => { setTempDefaultCategoryId(e.target.value); setTempDefaultTypeId(""); }} className="border-2 border-amber-300 rounded-lg px-2 py-1.5 w-full text-[10px] font-black text-black mb-1 outline-none bg-white">
-                                  <option value="">Nessun Servizio</option>
-                                  {categories?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                </select>
-                                {tempDefaultCategoryId && (
-                                  <select value={tempDefaultTypeId} onChange={e => setTempDefaultTypeId(e.target.value)} className="border-2 border-amber-300 rounded-lg px-2 py-1.5 w-full text-[10px] font-black text-blue-700 outline-none bg-white">
-                                    <option value="">Generico</option>
-                                    {categories?.find(c => c.id === tempDefaultCategoryId)?.types.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                  </select>
-                                )}
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex flex-col gap-1 items-start">
-                              <span className="text-[10px] bg-slate-100 text-black font-black px-2.5 py-1.5 rounded-lg tracking-tight uppercase border border-slate-300 shadow-sm">
-                                {agent.rotationGroupId ? (rotationGroups?.find(g => g.id === agent.rotationGroupId)?.name || "Ignoto") : (agent.squadra || "Senza Squadra / Libero")}
-                              </span>
-                              {(agent.defaultServiceCategoryId) && (
-                                <span className="text-[9px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-200">
-                                   {categories?.find(c => c.id === agent.defaultServiceCategoryId)?.name}
-                                   {agent.defaultServiceTypeId && ` ▶ ${categories?.find(c => c.id === agent.defaultServiceCategoryId)?.types.find((t: any) => t.id === agent.defaultServiceTypeId)?.name}`}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 font-black text-slate-800 text-xs">
-                          {agent.qualifica || 'Agente'} 
-                          {agent.isUfficiale && <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-[6px] text-[10px] font-black bg-blue-100 text-blue-800 border border-blue-200 uppercase tracking-widest shadow-sm">Ufficiale</span>}
-                        </td>
-                        <td className="px-6 py-4">
-                          {editingAgent === agent.id ? (
-                            <>
-                              <label className="block text-[9px] font-black text-amber-700 uppercase mb-1 tracking-tighter">Massimale</label>
-                              <input type="number" value={tempMassimale} onChange={e => setTempMassimale(parseInt(e.target.value))} className="border-2 border-amber-300 rounded-lg px-2 py-1.5 w-16 text-sm font-black text-black outline-none focus:border-amber-500" />
-                            </>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <span className={`font-black px-2.5 py-1 rounded-lg text-xs border ${agent.repTotal > agent.massimale ? 'bg-red-100 text-red-700 border-red-200' : agent.repTotal === agent.massimale ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-slate-50 text-black border-slate-200'}`}>
-                                {agent.repTotal} / {agent.massimale}
-                              </span>
-                              {agent.repTotal > agent.massimale && (
-                                <span className="text-[10px] font-black text-red-600 border border-red-200 bg-red-50 px-1.5 py-0.5 rounded-lg">+{agent.repTotal - agent.massimale}</span>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          {editingAgent === agent.id ? (
-                            <div className="flex flex-col gap-2">
-                              <div>
-                                <label className="block text-[9px] font-black text-amber-700 uppercase mb-1 tracking-tighter">Indirizzo Email (PEC)</label>
-                                <input type="email" value={tempEmail} onChange={e => setTempEmail(e.target.value)} className="border-2 border-amber-300 rounded-lg px-2 py-1.5 w-full max-w-[200px] text-sm font-black text-black outline-none focus:border-amber-500" placeholder="Email..." />
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-black text-amber-700 uppercase mb-1 tracking-tighter">Telefono / Mobile</label>
-                                <input type="tel" value={tempPhone} onChange={e => setTempPhone(e.target.value)} className="border-2 border-amber-300 rounded-lg px-2 py-1.5 w-full max-w-[180px] text-sm font-black text-black outline-none focus:border-amber-500" placeholder="Tel..." />
-                              </div>
-                              <div className="flex items-center gap-2 mt-2 pt-3 border-t-2 border-amber-200">
-                                <div className="flex flex-col">
-                                  <label className="block text-[9px] font-black text-amber-700 uppercase mb-1 tracking-tighter">Reset Password</label>
-                                  <input type="text" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Nuova Password" className="border-2 border-amber-400 rounded-lg px-2 py-1.5 text-xs font-black w-32 bg-white" />
-                                </div>
+            {/* Cards Grid */}
+            <div className="p-8 overflow-y-auto bg-slate-50/50 flex-1 custom-scrollbar">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                {filteredAnagraficaAgents.map(agent => {
+                  const todayShift = shifts.find(s => s.userId === agent.id && new Date(s.date).toDateString() === new Date().toDateString());
+                  const isExpiring = (date) => {
+                    if (!date) return false;
+                    const d = new Date(date);
+                    const now = new Date();
+                    return d.getTime() < now.getTime() + (30 * 24 * 60 * 60 * 1000); 
+                  };
+
+                  return (
+                    <div key={agent.id} className={`group relative bg-white rounded-[2.5rem] shadow-sm border-2 transition-all duration-500 overflow-hidden flex flex-col ${editingAgent === agent.id ? 'border-amber-400 shadow-2xl ring-8 ring-amber-100/50 scale-[1.02]' : 'border-slate-100 hover:border-blue-400 hover:shadow-2xl hover:-translate-y-2 hover:bg-white'}`}>
+                      {/* Card Top Decoration */}
+                      <div className={`h-28 transition-all duration-500 ${agent.isUfficiale ? 'bg-indigo-600' : 'bg-slate-800'} ${editingAgent === agent.id ? 'bg-amber-500' : ''} relative p-6`}>
+                        <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div className="absolute top-4 right-6 flex gap-2">
+                           {isExpiring(agent.scadenzaPatente) && <div className="w-3 h-3 bg-red-400 rounded-full animate-pulse shadow-lg shadow-red-500/50" title="Patente in Scadenza"></div>}
+                           {isExpiring(agent.scadenzaPortoArmi) && <div className="w-3 h-3 bg-red-400 rounded-full animate-pulse shadow-lg shadow-red-500/50" title="Porto d'Armi in Scadenza"></div>}
+                        </div>
+                      </div>
+
+                      {/* Avatar & Header Info */}
+                      <div className="absolute top-12 left-8 flex items-end gap-5">
+                        <div className="w-24 h-24 bg-white rounded-[2rem] p-1.5 shadow-2xl border border-slate-50 transition-transform duration-500 group-hover:scale-105">
+                          <div className={`w-full h-full rounded-[1.7rem] flex items-center justify-center text-white font-black text-3xl shadow-inner ${agent.isUfficiale ? 'bg-indigo-500' : 'bg-slate-700'}`}>
+                            {agent.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                          </div>
+                        </div>
+                        <div className="mb-4">
+                           <span className="text-[10px] font-black text-white/90 uppercase tracking-widest block mb-1 drop-shadow-sm">Matr. {agent.matricola}</span>
+                           <h4 className="text-white font-black text-lg tracking-tighter leading-none uppercase truncate max-w-[150px] drop-shadow-md">{agent.name}</h4>
+                        </div>
+                      </div>
+
+                      <div className="px-8 pt-16 pb-8 flex-1 flex flex-col">
+                        {editingAgent === agent.id ? (
+                          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                             <div className="grid grid-cols-2 gap-3">
+                               <div className="space-y-1">
+                                  <label className="text-[9px] font-black text-amber-700 uppercase tracking-widest pl-1">Nome Completo</label>
+                                  <input type="text" value={tempName} onChange={e => setTempName(e.target.value.toUpperCase())} className="w-full bg-amber-50/50 border border-amber-200 rounded-xl px-4 py-2.5 text-xs font-black outline-none focus:border-amber-500 focus:bg-white transition-all shadow-inner" />
+                               </div>
+                               <div className="space-y-1">
+                                  <label className="text-[9px] font-black text-amber-700 uppercase tracking-widest pl-1">Matricola</label>
+                                  <input type="text" value={tempMatricola} onChange={e => setTempMatricola(e.target.value.toUpperCase())} className="w-full bg-amber-50/50 border border-amber-200 rounded-xl px-4 py-2.5 text-xs font-black outline-none focus:border-amber-500 focus:bg-white transition-all shadow-inner" />
+                               </div>
+                             </div>
+                             
+                             <div className="space-y-1">
+                                <label className="text-[9px] font-black text-amber-700 uppercase tracking-widest pl-1">Qualifica Operativa</label>
+                                <input type="text" value={tempQualifica} onChange={e => setTempQualifica(e.target.value)} className="w-full bg-amber-50/50 border border-amber-200 rounded-xl px-4 py-2.5 text-xs font-black outline-none focus:border-amber-500 focus:bg-white transition-all shadow-inner" placeholder="Es. Istruttore Direttivo" />
+                             </div>
+
+                             <div className="grid grid-cols-2 gap-3">
+                               <div className="space-y-1">
+                                  <label className="text-[9px] font-black text-amber-700 uppercase tracking-widest pl-1">Data Assunzione</label>
+                                  <input type="date" value={tempDataAssunzione} onChange={e => setTempDataAssunzione(e.target.value)} className="w-full bg-amber-50/50 border border-amber-200 rounded-xl px-4 py-2.5 text-[10px] font-black outline-none focus:border-amber-500 focus:bg-white uppercase transition-all shadow-inner" />
+                               </div>
+                               <div className="space-y-1">
+                                  <label className="text-[9px] font-black text-amber-700 uppercase tracking-widest pl-1">Squadra / Reparto</label>
+                                  <input type="text" value={tempSquadra} onChange={e => setTempSquadra(e.target.value.toUpperCase())} className="w-full bg-amber-50/50 border border-amber-200 rounded-xl px-4 py-2.5 text-xs font-black outline-none focus:border-amber-500 focus:bg-white transition-all shadow-inner" />
+                               </div>
+                             </div>
+
+                             <div className="grid grid-cols-2 gap-3">
+                               <div className="space-y-1">
+                                  <label className="text-[9px] font-black tracking-widest pl-1 uppercase text-rose-700">Scadenza Patente</label>
+                                  <input type="date" value={tempScadenzaPatente} onChange={e => setTempScadenzaPatente(e.target.value)} className="w-full bg-rose-50/30 border border-rose-200 rounded-xl px-4 py-2.5 text-[10px] font-black outline-none focus:border-rose-500 focus:bg-white uppercase transition-all shadow-inner" />
+                               </div>
+                               <div className="space-y-1">
+                                  <label className="text-[9px] font-black tracking-widest pl-1 uppercase text-rose-700">Scadenza Porto Armi</label>
+                                  <input type="date" value={tempScadenzaPortoArmi} onChange={e => setTempScadenzaPortoArmi(e.target.value)} className="w-full bg-rose-50/30 border border-rose-200 rounded-xl px-4 py-2.5 text-[10px] font-black outline-none focus:border-rose-500 focus:bg-white uppercase transition-all shadow-inner" />
+                               </div>
+                             </div>
+
+                             <div className="space-y-1">
+                                <label className="text-[9px] font-black text-amber-700 uppercase tracking-widest pl-1">Note Interne Operative</label>
+                                <textarea value={tempNoteInterne} onChange={e => setTempNoteInterne(e.target.value)} rows={2} className="w-full bg-amber-50/50 border border-amber-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-amber-500 focus:bg-white resize-none transition-all shadow-inner" placeholder="Annotazioni su turnazioni speciali, limitazioni o note varie..." />
+                             </div>
+
+                             <div className="flex justify-between items-center gap-3 pt-4 border-t border-amber-200 mt-2">
                                 <button onClick={async () => {
-                                  if(!newPass) return toast.error("Inserisci una password")
-                                  const res = await fetch('/api/admin/users', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: agent.id, action: 'resetPassword', newPassword: newPass })})
-                                  if(res.ok) { toast.success("Password aggiornata!"); setNewPass("") }
-                                }} className="self-end text-[10px] font-black text-amber-800 bg-amber-100 px-4 py-2 rounded-lg border-2 border-amber-300 hover:bg-amber-200 transition-all uppercase">Reset</button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex flex-col gap-0.5">
-                              <span className={agent.email ? "text-black text-xs font-black" : "text-slate-400 italic text-[10px]"}>{agent.email || "No Email"}</span>
-                              <span className="text-slate-800 text-[10px] font-black">{agent.phone || "No Telefono"}</span>
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-right align-middle">
-                          {editingAgent === agent.id ? (
-                            <div className="flex items-center justify-end gap-3">
-                              <button onClick={() => setEditingAgent(null)} className="text-xs font-black text-slate-700 hover:text-black px-4 py-2 bg-slate-200 rounded-xl border border-slate-300 transition-all">ANNULLA</button>
-                              <button onClick={async () => {
-                                const res = await fetch('/api/admin/users', {
-                                  method: 'PUT',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ userId: agent.id, name: tempName, matricola: tempMatricola, squadra: tempSquadra, rotationGroupId: tempRotationGroup || null, defaultServiceCategoryId: tempDefaultCategoryId || null, defaultServiceTypeId: tempDefaultTypeId || null, massimale: tempMassimale, email: tempEmail, phone: tempPhone })
-                                })
-                                if (res.ok) {
-                                  setEditingAgent(null)
-                                  router.refresh()
-                                } else {
-                                  toast.error("Errore durante il salvataggio")
-                                }
-                              }} className="text-xs font-black text-white hover:bg-black px-6 py-3 bg-emerald-700 rounded-xl shadow-lg transition-all border-2 border-emerald-800">SALVA MODIFICHE</button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-end gap-3">
-                              <button 
-                                onClick={() => {
-                                  setEditingAgent(agent.id)
-                                  setTempName(agent.name)
-                                  setTempMatricola(agent.matricola)
-                                  setTempSquadra(agent.squadra || "")
-                                  setTempRotationGroup(agent.rotationGroupId || "")
-                                  setTempDefaultCategoryId(agent.defaultServiceCategoryId || "")
-                                  setTempDefaultTypeId(agent.defaultServiceTypeId || "")
-                                  setTempMassimale(agent.massimale)
-                                  setTempEmail(agent.email || "")
-                                  setTempPhone(agent.phone || "")
-                                  setNewPass("")
-                                }} 
-                                className="text-xs font-black text-white bg-blue-600 hover:bg-blue-700 px-5 py-2.5 rounded-[12px] transition-all shadow-md hover:shadow-lg active:scale-95"
-                              >
-                                MODIFICA
-                              </button>
-                              <button 
-                                onClick={async () => {
-                                  if (!confirm(`Vuoi davvero eliminare l'agente ${agent.name}? Operazione irreversibile.`)) return
-                                  const res = await fetch('/api/admin/users', {
-                                    method: 'DELETE',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ userId: agent.id })
-                                  })
-                                  if (res.ok) router.refresh()
-                                }} 
-                                title="Elimina Dipendente"
-                                className="p-2.5 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-[12px] transition-all border border-red-100 shadow-sm"
-                              >
-                                <Trash2 size={18} />
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                                  if (!confirm(`Vuoi davvero eliminare l'operatore ${agent.name}? L'azione è irreversibile.`)) return
+                                  const res = await fetch('/api/admin/users', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: agent.id }) })
+                                  if (res.ok) { toast.success('Operatore eliminato'); router.refresh(); }
+                                }} className="p-3 text-rose-600 bg-rose-50 hover:bg-rose-600 hover:text-white rounded-2xl transition-all shadow-sm active:scale-95 border border-rose-100" title="Elimina Operatore">
+                                  <Trash2 size={20} />
+                                </button>
+                                <div className="flex gap-2">
+                                   <button onClick={() => setEditingAgent(null)} className="px-5 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-900 transition-colors">Annulla</button>
+                                   <button onClick={async () => {
+                                      const res = await fetch('/api/admin/users', {
+                                        method: 'PUT',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ 
+                                          userId: agent.id, name: tempName, matricola: tempMatricola, squadra: tempSquadra, qualifica: tempQualifica,
+                                          massimale: tempMassimale, email: tempEmail, phone: tempPhone,
+                                          dataAssunzione: tempDataAssunzione || null,
+                                          scadenzaPatente: tempScadenzaPatente || null, 
+                                          scadenzaPortoArmi: tempScadenzaPortoArmi || null, 
+                                          noteInterne: tempNoteInterne || null 
+                                        })
+                                      })
+                                      if (res.ok) { toast.success('Profilo aggiornato!'); setEditingAgent(null); router.refresh(); }
+                                      else { toast.error('Errore durante il salvataggio'); }
+                                    }} className="bg-slate-900 text-white px-8 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black shadow-lg shadow-slate-200 active:scale-95 transition-all">Salva Tutto</button>
+                                </div>
+                             </div>
+                          </div>
+                        ) : (
+                          <div className="flex-1 flex flex-col animate-in fade-in duration-700">
+                             {/* Display Info Chips */}
+                             <div className="flex flex-wrap gap-2 mb-6">
+                               <span className={`px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider border ${agent.isUfficiale ? 'bg-indigo-50 text-indigo-700 border-indigo-200 shadow-sm shadow-indigo-100' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                                 {agent.qualifica || 'Agente'}
+                               </span>
+                               <span className="px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider border bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm shadow-emerald-100">
+                                 {agent.squadra || 'Libero'}
+                               </span>
+                             </div>
+
+                             {/* Quick Details List */}
+                             <div className="space-y-4 mb-8">
+                               <div className="flex items-center gap-4 group/item">
+                                 <div className="p-2.5 bg-slate-100 rounded-xl text-slate-400 group-hover/item:bg-blue-100 group-hover/item:text-blue-600 transition-colors">
+                                   <MapPin size={18} />
+                                 </div>
+                                 <div>
+                                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Stato Attuale</p>
+                                   <span className="text-xs font-black text-slate-700 group-hover/item:text-blue-700 transition-colors">{todayShift ? todayShift.type : 'Fuori Turno / Libero'}</span>
+                                 </div>
+                               </div>
+                               <div className="flex items-center gap-4 group/item">
+                                 <div className="p-2.5 bg-slate-100 rounded-xl text-slate-400 group-hover/item:bg-amber-100 group-hover/item:text-amber-600 transition-colors">
+                                   <CalendarIcon size={18} />
+                                 </div>
+                                 <div>
+                                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Servizio Ordinario</p>
+                                   <span className="text-xs font-black text-slate-700">Turnazione Ciclica</span>
+                                 </div>
+                               </div>
+                               <div className="flex items-center gap-4 group/item">
+                                 <div className="p-2.5 bg-slate-100 rounded-xl text-slate-400 group-hover/item:bg-rose-100 group-hover/item:text-rose-600 transition-colors">
+                                   <Phone size={18} />
+                                 </div>
+                                 <div>
+                                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Recapito Telefonico</p>
+                                   <span className="text-xs font-black text-slate-700">{agent.phone || 'Non Inserito'}</span>
+                                 </div>
+                               </div>
+                             </div>
+
+                             {/* Progress Bars / Stats */}
+                             <div className="mt-auto pt-6 border-t border-slate-100">
+                                <div className="flex items-center justify-between mb-2">
+                                   <div>
+                                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Carico Reperibilità</p>
+                                      <div className="flex items-center gap-2">
+                                         <span className={`text-xl font-black tracking-tighter ${agent.repTotal > agent.massimale ? 'text-rose-600' : 'text-slate-900'}`}>{agent.repTotal}</span>
+                                         <span className="text-[10px] font-black text-slate-300 uppercase tracking-tighter">/ {agent.massimale}</span>
+                                      </div>
+                                   </div>
+                                   <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                      <div className={`h-full rounded-full transition-all duration-1000 ${agent.repTotal > agent.massimale ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, (agent.repTotal / agent.massimale) * 100)}%` }}></div>
+                                   </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-3 mt-6">
+                                  <button onClick={() => setSelectedAgentForDetails(agent)} className="px-4 py-3 bg-white text-slate-900 border-2 border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-blue-400 hover:text-blue-600 transition-all shadow-sm flex items-center justify-center gap-2">
+                                    <Eye size={14} /> Fascicolo
+                                  </button>
+                                  <button onClick={() => {
+                                      setEditingAgent(agent.id); 
+                                      setTempName(agent.name); 
+                                      setTempMatricola(agent.matricola); 
+                                      setTempSquadra(agent.squadra || "");
+                                      setTempQualifica(agent.qualifica || "Agente di P.L."); 
+                                      setTempMassimale(agent.massimale); 
+                                      setTempEmail(agent.email || ""); 
+                                      setTempPhone(agent.phone || "");
+                                      setTempDataAssunzione(agent.dataAssunzione ? new Date(agent.dataAssunzione).toISOString().split('T')[0] : "");
+                                      setTempScadenzaPatente(agent.scadenzaPatente ? new Date(agent.scadenzaPatente).toISOString().split('T')[0] : "");
+                                      setTempScadenzaPortoArmi(agent.scadenzaPortoArmi ? new Date(agent.scadenzaPortoArmi).toISOString().split('T')[0] : "");
+                                      setTempNoteInterne(agent.noteInterne || ""); 
+                                      setNewPass("");
+                                    }} className="px-4 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 shadow-lg shadow-slate-200 transition-all active:scale-95 flex items-center justify-center gap-2">
+                                    <FileEdit size={14} /> Gestisci
+                                  </button>
+                                </div>
+                             </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
         </div>
-      )}
-      {/* Area anagrafica nascosta qui... rimossa per spazio modal */}
+      )}\n      {/* Area anagrafica nascosta qui... rimossa per spazio modal */}
 
       {/* Settings Panel Modal */}
       {showSettings && <SettingsPanel onClose={() => { setShowSettings(false); router.refresh() }} />}
@@ -2189,6 +2187,131 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             <div className="flex-1 overflow-auto p-6">
               <AdminInitialBalances />
             </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL DETTAGLI OPERATORE (STORICO E STATISTICHE) */}
+      {selectedAgentForDetails && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 lg:p-12 animate-in fade-in duration-300" onClick={() => setSelectedAgentForDetails(null)}>
+          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden border border-white/20" onClick={e => e.stopPropagation()}>
+             {/* Header */}
+             <div className="bg-slate-900 p-8 text-white shrink-0 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+                <div className="flex justify-between items-start relative z-10">
+                   <div className="flex items-center gap-6">
+                      <div className="w-24 h-24 rounded-[2rem] bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-3xl font-black shadow-2xl shadow-blue-500/20">
+                         {selectedAgentForDetails.name.split(' ').map((n:any) => n[0]).join('').slice(0, 2)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-3 mb-2">
+                           <span className="px-3 py-1 bg-white/10 rounded-lg text-[10px] font-black uppercase tracking-widest text-blue-300 border border-white/10">Matr. {selectedAgentForDetails.matricola}</span>
+                           <span className="px-3 py-1 bg-blue-500/20 rounded-lg text-[10px] font-black uppercase tracking-widest text-blue-200 border border-blue-400/20">{selectedAgentForDetails.qualifica || 'Agente'}</span>
+                        </div>
+                        <h2 className="text-4xl font-black tracking-tight">{selectedAgentForDetails.name}</h2>
+                        <p className="text-slate-400 font-bold mt-1 uppercase text-xs tracking-widest flex items-center gap-2">
+                           <MapPin size={14} className="text-blue-400" />
+                           {selectedAgentForDetails.squadra || 'Senza Squadra'} · Assunto il {selectedAgentForDetails.dataAssunzione ? new Date(selectedAgentForDetails.dataAssunzione).toLocaleDateString() : 'Non specificata'}
+                        </p>
+                      </div>
+                   </div>
+                   <button onClick={() => setSelectedAgentForDetails(null)} className="p-3 bg-white/10 rounded-full hover:bg-white/20 transition-all">
+                      <X size={24} />
+                   </button>
+                </div>
+             </div>
+
+             {/* Content */}
+             <div className="flex-1 overflow-y-auto p-10 bg-slate-50 custom-scrollbar">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                   
+                   {/* Left Col: Statistiche & Documenti */}
+                   <div className="space-y-8">
+                      <div className="bg-white rounded-[2rem] p-6 shadow-xl shadow-slate-200/50 border border-white">
+                         <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-3">
+                            <Hash size={18} className="text-blue-500" />
+                            Contatori Mensili
+                         </h3>
+                         <div className="space-y-6">
+                            <div>
+                               <div className="flex justify-between items-end mb-2">
+                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reperibilità (REP)</span>
+                                  <span className="text-sm font-black text-slate-900">{selectedAgentForDetails.repTotal} / {selectedAgentForDetails.massimale}</span>
+                               </div>
+                               <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                  <div className={`h-full rounded-full transition-all duration-1000 ${selectedAgentForDetails.repTotal > selectedAgentForDetails.massimale ? 'bg-rose-500' : 'bg-blue-500'}`} style={{ width: `${Math.min(100, (selectedAgentForDetails.repTotal / selectedAgentForDetails.massimale) * 100)}%` }}></div>
+                               </div>
+                            </div>
+                         </div>
+                      </div>
+
+                      <div className="bg-white rounded-[2rem] p-6 shadow-xl shadow-slate-200/50 border border-white">
+                         <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-3">
+                            <Award size={18} className="text-emerald-500" />
+                            Abilitazioni & Scadenze
+                         </h3>
+                         <div className="space-y-4">
+                            <div className={`p-4 rounded-2xl border ${selectedAgentForDetails.scadenzaPatente && new Date(selectedAgentForDetails.scadenzaPatente) < new Date() ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100'}`}>
+                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Patente di Guida</p>
+                               <p className="text-xs font-bold text-slate-800">Scadenza: {selectedAgentForDetails.scadenzaPatente ? new Date(selectedAgentForDetails.scadenzaPatente).toLocaleDateString() : 'N/D'}</p>
+                            </div>
+                            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Porto d'Armi</p>
+                               <p className="text-xs font-bold text-slate-800">Scadenza: {selectedAgentForDetails.scadenzaPortoArmi ? new Date(selectedAgentForDetails.scadenzaPortoArmi).toLocaleDateString() : 'N/D'}</p>
+                            </div>
+                         </div>
+                      </div>
+                   </div>
+
+                   {/* Right Col: Storico Recente (Timeline) */}
+                   <div className="md:col-span-2 space-y-8">
+                      <div className="bg-white rounded-[2rem] p-8 shadow-xl shadow-slate-200/50 border border-white">
+                         <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-8 flex items-center gap-3">
+                            <Calendar size={18} className="text-indigo-500" />
+                            Storico Recente ({currentMonth}/{currentYear})
+                         </h3>
+                         <div className="space-y-4">
+                            {shifts.filter((s:any) => s.userId === selectedAgentForDetails.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10).map((s:any) => (
+                               <div key={s.id} className="flex items-center gap-6 p-4 rounded-2xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100 group">
+                                  <div className="w-16 shrink-0">
+                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{new Date(s.date).toLocaleDateString('it-IT', { weekday: 'short' })}</p>
+                                     <p className="text-sm font-black text-slate-800 leading-none">{new Date(s.date).getDate()}</p>
+                                  </div>
+                                  <div className="flex-1">
+                                     <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${s.type==='F'?'bg-rose-50 text-rose-600 border-rose-100':s.type.includes('REP')?'bg-blue-50 text-blue-600 border-blue-100':'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+                                        {s.type}
+                                     </span>
+                                  </div>
+                                  <div className="text-right">
+                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.repType || 'Servizio Ordinario'}</p>
+                                  </div>
+                               </div>
+                            ))}
+                            {shifts.filter((s:any) => s.userId === selectedAgentForDetails.id).length === 0 && (
+                               <div className="text-center py-12">
+                                  <p className="text-slate-400 font-bold italic text-sm">Nessun turno registrato per questo mese.</p>
+                               </div>
+                            )}
+                         </div>
+                      </div>
+
+                      <div className="bg-white rounded-[2rem] p-8 shadow-xl shadow-slate-200/50 border border-white">
+                         <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-3">
+                            <FileText size={18} className="text-slate-400" />
+                            Note Interne
+                         </h3>
+                         <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 min-h-[100px]">
+                            <p className="text-sm font-bold text-slate-600 whitespace-pre-wrap">{selectedAgentForDetails.noteInterne || "Nessuna nota aggiuntiva per questo dipendente."}</p>
+                         </div>
+                      </div>
+                   </div>
+
+                </div>
+             </div>
+             
+             {/* Footer Actions */}
+             <div className="bg-slate-50 px-10 py-6 border-t border-slate-200 flex justify-end gap-4 shrink-0">
+                <button onClick={() => setSelectedAgentForDetails(null)} className="px-8 py-3 bg-slate-200 text-slate-700 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-300 transition-all">Chiudi</button>
+             </div>
           </div>
         </div>
       )}

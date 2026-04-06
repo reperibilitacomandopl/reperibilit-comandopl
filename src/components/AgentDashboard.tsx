@@ -103,14 +103,19 @@ function getCategoryForCode(code: string) {
 }
 
 // Color mapping for badges
-const CAT_COLORS: Record<string, { bg: string, text: string, border: string, dot: string }> = {
-  amber:  { bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-200', dot: 'bg-amber-400' },
-  rose:   { bg: 'bg-rose-50',   text: 'text-rose-700',   border: 'border-rose-200',  dot: 'bg-rose-400' },
-  blue:   { bg: 'bg-blue-50',   text: 'text-blue-700',   border: 'border-blue-200',  dot: 'bg-blue-400' },
-  red:    { bg: 'bg-red-50',    text: 'text-red-700',    border: 'border-red-200',   dot: 'bg-red-400' },
-  teal:   { bg: 'bg-teal-50',   text: 'text-teal-700',   border: 'border-teal-200',  dot: 'bg-teal-400' },
-  orange: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200',dot: 'bg-orange-400' },
-  indigo: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200',dot: 'bg-indigo-400' },
+const CAT_COLORS: Record<string, { bg: string, text: string, border: string, dot: string, bar: string }> = {
+  amber:  { bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-200', dot: 'bg-amber-400',  bar: 'bg-gradient-to-r from-amber-400 to-amber-600' },
+  rose:   { bg: 'bg-rose-50',   text: 'text-rose-700',   border: 'border-rose-200',  dot: 'bg-rose-400',   bar: 'bg-gradient-to-r from-rose-400 to-rose-600' },
+  blue:   { bg: 'bg-blue-50',   text: 'text-blue-700',   border: 'border-blue-200',  dot: 'bg-blue-400',   bar: 'bg-gradient-to-r from-blue-400 to-blue-600' },
+  red:    { bg: 'bg-red-50',    text: 'text-red-700',    border: 'border-red-200',   dot: 'bg-red-400',    bar: 'bg-gradient-to-r from-red-400 to-red-600' },
+  teal:   { bg: 'bg-teal-50',   text: 'text-teal-700',   border: 'border-teal-200',  dot: 'bg-teal-400',   bar: 'bg-gradient-to-r from-teal-400 to-teal-600' },
+  orange: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200',dot: 'bg-orange-400', bar: 'bg-gradient-to-r from-orange-400 to-orange-600' },
+  indigo: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200',dot: 'bg-indigo-400', bar: 'bg-gradient-to-r from-indigo-400 to-indigo-600' },
+}
+
+// Helper: get bar color for a category
+function paramsToColor(color: string) {
+  return CAT_COLORS[color]?.bar || 'bg-indigo-500'
 }
 
 type AgendaItem = {
@@ -167,7 +172,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
       const res = await fetch(`/api/user/balances?year=${currentYear}`)
       if (res.ok) {
         const data = await res.json()
-        setBalances(data.balance)
+        setBalances(data) // Now stores { year, user { qualifica, ... }, details: [...] }
       }
     } catch { /* silent */ }
   }, [currentYear])
@@ -575,22 +580,22 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
             <h2 className="text-4xl font-black mb-1 bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-200">
               Ciao, {currentUser.name.split(' ')[0]}
             </h2>
-            <div className="mt-4 flex items-center gap-2">
-              <div className="flex bg-white/10 backdrop-blur-md rounded-2xl p-1 border border-white/10 shadow-inner items-center">
+            <div className="mt-4 flex items-center gap-3">
+              <div className="flex bg-white/5 backdrop-blur-xl rounded-[1.25rem] p-1.5 border border-white/10 shadow-lg items-center">
                 <Link 
                   href={`/?month=${prevMonth}&year=${prevYear}${currentView ? `&view=${currentView}` : ''}`} 
-                  className="p-2 hover:bg-white/20 rounded-xl transition-all"
+                  className="p-2 hover:bg-white/10 rounded-xl transition-all"
                   title="Mese precedente"
                 >
                   <ChevronLeft size={20} />
                 </Link>
                 
-                <div className="flex items-center">
+                <div className="flex items-center px-2">
                   <select 
                     value={currentMonth}
                     onChange={(e) => router.push(`/?month=${e.target.value}&year=${currentYear}${currentView ? `&view=${currentView}` : ''}`)}
-                    className="bg-transparent border-none text-sm font-black uppercase tracking-widest text-center focus:ring-0 cursor-pointer py-2 pl-4 pr-8 appearance-none"
-                    style={{ backgroundPosition: 'right 0.5rem center' }}
+                    className="bg-transparent border-none text-sm font-black uppercase tracking-widest text-center focus:ring-0 cursor-pointer py-2 pl-2 pr-6 appearance-none"
+                    style={{ backgroundPosition: 'right 0.2rem center' }}
                   >
                     {monthNames.map((name, i) => (
                       <option key={name} value={i + 1} className="text-slate-900">{name}</option>
@@ -599,8 +604,8 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                   <select 
                     value={currentYear}
                     onChange={(e) => router.push(`/?month=${currentMonth}&year=${e.target.value}${currentView ? `&view=${currentView}` : ''}`)}
-                    className="bg-transparent border-none text-sm font-black text-white/50 focus:ring-0 cursor-pointer py-2 pl-2 pr-8 appearance-none"
-                    style={{ backgroundPosition: 'right 0.5rem center' }}
+                    className="bg-transparent border-none text-sm font-black text-white/40 focus:ring-0 cursor-pointer py-2 pl-1 pr-6 appearance-none"
+                    style={{ backgroundPosition: 'right 0.2rem center' }}
                   >
                     {[2024, 2025, 2026, 2027].map(y => (
                       <option key={y} value={y} className="text-slate-900">{y}</option>
@@ -610,17 +615,20 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
 
                 <Link 
                   href={`/?month=${nextMonth}&year=${nextYear}${currentView ? `&view=${currentView}` : ''}`} 
-                  className="p-2 hover:bg-white/20 rounded-xl transition-all"
+                  className="p-2 hover:bg-white/10 rounded-xl transition-all"
                   title="Mese successivo"
                 >
                   <ChevronRight size={20} />
                 </Link>
               </div>
             </div>
-            <p className="text-blue-200/60 text-sm max-w-md font-medium mt-4">
-              I tuoi turni e disponibilità per {currentMonthName}.
+            <p className="text-blue-100/60 text-[11px] max-w-sm font-semibold mt-4 tracking-wide">
+              Gestione turni e bilancio personale aggiornato in tempo reale.
             </p>
-            <p className="text-blue-300/40 text-[10px] font-bold uppercase tracking-widest mt-1">Polizia Locale di Altamura</p>
+            <div className="flex items-center gap-2 mt-2">
+               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+               <p className="text-[9px] text-blue-300/40 font-black uppercase tracking-[.2em] leading-none">Polizia Locale di Altamura</p>
+            </div>
           </div>
           
           <div className="flex flex-wrap items-center gap-4">
@@ -641,6 +649,81 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
               <CalendarDays size={20} className="text-blue-600" />
               Sincronizza Calendario
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* TOP INFO CARDS: ANAGRAFICA & TURNO OGGI */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 -mt-4">
+        {/* Scheda Anagrafica Premium */}
+        <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-xl overflow-hidden group hover:border-blue-400 transition-all duration-300 relative">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 opacity-40 rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:scale-150"></div>
+          <div className="p-8 flex items-center gap-6 relative z-10">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-blue-200 group-hover:rotate-3 transition-transform">
+              <Users size={36} className="drop-shadow-lg" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                 <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                 <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Dati Qualifica Agente</p>
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 leading-tight tracking-tight">{currentUser.name}</h3>
+              <div className="flex flex-wrap gap-2.5 mt-3">
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-700 text-[10px] font-black rounded-lg border border-slate-200 shadow-sm">
+                   Matr. <span className="text-slate-900">{currentUser.matricola}</span>
+                </div>
+                {balances?.user?.qualifica && (
+                  <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 text-[10px] font-black rounded-lg border border-blue-200 shadow-sm">
+                    {balances.user.qualifica}
+                  </div>
+                )}
+                {balances?.user?.ruoloInSquadra && (
+                  <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black rounded-lg border border-indigo-200 shadow-sm">
+                    {balances.user.ruoloInSquadra}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Scheda Turno Oggi Premium */}
+        <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-xl overflow-hidden group hover:border-emerald-400 transition-all duration-300 relative">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 opacity-40 rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:scale-150"></div>
+          <div className="p-8 flex items-center gap-6 relative z-10">
+            <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-600 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-emerald-200 group-hover:-rotate-3 transition-transform">
+              <Clock size={36} className="drop-shadow-lg" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                 <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                 <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Servizio di Oggi</p>
+              </div>
+              {myOds?.shift ? (
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900 leading-tight tracking-tight">
+                    {myOds.shift.timeRange || myOds.shift.type}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-3">
+                    <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
+                      {myOds.shift.serviceCategory?.name || "Operativo"} 
+                      {myOds.shift.serviceType && ` · ${myOds.shift.serviceType.name}`}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <h3 className="text-2xl font-black text-slate-400 leading-tight italic tracking-tight">Servizio non assegnato</h3>
+                  <p className="text-[10px] text-slate-400 font-bold mt-2 uppercase tracking-widest">Consulta l'agenda per dettagli</p>
+                </div>
+              )}
+            </div>
+            {myOds?.shift?.vehicle && (
+              <div className="bg-slate-900 text-white px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase flex items-center gap-2.5 shadow-lg border border-white/10 group-hover:scale-105 transition-transform">
+                <Car size={16} className="text-emerald-400" />
+                {myOds.shift.vehicle.name}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -836,130 +919,104 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
         </div>
       </div>
 
-      {/* === LE MIE STATISTICHE === */}
-      <div className="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden">
-        <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-indigo-50/80 to-purple-50/80 flex items-center gap-4">
-          <div className="p-3 bg-indigo-100 rounded-2xl">
-            <Clock size={24} className="text-indigo-600" />
+      {/* === IL MIO BILANCIO (PREMIUM REDESIGN) === */}
+      <div className="space-y-8 relative">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
+          <h2 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-4">
+            <div className="p-2.5 bg-blue-600 rounded-2xl shadow-xl shadow-blue-200">
+               <BookOpen className="text-white" size={24} />
+            </div> 
+            Il Mio Bilancio
+          </h2>
+          <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-xl text-[10px] font-black text-slate-500 uppercase tracking-widest border border-slate-200">
+             Anno {currentYear} · Contatori Attivi
           </div>
-          <div className="flex-1">
-            <h3 className="font-black text-lg text-slate-900">Le Mie Statistiche</h3>
-            <p className="text-xs text-slate-500 font-medium">Riepilogo {currentMonthName} {currentYear} — Calcolato dalla tua Agenda Personale</p>
-          </div>
-          <button 
-            onClick={handleExportPDF}
-            className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-md group"
-          >
-            <FileDown size={14} className="group-hover:translate-y-0.5 transition-transform" />
-            Esporta PDF
-          </button>
         </div>
+        
+        <div className="grid grid-cols-1 gap-12">
+          {AGENDA_CATEGORIES.map((cat: any) => {
+            const catDetails = (balances?.details || []).filter((d: any) => 
+              cat.items.some((i: any) => i.code === d.code) && d.initialValue > 0
+            );
 
-        <div className="p-6">
-          {(() => {
-            // Straordinario codes
-            const straCodes = ['2000','2050','2001','2002','2003','2020','2021','2022','2023','2026','10001','10002','10003']
-            // Ferie codes
-            const ferieCodes = ['0015','0016','0010']
-            // Recupero codes
-            const recCodes = ['0009','0067','0008','0081','0036','0037']
+            if (catDetails.length === 0) return null;
 
-            const straEntries = agendaEntries.filter(e => straCodes.includes(e.code))
-            const ferieEntries = agendaEntries.filter(e => ferieCodes.includes(e.code))
-            const recEntries = agendaEntries.filter(e => recCodes.includes(e.code))
-
-            const straHours = straEntries.reduce((sum, e) => sum + (e.hours || 0), 0)
-            const ferieDays = new Set(ferieEntries.map(e => new Date(e.date).getUTCDate())).size
-            const recHours = recEntries.reduce((sum, e) => sum + (e.hours || 0), 0)
-
-            const stats = [
-              {
-                label: 'Straordinario',
-                value: straHours,
-                unit: 'ore',
-                count: straEntries.length,
-                icon: '⏰',
-                gradient: 'from-orange-500 to-amber-500',
-                bgLight: 'bg-orange-50',
-                textColor: 'text-orange-700',
-                borderColor: 'border-orange-200',
-                barColor: 'bg-orange-500',
-                maxVal: 30, // reference max: 30h
-              },
-              {
-                label: 'Ferie',
-                value: ferieDays,
-                unit: 'giorni',
-                count: ferieEntries.length,
-                icon: '🏖️',
-                gradient: 'from-amber-500 to-yellow-400',
-                bgLight: 'bg-amber-50',
-                textColor: 'text-amber-700',
-                borderColor: 'border-amber-200',
-                barColor: 'bg-amber-500',
-                maxVal: 26, // reference: 26 days/year
-              },
-              {
-                label: 'Recupero Ore',
-                value: recHours,
-                unit: 'ore',
-                count: recEntries.length,
-                icon: '🔄',
-                gradient: 'from-teal-500 to-emerald-400',
-                bgLight: 'bg-teal-50',
-                textColor: 'text-teal-700',
-                borderColor: 'border-teal-200',
-                barColor: 'bg-teal-500',
-                maxVal: 20, // reference max
-              },
-            ]
+            const colors = CAT_COLORS[cat.color] || CAT_COLORS.blue;
 
             return (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {stats.map((st, idx) => {
-                  const pct = Math.min(100, st.maxVal > 0 ? ((st.value / st.maxVal) * 100) : 0)
-                  
-                  return (
-                    <div key={idx} className={`${st.bgLight} border ${st.borderColor} rounded-2xl p-5 flex flex-col items-center text-center transition-all hover:shadow-md hover:scale-[1.02]`}>
-                      <div className="text-3xl mb-2">{st.icon}</div>
-                      <h4 className={`text-xs font-black uppercase tracking-widest ${st.textColor} mb-3`}>{st.label}</h4>
-                      
-                      {/* Circular Progress */}
-                      <div className="relative w-24 h-24 mb-3">
-                        <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
-                          <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="8" className="text-slate-200" />
-                          <circle
-                            cx="50" cy="50" r="42" fill="none"
-                            strokeWidth="8"
-                            strokeLinecap="round"
-                            className={st.textColor}
-                            stroke="currentColor"
-                            strokeDasharray={`${2 * Math.PI * 42}`}
-                            strokeDashoffset={`${2 * Math.PI * 42 * (1 - pct / 100)}`}
-                            style={{ transition: 'stroke-dashoffset 1s ease-out' }}
-                          />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <span className={`text-2xl font-black ${st.textColor}`}>{st.value}</span>
-                          <span className="text-[9px] text-slate-400 font-bold uppercase">{st.unit}</span>
+              <div key={cat.group} className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                <div className="flex items-center gap-4 group">
+                   <div className={`p-3 rounded-2xl ${colors.bg} ${colors.text} shadow-sm group-hover:scale-110 transition-transform duration-300 border ${colors.border}`}>
+                      <span className="text-2xl">{cat.emoji}</span>
+                   </div>
+                   <div>
+                      <h3 className={`text-base font-black uppercase tracking-wider ${colors.text}`}>{cat.group}</h3>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{catDetails.length} {catDetails.length === 1 ? 'voce attiva' : 'voci attive'}</p>
+                   </div>
+                   <div className="h-px flex-1 bg-slate-200 group-hover:bg-slate-300 transition-colors"></div>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {catDetails.map((d: any) => {
+                    const pct = Math.min(100, (d.used / d.initialValue) * 100);
+                    const unitLabel = d.unit === "HOURS" ? "Ore" : "Giorni";
+                    const unitShort = d.unit === "HOURS" ? "H" : "G";
+                    
+                    return (
+                      <div 
+                        key={d.code} 
+                        className="group relative bg-white rounded-[2rem] border border-slate-200 p-6 pt-7 shadow-sm hover:shadow-2xl transition-all duration-300 hover:border-indigo-400 hover:-translate-y-1 overflow-hidden"
+                      >
+                        {/* Decorative background blob */}
+                        <div className={`absolute top-0 right-0 w-24 h-24 ${colors.bg} opacity-30 rounded-full blur-3xl -mr-12 -mt-12 transition-all group-hover:scale-150`}></div>
+                        
+                        <div className="flex justify-between items-start mb-6 relative z-10">
+                          <div className="flex-1 min-w-0 pr-4">
+                             <div className="flex items-center gap-2 mb-1.5 ">
+                                <span className="text-[10px] font-black text-slate-400 tracking-wider font-mono">{d.code}</span>
+                                <div className={`w-1 h-1 rounded-full ${colors.dot}`}></div>
+                                <span className={`px-2 py-0.5 ${colors.bg} ${colors.text} text-[8px] font-black rounded-md border ${colors.border} uppercase`}>
+                                   {unitShort}
+                                </span>
+                             </div>
+                             <h4 className="font-extrabold text-slate-800 text-sm leading-[1.3] group-hover:text-indigo-900 transition-colors h-10 line-clamp-2">{d.label}</h4>
+                          </div>
+                        </div>
+
+                        <div className="mt-auto relative z-10">
+                          <div className="flex justify-between items-end mb-2">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[.15em]">Utilizzo</span>
+                            <span className="text-sm font-black text-slate-800">
+                              {d.used} <span className="text-[10px] text-slate-300 font-bold">/ {d.initialValue}</span>
+                            </span>
+                          </div>
+                          
+                          {/* Modern Slim Progress Bar */}
+                          <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-50">
+                            <div 
+                              className={`h-full rounded-full ${paramsToColor(cat.color)} transition-all duration-1000 ease-out shadow-sm`}
+                              style={{ width: `${pct}%` }}
+                            ></div>
+                          </div>
+                          <p className="text-[9px] text-right mt-1.5 font-bold text-slate-400 uppercase tracking-widest">{Math.round(pct)}% Consumato</p>
+                        </div>
+
+                        <div className="mt-6 pt-5 border-t border-slate-100 flex justify-between items-center relative z-10">
+                          <div className="flex flex-col">
+                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Residuo Netto</span>
+                          </div>
+                          <div className={`flex items-baseline gap-1 ${d.residue > 0 ? (pct > 90 ? 'text-rose-600' : colors.text) : 'text-slate-300'}`}>
+                            <span className="text-2xl font-black tracking-tight">{d.residue}</span>
+                            <span className="text-[10px] font-black uppercase opacity-60">{unitLabel}</span>
+                          </div>
                         </div>
                       </div>
-                      
-                      <p className="text-[10px] text-slate-500 font-semibold">
-                        {st.count} {st.count === 1 ? 'voce' : 'voci'} registrate
-                      </p>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
               </div>
-            )
-          })()}
-
-          {agendaEntries.length === 0 && (
-            <div className="text-center py-4 mt-4 border-t border-slate-100">
-              <p className="text-xs text-slate-400 italic">Nessun dato nell&apos;agenda. Inserisci le tue ore nell&apos;Agenda Personale per vedere le statistiche.</p>
-            </div>
-          )}
+            );
+          })}
         </div>
       </div>
 

@@ -44,6 +44,13 @@ model User {
   shifts        Shift[]
   agendaEntries AgendaEntry[] @relation("agendaEntries")
   patrolTemplates PatrolTemplate[] @relation("PatrolMembers")
+  
+  // Nuovi Campi Anagrafica Avanzata
+  dataAssunzione    DateTime?
+  scadenzaPatente   DateTime?
+  scadenzaPortoArmi DateTime?
+  noteInterne       String?
+
   createdAt     DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   agentRequests AgentRequest[] @relation("AgentRequests")
