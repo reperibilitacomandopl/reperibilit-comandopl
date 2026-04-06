@@ -1630,7 +1630,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                 {filteredAnagraficaAgents.map(agent => {
                   const todayShift = shifts.find(s => s.userId === agent.id && new Date(s.date).toDateString() === new Date().toDateString());
-                  const isExpiring = (date) => {
+                  const isExpiring = (date: Date | string | null | undefined) => {
                     if (!date) return false;
                     const d = new Date(date);
                     const now = new Date();
