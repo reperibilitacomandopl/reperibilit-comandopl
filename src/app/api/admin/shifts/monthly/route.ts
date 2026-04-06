@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     })
     const shifts = await prisma.shift.findMany({
       where: { date: { gte: startDate, lte: endDate } },
-      select: { id: true, userId: true, date: true, type: true, timeRange: true }
+      select: { id: true, userId: true, date: true, type: true, timeRange: true, isSyncedToVerbatel: true }
     })
 
     return NextResponse.json({ users, shifts })

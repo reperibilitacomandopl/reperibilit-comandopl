@@ -12,6 +12,9 @@ export default function OdsDailyEditor() {
   
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  
+  // State for grouping singles into a patrol
+  const [selectedForPatrol, setSelectedForPatrol] = useState<Set<string>>(new Set())
 
   const loadData = async () => {
     setLoading(true)
@@ -72,6 +75,7 @@ export default function OdsDailyEditor() {
     
     if (res.ok) {
       toast.success("OdS Salvato con successo!")
+      setSelectedForPatrol(new Set())
       loadData() // Ricarica relazioni
     } else {
       toast.error("Errore salvataggio")
@@ -81,6 +85,23 @@ export default function OdsDailyEditor() {
 
   const updateShift = (id: string, field: string, value: any) => {
     setShifts(prev => prev.map(s => s.id === id ? { ...s, [field]: value === "" ? null : value } : s))
+  }
+
+  const togglePatrolSelection = (id: string) => {
+    setSelectedForPatrol(prev => {
+      const nw = new Set(prev)
+      if (nw.has(id)) nw.delete(id)
+      else nw.add(id)
+      return nw
+    })
+  }
+
+  const handleGroupSelected = () => {
+    if (selectedForPatrol.size < 2) return
+    const groupId = crypto.randomUUID()
+    setShifts(prev => prev.map(s => selectedForPatrol.has(s.id) ? { ...s, patrolGroupId: groupId } : s))
+    setSelectedForPatrol(new Set())
+    toast.success("Pattuglia formata temporaneamente. Ricorda di Salvare OdS!")
   }
 
   const groups = useMemo(() => {
@@ -226,7 +247,14 @@ export default function OdsDailyEditor() {
 
           {/* SINGOLI */}
           <div className="space-y-4">
-            <h3 className="text-lg font-black text-slate-800 uppercase tracking-widest pl-2 border-l-4 border-slate-300">Agenti Singoli ({groups.singles.length})</h3>
+            <div className="flex justify-between items-center pl-2">
+              <h3 className="text-lg font-black text-slate-800 uppercase tracking-widest border-l-4 border-slate-300 pl-2">Agenti Singoli ({groups.singles.length})</h3>
+              {selectedForPatrol.size > 1 && (
+                 <button onClick={handleGroupSelected} className="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-2">
+                   <Users size={16} /> Crea Pattuglia da {selectedForPatrol.size} agenti
+                 </button>
+              )}
+            </div>
             
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
                <table className="w-full text-left whitespace-nowrap min-w-[900px]">
@@ -241,14 +269,22 @@ export default function OdsDailyEditor() {
                  </thead>
                  <tbody className="divide-y divide-slate-100">
                     {groups.singles.map(s => (
-                      <tr key={s.id} className="hover:bg-slate-50/50 transition-colors">
+                      <tr key={s.id} className={`hover:bg-slate-50/50 transition-colors ${selectedForPatrol.has(s.id) ? 'bg-indigo-50/50' : ''}`}>
                         <td className="px-5 py-3">
-                          <div className="flex flex-col">
-                            <span className="font-black text-slate-800 text-sm">{s.user.name}</span>
-                            <span className="text-xs font-bold text-slate-400">
-                              Matr. {s.user.matricola} • <span className="text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">{s.type}</span>
-                              {s.user.servizio && <span className="ml-1 bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200">{s.user.servizio}</span>}
-                            </span>
+                          <div className="flex items-center gap-3">
+                            <input 
+                              type="checkbox" 
+                              checked={selectedForPatrol.has(s.id)} 
+                              onChange={() => togglePatrolSelection(s.id)} 
+                              className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer"
+                            />
+                            <div className="flex flex-col">
+                              <span className="font-black text-slate-800 text-sm">{s.user.name}</span>
+                              <span className="text-xs font-bold text-slate-400">
+                                Matr. {s.user.matricola} • <span className="text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">{s.type}</span>
+                                {s.user.servizio && <span className="ml-1 bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200">{s.user.servizio}</span>}
+                              </span>
+                            </div>
                           </div>
                         </td>
                         <td className="px-5 py-3">

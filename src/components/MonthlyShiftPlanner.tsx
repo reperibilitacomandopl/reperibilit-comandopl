@@ -14,6 +14,7 @@ export default function MonthlyShiftPlanner() {
   const [users, setUsers] = useState<any[]>([])
   // Map of userId -> "YYYY-MM-DD" -> type
   const [grid, setGrid] = useState<Record<string, Record<string, string>>>({})
+  const [syncedGrid, setSyncedGrid] = useState<Record<string, Record<string, boolean>>>({})
   const [originalGrid, setOriginalGrid] = useState<Record<string, Record<string, string>>>({})
   const [isGeneratingAnnual, setIsGeneratingAnnual] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
@@ -37,12 +38,18 @@ export default function MonthlyShiftPlanner() {
       
       if (data.shifts) {
         const initialGrid: Record<string, Record<string, string>> = {}
+        const initialSynced: Record<string, Record<string, boolean>> = {}
         data.shifts.forEach((s: any) => {
           const dStr = s.date.split("T")[0] // YYYY-MM-DD
-          if (!initialGrid[s.userId]) initialGrid[s.userId] = {}
+          if (!initialGrid[s.userId]) {
+            initialGrid[s.userId] = {}
+            initialSynced[s.userId] = {}
+          }
           initialGrid[s.userId][dStr] = s.type
+          initialSynced[s.userId][dStr] = !!s.isSyncedToVerbatel
         })
         setGrid(initialGrid)
+        setSyncedGrid(initialSynced)
         setOriginalGrid(JSON.parse(JSON.stringify(initialGrid))) // Deep copy
       }
     } catch {
@@ -128,6 +135,29 @@ export default function MonthlyShiftPlanner() {
       toast.error("Errore durante il reset")
     }
     setIsResetting(false)
+  }
+
+  const [isPublishing, setIsPublishing] = useState(false)
+  const publishToTelegram = async () => {
+    if (!confirm(`Vuoi inviare una notifica Push su Telegram a tutti gli agenti per avvisarli che i turni di ${currentDate.toLocaleDateString("it-IT", { month: "long", year: "numeric" })} sono online?`)) return
+    
+    setIsPublishing(true)
+    try {
+      const res = await fetch("/api/telegram/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ year, month })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(data.message || `Notifiche inviate: ${data.count}`)
+      } else {
+        toast.error(data.error || "Errore durante l'invio delle notifiche")
+      }
+    } catch {
+      toast.error("Errore di rete")
+    }
+    setIsPublishing(false)
   }
 
   const handleGeneralReset = async () => {
@@ -363,6 +393,14 @@ export default function MonthlyShiftPlanner() {
           >
             {saving ? <Loader2 className="animate-spin" size={16}/> : <Save size={16}/>} Salva Modifiche
           </button>
+          
+          <button 
+            onClick={publishToTelegram} disabled={isPublishing}
+            className="px-4 py-2 bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-md shadow-sky-500/20"
+          >
+            {isPublishing ? <Loader2 className="animate-spin" size={16}/> : <span>🚀 Invia Telegram</span>}
+          </button>
+
           <Link href="/" className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-bold flex items-center gap-2 border border-slate-600">
             <ChevronLeft size={16}/> Esci
           </Link>
@@ -518,16 +556,24 @@ export default function MonthlyShiftPlanner() {
                       else if (isPomeriggio(s)) { colorClass = "text-purple-800 font-black"; bgClass = "bg-purple-50" }
                       else if (s === "RP") { colorClass = "text-red-700 font-black"; bgClass = "bg-red-100" }
 
+                      const isSynced = syncedGrid[u.id]?.[dStr] && val !== "";
+                      
                       return (
                         <td key={day} className={`border-b border-r border-slate-200 relative p-0 m-0 ${isEdited ? 'ring-2 ring-inset ring-yellow-400' : ''} ${bgClass} ${isWeekend && !bgClass ? 'bg-red-50/30' : ''}`}>
                           <input 
                             type="text"
                             value={val}
-                            onChange={(e) => handleCellChange(u.id, day, e.target.value)}
+                            onChange={(e) => {
+                               handleCellChange(u.id, day, e.target.value);
+                               setSyncedGrid(prev => ({ ...prev, [u.id]: { ...prev[u.id], [dStr]: false } }))
+                            }}
                             className={`w-full h-full p-1.5 text-center text-xs outline-none bg-transparent uppercase focus:bg-blue-100 focus:ring-2 focus:ring-blue-400 ${colorClass}`}
                             maxLength={10}
                             placeholder="-"
                           />
+                          {isSynced && !isEdited && (
+                            <div className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-sm" title="Sincronizzato in Verbatel"></div>
+                          )}
                         </td>
                       )
                     })}

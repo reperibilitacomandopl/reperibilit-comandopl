@@ -156,8 +156,21 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   
   // Daily OdS State
   const [myOds, setMyOds] = useState<any>(null)
+  
+  // Balances
+  const [balances, setBalances] = useState<any>(null)
 
   const myShifts = shifts.filter(s => s.userId === currentUser.id)
+
+  const fetchBalances = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/user/balances?year=${currentYear}`)
+      if (res.ok) {
+        const data = await res.json()
+        setBalances(data.balance)
+      }
+    } catch { /* silent */ }
+  }, [currentYear])
 
   // Fetch Duty Team if Officer
   const fetchDutyTeam = useCallback(async () => {
@@ -190,12 +203,13 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   useEffect(() => {
     fetchDutyTeam()
     fetchSwaps()
+    fetchBalances()
     fetch('/api/my-ods').then(res => res.json()).then(data => {
       if(data.success && data.shift && (data.shift.timeRange || data.shift.serviceCategoryId)) {
         setMyOds({ shift: data.shift, partners: data.partners })
       }
     }).catch(()=>{})
-  }, [fetchDutyTeam, fetchSwaps])
+  }, [fetchDutyTeam, fetchSwaps, fetchBalances])
 
   const handleRespondSwap = async (id: string, status: "ACCEPTED" | "REJECTED") => {
     setSwapLoading(true)
@@ -1709,6 +1723,25 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
             </div>
 
             <div className="p-6 sm:p-8 bg-slate-50">
+               {balances && (
+                 <div className="mb-6 grid grid-cols-3 gap-2">
+                    <div className="bg-white rounded-xl p-3 border border-slate-200 text-center shadow-sm">
+                      <p className="text-[9px] font-black uppercase text-amber-500 tracking-wider">Ferie</p>
+                      <p className="text-xl font-black text-slate-800">{balances.ferieResidue}</p>
+                      <p className="text-[8px] text-slate-400 font-bold uppercase">di {balances.ferieTotali}</p>
+                    </div>
+                    <div className="bg-white rounded-xl p-3 border border-slate-200 text-center shadow-sm">
+                      <p className="text-[9px] font-black uppercase text-blue-500 tracking-wider">L. 104</p>
+                      <p className="text-xl font-black text-slate-800">{balances.permessi104Residui}</p>
+                      <p className="text-[8px] text-slate-400 font-bold uppercase">di {balances.permessi104Totali}</p>
+                    </div>
+                    <div className="bg-white rounded-xl p-3 border border-slate-200 text-center shadow-sm">
+                      <p className="text-[9px] font-black uppercase text-teal-500 tracking-wider">Festività</p>
+                      <p className="text-xl font-black text-slate-800">{balances.festivitaResidue}</p>
+                      <p className="text-[8px] text-slate-400 font-bold uppercase">di {balances.festivitaTotali}</p>
+                    </div>
+                 </div>
+               )}
                <div className="space-y-5">
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Data Inizio</label>
