@@ -15,25 +15,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Parametri mancanti (anno o gruppo)" }, { status: 400 })
     }
 
-    // 1. Carica il Gruppo di Rotazione "Master" (quello selezionato nel menu a tendina)
-    const masterGroup = await prisma.rotationGroup.findUnique({
-      where: { id: groupId }
-    })
-    if (!masterGroup) {
-      return NextResponse.json({ error: "Turno non trovato" }, { status: 404 })
+    let masterGroup: any = null;
+    if (groupId !== "AUTO") {
+      masterGroup = await prisma.rotationGroup.findUnique({
+        where: { id: groupId }
+      })
+      if (!masterGroup) {
+        return NextResponse.json({ error: "Turno non trovato" }, { status: 404 })
+      }
+      
+      let pattern: string[] = []
+      try {
+        pattern = JSON.parse(masterGroup.pattern)
+      } catch {
+        return NextResponse.json({ error: "Pattern del turno non valido" }, { status: 400 })
+      }
+      if (pattern.length === 0) {
+        return NextResponse.json({ error: "Il pattern del turno è vuoto" }, { status: 400 })
+      }
     }
-    
-    let pattern: string[] = []
-    try {
-      pattern = JSON.parse(masterGroup.pattern)
-    } catch {
-      return NextResponse.json({ error: "Pattern del turno non valido" }, { status: 400 })
-    }
-    if (pattern.length === 0) {
-      return NextResponse.json({ error: "Il pattern del turno è vuoto" }, { status: 400 })
-    }
-
-    const anchor = new Date(masterGroup.startDate)
 
     // 2. Carica Utenti Filtrati per 'target'
     let userWhere: any = { rotationGroupId: { not: null } }
@@ -48,7 +48,8 @@ export async function POST(request: Request) {
     }
 
     const users = await prisma.user.findMany({
-      where: userWhere
+      where: userWhere,
+      include: { rotationGroup: true }
     })
 
     if (users.length === 0) {
@@ -59,14 +60,16 @@ export async function POST(request: Request) {
 
     // 3. Itera su ogni utente
     for (const user of users) {
-      const group = masterGroup // Usiamo il gruppo MASTER (quello selezionato nel wizard)
+      const group = groupId === "AUTO" ? user.rotationGroup : masterGroup;
+      if (!group) continue;
+      
       let pattern: string[] = []
       try {
         pattern = JSON.parse(group.pattern)
       } catch {
         continue
       }
-      if (pattern.length === 0) continue
+      if (pattern.length === 0 || !group.startDate) continue
 
       const anchor = new Date(group.startDate)
       
@@ -79,7 +82,7 @@ export async function POST(request: Request) {
           
           // Allineamento col pattern di 28 giorni
           const diffTime = date.getTime() - anchor.getTime()
-          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24))
           const patternIndex = ((diffDays % 28) + 28) % 28
           const pVal = pattern[patternIndex]
 

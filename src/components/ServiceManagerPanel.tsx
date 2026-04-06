@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, User, Shield, Car, Printer, RefreshCw, GripVertical, Info, Clock, AlertTriangle, Wand2, Radio, Copy, ClipboardPaste, ChevronDown, ChevronUp, CalendarCheck, RotateCcw, PanelLeftClose, PanelLeft } from "lucide-react"
+import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, User, Shield, Car, Printer, RefreshCw, GripVertical, Info, Clock, AlertTriangle, Wand2, Radio, Copy, ClipboardPaste, ChevronDown, ChevronUp, CalendarCheck, RotateCcw, PanelLeftClose, PanelLeft, Users, Link2 } from "lucide-react"
 import toast from "react-hot-toast"
 import Link from "next/link"
 import { isAssenza, formatShiftCode } from "../utils/shift-logic"
@@ -34,6 +34,47 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
   const [copiedDay, setCopiedDay] = useState<{ date: string; assignments: any[] } | null>(null)
   // Copy/Paste: singolo agente
   const [copiedAgent, setCopiedAgent] = useState<CopiedAgentData | null>(null)
+
+  // Patrol creation: multi-select
+  const [patrolSelection, setPatrolSelection] = useState<Set<string>>(new Set())
+  
+  const togglePatrolSelect = (shiftId: string) => {
+    setPatrolSelection(prev => {
+      const n = new Set(prev)
+      if (n.has(shiftId)) n.delete(shiftId)
+      else n.add(shiftId)
+      return n
+    })
+  }
+
+  const createPatrolFromSelection = async () => {
+    if (patrolSelection.size < 2) {
+      toast.error("Seleziona almeno 2 agenti per formare una pattuglia")
+      return
+    }
+    const groupId = `patrol_${Date.now()}`
+    const y = currentDate.getFullYear()
+    const m = String(currentDate.getMonth() + 1).padStart(2, "0")
+    const d = String(currentDate.getDate()).padStart(2, "0")
+    const dateStr = `${y}-${m}-${d}`
+    
+    for (const shiftId of patrolSelection) {
+      const s = shifts.find(sh => sh.id === shiftId)
+      if (!s) continue
+      await fetch("/api/admin/shifts/daily", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: s.userId,
+          date: dateStr,
+          patrolGroupId: groupId
+        })
+      })
+    }
+    toast.success(`Pattuglia formata con ${patrolSelection.size} agenti!`)
+    setPatrolSelection(new Set())
+    loadData()
+  }
 
   const loadData = async () => {
     setLoading(true)
@@ -202,7 +243,10 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
     const dateStr = `${y}-${m}-${d}`
     
     let count = 0
-    const assignedShifts = shifts.filter(s => s.serviceTypeId && !isAssenza(s.type))
+    const assignedShifts = shifts.filter(s => 
+      (s.serviceTypeId || s.serviceCategoryId || s.vehicleId || s.serviceDetails || s.patrolGroupId) && 
+      !isAssenza(s.type)
+    )
     for (const s of assignedShifts) {
       try {
         await fetch("/api/admin/shifts/daily", {
@@ -216,7 +260,8 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
             serviceTypeId: null,
             vehicleId: null,
             timeRange: s.timeRange,
-            serviceDetails: null
+            serviceDetails: null,
+            patrolGroupId: null
           })
         })
         count++
@@ -351,7 +396,7 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
   const renderFaseBlocco = (titolo: string, filtroTurni: string[]) => {
       const agentiFase = shifts.filter(s => {
           if (indisponibili.some(indisp => indisp.id === s.userId)) return false;
-          return filtroTurni.some(t => s.type.startsWith(t)) && s.serviceTypeId;
+          return filtroTurni.some(t => s.type.startsWith(t)) && s.serviceCategoryId; // Fix! Check category, not type.
       });
 
       const ufficialiInServizio = agentiFase.filter(s => {
@@ -420,6 +465,30 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
                         
                         {!isCollapsed && (
                         <div className="p-2 space-y-2">
+                            
+                            {/* Generico (Limbo) */}
+                            {(() => {
+                                const agentiGen = agentiInCategoria.filter(s => !s.serviceTypeId)
+                                if (agentiGen.length === 0) return null
+                                return (
+                                <div className="border border-red-200 rounded-lg overflow-hidden transition-all bg-red-50">
+                                    <div className="bg-red-100 px-3 py-2 text-xs font-black text-red-800 border-b border-red-200 flex justify-between items-center">
+                                        <div className="flex items-center gap-2">
+                                            <AlertTriangle size={14} className="text-red-600" />
+                                            GENERICO (Assegna Sotto-Servizio)
+                                            <span className="text-[10px] font-bold text-red-500">({agentiGen.length})</span>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white divide-y divide-red-100">
+                                        {agentiGen.map(shiftAssegnato => {
+                                            const agente = users.find(u => u.id === shiftAssegnato.userId)
+                                            if(!agente) return null
+                                            return renderAgentCard(agente, shiftAssegnato)
+                                        })}
+                                    </div>
+                                </div>
+                                )
+                            })()}
                             {cat.types.map((tipo: any) => {
                                 const agentiInQuestoServizio = agentiFase.filter(s => {
                                     const u = users.find(user => user.id === s.userId);
@@ -471,10 +540,17 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
     const timeRangeStr = shiftAssegnato.timeRange || (shiftAssegnato.type==="M7" ? "07:00-13:00" : shiftAssegnato.type==="M8" ? "08:00-14:00" : "14:00-20:00")
 
     return (
-        <div key={agente.id} draggable onDragStart={e => handleDragStart(e, agente.id)} className="p-2 flex flex-col hover:bg-blue-50 transition-colors cursor-grab active:cursor-grabbing group/card">
+        <div key={agente.id} draggable onDragStart={e => handleDragStart(e, agente.id)} className={`p-2 flex flex-col hover:bg-blue-50 transition-colors cursor-grab active:cursor-grabbing group/card ${patrolSelection.has(shiftAssegnato.id) ? 'bg-indigo-50 ring-2 ring-indigo-400' : ''}`}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-50 pb-2 mb-2">
                 <div className="flex items-center gap-3">
-                   <GripVertical size={12} className="text-slate-300 group-hover/card:text-blue-400 shrink-0" />
+                   <input 
+                     type="checkbox"
+                     checked={patrolSelection.has(shiftAssegnato.id)}
+                     onChange={() => togglePatrolSelect(shiftAssegnato.id)}
+                     onClick={(e) => e.stopPropagation()}
+                     className="w-4 h-4 rounded text-indigo-600 border-slate-300 cursor-pointer shrink-0"
+                     title="Seleziona per pattuglia"
+                   />
                    <div className={`w-1.5 h-1.5 rounded-full shadow-[0_0_5px_rgba(16,185,129,0.8)] ${agente.isUfficiale ? 'bg-blue-500' : 'bg-emerald-500'}`}></div>
                    <div className="flex flex-col">
                        <span className="text-[12px] font-black text-slate-900 tracking-wide uppercase">
@@ -637,6 +713,15 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
             >
                 <RotateCcw size={14}/> Ripristina
             </button>
+
+            {patrolSelection.size >= 2 && (
+              <button 
+                onClick={createPatrolFromSelection}
+                className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all animate-pulse shadow-lg shadow-indigo-500/20"
+              >
+                <Link2 size={14}/> Pattuglia ({patrolSelection.size})
+              </button>
+            )}
 
             <Link href="/admin/stampa-ods" className="hidden sm:flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm">
                <Printer size={14}/> Stampa

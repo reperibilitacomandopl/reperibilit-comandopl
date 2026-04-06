@@ -257,15 +257,14 @@ export default function MonthlyShiftPlanner() {
   }, [wizardGroupId, year, month, rotationGroups])
 
   const applyAutomation = () => {
-    const group = rotationGroups.find(g => g.id === wizardGroupId)
-    if (!group) {
-      toast.error("Seleziona un turno valido.")
-      return
+    let group: any;
+    if (wizardGroupId !== "AUTO") {
+      group = rotationGroups.find(g => g.id === wizardGroupId)
+      if (!group) {
+        toast.error("Seleziona un turno valido.")
+        return
+      }
     }
-
-    let pattern: string[] = []
-    try { pattern = JSON.parse(group.pattern) } catch { toast.error("Pattern non valido"); return }
-    if (pattern.length === 0) { toast.error("Il pattern del turno è vuoto. Vai in Gestione Squadre per configurarlo."); return }
 
     // Trova i bersagli
     const targetUsers = users.filter(u => {
@@ -280,7 +279,8 @@ export default function MonthlyShiftPlanner() {
     }
 
     // CALCOLO OFFSET: L'utente sceglie "Da quale giorno del ciclo (1-28) parte il 1° del mese".
-    // wizardStartDay è 0-based (0 = giorno 1 del ciclo)
+    // wizardStartDay è 0-based (0 = giorno 1 del ciclo). 
+    // Attenzione: se "AUTO", l'offset deve essere calcolato individualmente per ogni utente.
     const startIndex = wizardStartDay
 
     setGrid(prev => {
@@ -288,6 +288,31 @@ export default function MonthlyShiftPlanner() {
       targetUsers.forEach(u => {
         if (!nextGrid[u.id]) nextGrid[u.id] = {}
         
+        let uGroup = group;
+        let uPattern: string[] = []
+        let uStartIndex = startIndex;
+
+        if (wizardGroupId === "AUTO") {
+           const grp = rotationGroups.find(g => g.id === u.rotationGroupId)
+           if (!grp) return; // Salta agenti senza gruppo assegnato
+           uGroup = grp;
+           try { uPattern = JSON.parse(grp.pattern) } catch { return }
+           
+           // Calcola start index automaticamente per il suo gruppo
+           if (grp.startDate) {
+             const sDate = new Date(grp.startDate)
+             const firstOfMonth = new Date(year, month - 1, 1)
+             const diffTime = firstOfMonth.getTime() - sDate.getTime()
+             const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24))
+             uStartIndex = ((diffDays % 28) + 28) % 28
+           } else {
+             uStartIndex = 0
+           }
+        } else {
+           try { uPattern = JSON.parse(group.pattern) } catch { return }
+           if (uPattern.length === 0) return;
+        }
+
         daysArray.forEach((day, index) => {
           const dStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
           
@@ -295,39 +320,31 @@ export default function MonthlyShiftPlanner() {
           const existing = nextGrid[u.id][dStr]
           if (existing && isAssenza(existing)) return
 
-          // LOGICA RIPOSO DINAMICO (Legato alla domenica lavorativa)
-          // Se l'agente ha un giorno di riposo fisso (es. Lunedì = 1)
-          // verifichiamo la domenica precedente. Se ha lavorato (M o P), allora questo è il suo RP.
+          // LOGICA RIPOSO DINAMICO
           const dateObj = new Date(year, month - 1, day)
           if (u.fixedRestDay !== null && u.fixedRestDay !== undefined && dateObj.getDay() === u.fixedRestDay) {
-            // Trova la domenica precedente
             const prevSunday = new Date(dateObj)
-            prevSunday.setDate(dateObj.getDate() - (dateObj.getDay() || 7)) // Torna alla domenica (0)
+            prevSunday.setDate(dateObj.getDate() - (dateObj.getDay() || 7))
             
-            // Calcola l'indice del pattern per quella domenica
-            // Usiamo Math.round per evitare problemi con l'ora legale (DST)
             const diffSun = prevSunday.getTime() - new Date(year, month - 1, 1).getTime()
             const daysDiffSun = Math.round(diffSun / (1000 * 60 * 60 * 24))
-            const sunPatternIdx = ((startIndex + daysDiffSun) % pattern.length + pattern.length) % pattern.length
-            const sunType = pattern[sunPatternIdx]
+            const sunPatternIdx = ((uStartIndex + daysDiffSun) % uPattern.length + uPattern.length) % uPattern.length
+            const sunType = uPattern[sunPatternIdx]
 
-            // Se la domenica precedente era lavorativa, metti riposo oggi
-            // Nota: sunType === "M" è necessario perché nel pattern la mattina è indicata come "M"
             if (sunType === "M" || isMattina(sunType) || isPomeriggio(sunType)) {
               nextGrid[u.id][dStr] = "RP"
               return
             }
-            // Altrimenti (domenica era RP), proseguiamo col pattern standard per oggi nel blocco successivo
           }
           
           // Usa l'offset calcolato per allineare il pattern
-          const patternIndex = (startIndex + index) % pattern.length
-          const pVal = pattern[patternIndex]
+          const patternIndex = (uStartIndex + index) % uPattern.length
+          const pVal = uPattern[patternIndex]
           
           if (pVal === "M") {
-            nextGrid[u.id][dStr] = formatShiftCode("M", group.mStartTime)
+            nextGrid[u.id][dStr] = formatShiftCode("M", uGroup.mStartTime)
           } else if (pVal === "P") {
-            nextGrid[u.id][dStr] = formatShiftCode("P", group.pStartTime)
+            nextGrid[u.id][dStr] = formatShiftCode("P", uGroup.pStartTime)
           } else {
             nextGrid[u.id][dStr] = pVal
           }
@@ -336,7 +353,7 @@ export default function MonthlyShiftPlanner() {
       return nextGrid
     })
     
-    toast.success(`Pattern "${group.name}" applicato a ${targetUsers.length} agenti! (Ricordati di salvare)`)
+    toast.success(`Pattern applicato a ${targetUsers.length} agenti! (Ricordati di salvare)`)
     setShowWizard(false)
   }
 
@@ -433,6 +450,7 @@ export default function MonthlyShiftPlanner() {
                 value={wizardGroupId} onChange={(e) => setWizardGroupId(e.target.value)}
                 className="p-2 rounded border-2 border-blue-300 bg-white text-sm font-bold shadow-sm text-slate-800 outline-none min-w-[180px]"
               >
+                <option value="AUTO" className="text-emerald-700 font-black">⚙️ Automatico (Da Anagrafica)</option>
                 {rotationGroups.length === 0 && <option value="">⚠ Nessun turno configurato</option>}
                 {rotationGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
