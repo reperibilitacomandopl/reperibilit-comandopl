@@ -1,117 +1,105 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-
-async function sendTelegramMessage(chatId: string | number, text: string, replyMarkup?: any) {
-  if (!TELEGRAM_TOKEN) return;
-  await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text,
-      parse_mode: "HTML",
-      reply_markup: replyMarkup
-    })
-  });
-}
-
-async function answerCallbackQuery(callbackQueryId: string, text: string) {
-  if (!TELEGRAM_TOKEN) return;
-  await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/answerCallbackQuery`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      callback_query_id: callbackQueryId,
-      text,
-      show_alert: true
-    })
-  });
-}
+import { sendTelegramMessage } from "@/lib/telegram";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-
-    // Handle Callback Query (Button Clicks)
+    
+    // 1. Gestione Callback Query (es. Preso in carico)
     if (body.callback_query) {
-      const q = body.callback_query;
-      const data = q.data; // e.g. "ack_alert_123"
-      const chatId = q.message?.chat?.id;
+      const cb = body.callback_query;
+      const data = cb.data as string;
+      const chatId = cb.message.chat.id.toString();
+      const messageId = cb.message.message_id;
 
-      if (data && data.startsWith("ack_alert_")) {
+      if (data.startsWith("ack_alert_")) {
         const alertId = data.replace("ack_alert_", "");
         
-        // Trova il destinatario tramite il chatId utente e l'alertId (L'AGENTE)
-        const agent = await prisma.user.findFirst({ where: { telegramChatId: String(chatId) } });
-        
-        if (agent) {
-          // 1. Aggiorna lo stato nel DB
-          await prisma.alertRecipient.updateMany({
-            where: { alertId, userId: agent.id },
-            data: { status: "ACKNOWLEDGED", ackedAt: new Date() }
-          });
+        // Aggiorna l'alert nel DB
+        await prisma.emergencyAlert.update({
+          where: { id: alertId },
+          data: { status: "ACKNOWLEDGED" }
+        });
 
-          // 2. Notifica di conferma all'agente
-          await answerCallbackQuery(q.id, "Presa in carico confermata. Grazie.");
-          await sendTelegramMessage(chatId, "✅ <b>Presa in Carico Registrata!</b> La centrale operativa e l'Ufficiale sono stati aggiornati in tempo reale.");
+        // Rispondi a Telegram per togliere il caricamento sul pulsante
+        await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ callback_query_id: cb.id, text: "✅ Allerta Presa in Carico!" })
+        });
 
-          // 3. Notifica di "Ritorno" all'Ufficiale che ha lanciato l'allerta
-          const alert = await prisma.emergencyAlert.findUnique({
-            where: { id: alertId },
-            include: { admin: true }
-          });
-
-          if (alert && alert.admin.telegramChatId) {
-            const timeStr = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-            const adminMessage = `🚨 <b>ALLERTA CONFERMATA</b>\n\nL'Agente <b>${agent.name}</b> (Matr. ${agent.matricola}) ha appena preso in carico l'emergenza alle ore ${timeStr}.`;
-            await sendTelegramMessage(alert.admin.telegramChatId, adminMessage);
-          }
-        }
+        // Aggiorna il messaggio originale per confermare visivamente
+        const originalText = cb.message.text;
+        await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            message_id: messageId,
+            text: `${originalText}\n\n✅ <b>PRESO IN CARICO</b>`,
+            parse_mode: "HTML"
+          })
+        });
       }
       return NextResponse.json({ ok: true });
     }
 
-    // Handle standard Messages
-    if (body.message && body.message.text) {
-      const text = body.message.text.trim() as string;
-      const chatId = String(body.message.chat.id);
+    // 2. Gestione Messaggi Normali
+    const message = body.message;
+    if (!message || !message.text) {
+      return NextResponse.json({ ok: true });
+    }
 
-      if (text.startsWith("/start")) {
-        const parts = text.split(" ");
-        if (parts.length > 1) {
-          const code = parts[1];
-          // Find user by link code
-          const user = await prisma.user.findFirst({
-            where: {
-              telegramLinkCode: code,
-              telegramLinkExpires: { gt: new Date() }
-            }
-          });
+    const chatId = message.chat.id.toString();
+    const text = message.text.trim();
 
-          if (user) {
-            await prisma.user.update({
-              where: { id: user.id },
-              data: {
-                telegramChatId: chatId,
-                telegramLinkCode: null,
-                telegramLinkExpires: null
-              }
-            });
-            await sendTelegramMessage(chatId, `🎉 <b>Account Collegato!</b>\nBenvenuto Agente <b>${user.name}</b> (Matr. ${user.matricola}). Ora riceverai qui gli avvisi di emergenza.`);
-          } else {
-            await sendTelegramMessage(chatId, "❌ Codice non valido o scaduto. Generalo nuovamente dal Portale Caserma.");
-          }
-        } else {
-          await sendTelegramMessage(chatId, "Scrivi `/start CODICE` per collegare il tuo account al Portale Caserma.");
-        }
+    // Comando /start
+    if (text === "/start") {
+      await sendTelegramMessage(
+        chatId, 
+        "👋 <b>Benvenuto nel Bot del Comando Polizia Locale!</b>\n\nUsa <code>/link [codice]</code> per collegare il tuo account."
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    // Comando /link [CODE]
+    if (text.startsWith("/link")) {
+      const parts = text.split(" ");
+      if (parts.length < 2) {
+        await sendTelegramMessage(chatId, "❌ Specifica il codice.\nEsempio: <code>/link 123456</code>");
+        return NextResponse.json({ ok: true });
       }
+
+      const code = parts[1];
+      const user = await prisma.user.findFirst({
+        where: {
+          telegramLinkCode: code,
+          telegramLinkExpires: { gte: new Date() }
+        }
+      });
+
+      if (!user) {
+        await sendTelegramMessage(chatId, "❌ Codice non valido o scaduto.");
+        return NextResponse.json({ ok: true });
+      }
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          telegramChatId: chatId,
+          telegramLinkCode: null,
+          telegramLinkExpires: null
+        }
+      });
+
+      await sendTelegramMessage(chatId, `✅ <b>Collegato!</b> Ciao ${user.name}.`);
+      return NextResponse.json({ ok: true });
     }
 
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
-    console.error("Telegram Webhook Error:", err.message);
-    return NextResponse.json({ ok: false }, { status: 500 });
+  } catch (error) {
+    console.error("❌ Errore Webhook Telegram:", error);
+    return NextResponse.json({ ok: true });
   }
 }

@@ -499,22 +499,16 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
         const ignoreKeywords = ["AGENTE", "ISTRUTTORE", "UFFICIALE", "SOVRINTENDENTE", "ASSISTENTE", "VICE", "CAPITANO", "TENENTE"]
 
         const startRow = headerRowIndex !== -1 ? headerRowIndex + 1 : 3
-        const colOffset = isVerbatelFormat ? 4 : (isReperibilitaFormat ? 1 : 2)
+        const colOffset = 4 // I turni iniziano dalla Colonna E (indice 4)
 
         for (let r = startRow; r < data.length; r++) {
           const rowData = data[r]
           if (!rowData) continue
           
-          let rawName = ""
-          let matricola = ""
-
-          if (isVerbatelFormat) {
-            rawName = rowData[0]?.toString().trim().toUpperCase() || ""
-            matricola = rowData[1]?.toString().trim() || ""
-          } else {
-            rawName = rowData[0]?.toString().trim().toUpperCase() || ""
-            // Se è il formato Reperibilità classico, il nome è a Colonna 0, turni da 1
-          }
+          const rawName = rowData[0]?.toString().trim().toUpperCase() || ""
+          const matricola = rowData[1]?.toString().trim() || ""
+          const qualifica = rowData[2]?.toString().trim() || ""
+          const squadra = rowData[3]?.toString().trim() || ""
 
           if (!rawName || ignoreKeywords.some(kw => rawName === kw) || rawName.startsWith("TOTALE")) continue
 
@@ -526,6 +520,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 shiftsData.push({
                   name: rawName,
                   matricola: matricola,
+                  qualifica: qualifica,
+                  squadra: squadra,
                   date: dateObj.toISOString(),
                   type: shiftType
                 })
@@ -799,7 +795,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
               Importa Reperibilità
             </button>
             <button
-              onClick={() => alert("FORMATO EXCEL RICHIESTO:\n\n- Riga 1, 2 e 3: Intestazioni (vengono ignorate)\n- Riga 4 in poi: Inizia la lista degli Agenti\n\nColonne:\n- Colonna A: Vuota o ininfluente\n- Colonna B: NOME AGENTE (es. MARIO ROSSI)\n- Colonna C: Giorno 1 del mese (es. scrivi F, M, REP, ecc)\n- Colonna D: Giorno 2\n- ...fino alla Colonna AG (Giorno 31)\n\nNota: Il sistema riconosce automaticamente se si tratta di turni o reperibilità. Le celle vuote vengono ignorate e non cancellano i dati già presenti.")}
+              onClick={() => alert("FORMATO EXCEL RICHIESTO (come da screenshot):\n\n- Riga 1, 2 e 3: Intestazioni\n- Riga 4 in poi: Lista Personale\n\nColonne:\n- Colonna A: NOME AGENTE\n- Colonna B: MATRICOLA\n- Colonna C: QUALIFICA (GRADO)\n- Colonna D: SQUADRA (SEZIONE)\n- Colonna E: Giorno 1 del mese\n- ...fino alla Colonna AI (Giorno 31)\n\nIl sistema rileverà automaticamente se si tratta di turni o reperibilità e creerà l'anagrafica mancante.")}
               className="flex items-center justify-center w-8 hover:bg-white text-slate-400 hover:text-blue-500 rounded-md transition-all shadow-[0_0_0_1px_rgba(0,0,0,0.05)_inset]"
               title="Come deve essere formattato l'Excel?"
             >
@@ -1031,35 +1027,38 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 flex justify-between items-center">
-          <div>
+        <div className="p-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+          <div className="w-full lg:w-auto">
             <h3 className="font-bold text-slate-800 flex items-center gap-2 text-lg">
               <CalendarIcon size={20} className="text-blue-600" />
-              Tabellone Reperibilità — {currentMonthName} {currentYear}
+              Tabellone Reperibilità
             </h3>
-            <p className="text-xs text-slate-500 mt-1">{allAgents.length} agenti · {shifts.filter(s => s.repType?.includes("REP")).length} REP assegnate</p>
+            <div className="flex items-center justify-between lg:justify-start w-full gap-4 mt-1">
+              <p className="text-[10px] sm:text-xs text-slate-500 font-medium uppercase tracking-wider">{currentMonthName} {currentYear}</p>
+              <p className="text-[10px] sm:text-xs text-slate-400 font-bold bg-slate-100 px-2 py-0.5 rounded-full">{allAgents.length} agenti · {shifts.filter(s => s.repType?.includes("REP")).length} REP</p>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex bg-slate-200/50 rounded-xl p-1.5 border border-slate-300/50 shadow-sm items-center">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto overflow-hidden">
+            <div className="flex bg-slate-200/50 rounded-xl p-1 border border-slate-300/50 shadow-sm items-center justify-between sm:justify-start shrink-0">
               <Link 
                 href={`${pathname}?month=${prevMonth}&year=${prevYear}${currentView ? `&view=${currentView}` : ''}`} 
-                className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-white rounded-lg transition-all"
+                className="p-2 text-slate-500 hover:text-blue-600 hover:bg-white rounded-lg transition-all"
                 title="Mese precedente"
               >
                 <ChevronLeft size={20} />
               </Link>
               
-              <div className="flex items-center gap-1 px-2">
+              <div className="flex items-center gap-1 px-1">
                 <select 
                   value={currentMonth}
                   onChange={(e) => {
                     const m = e.target.value
                     router.push(`${pathname}?month=${m}&year=${currentYear}${currentView ? `&view=${currentView}` : ''}`)
                   }}
-                  className="bg-transparent border-none text-sm font-black text-slate-800 focus:ring-0 cursor-pointer uppercase py-1"
+                  className="bg-transparent border-none text-[13px] font-black text-slate-800 focus:ring-0 cursor-pointer uppercase py-1 px-1"
                 >
                   {monthNames.map((name, i) => (
-                    <option key={name} value={i + 1}>{name}</option>
+                    <option key={name} value={i + 1}>{name.substring(0, 3)}</option>
                   ))}
                 </select>
                 <select 
@@ -1068,7 +1067,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                     const y = e.target.value
                     router.push(`${pathname}?month=${currentMonth}&year=${y}${currentView ? `&view=${currentView}` : ''}`)
                   }}
-                  className="bg-transparent border-none text-sm font-black text-slate-500 focus:ring-0 cursor-pointer py-1"
+                  className="bg-transparent border-none text-[13px] font-black text-slate-500 focus:ring-0 cursor-pointer py-1 px-1"
                 >
                   {[2024, 2025, 2026, 2027].map(y => (
                     <option key={y} value={y}>{y}</option>
@@ -1078,28 +1077,24 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
               <Link 
                 href={`${pathname}?month=${nextMonth}&year=${nextYear}${currentView ? `&view=${currentView}` : ''}`} 
-                className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-white rounded-lg transition-all"
+                className="p-2 text-slate-500 hover:text-blue-600 hover:bg-white rounded-lg transition-all"
                 title="Mese successivo"
               >
                 <ChevronRight size={20} />
               </Link>
             </div>
-            <div className="hidden sm:flex items-center gap-3 text-[10px] font-bold text-slate-700 tracking-wide uppercase">
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></span>REP</span>
-              <span className="flex items-center gap-1.5" title="Reperibilità fissa importata da gestionale/Excel"><span className="w-2.5 h-2.5 rounded-full bg-purple-600 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)] border border-purple-700"></span>REP Fissa</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm"></span>Turno</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm"></span>Assenza</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-slate-400 shadow-sm"></span>Riposo</span>
-            </div>
-            <div className="flex bg-slate-100 rounded-lg p-1">
-              <button onClick={handleExportExcel} className="text-sm text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 hover:bg-white px-3 py-1.5 rounded-md transition-all border border-transparent shadow-[0_0_0_1px_rgba(0,0,0,0.05)_inset]">
-                <FileDown size={14} />
-                Generale
-              </button>
-              <button onClick={handleExportUfficialiExcel} className="text-sm text-slate-600 hover:text-slate-800 font-bold flex items-center gap-1 hover:bg-white px-3 py-1.5 rounded-md transition-all border border-transparent shadow-[0_0_0_1px_rgba(0,0,0,0.05)_inset]">
-                <FileDown size={14} />
-                Ufficiali
-              </button>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 -mb-1 scrollbar-hide">
+              <div className="flex bg-slate-100 rounded-lg p-1 shrink-0">
+                <button onClick={handleExportExcel} className="text-[11px] text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1.5 hover:bg-white px-3 py-1.5 rounded-md transition-all border border-transparent shadow-[0_0_0_1px_rgba(0,0,0,0.05)_inset] whitespace-nowrap">
+                  <FileDown size={14} />
+                  Generale
+                </button>
+                <button onClick={handleExportUfficialiExcel} className="text-[11px] text-slate-600 hover:text-slate-800 font-bold flex items-center gap-1.5 hover:bg-white px-3 py-1.5 rounded-md transition-all border border-transparent shadow-[0_0_0_1px_rgba(0,0,0,0.05)_inset] whitespace-nowrap">
+                  <FileDown size={14} />
+                  Ufficiali
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1279,8 +1274,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                               }
 
                               return (
-                                <td
-                                  key={di.isNextMonth ? 'next-cell-1' : di.day}
+                                  <td
+                                    key={di.isNextMonth ? `next-cell-${di.day}` : `curr-cell-${di.day}`}
                                   className={`px-0 py-0.5 text-center border-r border-slate-100 transition-all group/cell ${cellBg} ${di.isNextMonth ? "opacity-40 grayscale cursor-not-allowed" : "cursor-pointer hover:ring-2 hover:ring-blue-400 hover:ring-inset"}`}
                                   onClick={() => {
                                     if (di.isNextMonth) {
@@ -1346,7 +1341,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                       <tr>
                         <td className="p-2 border-r-2 border-b-2 border-slate-300 text-right text-[10px] font-bold text-slate-400 bg-slate-50 uppercase shadow-[inset_0_4px_6px_-6px_rgba(0,0,0,0.1)]">Riepilogo Giorni &rarr;</td>
                         {dayInfo.map(di => (
-                          <td key={`bot-header-${di.day}`} className={`px-0.5 pt-2 pb-1 text-center font-bold text-[10px] border-b-2 border-slate-300 min-w-[38px] shadow-[inset_0_4px_6px_-6px_rgba(0,0,0,0.1)] ${di.isWeekend ? "bg-red-50 text-red-500" : "bg-slate-100 text-slate-500"}`}>
+                          <td key={`bot-header-${di.isNextMonth ? 'next' : 'curr'}-${di.day}`} className={`px-0.5 pt-2 pb-1 text-center font-bold text-[10px] border-b-2 border-slate-300 min-w-[38px] shadow-[inset_0_4px_6px_-6px_rgba(0,0,0,0.1)] ${di.isWeekend ? "bg-red-50 text-red-500" : "bg-slate-100 text-slate-500"}`}>
                             {di.day}<br/>
                             <span className="font-medium text-[8px]">{di.name}</span>
                           </td>
@@ -1373,7 +1368,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
                           return (
                             <td 
-                              key={di.isNextMonth ? `next-tot-1` : `tot-${di.day}`} 
+                              key={di.isNextMonth ? `next-tot-${di.day}` : `curr-tot-${di.day}`} 
                               className={`px-0 py-1.5 text-center font-black text-sm cursor-help hover:opacity-80 transition-opacity ${di.isNextMonth ? "opacity-30" : ""} ${isGood ? "bg-emerald-100 text-emerald-700" : isLow ? "bg-amber-100 text-amber-700" : isBad ? "bg-red-100 text-red-700" : ""}`}
                               title={agentsOnCall ? `In turno il ${di.day}:\n${agentsOnCall}` : "Nessuno in turno"}
                             >
@@ -1416,7 +1411,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
                           return (
                             <td 
-                              key={di.isNextMonth ? `next-uff-1` : `uff-${di.day}`} 
+                              key={di.isNextMonth ? `next-uff-${di.day}` : `curr-uff-${di.day}`} 
                               className={`px-0 py-1.5 text-center font-black text-xs cursor-help ${di.isNextMonth ? "opacity-30" : ""} ${
                                 isZero 
                                   ? (substituteInfo 

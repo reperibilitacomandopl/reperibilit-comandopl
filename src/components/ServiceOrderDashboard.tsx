@@ -180,6 +180,185 @@ export default function ServiceOrderDashboard({ onClose }: { onClose?: () => voi
     )
   }
 
+  const downloadPDF = async () => {
+    const { default: jsPDF } = await import("jspdf")
+    const { default: autoTable } = await import("jspdf-autotable")
+
+    const doc = new jsPDF()
+    const pageWidth = doc.internal.pageSize.width
+    const dateStr = currentDate.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })
+    
+    // --- Header Istituzionale ---
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(22)
+    doc.setTextColor(30, 41, 59)
+    doc.text("POLIZIA LOCALE ALTAMURA", pageWidth / 2, 25, { align: "center" })
+    
+    doc.setFontSize(14)
+    doc.setTextColor(71, 85, 105)
+    doc.text("Comune di Altamura", pageWidth / 2, 33, { align: "center" })
+    
+    doc.setDrawColor(30, 41, 59)
+    doc.setLineWidth(1)
+    doc.line(20, 40, pageWidth - 20, 40)
+    
+    doc.setFontSize(16)
+    doc.setTextColor(15, 23, 42)
+    doc.text("ORDINE DI SERVIZIO GIORNALIERO", pageWidth / 2, 52, { align: "center" })
+    
+    doc.setFontSize(12)
+    doc.setFont("helvetica", "normal")
+    doc.text(dateStr.toUpperCase(), pageWidth / 2, 60, { align: "center" })
+
+    let currentY = 70
+
+    const renderPDFSection = (title: string, shiftsData: any[], options = { startY: 0 }) => {
+      if (shiftsData.length === 0) return options.startY
+
+      // Titolo Fascia
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(14)
+      doc.setFillColor(241, 245, 249) // slate-100
+      doc.rect(14, options.startY, pageWidth - 28, 10, "F")
+      doc.setTextColor(30, 41, 59)
+      doc.text(title.toUpperCase(), pageWidth / 2, options.startY + 7, { align: "center" })
+      
+      const tableRows: any[] = []
+      
+      // Separazione Ufficiali vs Agenti per questa fascia
+      const uffs = shiftsData.filter(s => users.find(u => u.id === s.userId)?.isUfficiale)
+      const ags = shiftsData.filter(s => !users.find(u => u.id === s.userId)?.isUfficiale)
+
+      // Helper per righe tabella
+      const getRow = (s: any) => {
+        const u = users.find(usr => usr.id === s.userId)
+        const qual = u?.qualifica || (u?.isUfficiale ? "Uff.le" : "Agente")
+        
+        let orario = s.timeRange
+        if (!orario && u?.rotationGroup) {
+          if (s.type.startsWith("M")) orario = `${u.rotationGroup.mStartTime}-${u.rotationGroup.mEndTime}`
+          else if (s.type.startsWith("P")) orario = `${u.rotationGroup.pStartTime}-${u.rotationGroup.pEndTime}`
+        }
+        if (!orario) orario = s.type.startsWith("M") ? "07:00-13:00" : "14:00-20:00"
+
+        const service = s.serviceType ? s.serviceType.name : (u?.servizio || "Operativo")
+        const vehicle = s.vehicle ? ` (${s.vehicle.name})` : ""
+        const details = s.serviceDetails ? ` - ${s.serviceDetails}` : ""
+
+        return [
+          { content: `${qual} ${u?.name || "N/D"}`, styles: { fontStyle: 'bold' as const } },
+          { content: orario, styles: { halign: 'center' as const } },
+          { content: `${service}${vehicle}${details}` }
+        ]
+      }
+
+      // Add Official Rows
+      if (uffs.length > 0) {
+        tableRows.push([{ content: "UFFICIALI DI SERVIZIO / COORDINAMENTO", colSpan: 3, styles: { fillColor: [219, 234, 254], fontStyle: 'bold' as const, fontSize: 10 } }])
+        uffs.forEach(s => tableRows.push(getRow(s)))
+      }
+
+      // Add Agent Groups by Category
+      const groups: Record<string, any[]> = {}
+      ags.forEach(s => {
+        const cat = s.serviceCategory ? s.serviceCategory.name : "ALTRI SERVIZI"
+        if (!selectedCategories.includes(cat) && s.serviceCategory) return
+        if (!groups[cat]) groups[cat] = []
+        groups[cat].push(s)
+      })
+
+      Object.entries(groups).forEach(([cat, sList]) => {
+        tableRows.push([{ content: cat, colSpan: 3, styles: { fillColor: [243, 232, 255], fontStyle: 'italic' as const, fontSize: 9 } }])
+        sList.forEach(s => tableRows.push(getRow(s)))
+      })
+
+      autoTable(doc, {
+        startY: options.startY + 10,
+        head: [['AGENTE / QUALIFICA', 'ORARIO', 'SERVIZIO / VEICOLO / DETTAGLI']],
+        body: tableRows,
+        theme: 'grid',
+        headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
+        columnStyles: {
+          0: { cellWidth: 55 },
+          1: { cellWidth: 35 },
+          2: { cellWidth: 'auto' }
+        },
+        styles: { fontSize: 9, cellPadding: 3 },
+        margin: { left: 14, right: 14 }
+      })
+
+      return (doc as any).lastAutoTable.finalY + 10
+    }
+
+    // 1. Mattino
+    currentY = renderPDFSection("Sezione Mattina", mattinieri, { startY: currentY })
+
+    // 2. Pomeriggio
+    if (currentY > 240) { doc.addPage(); currentY = 20 }
+    currentY = renderPDFSection("Sezione Pomeriggio", pomeridiani, { startY: currentY })
+
+    // 3. Reperibilità
+    if (reperibili.length > 0) {
+      if (currentY > 230) { doc.addPage(); currentY = 20 }
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(14)
+      doc.setFillColor(30, 41, 59)
+      doc.rect(14, currentY, pageWidth - 28, 10, "F")
+      doc.setTextColor(255, 255, 255)
+      doc.text("REPERIBILITÀ E PRONTA DISPONIBILITÀ", pageWidth / 2, currentY + 7, { align: "center" })
+
+      const repRows = reperibili.map(s => {
+        const u = users.find(usr => usr.id === s.userId)
+        return [
+          { content: `${u?.qualifica || "Agente"} ${u?.name || "N/D"}`, styles: { fontStyle: 'bold' as const } },
+          { content: "22:00 - 07:00", styles: { halign: 'center' as const } },
+          { content: `Reperibilità Notturna ${s.repType === "REP 22-07" ? "" : `(${s.repType})`}` }
+        ]
+      })
+
+      autoTable(doc, {
+        startY: currentY + 10,
+        body: repRows,
+        theme: 'grid',
+        columnStyles: { 0: { cellWidth: 55 }, 1: { cellWidth: 35 }, 2: { cellWidth: 'auto' } },
+        styles: { fontSize: 9, cellPadding: 3 },
+      })
+      currentY = (doc as any).lastAutoTable.finalY + 15
+    }
+
+    // 4. Assenti (In forma di lista compatta)
+    if (absentShifts.length > 0) {
+       if (currentY > 240) { doc.addPage(); currentY = 20 }
+       doc.setFontSize(10)
+       doc.setFont("helvetica", "bold")
+       doc.setTextColor(225, 29, 72) // rose-600
+       doc.text(`PERSONALE ASSENTE / NON DISPONIBILE (${absentShifts.length})`, 14, currentY)
+       
+       const absNames = absentShifts.map(s => {
+         const u = users.find(usr => usr.id === s.userId)
+         return `${u?.name || ""} (${s.type})`
+       }).join(", ")
+
+       doc.setFont("helvetica", "normal")
+       doc.setFontSize(8)
+       doc.setTextColor(100, 116, 139)
+       const lines = doc.splitTextToSize(absNames, pageWidth - 28)
+       doc.text(lines, 14, currentY + 5)
+       currentY += (lines.length * 4) + 15
+    }
+
+    // 5. Firma
+    if (currentY > 250) doc.addPage()
+    const footerY = doc.internal.pageSize.height - 30
+    doc.setFontSize(10)
+    doc.setTextColor(30, 41, 59)
+    doc.text("IL COMANDANTE", pageWidth - 60, footerY, { align: "center" })
+    doc.setDrawColor(200, 200, 200)
+    doc.line(pageWidth - 85, footerY + 15, pageWidth - 35, footerY + 15)
+
+    doc.save(`OdS_${currentDate.toISOString().split("T")[0]}.pdf`)
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] bg-slate-50 rounded-3xl overflow-hidden shadow-2xl relative animate-in fade-in duration-300">
       
@@ -200,7 +379,7 @@ export default function ServiceOrderDashboard({ onClose }: { onClose?: () => voi
 
         <div className="flex gap-2">
           <button onClick={() => setShowConfig(!showConfig)} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-bold flex items-center gap-2">⚙️ Filtra Servizi</button>
-          <button onClick={printDocument} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-bold flex items-center gap-2"><Printer size={16}/> Stampa PDF</button>
+          <button onClick={downloadPDF} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg shadow-emerald-900/20"><Printer size={16}/> Scarica PDF Ufficiale</button>
           {onClose && <button onClick={onClose} className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg"><X size={20}/></button>}
         </div>
       </div>

@@ -20,7 +20,10 @@ export default async function AgentDossierPage({ params }: { params: Promise<{ i
   const agent: any = await (prisma.user as any).findUnique({
     where: { id },
     include: {
-      agentBalances: { where: { year } },
+      agentBalances: { 
+        where: { year },
+        include: { details: true }
+      },
       agentRequests: { orderBy: { date: "desc" } },
       absences: { where: { date: { gte: new Date(`${year}-01-01`), lte: new Date(`${year}-12-31`) } } },
       rotationGroup: true,
@@ -29,17 +32,36 @@ export default async function AgentDossierPage({ params }: { params: Promise<{ i
   })
 
   if (!agent) redirect("/admin/risorse")
-
-  const rotationGroups = await prisma.rotationGroup.findMany({ orderBy: { name: 'asc' } })
-  const serviceCategories = await prisma.serviceCategory.findMany({ include: { types: true }, orderBy: { orderIndex: 'asc' } })
+  
+  const tenantId = session.user.tenantId
+  const rotationGroups = await prisma.rotationGroup.findMany({ where: { tenantId: tenantId || null }, orderBy: { name: 'asc' } })
+  const serviceCategories = await prisma.serviceCategory.findMany({ where: { tenantId: tenantId || null }, include: { types: true }, orderBy: { orderIndex: 'asc' } })
 
   // Fallback balance se non presente
   let balance = agent.agentBalances?.[0]
   if (!balance) {
      balance = await (prisma as any).agentBalance.create({
-        data: { userId: agent.id, year, ferieTotali: 28, festivitaTotali: 4, permessi104Totali: 36 }
+        data: { 
+          userId: agent.id, 
+          year, 
+          tenantId: tenantId || null,
+          details: {
+            create: [
+              { code: "FERIE", label: "Ferie Ordinarie", initialValue: 28, unit: "DAYS" },
+              { code: "FEST_SOP", label: "Festività Soppresse", initialValue: 4, unit: "DAYS" },
+              { code: "104_1", label: "Legge 104", initialValue: 36, unit: "DAYS" }
+            ]
+          }
+        },
+        include: { details: true }
      })
   }
+
+  // Helper per estrarre valori
+  const getInit = (code: string) => balance.details?.find((d: any) => d.code === code)?.initialValue || 0
+  const ferieTot = getInit("FERIE");
+  const festTot = getInit("FEST_SOP");
+  const p104Tot = getInit("104_1");
 
   // Calcola assenze consumate usando gli shortCode unificati
   const absences: any[] = agent.absences || []
@@ -47,8 +69,8 @@ export default async function AgentDossierPage({ params }: { params: Promise<{ i
   const used104 = absences.filter((a: any) => PERMESSI_104_CODES.includes(a.code)).length
   const usedFestivita = absences.filter((a: any) => FESTIVITA_CODES.includes(a.code)).length
   
-  const remainFerie = balance.ferieTotali - usedFerie
-  const remain104 = balance.permessi104Totali - used104
+  const remainFerie = ferieTot - usedFerie
+  const remain104 = p104Tot - used104
 
   const agentRequests: any[] = agent.agentRequests || []
 
@@ -92,10 +114,10 @@ export default async function AgentDossierPage({ params }: { params: Promise<{ i
                  <div className="space-y-2">
                     <div className="flex justify-between items-center text-sm">
                        <span className="font-bold text-slate-700">🏖️ Ferie Ordinarie</span>
-                       <span className="font-black text-slate-900">{remainFerie} <span className="text-slate-400 font-bold">su {balance.ferieTotali}</span></span>
+                       <span className="font-black text-slate-900">{remainFerie} <span className="text-slate-400 font-bold">su {ferieTot}</span></span>
                     </div>
                     <div className="h-4 bg-slate-100 rounded-full overflow-hidden">
-                       <div className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full transition-all" style={{ width: `${Math.min(100, (usedFerie / balance.ferieTotali) * 100)}%` }}></div>
+                       <div className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full transition-all" style={{ width: `${Math.min(100, (usedFerie / ferieTot) * 100)}%` }}></div>
                     </div>
                     <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wide">Consumate: {usedFerie} giornate</p>
                  </div>
@@ -104,10 +126,10 @@ export default async function AgentDossierPage({ params }: { params: Promise<{ i
                  <div className="space-y-2">
                     <div className="flex justify-between items-center text-sm">
                        <span className="font-bold text-slate-700">📋 Permessi L.104</span>
-                       <span className="font-black text-slate-900">{remain104} <span className="text-slate-400 font-bold">su {balance.permessi104Totali}</span></span>
+                       <span className="font-black text-slate-900">{remain104} <span className="text-slate-400 font-bold">su {p104Tot}</span></span>
                     </div>
                     <div className="h-4 bg-slate-100 rounded-full overflow-hidden">
-                       <div className="h-full bg-gradient-to-r from-blue-400 to-blue-500 rounded-full transition-all" style={{ width: `${Math.min(100, (used104 / balance.permessi104Totali) * 100)}%` }}></div>
+                       <div className="h-full bg-gradient-to-r from-blue-400 to-blue-500 rounded-full transition-all" style={{ width: `${Math.min(100, (used104 / p104Tot) * 100)}%` }}></div>
                     </div>
                     <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wide">Consumate: {used104} giornate</p>
                  </div>
@@ -116,10 +138,10 @@ export default async function AgentDossierPage({ params }: { params: Promise<{ i
                  <div className="space-y-2">
                     <div className="flex justify-between items-center text-sm">
                        <span className="font-bold text-slate-700">🎄 Festività Soppresse</span>
-                       <span className="font-black text-slate-900">{balance.festivitaTotali - usedFestivita} <span className="text-slate-400 font-bold">su {balance.festivitaTotali}</span></span>
+                       <span className="font-black text-slate-900">{festTot - usedFestivita} <span className="text-slate-400 font-bold">su {festTot}</span></span>
                     </div>
                     <div className="h-4 bg-slate-100 rounded-full overflow-hidden">
-                       <div className="h-full bg-gradient-to-r from-rose-400 to-rose-500 rounded-full transition-all" style={{ width: `${Math.min(100, (usedFestivita / balance.festivitaTotali) * 100)}%` }}></div>
+                       <div className="h-full bg-gradient-to-r from-rose-400 to-rose-500 rounded-full transition-all" style={{ width: `${Math.min(100, (usedFestivita / festTot) * 100)}%` }}></div>
                     </div>
                     <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wide">Consumate: {usedFestivita} giornate</p>
                  </div>

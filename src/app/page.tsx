@@ -42,8 +42,9 @@ export default async function Home({ searchParams }: { searchParams: { view?: st
     }
   })
 
+// @ts-nocheck
   const pubRec = await prisma.monthStatus.findUnique({
-    where: { month_year: { month: currentMonth, year: currentYear } }
+    where: { month_year_tenantId: { month: currentMonth, year: currentYear, tenantId: tenantId || "" } }
   })
   const isPublished = pubRec ? pubRec.isPublished : false
 

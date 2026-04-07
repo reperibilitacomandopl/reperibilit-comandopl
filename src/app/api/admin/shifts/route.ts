@@ -21,8 +21,10 @@ export async function POST(req: Request) {
       }
     }
 
+    const tenantId = session.user.tenantId
+
     // 2. Load all existing users for mapping
-    const existingUsers = await prisma.user.findMany()
+    const existingUsers = await prisma.user.findMany({ where: tenantId ? { tenantId } : {} })
     const userByMatricola = new Map(existingUsers.map(u => [u.matricola, u.id]))
     const userByName = new Map(existingUsers.map(u => [u.name.toUpperCase(), u.id]))
 
@@ -36,6 +38,7 @@ export async function POST(req: Request) {
         const newMatricola = info.matricola || (info.name.replace(/[^A-Z]/g, '').substring(0, 6) + Math.floor(Math.random() * 1000).toString().padStart(3, '0'))
         const newUser = await prisma.user.create({
           data: {
+            tenantId: tenantId || null,
             name: info.name,
             matricola: newMatricola,
             password: defaultHashedPassword,
@@ -90,8 +93,8 @@ export async function POST(req: Request) {
       // Executing raw SQL for maximum speed
       // We use ON CONFLICT because userId+date is unique
       const sql = `
-        INSERT INTO "Shift" ("id", "userId", "date", "type", "repType", "createdAt")
-        VALUES ${valueLines.join(", ")}
+        INSERT INTO "Shift" ("id", "userId", "date", "type", "repType", "createdAt", "tenantId")
+        VALUES ${valueLines.map(v => v.replace(/\)$/, `, ${tenantId ? `'${tenantId}'` : 'NULL'})`)).join(", ")}
         ON CONFLICT ("userId", "date")
         DO UPDATE SET ${updateExpression};
       `
@@ -103,6 +106,7 @@ export async function POST(req: Request) {
     // Log the bulk action
     await prisma.auditLog.create({
       data: {
+        tenantId: tenantId || null,
         adminId: session.user.id!,
         adminName: session.user.name!,
         action: "BULK_IMPORT_SHIFTS",

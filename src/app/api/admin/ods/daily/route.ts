@@ -11,26 +11,36 @@ export async function GET(req: Request) {
   if (!dateStr) return NextResponse.json({ error: "Missing date" }, { status: 400 })
 
   try {
+    const tenantId = session.user.tenantId
+    const tf = tenantId ? { tenantId } : {}
+
     const targetDate = new Date(dateStr)
     const nextDate = new Date(targetDate)
     nextDate.setDate(targetDate.getDate() + 1)
 
-    // Fetch only present people (excluding 104, ferie, malattie depending on how they are coded, but here we fetch all with a Shift and then filter by type)
-    const shifts = await prisma.shift.findMany({
-      where: {
-        date: { gte: targetDate, lt: nextDate },
-        // You might want to filter out base types like "F", "M", "104" etc.
-      },
-      include: {
-        user: { select: { id: true, name: true, matricola: true, squadra: true, servizio: true, qualifica: true, defaultServiceCategoryId: true, defaultServiceTypeId: true, isUfficiale: true } },
-        serviceCategory: true,
-        serviceType: true,
-        vehicle: true
-      },
-      orderBy: { user: { name: 'asc' } }
-    })
+    const [shifts, users, categories, vehicles] = await Promise.all([
+      prisma.shift.findMany({
+        where: { ...tf, date: { gte: targetDate, lt: nextDate } },
+        include: {
+          user: { select: { id: true, name: true, matricola: true, squadra: true, servizio: true, qualifica: true, defaultServiceCategoryId: true, defaultServiceTypeId: true, isUfficiale: true } },
+          serviceCategory: true,
+          serviceType: true,
+          vehicle: true
+        },
+        orderBy: { user: { name: 'asc' } }
+      }),
+      prisma.user.findMany({ where: { ...tf }, orderBy: { name: 'asc' } }),
+      prisma.serviceCategory.findMany({ where: { ...tf }, include: { types: true }, orderBy: { orderIndex: 'asc' } }),
+      prisma.vehicle.findMany({ where: { ...tf }, orderBy: { name: 'asc' } })
+    ])
 
-    return NextResponse.json({ success: true, shifts })
+    return NextResponse.json({ 
+      success: true, 
+      shifts,
+      users,
+      categories,
+      vehicles
+    })
   } catch (error) {
     return NextResponse.json({ error: "Internal Error" }, { status: 500 })
   }

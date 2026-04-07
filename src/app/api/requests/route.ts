@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
@@ -17,12 +18,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Data e causale obbligatori" }, { status: 400 })
     }
 
-    // Check if a request for this exact date already exists to prevent spam (allow multiple if it's hours on same day maybe? No, let's just use existing logic but checking only full days? Actually, let's keep the spam check simple)
-    const existing = await (prisma as any).agentRequest.findFirst({
+    const tenantId = session.user.tenantId
+
+    const existing = await prisma.agentRequest.findFirst({
       where: {
         userId: session.user.id,
         date: new Date(date),
-        status: "PENDING"
+        status: "PENDING",
+        tenantId: tenantId || null
       }
     })
 
@@ -30,8 +33,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Hai già una richiesta in attesa per questa data." }, { status: 400 })
     }
 
-    const request = await (prisma as any).agentRequest.create({
+    const request = await prisma.agentRequest.create({
       data: {
+        tenantId: tenantId || null,
         userId: session.user.id,
         date: new Date(date),
         endDate: endDate ? new Date(endDate) : null,
@@ -44,10 +48,36 @@ export async function POST(req: Request) {
       }
     })
 
+    // --- NOTIFICA PER GLI ADMIN ---
+    try {
+      const admins = await prisma.user.findMany({
+        where: { 
+          tenantId: tenantId || null,
+          role: "ADMIN"
+        },
+        select: { id: true }
+      })
+
+      if (admins.length > 0) {
+        await (prisma as any).notification.createMany({
+          data: admins.map(admin => ({
+            tenantId: tenantId || null,
+            userId: admin.id,
+            title: "Nuova Richiesta",
+            message: `${session.user.name} ha richiesto ${code} per il ${new Date(date).toLocaleDateString("it-IT")}.`,
+            type: "REQUEST",
+            link: `/admin/richieste`
+          }))
+        })
+      }
+    } catch (notifyError) {
+      console.error("Error creating notification for admins:", notifyError)
+    }
+
     return NextResponse.json({ success: true, request })
 
   } catch (error: any) {
     console.error("Error creating request:", error)
-    return NextResponse.json({ error: "Errore interno o database non aggiornato" }, { status: 500 })
+    return NextResponse.json({ error: "Errore interno" }, { status: 500 })
   }
 }

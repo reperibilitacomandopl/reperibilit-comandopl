@@ -1,28 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-
-const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-
-async function sendTelegramMessage(chatId: string, text: string, replyMarkup?: any) {
-  if (!TELEGRAM_TOKEN) return false;
-  try {
-    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        parse_mode: "HTML",
-        reply_markup: replyMarkup
-      })
-    });
-    return res.ok;
-  } catch (e) {
-    console.error("Telegram Send Error:", e);
-    return false;
-  }
-}
+import { sendTelegramMessage } from "@/lib/telegram";
 
 export async function POST(req: Request) {
   try {
@@ -32,14 +11,15 @@ export async function POST(req: Request) {
     }
 
     const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth(); // 0-11
-    const currentDay = today.getDate();
-    const todayUTC = new Date(Date.UTC(currentYear, currentMonth, currentDay));
+    const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+
+    const tenantId = session.user.tenantId;
+    const tf = tenantId ? { tenantId } : {};
 
     // Check if Admin OR Officer on duty today
     const isOfficerOnDuty = await prisma.shift.findFirst({
       where: {
+        ...tf,
         userId: session.user.id,
         date: todayUTC,
         user: { isUfficiale: true },
@@ -56,6 +36,7 @@ export async function POST(req: Request) {
     // 1. Trova i turni di Reperibilità per OGGI
     const todayShifts = await prisma.shift.findMany({
       where: {
+        ...tf,
         date: todayUTC,
         repType: { not: null }
       },
@@ -71,6 +52,7 @@ export async function POST(req: Request) {
     // 2. Crea il log dell'emergenza
     const alert = await prisma.emergencyAlert.create({
       data: {
+        tenantId: tenantId || null,
         adminId: session.user.id,
         message: "🚨 URGENZA! Recarsi in comando entro 30 min.",
         status: "PENDING",
@@ -80,7 +62,7 @@ export async function POST(req: Request) {
       }
     });
 
-    // 3. Invia messaggi Telegram
+    // 3. Invia messaggi Telegram tramite la utility centralizzata
     let sentCount = 0;
     for (const shift of repUsers) {
       const chatId = shift.user.telegramChatId;
@@ -90,14 +72,14 @@ export async function POST(req: Request) {
         };
         const text = `🚨 <b>ALLERTA URGENZA DAL COMANDO</b> 🚨\n\nAgente <b>${shift.user.name}</b>, sei in reperibilità oggi (${shift.repType}).\nDevi recarti in comando entro 30 minuti.\n\nClicca il pulsante qui sotto per confermare la presa visione.`;
         
-        await sendTelegramMessage(chatId, text, keyboard);
-        sentCount++;
+        const ok = await sendTelegramMessage(chatId, text, keyboard);
+        if (ok) sentCount++;
       }
     }
 
     return NextResponse.json({ success: true, alerted: sentCount });
   } catch (err: any) {
-    console.error(err);
+    console.error("❌ Errore API Alert Emergency:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

@@ -12,6 +12,9 @@ export async function GET(req: Request) {
     const dateStr = searchParams.get("date")
     if (!dateStr) return NextResponse.json({ error: "Missing date" }, { status: 400 })
 
+    const tenantId = session.user.tenantId
+    const tf = tenantId ? { tenantId } : {}
+
     const date = new Date(dateStr)
     const startDate = new Date(date)
     startDate.setHours(0, 0, 0, 0)
@@ -20,20 +23,21 @@ export async function GET(req: Request) {
 
     const [users, shifts, absences, categories, vehicles] = await Promise.all([
       prisma.user.findMany({ 
-        where: { role: "AGENTE" }, 
+        where: { ...tf, role: "AGENTE" }, 
         orderBy: { name: "asc" },
-        select: { id: true, name: true, matricola: true, isUfficiale: true, qualifica: true, servizio: true, squadra: true, rotationGroup: true }
+        select: { id: true, name: true, matricola: true, isUfficiale: true, qualifica: true, servizio: true, squadra: true, defaultServiceCategoryId: true, defaultServiceTypeId: true }
       }),
       prisma.shift.findMany({ 
-        where: { date: { gte: startDate, lte: endDate } },
+        where: { ...tf, date: { gte: startDate, lte: endDate } },
         include: { serviceCategory: true, serviceType: true, vehicle: true }
       }),
-      Promise.resolve([]), // Removed invalid prisma.absence call to preserve array restructuring index
+      Promise.resolve([]), 
       prisma.serviceCategory.findMany({
+        where: { ...tf },
         include: { types: true },
         orderBy: { orderIndex: "asc" }
       }),
-      prisma.vehicle.findMany({ orderBy: { name: "asc" } })
+      prisma.vehicle.findMany({ where: { ...tf }, orderBy: { name: "asc" } })
     ])
 
     return NextResponse.json({ users, shifts, absences, categories, vehicles })
@@ -50,23 +54,21 @@ export async function PUT(req: Request) {
   try {
     const body = await req.json()
     const { date, userId, type, timeRange, serviceCategoryId, serviceTypeId, vehicleId, serviceDetails, patrolGroupId } = body
+    const tenantId = session.user.tenantId
 
-    // Crea la data esattamente a mezzanotte UTC come fa l'importazione Excel
+    // Crea la data esattamente a mezzanotte UTC
     const [y, m, d] = date.split("-").map(Number)
     const targetDate = new Date(Date.UTC(y, m - 1, d))
 
-    // Per sicurezza, siccome l'upsert con unique su DateTime può essere sensibile,
-    // troviamo prima il turno esatto (se esiste) in questa giornata
     const startDate = new Date(targetDate)
     const endDate = new Date(targetDate)
     endDate.setUTCHours(23, 59, 59, 999)
     
-    // Troviamo il turno esistente per preservare i metadati base (es. repType che non viene passato dal frontend operativo)
     const existingShift = await prisma.shift.findFirst({
-       where: { userId, date: { gte: startDate, lte: endDate } }
+       where: { tenantId, userId, date: { gte: startDate, lte: endDate } }
     })
 
-    const rawMacro = type !== undefined ? type : (existingShift?.type || "M7");
+    const rawMacro = type !== undefined ? type : (existingShift?.type || "M8");
 
     const normalized = normalizeShiftData({
       macroType: rawMacro,
@@ -74,13 +76,13 @@ export async function PUT(req: Request) {
       serviceCategoryId: serviceCategoryId !== undefined ? serviceCategoryId : existingShift?.serviceCategoryId,
       serviceTypeId: serviceTypeId !== undefined ? serviceTypeId : existingShift?.serviceTypeId,
       vehicleId: vehicleId !== undefined ? vehicleId : existingShift?.vehicleId,
-      repType: existingShift?.repType // Sala Operativa normally doesn't set repType, it inherits it
+      repType: existingShift?.repType
     });
 
     let shift;
     if (existingShift) {
         shift = await prisma.shift.update({
-           where: { id: existingShift.id },
+           where: { id: existingShift.id }, // ID è già univoco, ma per sicurezza findFirst ha filtrato per tenant
            data: {
              type: normalized.type,
              timeRange: normalized.timeRange,
@@ -95,8 +97,9 @@ export async function PUT(req: Request) {
     } else {
         shift = await prisma.shift.create({
           data: {
+            tenantId,
             userId,
-            date: targetDate, // Mezzanotte UTC
+            date: targetDate,
             type: normalized.type, 
             timeRange: normalized.timeRange,
             serviceCategoryId: normalized.serviceCategoryId,

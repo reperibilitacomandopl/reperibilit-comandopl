@@ -1,6 +1,7 @@
 import { prisma } from "./prisma"
 
 export async function logAudit({
+  tenantId,
   adminId,
   adminName,
   action,
@@ -8,6 +9,7 @@ export async function logAudit({
   targetName,
   details
 }: {
+  tenantId?: string | null
   adminId: string
   adminName?: string
   action: string
@@ -18,6 +20,7 @@ export async function logAudit({
   try {
     await prisma.auditLog.create({
       data: {
+        tenantId: tenantId || null,
         adminId,
         adminName,
         action,

@@ -7,6 +7,7 @@ import { isHoliday } from "@/utils/holidays"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { isMalattia, isMattina } from "@/utils/shift-logic"
+import NotificationHub from "@/components/NotificationHub"
 
 // ====== CODICI AGENDA PERSONALE ======
 const AGENDA_CATEGORIES = [
@@ -127,7 +128,7 @@ type AgendaItem = {
   note: string | null
 }
 
-export default function AgentDashboard({ currentUser, shifts, allAgents, currentYear, currentMonth, isPublished, currentView }: { currentUser: { id: string, matricola: string, name: string }, shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], allAgents: any[], currentYear: number, currentMonth: number, isPublished: boolean, currentView?: string }) {
+export default function AgentDashboard({ currentUser, shifts, allAgents, currentYear, currentMonth, isPublished, currentView }: { currentUser: { id: string, matricola: string, name: string, telegramChatId?: string | null }, shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], allAgents: any[], currentYear: number, currentMonth: number, isPublished: boolean, currentView?: string }) {
   const router = useRouter()
   const [showSyncModal, setShowSyncModal] = useState(false)
   const [showAgenda, setShowAgenda] = useState(false)
@@ -567,48 +568,38 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
         </div>
       )}
 
-      {/* Header Section */}
-      <div className="bg-gradient-to-br from-blue-900 via-indigo-900 to-slate-900 p-8 rounded-[2rem] shadow-2xl text-white relative overflow-hidden border border-white/10">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full -mr-20 -mt-20 blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/10 rounded-full -ml-20 -mb-20 blur-2xl"></div>
-        
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <span className="bg-blue-500/20 backdrop-blur-md border border-blue-400/30 text-blue-200 text-[10px] font-black tracking-widest uppercase px-2 py-1 rounded-md">
-                Dashboard Agente
-              </span>
-              <div className="h-1 w-1 rounded-full bg-blue-400"></div>
-              <span className="text-blue-300/80 text-xs font-medium">Matr. {currentUser.matricola}</span>
-            </div>
-            <h2 className="text-4xl font-black mb-1 bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-200">
-              Ciao, {currentUser.name.split(' ')[0]}
+      <div className="bg-slate-900 text-white rounded-[2.5rem] p-6 sm:p-10 lg:p-12 shadow-2xl relative overflow-hidden mb-6">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+          <div className="flex-1">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter leading-tight mb-2">
+              Ciao, {currentUser.name.split(" ")[0]}! 👋
             </h2>
-            <div className="mt-4 flex items-center gap-3">
-              <div className="flex bg-white/5 backdrop-blur-xl rounded-[1.25rem] p-1.5 border border-white/10 shadow-lg items-center">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center bg-white/10 backdrop-blur-md rounded-2xl p-1 border border-white/10">
                 <Link 
                   href={`/?month=${prevMonth}&year=${prevYear}${currentView ? `&view=${currentView}` : ''}`} 
-                  className="p-2 hover:bg-white/10 rounded-xl transition-all"
+                  className="p-2 hover:bg-white/20 rounded-xl transition-all"
                   title="Mese precedente"
                 >
                   <ChevronLeft size={20} />
                 </Link>
                 
-                <div className="flex items-center px-2">
+                <div className="flex items-center gap-1">
                   <select 
                     value={currentMonth}
                     onChange={(e) => router.push(`/?month=${e.target.value}&year=${currentYear}${currentView ? `&view=${currentView}` : ''}`)}
-                    className="bg-transparent border-none text-sm font-black uppercase tracking-widest text-center focus:ring-0 cursor-pointer py-2 pl-2 pr-6 appearance-none"
+                    className="bg-transparent border-none text-xs font-black uppercase tracking-widest text-center focus:ring-0 cursor-pointer py-2 pl-2 pr-6 appearance-none"
                     style={{ backgroundPosition: 'right 0.2rem center' }}
                   >
                     {monthNames.map((name, i) => (
-                      <option key={name} value={i + 1} className="text-slate-900">{name}</option>
+                      <option key={name} value={i + 1} className="text-slate-900">{name.substring(0,3)}</option>
                     ))}
                   </select>
                   <select 
                     value={currentYear}
                     onChange={(e) => router.push(`/?month=${currentMonth}&year=${e.target.value}${currentView ? `&view=${currentView}` : ''}`)}
-                    className="bg-transparent border-none text-sm font-black text-white/40 focus:ring-0 cursor-pointer py-2 pl-1 pr-6 appearance-none"
+                    className="bg-transparent border-none text-xs font-black text-white/40 focus:ring-0 cursor-pointer py-2 pl-1 pr-6 appearance-none"
                     style={{ backgroundPosition: 'right 0.2rem center' }}
                   >
                     {[2024, 2025, 2026, 2027].map(y => (
@@ -626,33 +617,29 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                 </Link>
               </div>
             </div>
-            <p className="text-blue-100/60 text-[11px] max-w-sm font-semibold mt-4 tracking-wide">
-              Gestione turni e bilancio personale aggiornato in tempo reale.
-            </p>
-            <div className="flex items-center gap-2 mt-2">
-               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
-               <p className="text-[9px] text-blue-300/40 font-black uppercase tracking-[.2em] leading-none">Polizia Locale di Altamura</p>
-            </div>
           </div>
           
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 px-6 py-4 rounded-2xl flex items-center gap-4">
-              <div className="p-3 bg-emerald-500/20 border border-emerald-400/30 rounded-xl">
-                <ShieldCheck className="text-emerald-400" size={24} />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 px-5 py-3 rounded-2xl flex items-center gap-4">
+              <div className="p-2.5 bg-emerald-500/20 border border-emerald-400/30 rounded-xl shadow-inner">
+                <ShieldCheck className="text-emerald-400" size={20} />
               </div>
               <div>
-                <p className="text-[10px] text-emerald-300/60 font-black uppercase tracking-wider">Reperibilità</p>
-                <p className="text-2xl font-black text-white">{repCount} <span className="text-xs text-white/40 font-bold uppercase">Turni</span></p>
+                <p className="text-[9px] text-emerald-300/60 font-black uppercase tracking-wider">Reperibilità</p>
+                <p className="text-xl font-black text-white">{repCount}</p>
               </div>
             </div>
             
-            <button 
-              onClick={() => setShowSyncModal(true)}
-              className="group flex items-center gap-3 bg-white text-slate-900 px-6 py-4 rounded-2xl font-black text-sm shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
-            >
-              <CalendarDays size={20} className="text-blue-600" />
-              Sincronizza Calendario
-            </button>
+            <div className="flex items-center justify-between sm:justify-start gap-4">
+              <NotificationHub />
+              <button 
+                onClick={() => setShowSyncModal(true)}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-3 bg-white text-slate-900 px-6 py-4 rounded-2xl font-black text-xs sm:text-sm shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
+              >
+                <CalendarDays size={18} className="text-blue-600" />
+                Sincronizza
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1378,7 +1365,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
       )}
 
       {/* Telegram Link Widget */}
-      <div className="bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 rounded-[2rem] p-8 text-white relative overflow-hidden shadow-xl">
+      <div className="bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 rounded-[2rem] p-8 text-white relative overflow-hidden shadow-xl mb-8">
         <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-6">
           <div className="flex items-center gap-4 flex-1">
@@ -1386,27 +1373,37 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
               <Send size={28} className="text-white" />
             </div>
             <div>
-              <h3 className="text-xl font-black">Notifiche Telegram</h3>
+              <h3 className="text-xl font-black">Notifiche Telegram Hub</h3>
               <p className="text-blue-100/80 text-sm font-medium mt-1">
-                Collega il tuo account Telegram per ricevere le allerte di emergenza dal Comando direttamente sul telefono.
+                {balances?.user?.telegramChatId 
+                  ? "✅ Il tuo account è collegato correttamente. Riceverai qui le allerte del Comando."
+                  : "Collega il tuo account Telegram per ricevere le allerte di emergenza dal Comando direttamente sul tuo telefono."
+                }
               </p>
             </div>
           </div>
 
           <div className="flex flex-col items-center gap-3 min-w-[260px]">
-            {telegramCode ? (
-              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 text-center w-full">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-blue-200/70 mb-2">Il tuo codice (valido 15 min)</p>
-                <p className="text-3xl font-black tracking-[.3em] text-white">{telegramCode}</p>
-                <a
-                  href={`https://t.me/Reperibilita_Altamura_bot?start=${telegramCode}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-4 w-full inline-flex items-center justify-center gap-2 bg-white text-blue-700 px-6 py-3 rounded-xl font-black text-sm shadow-lg hover:scale-[1.03] active:scale-[0.97] transition-transform"
-                >
-                  <Send size={16} />
-                  Apri Telegram
-                </a>
+            {balances?.user?.telegramChatId ? (
+              <div className="bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 rounded-2xl px-6 py-4 flex items-center gap-3 text-emerald-100 font-black text-sm">
+                <CheckCircle2 size={20} className="text-emerald-400" />
+                CONNESSO
+              </div>
+            ) : telegramCode ? (
+              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 text-center w-full shadow-2xl">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-blue-200/70 mb-2">Codice (Scade tra 15 min)</p>
+                <p className="text-3xl font-black tracking-[.3em] text-white my-1">{telegramCode}</p>
+                <div className="mt-4 flex flex-col gap-2">
+                   <a
+                    href="https://t.me/Reperibilita_Altamura_bot"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full inline-flex items-center justify-center gap-2 bg-white text-blue-700 px-6 py-3 rounded-xl font-black text-sm shadow-lg hover:scale-[1.03] active:scale-[0.97] transition-transform"
+                  >
+                    🚀 Vai al Bot
+                  </a>
+                  <p className="text-[10px] text-blue-200/60 font-bold uppercase">Invia il comando: <code>/link {telegramCode}</code></p>
+                </div>
               </div>
             ) : (
               <button
@@ -1414,21 +1411,21 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                 onClick={async () => {
                   setTelegramLoading(true)
                   try {
-                    const res = await fetch('/api/telegram/link', { method: 'POST' })
+                    const res = await fetch('/api/telegram/link-code', { method: 'POST' })
                     const data = await res.json()
                     if (!res.ok) throw new Error(data.error)
                     setTelegramCode(data.code)
-                    toast.success('Codice generato! Clicca su Apri Telegram.')
-                  } catch {
-                    toast.error('Errore nella generazione del codice.')
+                    toast.success('Codice generato! Invia /link seguito dal codice al Bot.')
+                  } catch (err: any) {
+                    toast.error(err.message || 'Errore nella generazione del codice.')
                   } finally {
                     setTelegramLoading(false)
                   }
                 }}
-                className="w-full flex items-center justify-center gap-2 bg-white text-blue-700 px-6 py-4 rounded-xl font-black text-sm shadow-lg hover:scale-[1.03] active:scale-[0.97] transition-transform disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-3 bg-white text-blue-700 px-6 py-4 rounded-xl font-black text-sm shadow-xl hover:scale-[1.03] active:scale-[0.97] transition-all disabled:opacity-50"
               >
-                <Send size={18} />
-                {telegramLoading ? 'Generazione...' : 'Genera Codice di Collegamento'}
+                <Smartphone size={20} />
+                {telegramLoading ? 'Generazione...' : 'Inizia Sincronizzazione'}
               </button>
             )}
           </div>

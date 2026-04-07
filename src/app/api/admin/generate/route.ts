@@ -22,7 +22,9 @@ export async function POST(req: Request) {
   try {
     // === SETTINGS ===
     const { year: reqYear, month: reqMonth } = await req.json().catch(() => ({}))
-    const settings = await prisma.globalSettings.findFirst()
+    const tenantId = session.user.tenantId
+    const tf = tenantId ? { tenantId } : {}
+    const settings = await prisma.globalSettings.findFirst({ where: { ...tf } })
     const year = reqYear ? parseInt(reqYear, 10) : (settings?.annoCorrente ?? 2026)
     const month = reqMonth ? parseInt(reqMonth, 10) - 1 : ((settings?.meseCorrente ?? 4) - 1) // JS months are 0-indexed
     const daysInMonth = getDaysInMonth(month, year)
@@ -37,7 +39,7 @@ export async function POST(req: Request) {
 
     // === LOAD AGENTS ===
     const agents = await prisma.user.findMany({
-      where: { role: "AGENTE" },
+      where: { role: "AGENTE", ...tf },
       orderBy: { name: "asc" }
     })
 
@@ -48,6 +50,7 @@ export async function POST(req: Request) {
     // === LOAD BASE SHIFTS (including 1st of next month for 'eve' rules) ===
     const existingShifts = await prisma.shift.findMany({
       where: {
+        ...tf,
         date: {
           gte: new Date(Date.UTC(year, month, 1)),
           lt: new Date(Date.UTC(year, month + 1, 2)) // Fetch til 1st of NEXT month
@@ -448,6 +451,7 @@ export async function POST(req: Request) {
     // === SAVE ===
     await prisma.shift.updateMany({
       where: {
+        ...tf,
         date: { gte: new Date(Date.UTC(year, month, 1)), lt: new Date(Date.UTC(year, month + 1, 1)) }
       },
       data: { repType: null }
@@ -459,9 +463,9 @@ export async function POST(req: Request) {
         if (repResults[agent.id][day]) {
           totalAssignedInSave++
           upsertPromises.push(prisma.shift.upsert({
-            where: { userId_date: { userId: agent.id, date: new Date(Date.UTC(year, month, day)) } },
+            where: { userId_date_tenantId: { userId: agent.id, date: new Date(Date.UTC(year, month, day)), tenantId: tenantId || "" } },
             update: { repType: repResults[agent.id][day] },
-            create: { userId: agent.id, date: new Date(Date.UTC(year, month, day)), type: "", repType: repResults[agent.id][day] }
+            create: { tenantId: tenantId || null, userId: agent.id, date: new Date(Date.UTC(year, month, day)), type: "", repType: repResults[agent.id][day] }
           }))
         }
       }

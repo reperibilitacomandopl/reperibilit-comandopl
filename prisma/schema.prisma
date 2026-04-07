@@ -37,6 +37,8 @@ model Tenant {
   absences          Absence[]
   pecSettings       PecSettings[]
   agentBalances     AgentBalance[]
+  serviceTypes      ServiceType[]
+  notifications     Notification[]
   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -92,6 +94,7 @@ model User {
   updatedAt   DateTime  @updatedAt
   agentRequests AgentRequest[] @relation("AgentRequests")
   agentBalances AgentBalance[] @relation("AgentBalances")
+  notifications Notification[]
 }
 
 model Absence {
@@ -105,7 +108,7 @@ model Absence {
   source    String   @default("MANUAL") // MANUAL o PDF_IMPORT
   createdAt DateTime @default(now())
   
-  @@unique([userId, date])
+  @@unique([userId, date, tenantId])
 }
 
 model Shift {
@@ -136,14 +139,14 @@ model Shift {
   swaps     ShiftSwapRequest[]
   createdAt DateTime @default(now())
   
-  @@unique([userId, date])
+  @@unique([userId, date, tenantId])
 }
 
 model PatrolTemplate {
   id                String   @id @default(uuid())
   tenantId          String?
   tenant            Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name              String   @unique // Es. "Pattuglia Viabilità 1"
+  name              String
   serviceCategoryId String?
   serviceCategory   ServiceCategory? @relation(fields: [serviceCategoryId], references: [id], onDelete: SetNull)
   serviceTypeId     String?
@@ -153,22 +156,28 @@ model PatrolTemplate {
   preferredShift    String?  @default("ALL") // "M", "P", "ALL"
   members           User[]   @relation("PatrolMembers")
   createdAt         DateTime @default(now())
+
+  @@unique([name, tenantId])
 }
 
 model ServiceCategory {
   id        String        @id @default(uuid())
   tenantId  String?
   tenant    Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name      String        @unique // Es. "Pronto Intervento", "Viabilità"
+  name      String        // Es. "Pronto Intervento", "Viabilità"
   orderIndex Int          @default(0)
   types     ServiceType[]
   shifts    Shift[]
   defaultUsers User[] @relation("DefaultCategory")
   patrolTemplates PatrolTemplate[]
+
+  @@unique([name, tenantId])
 }
 
 model ServiceType {
   id          String          @id @default(uuid())
+  tenantId    String?
+  tenant      Tenant?         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   categoryId  String
   category    ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   name        String          // Es. "Piantone", "Centro Storico"
@@ -183,16 +192,18 @@ model Vehicle {
   id        String   @id @default(uuid())
   tenantId  String?
   tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name      String   @unique // Es. "Beta 101 Renault"
+  name      String
   shifts    Shift[]
   patrolTemplates PatrolTemplate[]
+
+  @@unique([name, tenantId])
 }
 
 model RotationGroup {
   id          String   @id @default(uuid())
   tenantId    String?
   tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name        String   @unique // "Turno A", "Turno B"
+  name        String
   pattern     String   // DB-Stored JSON array: '["M","P","RP"...]' of exactly 28 elements ideally
   mStartTime  String   @default("07:00")  // Orario inizio Mattina
   mEndTime    String   @default("13:00")  // Orario fine Mattina
@@ -201,19 +212,21 @@ model RotationGroup {
   startDate   DateTime @default(now())    // Giorno di ancora per il Giorno 1 del ciclo
   users       User[]
   createdAt   DateTime @default(now())
+
+  @@unique([name, tenantId])
 }
 
 
 model GlobalSettings {
-  id               Int      @id @default(autoincrement())
-  tenantId         String?
-  tenant           Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id               Int   @id @default(autoincrement())
+  tenantId         String? @unique
+  tenant           Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   minUfficiali     Int      @default(1)
   usaProporzionale Boolean  @default(true)
   annoCorrente     Int      @default(2026)
   meseCorrente     Int      @default(4)
-  massimaleAgente  Int      @default(5)
-  massimaleUfficiale Int    @default(6)
+  massimaleAgente  Int      @default(8)
+  massimaleUfficiale Int    @default(8)
   distaccoMinimo   Int      @default(2)
   permettiConsecutivi Boolean @default(false)
 }
@@ -226,7 +239,7 @@ model MonthStatus {
   year        Int
   isPublished Boolean  @default(false)
 
-  @@unique([month, year])
+  @@unique([month, year, tenantId])
 }
 
 model AgendaEntry {
@@ -236,18 +249,20 @@ model AgendaEntry {
   userId    String
   user      User     @relation("agendaEntries", fields: [userId], references: [id], onDelete: Cascade)
   date      DateTime
-  code      String   // Es: "0015", "0010", "2000"
-  label     String   // Es: "FERIE ANNO CORRENTE"
-  hours     Float?   // Ore (per permessi orari, straordinari)
-  note      String?  // Note libere
+  code      String
+  label     String
+  hours     Float?
+  note      String?
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@unique([userId, date, code])
+  @@unique([userId, date, code, tenantId])
+  @@index([userId])
 }
 
 model PecSettings {
   id       Int    @id @default(autoincrement())
-  tenantId String?
+  tenantId String? @unique
   tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   host     String @default("")
   port     String @default("465")
@@ -339,7 +354,7 @@ model AgentBalance {
   year              Int
   details           BalanceDetail[]
   
-  @@unique([userId, year])
+  @@unique([userId, year, tenantId])
 }
 
 model BalanceDetail {
@@ -352,4 +367,20 @@ model BalanceDetail {
   unit             String       @default("DAYS") // "DAYS" or "HOURS"
   
   @@unique([balanceId, code])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("INFO") // REQUEST, SUCCESS, ALERT, INFO
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, tenantId])
 }

@@ -15,6 +15,8 @@ import {
   ChevronRight,
   Printer,
   FileText,
+  Menu,
+  X,
 } from "lucide-react"
 
 type NavSection = {
@@ -62,13 +64,41 @@ interface AdminSidebarProps {
 export default function AdminSidebar({ userName, userMatricola, signOutAction }: AdminSidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <aside
-      className={`${
-        collapsed ? "w-[72px]" : "w-[260px]"
-      } h-screen flex flex-col bg-[#0b1120] border-r border-slate-800/60 transition-all duration-300 ease-in-out shrink-0 relative z-30`}
-    >
+    <>
+      {/* Mobile Burger Button */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-3 bg-slate-900 border border-slate-800 text-blue-400 rounded-2xl shadow-2xl"
+        title="Apri menu"
+      >
+        <Menu size={24} />
+      </button>
+
+      {/* Mobile Overlay */}
+      {mobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[60] animate-in fade-in duration-300"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`${
+          collapsed ? "w-[72px]" : "w-[260px]"
+        } h-screen flex flex-col bg-[#0b1120] border-r border-slate-800/60 transition-all duration-300 ease-in-out shrink-0 relative z-[70] 
+        ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+        fixed lg:sticky top-0 left-0`}
+      >
+        {/* Mobile Close Button */}
+        <button
+          onClick={() => setMobileOpen(false)}
+          className="lg:hidden absolute top-4 right-[-50px] p-2 bg-slate-900 border border-slate-800 text-slate-400 rounded-xl"
+        >
+          <X size={20} />
+        </button>
       {/* Header / Brand */}
       <div className="px-4 py-5 border-b border-slate-800/60 flex items-center gap-3 shrink-0">
         <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-lg shadow-blue-500/20 shrink-0">
@@ -191,6 +221,7 @@ export default function AdminSidebar({ userName, userMatricola, signOutAction }:
           </Link>
         </div>
       )}
-    </aside>
+      </aside>
+    </>
   )
 }

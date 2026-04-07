@@ -17,8 +17,12 @@ export async function GET(req: Request) {
     const startDate = new Date(Date.UTC(year, month - 1, 1))
     const endDate = new Date(Date.UTC(year, month, 1))
 
+    const tenantId = session.user.tenantId
+    const tf = tenantId ? { tenantId } : {}
+
     const shifts = await prisma.shift.findMany({
       where: {
+        ...tf,
         date: { gte: startDate, lt: endDate },
         repType: { not: null }
       },

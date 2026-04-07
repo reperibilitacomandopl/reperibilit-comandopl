@@ -12,8 +12,14 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status') || 'PENDING'
 
+    const tenantId = session.user.tenantId
+    const tf = tenantId ? { tenantId } : {}
+
     const requests = await (prisma as any).agentRequest.findMany({
-      where: status !== 'ALL' ? { status } : undefined,
+      where: {
+        ...(status !== 'ALL' ? { status } : {}),
+        ...tf
+      },
       include: {
         user: { select: { name: true, matricola: true } }
       },

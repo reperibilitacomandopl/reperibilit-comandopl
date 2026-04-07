@@ -10,23 +10,26 @@ export async function POST(req: Request) {
   }
 
   try {
+    const tenantId = session.user.tenantId
     const { month, year, isPublished } = await req.json()
     
     const result = await prisma.monthStatus.upsert({
       where: {
-        month_year: { month, year }
+        month_year_tenantId: { month, year, tenantId: tenantId || "" }
       },
       update: {
         isPublished
       },
       create: {
-        month,
-        year,
-        isPublished
+        month: month,
+        year: year,
+        isPublished: isPublished,
+        tenantId: tenantId || null
       }
     })
 
     await logAudit({
+      tenantId: tenantId || null,
       adminId: session.user.id!,
       adminName: session.user.name!,
       action: isPublished ? "PUBLISH_MONTH" : "UNPUBLISH_MONTH",

@@ -90,6 +90,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         })
       ]);
 
+      // --- NOTIFICA PER IL RICHIEDENTE ---
+      try {
+        await (prisma as any).notification.create({
+          data: {
+            tenantId: swapRequest.tenantId,
+            userId: swapRequest.requesterId,
+            title: "Esito Scambio Turno",
+            message: `${session.user.name} ha ACCETTATO la tua proposta di scambio per il ${new Date(originalShift.date).toLocaleDateString("it-IT")}.`,
+            type: "SUCCESS",
+            link: "/?view=agent"
+          }
+        })
+      } catch (notifyError) {
+        console.error("Error notifying requester on swap accept:", notifyError)
+      }
+
       return NextResponse.json({ success: true, status: "ACCEPTED" })
     } else {
       // Se rifiutata, aggiorna solo lo stato
@@ -97,6 +113,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         where: { id },
         data: { status }
       })
+
+      // --- NOTIFICA PER IL RICHIEDENTE ---
+      try {
+        await (prisma as any).notification.create({
+          data: {
+            tenantId: swapRequest.tenantId,
+            userId: swapRequest.requesterId,
+            title: "Esito Scambio Turno",
+            message: `${session.user.name} ha RIFIUTATO la tua proposta di scambio per il ${new Date(swapRequest.shift.date).toLocaleDateString("it-IT")}.`,
+            type: "ALERT",
+            link: "/?view=agent"
+          }
+        })
+      } catch (notifyError) {
+        console.error("Error notifying requester on swap reject:", notifyError)
+      }
+
       return NextResponse.json(updated)
     }
 

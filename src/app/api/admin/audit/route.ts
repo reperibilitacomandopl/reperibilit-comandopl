@@ -9,7 +9,11 @@ export async function GET() {
   }
 
   try {
+    const tenantId = session.user.tenantId
+    const tf = tenantId ? { tenantId } : {}
+
     const logs = await prisma.auditLog.findMany({
+      where: { ...tf },
       orderBy: { createdAt: "desc" },
       take: 100
     })

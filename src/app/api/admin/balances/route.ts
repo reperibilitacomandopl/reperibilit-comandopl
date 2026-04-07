@@ -11,14 +11,17 @@ export async function GET(req: Request) {
   const year = parseInt(searchParams.get("year") || new Date().getFullYear().toString())
 
   try {
+    const tenantId = session.user.tenantId
+    const tf = tenantId ? { tenantId } : {}
+
     const agents = await prisma.user.findMany({
-      where: { role: "AGENTE" },
+      where: { role: "AGENTE", ...tf },
       select: { id: true, name: true, matricola: true },
       orderBy: { name: "asc" }
     })
 
     const balances = await prisma.agentBalance.findMany({
-      where: { year },
+      where: { year, ...tf },
       include: { details: true }
     })
 
@@ -28,14 +31,14 @@ export async function GET(req: Request) {
     
     const shiftsCount = await prisma.shift.groupBy({
       by: ['userId', 'type'],
-      where: { date: { gte: startDate, lte: endDate } },
+      where: { date: { gte: startDate, lte: endDate }, ...tf },
       _count: { _all: true }
     })
 
     // Also check AgendaEntry if used for hours or more granular details
     const agendaSums = await prisma.agendaEntry.groupBy({
       by: ['userId', 'code'],
-      where: { date: { gte: startDate, lte: endDate } },
+      where: { date: { gte: startDate, lte: endDate }, ...tf },
       _sum: { hours: true },
       _count: { _all: true }
     })
@@ -53,19 +56,19 @@ export async function PUT(req: Request) {
 
   try {
     const { year, updates } = await req.json()
-    // updates: { userId, code, label, initialValue, unit }[]
+    const tenantId = session.user.tenantId
 
     for (const update of updates) {
       const { userId, code, label, initialValue, unit } = update
 
       // 1. Get or create the AgentBalance for user/year
       let balance = await prisma.agentBalance.findUnique({
-        where: { userId_year: { userId, year } }
+        where: { userId_year_tenantId: { userId, year, tenantId: tenantId || "" } }
       })
 
       if (!balance) {
         balance = await prisma.agentBalance.create({
-          data: { userId, year }
+          data: { userId, year, tenantId: tenantId || null }
         })
       }
 
@@ -91,10 +94,12 @@ export async function POST(req: Request) {
 
   try {
     const { fromYear, toYear } = await req.json()
+    const tenantId = session.user.tenantId
+    const tf = tenantId ? { tenantId } : {}
     
     // 1. Get all balances of fromYear
     const oldBalances = await prisma.agentBalance.findMany({
-      where: { year: fromYear },
+      where: { year: fromYear, ...tf },
       include: { details: true }
     })
 
@@ -103,7 +108,7 @@ export async function POST(req: Request) {
     const endDate = new Date(Date.UTC(fromYear, 11, 31, 23, 59, 59))
     const shiftsCount = await prisma.shift.groupBy({
       by: ['userId', 'type'],
-      where: { date: { gte: startDate, lte: endDate } },
+      where: { date: { gte: startDate, lte: endDate }, ...tf },
       _count: { _all: true }
     })
 
@@ -119,9 +124,9 @@ export async function POST(req: Request) {
       if (residue > 0) {
         // Create/Update balance for toYear
         let nb = await prisma.agentBalance.findUnique({
-          where: { userId_year: { userId: ob.userId, year: toYear } }
+          where: { userId_year_tenantId: { userId: ob.userId, year: toYear, tenantId: tenantId || "" } }
         })
-        if (!nb) nb = await prisma.agentBalance.create({ data: { userId: ob.userId, year: toYear } })
+        if (!nb) nb = await prisma.agentBalance.create({ data: { userId: ob.userId, year: toYear, tenantId: tenantId || null } })
 
         // Move to 0016 (Ferie Anni Precedenti)
         await prisma.balanceDetail.upsert({

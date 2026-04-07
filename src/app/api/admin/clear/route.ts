@@ -17,10 +17,14 @@ export async function POST(req: Request) {
        return NextResponse.json({ error: "Mese e anno richiesti" }, { status: 400 })
     }
 
+    const tenantId = session.user.tenantId
+    const tf = tenantId ? { tenantId } : {}
+
     const startDate = new Date(Date.UTC(year, month - 1, 1))
     const endDate = new Date(Date.UTC(year, month, 1))
 
     const commonWhere = {
+      ...tf,
       date: { gte: startDate, lt: endDate }
     }
 
@@ -64,13 +68,14 @@ export async function POST(req: Request) {
     // Aggiorna anche lo stato di pubblicazione se stiamo cancellando "tutto"
     if (type === "all") {
       await prisma.monthStatus.upsert({
-        where: { month_year: { month, year } },
+        where: { month_year_tenantId: { month, year, tenantId: tenantId || "" } },
         update: { isPublished: false },
-        create: { month, year, isPublished: false }
+        create: { month, year, isPublished: false, tenantId: tenantId || null }
       })
     }
 
     await logAudit({
+      tenantId: tenantId || null,
       adminId: session.user.id!,
       adminName: session.user.name!,
       action: "CLEAR_MONTH",

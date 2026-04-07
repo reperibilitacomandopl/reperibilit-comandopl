@@ -21,13 +21,16 @@ export async function POST(req: Request) {
     const { agentId, year: reqYear, month: reqMonth } = payload
     if (!agentId) return NextResponse.json({ error: "agentId required" }, { status: 400 })
 
-    const settings = await prisma.globalSettings.findFirst()
+    const tenantId = session.user.tenantId
+    const tf = tenantId ? { tenantId } : {}
+
+    const settings = await prisma.globalSettings.findFirst({ where: { ...tf } })
     const year = reqYear ? parseInt(reqYear, 10) : (settings?.annoCorrente ?? 2026)
     const month = reqMonth ? parseInt(reqMonth, 10) - 1 : ((settings?.meseCorrente ?? 4) - 1)
     const daysInMonth = getDaysInMonth(month, year)
 
-    const agent = await prisma.user.findUnique({ where: { id: agentId } })
-    if (!agent) return NextResponse.json({ error: "Agent not found" }, { status: 404 })
+    const agent = await prisma.user.findFirst({ where: { id: agentId, ...tf } })
+    if (!agent) return NextResponse.json({ error: "Agent not found or unauthorized" }, { status: 404 })
 
     const isUff = agent.isUfficiale
     const baseTargetLimit = isUff ? (settings?.massimaleUfficiale ?? 6) : (settings?.massimaleAgente ?? 5)
@@ -38,6 +41,7 @@ export async function POST(req: Request) {
     const agentShifts = await prisma.shift.findMany({
       where: {
         userId: agentId,
+        ...tf,
         date: { 
           gte: new Date(Date.UTC(year, month, 1)), 
           lt: new Date(Date.UTC(year, month + 1, 2)) 
@@ -74,9 +78,10 @@ export async function POST(req: Request) {
       data: { repType: null }
     })
 
-    // 2. Check how many REPs are already assigned each day (by ALL agents)
+    // 2. Check how many REPs are already assigned each day (by ALL agents of this tenant)
     const allReps = await prisma.shift.findMany({
       where: {
+        ...tf,
         repType: { not: null },
         date: { gte: new Date(Date.UTC(year, month, 1)), lt: new Date(Date.UTC(year, month + 1, 1)) }
       },
@@ -229,10 +234,11 @@ export async function POST(req: Request) {
     const upsertPromises = newAssignments.map(day => 
       prisma.shift.upsert({
         where: {
-          userId_date: { userId: agentId, date: new Date(Date.UTC(year, month, day)) }
+          userId_date_tenantId: { userId: agentId, date: new Date(Date.UTC(year, month, day)), tenantId: tenantId || "" }
         },
         update: { repType: "REP 22-07" },
         create: { 
+          tenantId: tenantId || null,
           userId: agentId, 
           date: new Date(Date.UTC(year, month, day)), 
           type: "", 
