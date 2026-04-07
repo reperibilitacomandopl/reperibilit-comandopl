@@ -8,10 +8,47 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// ======= MULTI-TENANT =======
+model Tenant {
+  id            String   @id @default(uuid())
+  name          String   @unique  // Es. "Comando P.L. Altamura"
+  slug          String   @unique  // Es. "altamura" (per URL)
+  logoUrl       String?            // URL logo del comando
+  address       String?            // Indirizzo sede
+  partitaIva    String?            // P.IVA dell'ente
+  maxAgents     Int      @default(100)  // Limite agenti per il piano
+  planType      String   @default("TRIAL")  // TRIAL, BASIC, PRO
+  trialEndsAt   DateTime?          // Scadenza trial
+  isActive      Boolean  @default(true)
+  
+  users             User[]
+  shifts            Shift[]
+  rotationGroups    RotationGroup[]
+  serviceCategories ServiceCategory[]
+  vehicles          Vehicle[]
+  patrolTemplates   PatrolTemplate[]
+  globalSettings    GlobalSettings[]
+  monthStatuses     MonthStatus[]
+  auditLogs         AuditLog[]
+  emergencyAlerts   EmergencyAlert[]
+  agendaEntries     AgendaEntry[]
+  agentRequests     AgentRequest[]
+  shiftSwapRequests ShiftSwapRequest[]
+  absences          Absence[]
+  pecSettings       PecSettings[]
+  agentBalances     AgentBalance[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
 model User {
   id          String    @id @default(uuid())
+  tenantId    String?
+  tenant      Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   matricola   String    @unique
   name        String
+  isSuperAdmin Boolean  @default(false)
   email       String?   @unique
   phone       String?
   password    String    // Hashed password
@@ -59,6 +96,8 @@ model User {
 
 model Absence {
   id        String   @id @default(uuid())
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date      DateTime
@@ -71,6 +110,8 @@ model Absence {
 
 model Shift {
   id        String   @id @default(uuid())
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date      DateTime
@@ -100,6 +141,8 @@ model Shift {
 
 model PatrolTemplate {
   id                String   @id @default(uuid())
+  tenantId          String?
+  tenant            Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name              String   @unique // Es. "Pattuglia Viabilità 1"
   serviceCategoryId String?
   serviceCategory   ServiceCategory? @relation(fields: [serviceCategoryId], references: [id], onDelete: SetNull)
@@ -114,6 +157,8 @@ model PatrolTemplate {
 
 model ServiceCategory {
   id        String        @id @default(uuid())
+  tenantId  String?
+  tenant    Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name      String        @unique // Es. "Pronto Intervento", "Viabilità"
   orderIndex Int          @default(0)
   types     ServiceType[]
@@ -136,6 +181,8 @@ model ServiceType {
 
 model Vehicle {
   id        String   @id @default(uuid())
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name      String   @unique // Es. "Beta 101 Renault"
   shifts    Shift[]
   patrolTemplates PatrolTemplate[]
@@ -143,6 +190,8 @@ model Vehicle {
 
 model RotationGroup {
   id          String   @id @default(uuid())
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name        String   @unique // "Turno A", "Turno B"
   pattern     String   // DB-Stored JSON array: '["M","P","RP"...]' of exactly 28 elements ideally
   mStartTime  String   @default("07:00")  // Orario inizio Mattina
@@ -156,7 +205,9 @@ model RotationGroup {
 
 
 model GlobalSettings {
-  id               Int      @id @default(1)
+  id               Int      @id @default(autoincrement())
+  tenantId         String?
+  tenant           Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   minUfficiali     Int      @default(1)
   usaProporzionale Boolean  @default(true)
   annoCorrente     Int      @default(2026)
@@ -169,6 +220,8 @@ model GlobalSettings {
 
 model MonthStatus {
   id          String   @id @default(uuid())
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   month       Int
   year        Int
   isPublished Boolean  @default(false)
@@ -178,6 +231,8 @@ model MonthStatus {
 
 model AgendaEntry {
   id        String   @id @default(uuid())
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation("agendaEntries", fields: [userId], references: [id], onDelete: Cascade)
   date      DateTime
@@ -191,7 +246,9 @@ model AgendaEntry {
 }
 
 model PecSettings {
-  id       Int    @id @default(1)
+  id       Int    @id @default(autoincrement())
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   host     String @default("")
   port     String @default("465")
   user     String @default("")
@@ -201,6 +258,8 @@ model PecSettings {
 
 model AuditLog {
   id        String   @id @default(uuid())
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   adminId   String
   adminName String?
   action    String   // e.g. "UPDATE_SHIFT", "RESET_PASSWORD", "DELETE_AGENT"
@@ -212,6 +271,8 @@ model AuditLog {
 
 model EmergencyAlert {
   id          String   @id @default(uuid())
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   adminId     String
   admin       User     @relation("AdminAlerts", fields: [adminId], references: [id])
   date        DateTime @default(now())
@@ -232,6 +293,8 @@ model AlertRecipient {
 
 model ShiftSwapRequest {
   id              String   @id @default(uuid())
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   requesterId     String
   requester       User     @relation("SentSwaps", fields: [requesterId], references: [id])
   targetUserId    String
@@ -248,6 +311,8 @@ model ShiftSwapRequest {
 
 model AgentRequest {
   id          String    @id @default(uuid())
+  tenantId    String?
+  tenant      Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userId      String
   user        User      @relation("AgentRequests", fields: [userId], references: [id], onDelete: Cascade)
   date        DateTime
@@ -267,6 +332,8 @@ model AgentRequest {
 
 model AgentBalance {
   id                String @id @default(uuid())
+  tenantId          String?
+  tenant            Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userId            String
   user              User   @relation("AgentBalances", fields: [userId], references: [id], onDelete: Cascade)
   year              Int

@@ -8,6 +8,8 @@ declare module "next-auth" {
       role: string;
       matricola: string;
       forcePasswordChange: boolean;
+      tenantId: string;
+      isSuperAdmin: boolean;
     } & DefaultSession["user"]
   }
 
@@ -15,6 +17,8 @@ declare module "next-auth" {
     role: string;
     matricola: string;
     forcePasswordChange: boolean;
+    tenantId?: string;
+    isSuperAdmin?: boolean;
   }
 }
 
@@ -23,5 +27,7 @@ declare module "next-auth/jwt" {
     role?: string;
     matricola?: string;
     forcePasswordChange?: boolean;
+    tenantId?: string;
+    isSuperAdmin?: boolean;
   }
 }
