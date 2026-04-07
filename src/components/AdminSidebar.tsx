@@ -19,6 +19,7 @@ import {
   X,
   Car,
   ArrowLeftRight,
+  Clock,
 } from "lucide-react"
 
 type NavSection = {
@@ -46,6 +47,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Anagrafica & Squadre", href: "/admin/risorse", icon: Users, description: "Gestione Agenti e Composizione Ufficio" },
       { label: "Richieste Agenti", href: "/admin/richieste", icon: FileText, description: "Inbox Ferie e Permessi" },
+      { label: "Timbrature GPS", href: "/admin/timbrature", icon: Clock, description: "Registro Ingressi e Uscite" },
     ],
   },
   {

@@ -21,6 +21,11 @@ model Tenant {
   trialEndsAt   DateTime?          // Scadenza trial
   isActive      Boolean  @default(true)
   
+  // Campi per Geofencing Timbrature
+  lat           Float?             // Latitudine sede Comando
+  lng           Float?             // Longitudine sede Comando
+  clockInRadius Int      @default(500) // Raggio in metri per la validità della timbratura
+  
   users             User[]
   shifts            Shift[]
   rotationGroups    RotationGroup[]
@@ -28,6 +33,7 @@ model Tenant {
   vehicles          Vehicle[]
   patrolTemplates   PatrolTemplate[]
   globalSettings    GlobalSettings[]
+  clockRecords      ClockRecord[]
   monthStatuses     MonthStatus[]
   auditLogs         AuditLog[]
   emergencyAlerts   EmergencyAlert[]
@@ -95,6 +101,7 @@ model User {
   agentRequests AgentRequest[] @relation("AgentRequests")
   agentBalances AgentBalance[] @relation("AgentBalances")
   notifications Notification[]
+  clockRecords  ClockRecord[]
 }
 
 model Absence {
@@ -391,4 +398,20 @@ model Notification {
   createdAt DateTime @default(now())
 
   @@index([userId, tenantId])
+}
+
+model ClockRecord {
+  id        String   @id @default(uuid())
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timestamp DateTime @default(now())
+  type      String   // "IN" o "OUT"
+  lat       Float?
+  lng       Float?
+  accuracy  Float?
+  isVerified Boolean @default(true)
+
+  @@index([userId, tenantId, timestamp])
 }

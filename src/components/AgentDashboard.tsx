@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import toast from "react-hot-toast"
-import { CalendarDays, AlertCircle, FileDown, Clock, ShieldCheck, Plus, ChevronLeft, ChevronRight, ListChecks, X, Smartphone, Monitor, Globe, Trash2, Search, BookOpen, Send, Phone, RefreshCw, ChevronDown, CheckCircle2, Car, MapPin, Users } from "lucide-react"
+import { CalendarDays, AlertCircle, FileDown, Clock, ShieldCheck, Plus, ChevronLeft, ChevronRight, ListChecks, X, Smartphone, Monitor, Globe, Trash2, Search, BookOpen, Send, Phone, RefreshCw, ChevronDown, CheckCircle2, Car, MapPin, Users, ArrowRightLeft } from "lucide-react"
 import { isHoliday } from "@/utils/holidays"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -169,6 +169,11 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   
   // Balances
   const [balances, setBalances] = useState<any>(null)
+  
+  // Clock-in / GPS State
+  const [isClockedIn, setIsClockedIn] = useState<'IN' | 'OUT' | null>(null)
+  const [clockLoading, setClockLoading] = useState(false)
+  const [lastClockTime, setLastClockTime] = useState<string | null>(null)
 
   const myShifts = shifts.filter(s => s.userId === currentUser.id)
 
@@ -214,6 +219,20 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
     fetchDutyTeam()
     fetchSwaps()
     fetchBalances()
+    
+    // Fetch Last Clock-in Status
+    fetch('/api/admin/clock-in').then(res => res.json()).then(data => {
+      if (data.records && data.records.length > 0) {
+        const last = data.records[0]
+        // Se l'ultima timbratura è di oggi, impostiamo lo stato
+        const today = new Date().toDateString()
+        if (new Date(last.timestamp).toDateString() === today) {
+          setIsClockedIn(last.type)
+          setLastClockTime(new Date(last.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+        }
+      }
+    }).catch(()=>{})
+
     fetch('/api/my-ods').then(res => res.json()).then(data => {
       if(data.success && data.shift && (data.shift.timeRange || data.shift.serviceCategoryId)) {
         setMyOds({ shift: data.shift, partners: data.partners })
@@ -314,6 +333,51 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
     }
     setAgendaSaving(false)
   }
+
+  const handleClockAction = (type: 'IN' | 'OUT') => {
+    if (!navigator.geolocation) {
+      return toast.error("Il tuo browser non supporta la geolocalizzazione.")
+    }
+
+    setClockLoading(true)
+    const toastId = toast.loading(`${type === 'IN' ? 'Entrata' : 'Uscita'} in corso...`)
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const res = await fetch('/api/admin/clock-in', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type,
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+              accuracy: pos.coords.accuracy
+            })
+          })
+
+          const data = await res.json()
+          if (!res.ok) {
+            throw new Error(data.error || "Errore durante la timbratura.")
+          }
+
+          setIsClockedIn(type)
+          setLastClockTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+          toast.success(`Timbratura ${type === 'IN' ? 'Entrata' : 'Uscita'} registrata!`, { id: toastId })
+        } catch (err: any) {
+          toast.error(err.message, { id: toastId })
+        } finally {
+          setClockLoading(false)
+        }
+      },
+      (err) => {
+        setClockLoading(false)
+        toast.error("Impossibile ottenere la posizione. Verifica i permessi GPS.", { id: toastId })
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    )
+  }
+
 
   const handleDeleteAgenda = async (id: string) => {
     if (!confirm('Eliminare questa voce dall\'agenda?')) return
@@ -575,7 +639,55 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter leading-tight mb-2">
               Ciao, {currentUser.name.split(" ")[0]}! 👋
             </h2>
-            <div className="flex items-center gap-2 mb-4">
+            
+            {/* Widget Timbratura GPS */}
+            <div className="mt-6 flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-3 bg-white/10 backdrop-blur-xl border border-white/20 p-4 rounded-3xl shadow-xl">
+                <div className={`p-3 rounded-2xl ${isClockedIn === 'IN' ? 'bg-emerald-500 shadow-lg shadow-emerald-500/40' : 'bg-slate-800'}`}>
+                  <Clock size={24} className={isClockedIn === 'IN' ? 'text-white' : 'text-slate-400'} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50 mb-1">Status Servizio</p>
+                  <p className="text-sm font-black text-white uppercase">
+                    {isClockedIn === 'IN' ? `In Servizio (Dalle ${lastClockTime})` : 'Fuori Servizio'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  disabled={clockLoading || isClockedIn === 'IN'}
+                  onClick={() => handleClockAction('IN')}
+                  className={`flex items-center gap-2 px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+                    isClockedIn === 'IN'
+                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'
+                      : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl shadow-emerald-500/30 active:scale-95'
+                  }`}
+                >
+                  {clockLoading && isClockedIn !== 'OUT' ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : <MapPin size={16} />}
+                  Entra
+                </button>
+
+                <button
+                  disabled={clockLoading || isClockedIn !== 'IN'}
+                  onClick={() => handleClockAction('OUT')}
+                  className={`flex items-center gap-2 px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+                    isClockedIn !== 'IN'
+                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'
+                      : 'bg-rose-500 hover:bg-rose-600 text-white shadow-xl shadow-rose-500/30 active:scale-95'
+                  }`}
+                >
+                  {clockLoading && isClockedIn === 'IN' ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : <ArrowRightLeft size={16} />}
+                  Esci
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 mt-8">
               <div className="flex items-center bg-white/10 backdrop-blur-md rounded-2xl p-1 border border-white/10">
                 <Link 
                   href={`/?month=${prevMonth}&year=${prevYear}${currentView ? `&view=${currentView}` : ''}`} 
