@@ -27,30 +27,38 @@ type NavSection = {
 
 const NAV_SECTIONS: NavSection[] = [
   {
-    title: "Operatività",
+    title: "Centro Operativo",
     accent: "text-blue-400",
     items: [
-      { label: "Pannello Comando", href: "/admin/pannello", icon: LayoutDashboard, description: "Overview e KPI" },
-      { label: "Pianificazione Mensile", href: "/admin/pianificazione", icon: CalendarDays, description: "Griglia Turni & Reperibilità" },
-      { label: "Richieste Agenti", href: "/admin/richieste", icon: FileText, description: "Inbox Ferie e Permessi" },
-      { label: "Ordine di Servizio", href: "/admin/ods", icon: FileText, description: "Assegnazione Giornaliera" },
-      { label: "Stampa OdS", href: "/admin/stampa-ods", icon: Printer, description: "Anteprima e Stampa PDF" },
-    ],
-  },
-  {
-    title: "Setup & Risorse",
-    accent: "text-emerald-400",
-    items: [
-      { label: "Ufficio Comando", href: "/admin/risorse", icon: Users, description: "Agenti, Squadre e Logistica" },
-      { label: "Sezioni & Servizi", href: "/admin/sezioni", icon: Users, description: "Servizi OdS di Default" },
+      { label: "Overview & KPI", href: "/admin/pannello", icon: LayoutDashboard, description: "Pannello di controllo globale" },
+      { label: "Pianificazione Mensile", href: "/admin/pianificazione", icon: CalendarDays, description: "Griglia Turni e Reperibilità" },
+      { label: "Ordine di Servizio", href: "/admin/ods", icon: FileText, description: "Gestione Assegnazioni Giornaliere" },
+      { label: "Stampa O.d.S.", href: "/admin/stampa-ods", icon: Printer, description: "Anteprima e Stampa PDF" },
       { label: "Generatore Ciclico", href: "/admin/auto-compila", icon: Wand2, description: "Auto-Compilazione Turni" },
     ],
   },
   {
-    title: "Sistema",
+    title: "Risorse Umane",
+    accent: "text-emerald-400",
+    items: [
+      { label: "Anagrafica & Squadre", href: "/admin/risorse", icon: Users, description: "Gestione Agenti e Composizione Ufficio" },
+      { label: "Richieste Agenti", href: "/admin/richieste", icon: FileText, description: "Inbox Ferie e Permessi" },
+    ],
+  },
+  {
+    title: "Logistica & Mezzi",
     accent: "text-amber-400",
     items: [
-      { label: "Impostazioni", href: "/admin/impostazioni", icon: Settings, description: "Config, Audit & Export" },
+      { label: "Setup Caserma", href: "/admin/sezioni", icon: Shield, description: "Configurazione Sezioni e Servizi" },
+      { label: "Parco Auto", href: "/admin/parco-auto", icon: Shield, description: "Gestione Veicoli e Scadenze" },
+    ],
+  },
+  {
+    title: "Amministrazione",
+    accent: "text-purple-400",
+    items: [
+      { label: "Configurazione & Audit", href: "/admin/impostazioni", icon: Settings, description: "Saldi Ore, Impostazioni, Log di Sistema" },
+      { label: "Export Ragioneria", href: "/admin/export-paghe", icon: FileText, description: "Report Excel Indennità e Paghe" },
     ],
   },
 ]

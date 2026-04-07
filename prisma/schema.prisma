@@ -189,12 +189,17 @@ model ServiceType {
 }
 
 model Vehicle {
-  id        String   @id @default(uuid())
-  tenantId  String?
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name      String
-  shifts    Shift[]
-  patrolTemplates PatrolTemplate[]
+  id                    String   @id @default(uuid())
+  tenantId              String?
+  tenant                Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name                  String   // "Alfa 1", "Punto"
+  targa                 String?  // Targa Es: "EA123BC"
+  scadenzaAssicurazione DateTime?
+  scadenzaBollo         DateTime?
+  scadenzaRevisione     DateTime?
+  stato                 String   @default("ATTIVO") // ATTIVO, MANUTENZIONE, DISMESSO
+  shifts                Shift[]
+  patrolTemplates       PatrolTemplate[]
 
   @@unique([name, tenantId])
 }
