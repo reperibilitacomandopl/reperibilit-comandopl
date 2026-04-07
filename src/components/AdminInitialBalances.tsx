@@ -295,7 +295,10 @@ export default function AdminInitialBalances({ allAgents, currentYear, onClose }
                       const initial = grid[selectedAgent.id]?.[item.code] || 0
                       const original = originalGrid[selectedAgent.id]?.[item.code] || 0
                       const used = calculateUsed(selectedAgent.id, item.code)
-                      const remaining = initial - used
+                      const earnedOvertime = item.code === "0009" && usage?.overtimeSums 
+                        ? usage.overtimeSums.find((s: any) => s.userId === selectedAgent.id)?._sum.overtimeHours || 0 
+                        : 0
+                      const remaining = initial + earnedOvertime - used
                       const isChanged = initial !== original
 
                       return (
@@ -311,6 +314,13 @@ export default function AdminInitialBalances({ allAgents, currentYear, onClose }
                             
                             {/* Stats */}
                             <div className="hidden lg:flex items-center gap-2 shrink-0">
+                               {item.code === "0009" && (
+                                 <div className="flex flex-col items-center justify-center w-[85px] py-1.5 bg-blue-50 rounded-xl border border-blue-100/50">
+                                    <span className="text-[8px] text-blue-800 font-bold uppercase tracking-widest leading-none mb-1">Eseguito</span>
+                                    <span className="text-sm font-black text-blue-600 leading-none">+{earnedOvertime}</span>
+                                 </div>
+                               )}
+                               
                                <div className="flex flex-col items-center justify-center w-[85px] py-1.5 bg-rose-50 rounded-xl border border-rose-100/50">
                                   <span className="text-[8px] text-rose-800 font-bold uppercase tracking-widest leading-none mb-1">Usato</span>
                                   <span className="text-sm font-black text-rose-600 leading-none">{used}</span>
@@ -324,6 +334,7 @@ export default function AdminInitialBalances({ allAgents, currentYear, onClose }
 
                             {/* Mobile Stats (Only visible below LG breakpoint) */}
                             <div className="lg:hidden flex flex-col items-end justify-center shrink-0 pr-2">
+                               {item.code === "0009" && <span className="text-[10px] font-bold text-blue-600">O.d.S: +{earnedOvertime}</span>}
                                <span className="text-[10px] font-bold text-rose-600">Usati: {used}</span>
                                <span className={`text-[10px] font-bold ${remaining < 0 ? 'text-red-600' : remaining === 0 ? 'text-slate-400' : 'text-emerald-600'}`}>Res.: {remaining}</span>
                             </div>

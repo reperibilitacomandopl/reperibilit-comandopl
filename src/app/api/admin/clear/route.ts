@@ -18,7 +18,10 @@ export async function POST(req: Request) {
     }
 
     const tenantId = session.user.tenantId
-    const tf = tenantId ? { tenantId } : {}
+    if (!tenantId) {
+       return NextResponse.json({ error: "Fail-Safe: Impossibile cancellare i dati senza aver prima selezionato un comando specifico." }, { status: 400 })
+    }
+    const tf = { tenantId }
 
     const startDate = new Date(Date.UTC(year, month - 1, 1))
     const endDate = new Date(Date.UTC(year, month, 1))

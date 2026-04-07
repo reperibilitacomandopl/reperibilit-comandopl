@@ -2,6 +2,25 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
+function calculateDurationAndOvertime(timeRange: string | null): { durationHours: number | null, overtimeHours: number | null } {
+  if (!timeRange) return { durationHours: null, overtimeHours: null }
+  const match = timeRange.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/)
+  if (!match) return { durationHours: null, overtimeHours: null }
+  
+  const [_, h1, m1, h2, m2] = match
+  let startMinutes = parseInt(h1, 10) * 60 + parseInt(m1, 10)
+  let endMinutes = parseInt(h2, 10) * 60 + parseInt(m2, 10)
+  
+  if (endMinutes < startMinutes) {
+    endMinutes += 24 * 60 // Spostamento al giorno successivo (scavalcamento mezzanotte)
+  }
+  
+  const durationHours = (endMinutes - startMinutes) / 60
+  const overtimeHours = Math.max(0, durationHours - 6) // Assumiamo 6 ore come turno base standard
+  
+  return { durationHours, overtimeHours }
+}
+
 export async function GET(req: Request) {
   const session = await auth()
   if (session?.user?.role !== "ADMIN") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -55,6 +74,12 @@ export async function PUT(req: Request) {
     // updates is an array of { id: shiftId, serviceCategoryId, serviceTypeId, vehicleId, timeRange, patrolGroupId, serviceDetails }
 
     for (const update of updates) {
+      let durationUpdate = {}
+      if (update.timeRange !== undefined) {
+        const { durationHours, overtimeHours } = calculateDurationAndOvertime(update.timeRange)
+        durationUpdate = { durationHours, overtimeHours }
+      }
+
       await prisma.shift.update({
         where: { id: update.id },
         data: {
@@ -64,6 +89,7 @@ export async function PUT(req: Request) {
           timeRange: update.timeRange !== undefined ? update.timeRange : undefined,
           patrolGroupId: update.patrolGroupId !== undefined ? update.patrolGroupId : undefined,
           serviceDetails: update.serviceDetails !== undefined ? update.serviceDetails : undefined,
+          ...durationUpdate
         }
       })
     }

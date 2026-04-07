@@ -43,7 +43,13 @@ export async function GET(req: Request) {
       _count: { _all: true }
     })
 
-    return NextResponse.json({ agents, balances, usage: { shiftsCount, agendaSums } })
+    const overtimeSums = await prisma.shift.groupBy({
+      by: ['userId'],
+      where: { date: { gte: startDate, lte: endDate }, overtimeHours: { gt: 0 }, ...tf },
+      _sum: { overtimeHours: true }
+    })
+
+    return NextResponse.json({ agents, balances, usage: { shiftsCount, agendaSums, overtimeSums } })
   } catch (error) {
     console.error("[BALANCES GET]", error)
     return NextResponse.json({ error: "Errore caricamento saldi" }, { status: 500 })

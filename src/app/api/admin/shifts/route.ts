@@ -22,9 +22,12 @@ export async function POST(req: Request) {
     }
 
     const tenantId = session.user.tenantId
+    if (!tenantId) {
+      return NextResponse.json({ error: "Fail-Safe: Impossibile importare turni senza un comando specifico attivo." }, { status: 400 })
+    }
 
     // 2. Load all existing users for mapping
-    const existingUsers = await prisma.user.findMany({ where: tenantId ? { tenantId } : {} })
+    const existingUsers = await prisma.user.findMany({ where: { tenantId } })
     const userByMatricola = new Map(existingUsers.map(u => [u.matricola, u.id]))
     const userByName = new Map(existingUsers.map(u => [u.name.toUpperCase(), u.id]))
 
