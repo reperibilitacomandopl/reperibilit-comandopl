@@ -89,6 +89,9 @@ model Shift {
   serviceDetails    String?  // Dettagli addizionali testuali
   patrolGroupId     String?  // Per raggruppare visivamente 2 o più agenti sulla stessa riga (Pattuglia Formata)
 
+  durationHours     Float    @default(6)
+  overtimeHours     Float    @default(0)
+
   swaps     ShiftSwapRequest[]
   createdAt DateTime @default(now())
   
@@ -249,7 +252,10 @@ model AgentRequest {
   user        User      @relation("AgentRequests", fields: [userId], references: [id], onDelete: Cascade)
   date        DateTime
   endDate     DateTime?
-  code        String    // F, M, 104, ecc.
+  startTime   String?   // Es. "10:00"
+  endTime     String?   // Es. "12:00"
+  hours       Float?    // Es. 2
+  code        String    // F, M, 104, PERMESSO_BREVE, ecc.
   notes       String?   // optional note from agent
   status      String    @default("PENDING") // PENDING, APPROVED, REJECTED
   reviewedBy  String?   // Admin Name

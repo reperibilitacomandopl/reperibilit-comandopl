@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Settings, Users, Shield, Mail, Plus, Trash2, X, Save, Eye, EyeOff, ChevronDown, AlertCircle, Loader2, BarChart3, Layers } from "lucide-react"
+import { Settings, Users, Shield, Mail, Plus, Trash2, X, Save, Eye, EyeOff, ChevronDown, AlertCircle, Loader2, BarChart3, Layers, Hash } from "lucide-react"
 import StatisticsDashboard from "./StatisticsDashboard"
 import ServicesSettings from "./ServicesSettings"
+import AdminInitialBalances from "./AdminInitialBalances"
 
 type Agent = {
   id: string; name: string; matricola: string; isUfficiale: boolean;
@@ -21,16 +22,16 @@ type SettingsData = {
   permettiConsecutivi: boolean;
 }
 
-type TabType = "algorithm" | "pec" | "stats"
+type TabType = "algorithm" | "pec" | "stats" | "balances"
 
 type PecConfig = {
   host: string; port: string; user: string; pass: string; from: string
 }
 
-export default function SettingsPanel({ onClose, embedded }: { onClose: () => void; embedded?: boolean }) {
+export default function SettingsPanel({ onClose, embedded, initialTab = "algorithm" }: { onClose: () => void; embedded?: boolean, initialTab?: TabType }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<TabType>("algorithm")
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab)
   const [settings, setSettings] = useState<SettingsData>({ 
     minUfficiali: 1, 
     usaProporzionale: true, 
@@ -101,7 +102,7 @@ export default function SettingsPanel({ onClose, embedded }: { onClose: () => vo
   }
 
   const innerContent = (
-      <div className={`bg-white ${embedded ? 'rounded-2xl' : 'rounded-3xl shadow-2xl'} w-full ${embedded ? '' : 'max-w-4xl max-h-[90vh]'} overflow-hidden flex flex-col`} onClick={e => e.stopPropagation()}
+      <div className={`bg-white ${embedded ? 'rounded-2xl' : 'rounded-3xl shadow-2xl'} w-full ${embedded ? '' : 'max-w-7xl w-[95vw] max-h-[95vh]'} overflow-hidden flex flex-col`} onClick={e => e.stopPropagation()}
         style={embedded ? undefined : { animation: 'fadeInUp 0.3s ease-out' }}
       >
         {/* Header */}
@@ -159,6 +160,15 @@ export default function SettingsPanel({ onClose, embedded }: { onClose: () => vo
             >
               <BarChart3 size={18} />
               Statistiche
+            </button>
+            <button
+              onClick={() => setActiveTab("balances")}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                activeTab === "balances" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <Hash size={18} />
+              Saldi Annuali
             </button>
           </div>
         </div>
@@ -385,33 +395,40 @@ export default function SettingsPanel({ onClose, embedded }: { onClose: () => vo
               {activeTab === "stats" && (
                 <StatisticsDashboard month={settings.meseCorrente} year={settings.annoCorrente} />
               )}
+
+              {/* TAB: BALANCES */}
+              {activeTab === "balances" && (
+                <AdminInitialBalances allAgents={agents} currentYear={settings.annoCorrente} />
+              )}
             </>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 rounded-b-3xl">
-          {activeTab !== "stats" ? (
-            <>
-              <button onClick={fetchData} className="px-6 py-2.5 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-100 transition-colors">
-                Annulla
-              </button>
-              <button
-                onClick={activeTab === "pec" ? savePec : saveSettings}
-                disabled={saving}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-100 transition-all scale-100 active:scale-95"
-              >
-                {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                Salva Modifiche
-              </button>
-            </>
-          ) : (
-            <div className="flex items-center gap-2 text-xs text-slate-400 font-medium bg-slate-100/50 px-4 py-2 rounded-full">
-              <BarChart3 size={14} />
-              Statistiche aggiornate in tempo reale
-            </div>
-          )}
-        </div>
+        {activeTab !== "balances" && (
+          <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 rounded-b-3xl">
+            {activeTab !== "stats" ? (
+              <>
+                <button onClick={fetchData} className="px-6 py-2.5 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-100 transition-colors">
+                  Annulla
+                </button>
+                <button
+                  onClick={activeTab === "pec" ? savePec : saveSettings}
+                  disabled={saving}
+                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-100 transition-all scale-100 active:scale-95"
+                >
+                  {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                  Salva Modifiche
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-2 text-xs text-slate-400 font-medium bg-slate-100/50 px-4 py-2 rounded-full">
+                <BarChart3 size={14} />
+                Statistiche aggiornate in tempo reale
+              </div>
+            )}
+          </div>
+        )}
       </div>
   )
 

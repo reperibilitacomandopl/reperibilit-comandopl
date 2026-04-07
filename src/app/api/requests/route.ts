@@ -11,13 +11,13 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json()
-    const { date, endDate, code, notes } = body
+    const { date, endDate, code, notes, startTime, endTime, hours } = body
 
     if (!date || !code) {
       return NextResponse.json({ error: "Data e causale obbligatori" }, { status: 400 })
     }
 
-    // Check if a request for this exact date already exists to prevent spam
+    // Check if a request for this exact date already exists to prevent spam (allow multiple if it's hours on same day maybe? No, let's just use existing logic but checking only full days? Actually, let's keep the spam check simple)
     const existing = await (prisma as any).agentRequest.findFirst({
       where: {
         userId: session.user.id,
@@ -35,6 +35,9 @@ export async function POST(req: Request) {
         userId: session.user.id,
         date: new Date(date),
         endDate: endDate ? new Date(endDate) : null,
+        startTime: startTime || null,
+        endTime: endTime || null,
+        hours: hours ? parseFloat(hours) : null,
         code,
         notes,
         status: "PENDING"

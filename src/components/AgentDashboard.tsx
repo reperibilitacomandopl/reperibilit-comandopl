@@ -154,6 +154,10 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   const [reqEndDate, setReqEndDate] = useState('')
   const [reqCode, setReqCode] = useState('')
   const [reqNotes, setReqNotes] = useState('')
+  const [reqStartTime, setReqStartTime] = useState('')
+  const [reqEndTime, setReqEndTime] = useState('')
+  const [reqHours, setReqHours] = useState('')
+  const [isHourlyRequest, setIsHourlyRequest] = useState(false)
   const [reqLoading, setReqLoading] = useState(false)
   const [selectedShiftForSwap, setSelectedShiftForSwap] = useState<any>(null)
   const [targetColleagueId, setTargetColleagueId] = useState('')
@@ -1824,6 +1828,38 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                       <ChevronDown size={16} className="absolute top-1/2 right-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     </div>
                   </div>
+
+                  {/* Toggle Richiesta Oraria */}
+                  <div className="flex items-center gap-2 px-1">
+                    <input 
+                      type="checkbox" 
+                      id="hourlyReqToggle" 
+                      checked={isHourlyRequest} 
+                      onChange={(e) => setIsHourlyRequest(e.target.checked)}
+                      className="w-4 h-4 text-amber-500 rounded focus:ring-amber-500 border-slate-300"
+                    />
+                    <label htmlFor="hourlyReqToggle" className="text-sm font-bold text-slate-700 cursor-pointer">
+                      Richiesta a ore (Permesso orario)
+                    </label>
+                  </div>
+
+                  {isHourlyRequest && (
+                    <div className="grid grid-cols-3 gap-2 bg-amber-50 border border-amber-100 p-3 rounded-xl animate-in slide-in-from-top-2">
+                       <div>
+                         <label className="block text-[9px] font-black text-amber-700 uppercase tracking-widest mb-1.5">Inizio</label>
+                         <input type="time" value={reqStartTime} onChange={e => setReqStartTime(e.target.value)} className="w-full bg-white border border-amber-200 rounded-lg px-2 py-2 text-sm font-bold text-slate-800 focus:border-amber-500 outline-none" />
+                       </div>
+                       <div>
+                         <label className="block text-[9px] font-black text-amber-700 uppercase tracking-widest mb-1.5">Fine</label>
+                         <input type="time" value={reqEndTime} onChange={e => setReqEndTime(e.target.value)} className="w-full bg-white border border-amber-200 rounded-lg px-2 py-2 text-sm font-bold text-slate-800 focus:border-amber-500 outline-none" />
+                       </div>
+                       <div>
+                         <label className="block text-[9px] font-black text-amber-700 uppercase tracking-widest mb-1.5">Tot. Ore</label>
+                         <input type="number" step="0.5" min="0" max="24" value={reqHours} onChange={e => setReqHours(e.target.value)} placeholder="0" className="w-full bg-white border border-amber-200 rounded-lg px-2 py-2 text-sm font-bold text-slate-800 focus:border-amber-500 outline-none" />
+                       </div>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Note / Messaggio</label>
                     <textarea value={reqNotes} onChange={e => setReqNotes(e.target.value)} rows={2} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 transition-all outline-none resize-none" placeholder="Motivo o riferimenti..."></textarea>
@@ -1843,13 +1879,22 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                            const res = await fetch("/api/requests", {
                              method: "POST",
                              headers: { "Content-Type": "application/json" },
-                             body: JSON.stringify({ date: reqDate, endDate: reqEndDate || null, code: reqCode, notes: reqNotes })
+                             body: JSON.stringify({ 
+                               date: reqDate, 
+                               endDate: reqEndDate || null, 
+                               code: reqCode, 
+                               notes: reqNotes,
+                               startTime: isHourlyRequest ? reqStartTime : null,
+                               endTime: isHourlyRequest ? reqEndTime : null,
+                               hours: isHourlyRequest ? reqHours : null
+                             })
                            })
                            const data = await res.json()
                            if (!res.ok) throw new Error(data.error || "Errore")
                            toast.success("✅ Richiesta inviata!");
                            setShowAbsenceModal(false);
                            setReqDate(''); setReqEndDate(''); setReqCode(''); setReqNotes('');
+                           setReqStartTime(''); setReqEndTime(''); setReqHours(''); setIsHourlyRequest(false);
                         } catch (err: any) {
                            toast.error(err.message)
                         } finally {

@@ -2,7 +2,7 @@
 
 import toast from "react-hot-toast"
 import { useState, useRef, useMemo } from "react"
-import { Calendar as CalendarIcon, UploadCloud, Users, ChevronLeft, ChevronRight, Settings, FileDown, LogOut, CheckCircle2, RefreshCw, X, FileEdit, Trash2, Shield, AlertCircle, HelpCircle, EyeOff, Eye, Mail, Play, Plus, ClipboardList, Printer, Hash, Phone, Award, Calendar, FileText, MapPin, Briefcase } from "lucide-react"
+import { Calendar as CalendarIcon, UploadCloud, Users, ChevronLeft, ChevronRight, Settings, FileDown, LogOut, CheckCircle2, RefreshCw, X, FileEdit, Trash2, Shield, AlertCircle, HelpCircle, EyeOff, Eye, Mail, Play, Plus, ClipboardList, Printer, Hash, Phone, Award, Calendar, FileText, MapPin, Briefcase, Save } from "lucide-react"
 import SettingsPanel from "./SettingsPanel"
 import ServiceManagerPanel from "./ServiceManagerPanel"
 import ServiceOrderDashboard from "./ServiceOrderDashboard"
@@ -46,8 +46,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
   const [isSavingCell, setIsSavingCell] = useState(false)
   const [recalcAgent, setRecalcAgent] = useState<string | null>(null)
   const [showAnagrafica, setShowAnagrafica] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
-  const [editingAgent, setEditingAgent] = useState<string | null>(null)
+  const [showSettings, setShowSettings] = useState<boolean | string>(false)
+  const [editingAgent, setEditingAgent] = useState<any | null>(null)
   const [tempEmail, setTempEmail] = useState("")
   const [tempPhone, setTempPhone] = useState("")
   const [tempName, setTempName] = useState("")
@@ -71,6 +71,9 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
   const [anagSquadraFilter, setAnagSquadraFilter] = useState("ALL")
   const [anagQualificaFilter, setAnagQualificaFilter] = useState("ALL")
   const [selectedAgentForDetails, setSelectedAgentForDetails] = useState<any | null>(null)
+  const [activeDetailTab, setActiveDetailTab] = useState<"ANAGRAFICA" | "SALDI" | "STORICO" | "NOTE">("ANAGRAFICA")
+  const [agentBalances, setAgentBalances] = useState<any>(null)
+  const [isLoadingBalances, setIsLoadingBalances] = useState(false)
 
   // New Personnel Fields
   const [tempDataAssunzione, setTempDataAssunzione] = useState("")
@@ -93,9 +96,10 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
   // Emergency Alert
   const [isSendingAlert, setIsSendingAlert] = useState(false)
 
-  // Shift Swap Approvals
+  // Approvals (Swaps & Requests)
   const [showSwapApprovals, setShowSwapApprovals] = useState(false)
   const [pendingSwaps, setPendingSwaps] = useState<any[]>([])
+  const [pendingRequests, setPendingRequests] = useState<any[]>([])
   const [isLoadingSwaps, setIsLoadingSwaps] = useState(false)
   const [importType, setImportType] = useState<"base" | "rep">("base")
 
@@ -103,7 +107,6 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
   const [showBulkAbsence, setShowBulkAbsence] = useState(false)
   const [bulkData, setBulkData] = useState({ agentId: "", startDate: "", endDate: "", code: "" })
   const [isSavingBulk, setIsSavingBulk] = useState(false)
-  const [showBalances, setShowBalances] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
@@ -257,13 +260,14 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       setIsLoadingAudit(false)
     }
   }
-  const fetchPendingSwaps = async () => {
+  const fetchPendingApprovals = async () => {
     setIsLoadingSwaps(true)
     try {
-      const res = await fetch("/api/admin/pending-swaps")
+      const res = await fetch("/api/admin/approvals")
       if (res.ok) {
         const data = await res.json()
-        setPendingSwaps(data)
+        setPendingSwaps(data.pendingSwaps || [])
+        setPendingRequests(data.pendingRequests || [])
       }
     } catch (err) {
       console.error(err)
@@ -272,20 +276,20 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
     }
   }
 
-  const handleApproveSwap = async (swapId: string) => {
-    if (!confirm("Confermi l'approvazione finale di questo scambio? Il turno verrà aggiornato automaticamente in griglia.")) return
+  const handleApproveAction = async (type: string, id: string, action: "APPROVE" | "REJECT") => {
+    if (!confirm(`Confermi l'azione su questa richiesta?`)) return
     try {
-      const res = await fetch("/api/admin/approve-swap", {
+      const res = await fetch("/api/admin/approvals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ swapId })
+        body: JSON.stringify({ type, id, action })
       })
       if (res.ok) {
-        toast.success("Scambio approvato e griglia aggiornata!")
-        fetchPendingSwaps()
+        toast.success("Operazione completata e griglia aggiornata!")
+        fetchPendingApprovals()
         router.refresh()
       } else {
-        toast.error("Errore durante l'approvazione")
+        toast.error("Errore durante l'operazione")
       }
     } catch {
       toast.error("Errore di rete")
@@ -882,16 +886,17 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
           </button>
 
           <button 
-            onClick={() => { setShowSwapApprovals(true); fetchPendingSwaps() }}
-            className="group relative flex items-center gap-2 bg-amber-50 text-amber-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-amber-100 transition-all border border-amber-200"
+            onClick={() => { setShowSwapApprovals(true); fetchPendingApprovals() }}
+            className={`relative flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg font-bold text-sm hover:bg-indigo-100 transition-all shadow-sm ${pendingSwaps.length + pendingRequests.length > 0 ? 'ring-2 ring-indigo-400 ring-offset-2' : ''}`}
+            title="Approvazioni in Coda"
           >
-            <RefreshCw size={18} className={isLoadingSwaps ? "animate-spin" : ""} />
-            Scambi
-            {pendingSwaps.length > 0 && (
-              <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-600 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white animate-bounce">
-                {pendingSwaps.length}
+            <RefreshCw size={18} />
+            <span className="hidden sm:inline">Coda Approvazioni</span>
+            {(pendingSwaps.length + pendingRequests.length > 0) ? (
+              <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full animate-bounce border-2 border-white shadow-md">
+                {pendingSwaps.length + pendingRequests.length}
               </span>
-            )}
+            ) : null}
           </button>
 
           <button 
@@ -903,11 +908,11 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
           </button>
 
           <button 
-            onClick={() => setShowBalances(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm hover:shadow-md"
+            onClick={() => setShowSettings("balances")}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm hover:shadow-md"
           >
             <Hash size={18} />
-            Saldi Iniziali
+            Saldi Annuali
           </button>
 
           <button 
@@ -1627,7 +1632,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             
             {/* Cards Grid */}
             <div className="p-8 overflow-y-auto bg-slate-50/50 flex-1 custom-scrollbar">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-10">
                 {filteredAnagraficaAgents.map(agent => {
                   const todayShift = shifts.find(s => s.userId === agent.id && new Date(s.date).toDateString() === new Date().toDateString());
                   const isExpiring = (date: Date | string | null | undefined) => {
@@ -1638,9 +1643,9 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                   };
 
                   return (
-                    <div key={agent.id} className={`group relative bg-white rounded-[2.5rem] shadow-sm border-2 transition-all duration-500 overflow-hidden flex flex-col ${editingAgent === agent.id ? 'border-amber-400 shadow-2xl ring-8 ring-amber-100/50 scale-[1.02]' : 'border-slate-100 hover:border-blue-400 hover:shadow-2xl hover:-translate-y-2 hover:bg-white'}`}>
+                    <div key={agent.id} className={`group relative bg-white rounded-[2.5rem] shadow-sm border-2 transition-all duration-500 overflow-hidden flex flex-col ${editingAgent?.id === agent.id ? 'border-amber-400 shadow-2xl ring-8 ring-amber-100/50 scale-[1.02]' : 'border-slate-100 hover:border-blue-400 hover:shadow-2xl hover:-translate-y-2 hover:bg-white'}`}>
                       {/* Card Top Decoration */}
-                      <div className={`h-28 transition-all duration-500 ${agent.isUfficiale ? 'bg-indigo-600' : 'bg-slate-800'} ${editingAgent === agent.id ? 'bg-amber-500' : ''} relative p-6`}>
+                      <div className={`h-28 transition-all duration-500 ${agent.isUfficiale ? 'bg-indigo-600' : 'bg-slate-800'} ${editingAgent?.id === agent.id ? 'bg-amber-500' : ''} relative p-6`}>
                         <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div className="absolute top-4 right-6 flex gap-2">
                            {isExpiring(agent.scadenzaPatente) && <div className="w-3 h-3 bg-red-400 rounded-full animate-pulse shadow-lg shadow-red-500/50" title="Patente in Scadenza"></div>}
@@ -1661,145 +1666,70 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                         </div>
                       </div>
 
-                      <div className="px-8 pt-16 pb-8 flex-1 flex flex-col">
-                        {editingAgent === agent.id ? (
-                          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                             <div className="grid grid-cols-2 gap-3">
-                               <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-amber-700 uppercase tracking-widest pl-1">Nome Completo</label>
-                                  <input type="text" value={tempName} onChange={e => setTempName(e.target.value.toUpperCase())} className="w-full bg-amber-50/50 border border-amber-200 rounded-xl px-4 py-2.5 text-xs font-black outline-none focus:border-amber-500 focus:bg-white transition-all shadow-inner" />
-                               </div>
-                               <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-amber-700 uppercase tracking-widest pl-1">Matricola</label>
-                                  <input type="text" value={tempMatricola} onChange={e => setTempMatricola(e.target.value.toUpperCase())} className="w-full bg-amber-50/50 border border-amber-200 rounded-xl px-4 py-2.5 text-xs font-black outline-none focus:border-amber-500 focus:bg-white transition-all shadow-inner" />
-                               </div>
-                             </div>
-                             
-                             <div className="space-y-1">
-                                <label className="text-[9px] font-black text-amber-700 uppercase tracking-widest pl-1">Qualifica Operativa</label>
-                                <input type="text" value={tempQualifica} onChange={e => setTempQualifica(e.target.value)} className="w-full bg-amber-50/50 border border-amber-200 rounded-xl px-4 py-2.5 text-xs font-black outline-none focus:border-amber-500 focus:bg-white transition-all shadow-inner" placeholder="Es. Istruttore Direttivo" />
-                             </div>
-
-                             <div className="grid grid-cols-2 gap-3">
-                               <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-amber-700 uppercase tracking-widest pl-1">Data Assunzione</label>
-                                  <input type="date" value={tempDataAssunzione} onChange={e => setTempDataAssunzione(e.target.value)} className="w-full bg-amber-50/50 border border-amber-200 rounded-xl px-4 py-2.5 text-[10px] font-black outline-none focus:border-amber-500 focus:bg-white uppercase transition-all shadow-inner" />
-                               </div>
-                               <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-amber-700 uppercase tracking-widest pl-1">Squadra / Reparto</label>
-                                  <input type="text" value={tempSquadra} onChange={e => setTempSquadra(e.target.value.toUpperCase())} className="w-full bg-amber-50/50 border border-amber-200 rounded-xl px-4 py-2.5 text-xs font-black outline-none focus:border-amber-500 focus:bg-white transition-all shadow-inner" />
-                               </div>
-                             </div>
-
-                             <div className="grid grid-cols-2 gap-3">
-                               <div className="space-y-1">
-                                  <label className="text-[9px] font-black tracking-widest pl-1 uppercase text-rose-700">Scadenza Patente</label>
-                                  <input type="date" value={tempScadenzaPatente} onChange={e => setTempScadenzaPatente(e.target.value)} className="w-full bg-rose-50/30 border border-rose-200 rounded-xl px-4 py-2.5 text-[10px] font-black outline-none focus:border-rose-500 focus:bg-white uppercase transition-all shadow-inner" />
-                               </div>
-                               <div className="space-y-1">
-                                  <label className="text-[9px] font-black tracking-widest pl-1 uppercase text-rose-700">Scadenza Porto Armi</label>
-                                  <input type="date" value={tempScadenzaPortoArmi} onChange={e => setTempScadenzaPortoArmi(e.target.value)} className="w-full bg-rose-50/30 border border-rose-200 rounded-xl px-4 py-2.5 text-[10px] font-black outline-none focus:border-rose-500 focus:bg-white uppercase transition-all shadow-inner" />
-                               </div>
-                             </div>
-
-                             <div className="space-y-1">
-                                <label className="text-[9px] font-black text-amber-700 uppercase tracking-widest pl-1">Note Interne Operative</label>
-                                <textarea value={tempNoteInterne} onChange={e => setTempNoteInterne(e.target.value)} rows={2} className="w-full bg-amber-50/50 border border-amber-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-amber-500 focus:bg-white resize-none transition-all shadow-inner" placeholder="Annotazioni su turnazioni speciali, limitazioni o note varie..." />
-                             </div>
-
-                             <div className="flex justify-between items-center gap-3 pt-4 border-t border-amber-200 mt-2">
-                                <button onClick={async () => {
-                                  if (!confirm(`Vuoi davvero eliminare l'operatore ${agent.name}? L'azione è irreversibile.`)) return
-                                  const res = await fetch('/api/admin/users', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: agent.id }) })
-                                  if (res.ok) { toast.success('Operatore eliminato'); router.refresh(); }
-                                }} className="p-3 text-rose-600 bg-rose-50 hover:bg-rose-600 hover:text-white rounded-2xl transition-all shadow-sm active:scale-95 border border-rose-100" title="Elimina Operatore">
-                                  <Trash2 size={20} />
-                                </button>
-                                <div className="flex gap-2">
-                                   <button onClick={() => setEditingAgent(null)} className="px-5 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-900 transition-colors">Annulla</button>
-                                   <button onClick={async () => {
-                                      const res = await fetch('/api/admin/users', {
-                                        method: 'PUT',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ 
-                                          userId: agent.id, name: tempName, matricola: tempMatricola, squadra: tempSquadra, qualifica: tempQualifica,
-                                          massimale: tempMassimale, email: tempEmail, phone: tempPhone,
-                                          dataAssunzione: tempDataAssunzione || null,
-                                          scadenzaPatente: tempScadenzaPatente || null, 
-                                          scadenzaPortoArmi: tempScadenzaPortoArmi || null, 
-                                          noteInterne: tempNoteInterne || null 
-                                        })
-                                      })
-                                      if (res.ok) { toast.success('Profilo aggiornato!'); setEditingAgent(null); router.refresh(); }
-                                      else { toast.error('Errore durante il salvataggio'); }
-                                    }} className="bg-slate-900 text-white px-8 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black shadow-lg shadow-slate-200 active:scale-95 transition-all">Salva Tutto</button>
-                                </div>
-                             </div>
-                          </div>
-                        ) : (
+                      <div className="px-10 pt-8 pb-10 flex-1 flex flex-col">
                           <div className="flex-1 flex flex-col animate-in fade-in duration-700">
                              {/* Display Info Chips */}
-                             <div className="flex flex-wrap gap-2 mb-6">
-                               <span className={`px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider border ${agent.isUfficiale ? 'bg-indigo-50 text-indigo-700 border-indigo-200 shadow-sm shadow-indigo-100' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
-                                 {agent.qualifica || 'Agente'}
+                             <div className="flex flex-wrap gap-2.5 mb-8">
+                               <span className="px-4 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm shadow-emerald-100">
+                                 {agent.squadra || 'SENZA SQUADRA'}
                                </span>
-                               <span className="px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider border bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm shadow-emerald-100">
-                                 {agent.squadra || 'Libero'}
+                               <span className="px-4 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border bg-blue-50 text-blue-700 border-blue-200 shadow-sm shadow-blue-100">
+                                 MATR. {agent.matricola}
                                </span>
                              </div>
 
                              {/* Quick Details List */}
-                             <div className="space-y-4 mb-8">
-                               <div className="flex items-center gap-4 group/item">
-                                 <div className="p-2.5 bg-slate-100 rounded-xl text-slate-400 group-hover/item:bg-blue-100 group-hover/item:text-blue-600 transition-colors">
-                                   <MapPin size={18} />
+                             <div className="space-y-6 mb-10">
+                               <div className="flex items-center gap-5 group/item">
+                                 <div className="p-3.5 bg-slate-100 rounded-2xl text-slate-500 group-hover/item:bg-blue-600 group-hover/item:text-white transition-all duration-300">
+                                   <MapPin size={22} />
                                  </div>
-                                 <div>
-                                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Stato Attuale</p>
-                                   <span className="text-xs font-black text-slate-700 group-hover/item:text-blue-700 transition-colors">{todayShift ? todayShift.type : 'Fuori Turno / Libero'}</span>
-                                 </div>
-                               </div>
-                               <div className="flex items-center gap-4 group/item">
-                                 <div className="p-2.5 bg-slate-100 rounded-xl text-slate-400 group-hover/item:bg-amber-100 group-hover/item:text-amber-600 transition-colors">
-                                   <CalendarIcon size={18} />
-                                 </div>
-                                 <div>
-                                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Servizio Ordinario</p>
-                                   <span className="text-xs font-black text-slate-700">Turnazione Ciclica</span>
+                                 <div className="flex-1">
+                                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Stato Attuale</p>
+                                   <span className="text-sm font-black text-slate-900 group-hover/item:text-blue-600 transition-colors uppercase">{todayShift ? todayShift.type : 'Fuori Turno / Libero'}</span>
                                  </div>
                                </div>
-                               <div className="flex items-center gap-4 group/item">
-                                 <div className="p-2.5 bg-slate-100 rounded-xl text-slate-400 group-hover/item:bg-rose-100 group-hover/item:text-rose-600 transition-colors">
-                                   <Phone size={18} />
+                               <div className="flex items-center gap-5 group/item">
+                                 <div className="p-3.5 bg-slate-100 rounded-2xl text-slate-500 group-hover/item:bg-amber-500 group-hover/item:text-white transition-all duration-300">
+                                   <CalendarIcon size={22} />
                                  </div>
-                                 <div>
-                                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Recapito Telefonico</p>
-                                   <span className="text-xs font-black text-slate-700">{agent.phone || 'Non Inserito'}</span>
+                                 <div className="flex-1">
+                                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Servizio Ordinario</p>
+                                   <span className="text-sm font-black text-slate-900 uppercase">Turnazione Ciclica</span>
+                                 </div>
+                               </div>
+                               <div className="flex items-center gap-5 group/item">
+                                 <div className="p-3.5 bg-slate-100 rounded-2xl text-slate-500 group-hover/item:bg-rose-500 group-hover/item:text-white transition-all duration-300">
+                                   <Phone size={22} />
+                                 </div>
+                                 <div className="flex-1">
+                                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Contatto Rapido</p>
+                                   <span className="text-sm font-black text-slate-900 tracking-tight">{agent.phone || 'NON INSERITO'}</span>
                                  </div>
                                </div>
                              </div>
 
                              {/* Progress Bars / Stats */}
-                             <div className="mt-auto pt-6 border-t border-slate-100">
-                                <div className="flex items-center justify-between mb-2">
+                             <div className="mt-auto pt-8 border-t-2 border-slate-50">
+                                <div className="flex items-center justify-between mb-3">
                                    <div>
-                                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Carico Reperibilità</p>
-                                      <div className="flex items-center gap-2">
-                                         <span className={`text-xl font-black tracking-tighter ${agent.repTotal > agent.massimale ? 'text-rose-600' : 'text-slate-900'}`}>{agent.repTotal}</span>
-                                         <span className="text-[10px] font-black text-slate-300 uppercase tracking-tighter">/ {agent.massimale}</span>
+                                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Carico Reperibilità Mensile</p>
+                                      <div className="flex items-center gap-3">
+                                         <span className={`text-2xl font-black tracking-tighter ${agent.repTotal > agent.massimale ? 'text-rose-600' : 'text-slate-900'}`}>{agent.repTotal}</span>
+                                         <span className="text-xs font-black text-slate-300 uppercase tracking-widest">/ {agent.massimale} Max</span>
                                       </div>
                                    </div>
-                                   <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                      <div className={`h-full rounded-full transition-all duration-1000 ${agent.repTotal > agent.massimale ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, (agent.repTotal / agent.massimale) * 100)}%` }}></div>
+                                   <div className="w-32 h-2.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                                      <div className={`h-full rounded-full transition-all duration-1000 ${agent.repTotal > agent.massimale ? 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]' : 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]'}`} style={{ width: `${Math.min(100, (agent.repTotal / agent.massimale) * 100)}%` }}></div>
                                    </div>
                                 </div>
                                 
-                                <div className="grid grid-cols-2 gap-3 mt-6">
-                                  <button onClick={() => setSelectedAgentForDetails(agent)} className="px-4 py-3 bg-white text-slate-900 border-2 border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:border-blue-400 hover:text-blue-600 transition-all shadow-sm flex items-center justify-center gap-2">
-                                    <Eye size={14} /> Fascicolo
+                                <div className="grid grid-cols-2 gap-4 mt-8">
+                                  <button onClick={() => setSelectedAgentForDetails(agent)} className="px-6 py-4 bg-white text-slate-900 border-2 border-slate-100 rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm flex items-center justify-center gap-3 hover:-translate-y-1">
+                                    <Eye size={18} /> Fascicolo
                                   </button>
                                   <button onClick={() => {
-                                      setEditingAgent(agent.id); 
+                                      setEditingAgent(agent); 
                                       setTempName(agent.name); 
                                       setTempMatricola(agent.matricola); 
                                       setTempSquadra(agent.squadra || "");
@@ -1812,25 +1742,142 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                       setTempScadenzaPortoArmi(agent.scadenzaPortoArmi ? new Date(agent.scadenzaPortoArmi).toISOString().split('T')[0] : "");
                                       setTempNoteInterne(agent.noteInterne || ""); 
                                       setNewPass("");
-                                    }} className="px-4 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 shadow-lg shadow-slate-200 transition-all active:scale-95 flex items-center justify-center gap-2">
-                                    <FileEdit size={14} /> Gestisci
+                                    }} className="px-6 py-4 bg-slate-900 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest hover:bg-blue-600 shadow-xl shadow-slate-200 transition-all active:scale-95 flex items-center justify-center gap-3 hover:-translate-y-1">
+                                    <FileEdit size={18} /> Gestisci
                                   </button>
                                 </div>
                              </div>
                           </div>
-                        )}
                       </div>
                     </div>
                   );
                 })}
-              </div>
             </div>
           </div>
         </div>
-      )}\n      {/* Area anagrafica nascosta qui... rimossa per spazio modal */}
+      </div>
+      )}
+
+      {/* GESTISCI OPERATORE - SLIDE OVER RIGHT */}
+      {!!editingAgent && typeof editingAgent !== 'string' && (
+        <div className="fixed inset-0 z-[150] flex justify-end bg-slate-900/40 backdrop-blur-sm transition-all duration-500">
+          <div className="absolute inset-0" onClick={() => setEditingAgent(null)} />
+          <div className="relative w-full max-w-lg bg-white h-[100dvh] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-200">
+            {/* Header */}
+            <div className="px-8 py-6 bg-slate-900 text-white flex items-center justify-between shrink-0 mb-0">
+               <div className="flex items-center gap-4">
+                  <div className="p-3 bg-white/10 rounded-2xl"><FileEdit size={24} /></div>
+                  <div className="flex flex-col">
+                    <h3 className="text-xl font-black">Modifica Strutturale</h3>
+                    <p className="text-[10px] text-white/50 font-bold uppercase tracking-widest">Op. {editingAgent.name}</p>
+                  </div>
+               </div>
+               <button onClick={() => setEditingAgent(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={20} /></button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar">
+               {/* Sezione 1: Anagrafica */}
+               <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-100">
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">1. Anagrafica e Identità</h4>
+                  <div className="space-y-4">
+                     <div>
+                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Nome Completo</label>
+                       <input type="text" value={tempName} onChange={e => setTempName(e.target.value.toUpperCase())} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-sm font-black outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm" />
+                     </div>
+                     <div className="grid grid-cols-2 gap-4">
+                        <div>
+                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Matricola / Identificativo</label>
+                           <input type="text" value={tempMatricola} onChange={e => setTempMatricola(e.target.value.toUpperCase())} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-sm font-black outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm" />
+                        </div>
+                        <div>
+                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Massimale Mensile REP</label>
+                           <input type="number" value={tempMassimale} onChange={e => setTempMassimale(parseInt(e.target.value))} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-sm font-black outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm" />
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               {/* Sezione 2: Inquadramento */}
+               <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-200">
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">2. Inquadramento Operativo</h4>
+                  <div className="space-y-4">
+                     <div>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Qualifica Esatta</label>
+                        <input type="text" value={tempQualifica} onChange={e => setTempQualifica(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-sm font-black outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm" placeholder="es. Istruttore / Agente..." />
+                     </div>
+                     <div className="grid grid-cols-2 gap-4">
+                        <div>
+                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Squadra / Reparto</label>
+                           <input type="text" value={tempSquadra} onChange={e => setTempSquadra(e.target.value.toUpperCase())} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-sm font-black outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm" />
+                        </div>
+                        <div>
+                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Data Assunzione</label>
+                           <input type="date" value={tempDataAssunzione} onChange={e => setTempDataAssunzione(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-sm font-black outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm" />
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               {/* Sezione 3: Scadenze */}
+               <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300">
+                  <h4 className="text-xs font-black text-rose-400 uppercase tracking-widest mb-4 border-b border-rose-100 pb-2 flex items-center gap-2"><Shield size={14}/> 3. Parametri Sensibili</h4>
+                  <div className="grid grid-cols-2 gap-4 mb-5">
+                     <div>
+                        <label className="text-[10px] font-black text-rose-500 uppercase tracking-widest block mb-1">Scadenza Patente</label>
+                        <input type="date" value={tempScadenzaPatente} onChange={e => setTempScadenzaPatente(e.target.value)} className="w-full bg-white border border-rose-200 rounded-2xl px-4 py-3 text-sm font-black outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100 transition-all shadow-sm text-rose-900" />
+                     </div>
+                     <div>
+                        <label className="text-[10px] font-black text-rose-500 uppercase tracking-widest block mb-1">Scad. Porto D'Armi</label>
+                        <input type="date" value={tempScadenzaPortoArmi} onChange={e => setTempScadenzaPortoArmi(e.target.value)} className="w-full bg-white border border-rose-200 rounded-2xl px-4 py-3 text-sm font-black outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100 transition-all shadow-sm text-rose-900" />
+                     </div>
+                  </div>
+                  <div>
+                     <label className="text-[10px] font-black text-amber-500 uppercase tracking-widest block mb-1">Note e Limitazioni</label>
+                     <textarea value={tempNoteInterne} onChange={e => setTempNoteInterne(e.target.value)} rows={3} className="w-full bg-white border border-amber-200 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 resize-none transition-all shadow-sm text-amber-900 placeholder:text-amber-200/50" placeholder="Annotazioni su turnazioni, limitazioni operative dirette o altro..." />
+                  </div>
+               </div>
+            </div>
+
+            {/* Footer Azioni */}
+            <div className="p-6 bg-slate-50 border-t border-slate-200 flex items-center gap-3 shrink-0 rounded-bl-3xl">
+               <button onClick={async () => {
+                  if (!confirm(`Vuoi davvero eliminare l'operatore ${editingAgent.name}? L'azione è irreversibile e distruggerà tutto lo storico.`)) return
+                  const res = await fetch('/api/admin/users', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: editingAgent.id }) })
+                  if (res.ok) { toast.success('Operatore eliminato'); setEditingAgent(null); router.refresh(); }
+                }} className="p-4 text-rose-600 bg-white hover:bg-rose-600 hover:text-white rounded-[1.2rem] transition-all shadow-sm active:scale-95 border border-slate-200 hover:border-rose-600 group" title="Elimina Definivo">
+                  <Trash2 size={20} className="group-hover:animate-pulse" />
+               </button>
+               <button onClick={() => setEditingAgent(null)} className="flex-1 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest hover:bg-slate-200 bg-slate-200/50 rounded-[1.2rem] transition-colors border border-slate-200">
+                  Annulla
+               </button>
+               <button onClick={async () => {
+                  const res = await fetch('/api/admin/users', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                      userId: editingAgent.id, name: tempName, matricola: tempMatricola, squadra: tempSquadra, qualifica: tempQualifica,
+                      massimale: tempMassimale, email: tempEmail, phone: tempPhone,
+                      dataAssunzione: tempDataAssunzione || null,
+                      scadenzaPatente: tempScadenzaPatente || null, 
+                      scadenzaPortoArmi: tempScadenzaPortoArmi || null, 
+                      noteInterne: tempNoteInterne || null 
+                    })
+                  })
+                  if (res.ok) { toast.success('Profilo aggiornato!'); setEditingAgent(null); router.refresh(); }
+                  else { toast.error('Errore durante il salvataggio'); }
+               }} className="flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-[1.2rem] text-[12px] font-black uppercase tracking-widest shadow-lg shadow-indigo-200 active:scale-95 transition-all flex items-center justify-center gap-2">
+                  <Save size={18} /> Salva Dati
+               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Settings Panel Modal */}
-      {showSettings && <SettingsPanel onClose={() => { setShowSettings(false); router.refresh() }} />}
+      {showSettings && <SettingsPanel initialTab={typeof showSettings === 'string' ? showSettings as any : undefined} onClose={() => { setShowSettings(false); router.refresh() }} />}
+      
       {/* MODALE AUDIT LOG */}
       {showAuditLog && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -1995,47 +2042,84 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
               </button>
             </div>
 
-            <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+            <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar space-y-6">
               {isLoadingSwaps ? (
                 <div className="flex justify-center py-10">
                   <RefreshCw size={40} className="animate-spin text-slate-200" />
                 </div>
-              ) : pendingSwaps.length === 0 ? (
+              ) : pendingSwaps.length === 0 && pendingRequests.length === 0 ? (
                 <div className="text-center py-10 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-                  <p className="text-slate-400 font-medium">Nessuna richiesta di scambio in attesa.</p>
+                  <p className="text-slate-400 font-medium">Nessuna richiesta o scambio in coda.</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {pendingSwaps.map((swap: any) => (
-                    <div key={swap.id} className="bg-white border-2 border-slate-100 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-center gap-4 hover:border-amber-200 transition-all shadow-sm">
-                      <div className="flex items-center gap-4">
-                        <div className="text-center">
-                           <p className="text-[10px] font-black uppercase text-slate-400">Data Turno</p>
-                           <p className="font-black text-slate-800">{new Date(swap.shift.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}</p>
-                        </div>
-                        <div className="h-10 w-[2px] bg-slate-100"></div>
-                        <div>
-                          <p className="text-[10px] font-black uppercase text-slate-400">Proposta di Scambio</p>
-                          <div className="flex items-center gap-2">
-                             <span className="font-bold text-slate-900">{swap.requester.name}</span>
-                             <ChevronRight size={14} className="text-slate-400" />
-                             <span className="font-extrabold text-blue-600">{swap.targetUser.name}</span>
+                <>
+                  {/* Richieste Assenze / Permessi */}
+                  {pendingRequests.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest border-b border-slate-200 pb-2">Richieste Assenza/Permessi ({pendingRequests.length})</h4>
+                      {pendingRequests.map((req: any) => (
+                        <div key={req.id} className="bg-white border text-left border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-center gap-4 hover:border-amber-200 transition-all shadow-sm">
+                          <div className="flex items-center gap-4 w-full sm:w-auto">
+                            <div className="text-center shrink-0">
+                               <p className="text-[10px] font-black uppercase text-slate-400">Data</p>
+                               <p className="font-black text-slate-800">{new Date(req.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}</p>
+                            </div>
+                            <div className="h-10 w-[2px] bg-slate-100 hidden sm:block"></div>
+                            <div className="flex-1">
+                              <p className="text-[10px] font-black uppercase text-slate-400">Richiedente</p>
+                              <div className="flex items-center gap-2">
+                                 <span className="font-bold text-slate-900">{req.user.name}</span>
+                              </div>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">Tipo: <span className="text-amber-600 font-black">{req.code}</span></p>
+                              {(req.startTime && req.endTime) && (
+                                <p className="text-[10px] text-slate-500 font-bold bg-amber-50 px-2 rounded w-max mt-1 border border-amber-100">
+                                  {req.startTime} - {req.endTime} ({req.hours}h)
+                                </p>
+                              )}
+                              {req.notes && <p className="text-[10px] text-slate-500 italic mt-1">&quot;{req.notes}&quot;</p>}
+                            </div>
                           </div>
-                          <p className="text-[10px] font-bold text-slate-500 uppercase">Tipo: <span className="text-emerald-600">{swap.shift.repType}</span></p>
+                          <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                            <button onClick={() => handleApproveAction("LEAVE_REQUEST", req.id, "REJECT")} className="flex-1 sm:flex-none border border-red-200 hover:bg-red-50 text-red-600 px-4 py-2 rounded-xl text-xs font-black transition-all">RIFIUTA</button>
+                            <button onClick={() => handleApproveAction("LEAVE_REQUEST", req.id, "APPROVE")} className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-black shadow-lg shadow-emerald-100 transition-all">APPROVA</button>
+                          </div>
                         </div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => handleApproveSwap(swap.id)}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-black shadow-lg shadow-emerald-100 transition-all hover:scale-105 active:scale-95"
-                        >
-                          APPROVA
-                        </button>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  )}
+
+                  {/* Scambi */}
+                  {pendingSwaps.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest border-b border-slate-200 pb-2 mt-4">Proposte di Scambio ({pendingSwaps.length})</h4>
+                      {pendingSwaps.map((swap: any) => (
+                        <div key={swap.id} className="bg-white border border-slate-100 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-center gap-4 hover:border-amber-200 transition-all shadow-sm">
+                          <div className="flex items-center gap-4">
+                            <div className="text-center">
+                               <p className="text-[10px] font-black uppercase text-slate-400">Data Turno</p>
+                               <p className="font-black text-slate-800">{new Date(swap.shift.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}</p>
+                            </div>
+                            <div className="h-10 w-[2px] bg-slate-100"></div>
+                            <div>
+                              <p className="text-[10px] font-black uppercase text-slate-400">Proposta di Scambio</p>
+                              <div className="flex items-center gap-2">
+                                 <span className="font-bold text-slate-900">{swap.requester.name}</span>
+                                 <ChevronRight size={14} className="text-slate-400" />
+                                 <span className="font-extrabold text-blue-600">{swap.targetUser.name}</span>
+                              </div>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase">Tipo Turno Origine: <span className="text-emerald-600">{swap.shift.type}</span></p>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                            <button onClick={() => handleApproveAction("SWAP_REQUEST", swap.id, "REJECT")} className="flex-1 sm:flex-none border border-red-200 hover:bg-red-50 text-red-600 px-4 py-2 rounded-xl text-xs font-black transition-all">RIFIUTA</button>
+                            <button onClick={() => handleApproveAction("SWAP_REQUEST", swap.id, "APPROVE")} className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-black shadow-lg shadow-emerald-100 transition-all">APPROVA</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
             
@@ -2172,145 +2256,286 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
           </div>
         </div>
       )}
-      {/* Modale Saldi Iniziali */}
-      {showBalances && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-          <div className="bg-slate-50 w-full max-w-[95vw] max-h-[95vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-white/20">
-            <div className="p-4 bg-white border-b border-slate-200 flex justify-between items-center">
-              <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
-                <Hash className="text-indigo-600" size={24} /> Gestione Saldi Annuali
-              </h2>
-              <button onClick={() => setShowBalances(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
-                <X size={24} className="text-slate-500" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-auto p-6">
-              <AdminInitialBalances />
-            </div>
-          </div>
-        </div>
-      )}
-      {/* MODAL DETTAGLI OPERATORE (STORICO E STATISTICHE) */}
+
+      {/* MODAL DETTAGLI OPERATORE (FASCICOLO A TAB) */}
       {selectedAgentForDetails && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 lg:p-12 animate-in fade-in duration-300" onClick={() => setSelectedAgentForDetails(null)}>
-          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden border border-white/20" onClick={e => e.stopPropagation()}>
-             {/* Header */}
-             <div className="bg-slate-900 p-8 text-white shrink-0 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden border border-white/20" onClick={e => e.stopPropagation()}>
+             {/* Header Dynamically Colored */}
+             <div className={`${selectedAgentForDetails.isUfficiale ? 'bg-indigo-900' : 'bg-slate-900'} p-10 text-white shrink-0 relative overflow-hidden transition-colors duration-500`}>
+                <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -mr-48 -mt-48 animate-pulse"></div>
                 <div className="flex justify-between items-start relative z-10">
-                   <div className="flex items-center gap-6">
-                      <div className="w-24 h-24 rounded-[2rem] bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-3xl font-black shadow-2xl shadow-blue-500/20">
-                         {selectedAgentForDetails.name.split(' ').map((n:any) => n[0]).join('').slice(0, 2)}
+                   <div className="flex items-center gap-8">
+                      <div className="w-28 h-28 rounded-[2.5rem] bg-white p-1.5 shadow-2xl">
+                         <div className={`w-full h-full rounded-[2.2rem] bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-4xl font-black shadow-inner`}>
+                            {selectedAgentForDetails.name.split(' ').map((n:any) => n[0]).join('').slice(0, 2)}
+                         </div>
                       </div>
                       <div>
-                        <div className="flex items-center gap-3 mb-2">
-                           <span className="px-3 py-1 bg-white/10 rounded-lg text-[10px] font-black uppercase tracking-widest text-blue-300 border border-white/10">Matr. {selectedAgentForDetails.matricola}</span>
-                           <span className="px-3 py-1 bg-blue-500/20 rounded-lg text-[10px] font-black uppercase tracking-widest text-blue-200 border border-blue-400/20">{selectedAgentForDetails.qualifica || 'Agente'}</span>
+                        <div className="flex items-center gap-3 mb-3">
+                           <span className="px-4 py-1.5 bg-white/10 rounded-xl text-xs font-black uppercase tracking-widest text-blue-300 border border-white/10 shadow-sm">Matricola {selectedAgentForDetails.matricola}</span>
+                           <span className="px-4 py-1.5 bg-blue-500/20 rounded-xl text-xs font-black uppercase tracking-widest text-blue-200 border border-blue-400/20 shadow-sm">{selectedAgentForDetails.qualifica || 'Agente di P.L.'}</span>
                         </div>
-                        <h2 className="text-4xl font-black tracking-tight">{selectedAgentForDetails.name}</h2>
-                        <p className="text-slate-400 font-bold mt-1 uppercase text-xs tracking-widest flex items-center gap-2">
-                           <MapPin size={14} className="text-blue-400" />
-                           {selectedAgentForDetails.squadra || 'Senza Squadra'} · Assunto il {selectedAgentForDetails.dataAssunzione ? new Date(selectedAgentForDetails.dataAssunzione).toLocaleDateString() : 'Non specificata'}
-                        </p>
+                        <h2 className="text-5xl font-black tracking-tighter leading-none mb-2">{selectedAgentForDetails.name}</h2>
+                        <div className="flex items-center gap-6">
+                           <div className="flex items-center gap-2.5 text-slate-400 font-bold uppercase text-[11px] tracking-widest">
+                             <MapPin size={16} className="text-blue-400" />
+                             {selectedAgentForDetails.squadra || 'SENZA SQUADRA'}
+                           </div>
+                           <div className="w-[1px] h-4 bg-white/20"></div>
+                           <div className="flex items-center gap-2.5 text-slate-400 font-bold uppercase text-[11px] tracking-widest">
+                             <Briefcase size={16} className="text-emerald-400" />
+                             Assunto il {selectedAgentForDetails.dataAssunzione ? new Date(selectedAgentForDetails.dataAssunzione).toLocaleDateString('it-IT') : 'N/D'}
+                           </div>
+                        </div>
                       </div>
                    </div>
-                   <button onClick={() => setSelectedAgentForDetails(null)} className="p-3 bg-white/10 rounded-full hover:bg-white/20 transition-all">
-                      <X size={24} />
+                   <button onClick={() => setSelectedAgentForDetails(null)} className="p-4 bg-white/10 rounded-full hover:bg-white/20 hover:scale-110 transition-all active:scale-95 shadow-xl">
+                      <X size={28} />
                    </button>
+                </div>
+
+                {/* TAB NAVIGATION */}
+                <div className="flex gap-2 mt-10 relative z-10">
+                   {[
+                     { id: 'ANAGRAFICA', label: 'Dati Personali', icon: Users },
+                     { id: 'SALDI', label: 'Saldi e Ferie', icon: Hash },
+                     { id: 'STORICO', label: 'Storico Turni', icon: Calendar },
+                     { id: 'NOTE', label: 'Note Operative', icon: FileText }
+                   ].map(tab => (
+                     <button
+                       key={tab.id}
+                       onClick={() => {
+                         setActiveDetailTab(tab.id as any);
+                         if (tab.id === 'SALDI' && !agentBalances) {
+                           // Fetch balances
+                           setIsLoadingBalances(true);
+                           fetch(`/api/admin/users/${selectedAgentForDetails.id}/balances?year=${currentYear}`)
+                             .then(res => res.json())
+                             .then(data => { setAgentBalances(data); setIsLoadingBalances(false); })
+                             .catch(() => { toast.error("Errore caricamento saldi"); setIsLoadingBalances(false); });
+                         }
+                       }}
+                       className={`flex items-center gap-3 px-8 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${activeDetailTab === tab.id ? 'bg-white text-slate-900 shadow-xl scale-105' : 'hover:bg-white/10 text-white/60'}`}
+                     >
+                       <tab.icon size={18} />
+                       {tab.label}
+                     </button>
+                   ))}
                 </div>
              </div>
 
-             {/* Content */}
-             <div className="flex-1 overflow-y-auto p-10 bg-slate-50 custom-scrollbar">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+             {/* Dynamic Content Area */}
+             <div className="flex-1 overflow-y-auto p-12 bg-slate-50 custom-scrollbar">
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                    
-                   {/* Left Col: Statistiche & Documenti */}
-                   <div className="space-y-8">
-                      <div className="bg-white rounded-[2rem] p-6 shadow-xl shadow-slate-200/50 border border-white">
-                         <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-3">
-                            <Hash size={18} className="text-blue-500" />
-                            Contatori Mensili
-                         </h3>
-                         <div className="space-y-6">
-                            <div>
-                               <div className="flex justify-between items-end mb-2">
-                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reperibilità (REP)</span>
-                                  <span className="text-sm font-black text-slate-900">{selectedAgentForDetails.repTotal} / {selectedAgentForDetails.massimale}</span>
-                               </div>
-                               <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                                  <div className={`h-full rounded-full transition-all duration-1000 ${selectedAgentForDetails.repTotal > selectedAgentForDetails.massimale ? 'bg-rose-500' : 'bg-blue-500'}`} style={{ width: `${Math.min(100, (selectedAgentForDetails.repTotal / selectedAgentForDetails.massimale) * 100)}%` }}></div>
-                               </div>
-                            </div>
-                         </div>
-                      </div>
+                   {activeDetailTab === 'ANAGRAFICA' && (
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                        <div className="bg-white rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 border border-white space-y-8">
+                           <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-4">
+                              <Users size={20} className="text-blue-500" /> Profilo Professionale
+                           </h3>
+                           <div className="space-y-6">
+                              <div className="grid grid-cols-2 gap-6">
+                                 <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1.5">Qualifica</p>
+                                    <p className="text-sm font-bold text-slate-800">{selectedAgentForDetails.qualifica || 'Agente'}</p>
+                                 </div>
+                                 <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1.5">Matricola</p>
+                                    <p className="text-sm font-bold text-slate-800">{selectedAgentForDetails.matricola}</p>
+                                 </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-6">
+                                 <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1.5">Reparto / Squadra</p>
+                                    <p className="text-sm font-bold text-slate-800 text-blue-600 font-black">{selectedAgentForDetails.squadra || 'Generale'}</p>
+                                 </div>
+                                 <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1.5">Data Assunzione</p>
+                                    <p className="text-sm font-bold text-slate-800">{selectedAgentForDetails.dataAssunzione ? new Date(selectedAgentForDetails.dataAssunzione).toLocaleDateString() : 'N/D'}</p>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
 
-                      <div className="bg-white rounded-[2rem] p-6 shadow-xl shadow-slate-200/50 border border-white">
-                         <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-3">
-                            <Award size={18} className="text-emerald-500" />
-                            Abilitazioni & Scadenze
-                         </h3>
-                         <div className="space-y-4">
-                            <div className={`p-4 rounded-2xl border ${selectedAgentForDetails.scadenzaPatente && new Date(selectedAgentForDetails.scadenzaPatente) < new Date() ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100'}`}>
-                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Patente di Guida</p>
-                               <p className="text-xs font-bold text-slate-800">Scadenza: {selectedAgentForDetails.scadenzaPatente ? new Date(selectedAgentForDetails.scadenzaPatente).toLocaleDateString() : 'N/D'}</p>
-                            </div>
-                            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Porto d'Armi</p>
-                               <p className="text-xs font-bold text-slate-800">Scadenza: {selectedAgentForDetails.scadenzaPortoArmi ? new Date(selectedAgentForDetails.scadenzaPortoArmi).toLocaleDateString() : 'N/D'}</p>
-                            </div>
-                         </div>
-                      </div>
-                   </div>
+                        <div className="bg-white rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 border border-white space-y-8">
+                           <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-4">
+                              <Award size={20} className="text-emerald-500" /> Abilitazioni e Scadenze
+                           </h3>
+                           <div className="grid grid-cols-1 gap-6">
+                              <div className={`p-6 rounded-3xl border-2 transition-all ${selectedAgentForDetails.scadenzaPatente && new Date(selectedAgentForDetails.scadenzaPatente) < new Date(Date.now() + 30*24*60*60*1000) ? 'bg-rose-50 border-rose-200 shadow-rose-100 shadow-lg' : 'bg-slate-50 border-slate-100'}`}>
+                                 <div className="flex justify-between items-start mb-2">
+                                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Patente di Guida</p>
+                                    {selectedAgentForDetails.scadenzaPatente && new Date(selectedAgentForDetails.scadenzaPatente) < new Date() && <span className="bg-rose-600 text-white text-[9px] font-black px-2 py-0.5 rounded-lg uppercase tracking-tighter shadow-sm animate-bounce">Scaduta</span>}
+                                 </div>
+                                 <p className="text-lg font-black text-slate-900">{selectedAgentForDetails.scadenzaPatente ? new Date(selectedAgentForDetails.scadenzaPatente).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' }) : 'NON REGISTRATA'}</p>
+                              </div>
+                              <div className="p-6 rounded-3xl bg-slate-50 border-2 border-slate-100">
+                                 <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Porto d'Armi</p>
+                                 <p className="text-lg font-black text-slate-900">{selectedAgentForDetails.scadenzaPortoArmi ? new Date(selectedAgentForDetails.scadenzaPortoArmi).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' }) : 'NON REGISTRATA'}</p>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                   )}
 
-                   {/* Right Col: Storico Recente (Timeline) */}
-                   <div className="md:col-span-2 space-y-8">
-                      <div className="bg-white rounded-[2rem] p-8 shadow-xl shadow-slate-200/50 border border-white">
-                         <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-8 flex items-center gap-3">
-                            <Calendar size={18} className="text-indigo-500" />
-                            Storico Recente ({currentMonth}/{currentYear})
-                         </h3>
-                         <div className="space-y-4">
-                            {shifts.filter((s:any) => s.userId === selectedAgentForDetails.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10).map((s:any) => (
-                               <div key={s.id} className="flex items-center gap-6 p-4 rounded-2xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100 group">
-                                  <div className="w-16 shrink-0">
-                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{new Date(s.date).toLocaleDateString('it-IT', { weekday: 'short' })}</p>
-                                     <p className="text-sm font-black text-slate-800 leading-none">{new Date(s.date).getDate()}</p>
-                                  </div>
-                                  <div className="flex-1">
-                                     <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${s.type==='F'?'bg-rose-50 text-rose-600 border-rose-100':s.type.includes('REP')?'bg-blue-50 text-blue-600 border-blue-100':'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
-                                        {s.type}
-                                     </span>
-                                  </div>
-                                  <div className="text-right">
-                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.repType || 'Servizio Ordinario'}</p>
-                                  </div>
-                               </div>
-                            ))}
-                            {shifts.filter((s:any) => s.userId === selectedAgentForDetails.id).length === 0 && (
-                               <div className="text-center py-12">
-                                  <p className="text-slate-400 font-bold italic text-sm">Nessun turno registrato per questo mese.</p>
-                               </div>
-                            )}
-                         </div>
-                      </div>
+                   {activeDetailTab === 'SALDI' && (
+                     <div className="space-y-8">
+                        <div className="bg-white rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 border border-white">
+                           <div className="flex justify-between items-center mb-10">
+                              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-4">
+                                 <Hash size={20} className="text-indigo-500" /> Prospetto Saldi Eseguito {currentYear}
+                              </h3>
+                              <div className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl text-[10px] font-black uppercase tracking-widest border border-indigo-100">
+                                Dati Aggiornati in Tempo Reale
+                              </div>
+                           </div>
 
-                      <div className="bg-white rounded-[2rem] p-8 shadow-xl shadow-slate-200/50 border border-white">
-                         <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-3">
-                            <FileText size={18} className="text-slate-400" />
-                            Note Interne
-                         </h3>
-                         <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 min-h-[100px]">
-                            <p className="text-sm font-bold text-slate-600 whitespace-pre-wrap">{selectedAgentForDetails.noteInterne || "Nessuna nota aggiuntiva per questo dipendente."}</p>
-                         </div>
-                      </div>
-                   </div>
+                           {isLoadingBalances ? (
+                              <div className="py-20 flex flex-col items-center justify-center space-y-4">
+                                 <RefreshCw size={48} className="text-indigo-300 animate-spin" />
+                                 <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Calcolo saldi e richieste in corso...</p>
+                              </div>
+                           ) : agentBalances ? (
+                              <div className="overflow-hidden border-2 border-slate-100 rounded-[2rem]">
+                                 <table className="w-full text-left border-collapse">
+                                    <thead>
+                                       <tr className="bg-slate-50 border-b-2 border-slate-100">
+                                          <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest ring-1 ring-slate-100">Causale</th>
+                                          <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest ring-1 ring-slate-100">Iniziali</th>
+                                          <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest ring-1 ring-slate-100">Richiesti</th>
+                                          <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest ring-1 ring-slate-100">Utilizzati</th>
+                                          <th className="px-8 py-5 text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] bg-indigo-50/50 ring-1 ring-indigo-100">Residui</th>
+                                       </tr>
+                                    </thead>
+                                    <tbody className="divide-y-2 divide-slate-50">
+                                       {agentBalances.balance?.details.map((detail: any) => {
+                                          const usedFromAbsences = agentBalances.usage.absences.filter((a: any) => a.code === detail.code).length;
+                                          const usedFromAgenda = agentBalances.usage.agendaEntries.filter((a: any) => a.code === detail.code).reduce((sum: number, entry: any) => sum + (entry.hours ? entry.hours / 6 : 1), 0);
+                                          const used = usedFromAbsences + usedFromAgenda;
+                                          const requested = agentBalances.requests.filter((r: any) => r.code === detail.code).length;
+                                          const residuo = detail.initialValue - used - requested;
+
+                                          return (
+                                             <tr key={detail.id} className="hover:bg-slate-50/50 transition-colors group">
+                                                <td className="px-8 py-5">
+                                                   <div className="flex items-center gap-4">
+                                                      <div className="w-2.5 h-2.5 rounded-full bg-indigo-400"></div>
+                                                      <div>
+                                                         <p className="text-xs font-black text-slate-900 uppercase">{detail.label || detail.code}</p>
+                                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Codice: {detail.code}</p>
+                                                      </div>
+                                                   </div>
+                                                </td>
+                                                <td className="px-8 py-5 text-sm font-black text-slate-600">{detail.initialValue} {detail.unit === 'DAYS' ? 'GG' : 'H'}</td>
+                                                <td className="px-8 py-5 text-sm font-black text-amber-600 bg-amber-50/10">{requested > 0 ? `-${requested}` : '0'}</td>
+                                                <td className="px-8 py-5 text-sm font-black text-rose-600 bg-rose-50/10">-{used}</td>
+                                                <td className={`px-8 py-5 text-lg font-black bg-indigo-50/30 ring-1 ring-indigo-50 transition-all group-hover:bg-indigo-50 ${residuo < 0 ? 'text-rose-600' : 'text-indigo-700'}`}>
+                                                   {residuo}
+                                                </td>
+                                             </tr>
+                                          );
+                                       })}
+                                       {(!agentBalances.balance || agentBalances.balance.details.length === 0) && (
+                                          <tr>
+                                             <td colSpan={5} className="px-8 py-20 text-center text-slate-400 italic">
+                                                Nessun saldo iniziale caricato per questo operatore nel {currentYear}.
+                                             </td>
+                                          </tr>
+                                       )}
+                                    </tbody>
+                                 </table>
+                              </div>
+                           ) : null}
+                        </div>
+                        
+                        <div className="bg-amber-50 h-2 border-2 border-amber-100 border-dashed rounded-full px-10 py-6 flex items-center gap-4">
+                           <AlertCircle size={20} className="text-amber-600" />
+                           <p className="text-xs font-bold text-amber-800">I saldi vengono calcolati sottraendo sia i giorni già effettuati che le richieste in attesa di approvazione.</p>
+                        </div>
+                     </div>
+                   )}
+
+                   {activeDetailTab === 'STORICO' && (
+                     <div className="bg-white rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 border border-white">
+                        <div className="flex justify-between items-center mb-10">
+                           <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-4">
+                              <Calendar size={20} className="text-indigo-500" /> Cronologia Turni {currentMonthName}
+                           </h3>
+                        </div>
+                        <div className="grid grid-cols-1 gap-4">
+                           {shifts.filter((s:any) => s.userId === selectedAgentForDetails.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((s:any) => (
+                              <div key={s.id} className="flex items-center gap-8 p-6 rounded-3xl hover:bg-slate-50 transition-all border-2 border-transparent hover:border-slate-100 group">
+                                 <div className="w-20 shrink-0 text-center">
+                                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{new Date(s.date).toLocaleDateString('it-IT', { weekday: 'short' })}</p>
+                                    <p className="text-2xl font-black text-slate-900 leading-none">{new Date(s.date).getDate()}</p>
+                                 </div>
+                                 <div className="w-[2px] h-10 bg-slate-100"></div>
+                                 <div className="flex-1">
+                                    <div className="flex items-center gap-4">
+                                       <span className={`px-4 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest border shadow-sm ${
+                                          s.type==='F' ? 'bg-rose-50 text-rose-700 border-rose-200' : 
+                                          s.type.includes('REP') ? 'bg-blue-50 text-blue-700 border-blue-200' : 
+                                          'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                       }`}>
+                                          {s.type}
+                                       </span>
+                                       <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{s.repType || 'Servizio Ordinario'}</span>
+                                    </div>
+                                 </div>
+                                 <div className="text-right">
+                                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-tighter">ID: {s.id.slice(0,8)}</p>
+                                 </div>
+                              </div>
+                           ))}
+                           {shifts.filter((s:any) => s.userId === selectedAgentForDetails.id).length === 0 && (
+                              <div className="text-center py-20 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200">
+                                 <p className="text-slate-400 font-bold italic text-sm">Nessuna attività registrata per questo mese.</p>
+                              </div>
+                           )}
+                        </div>
+                     </div>
+                   )}
+
+                   {activeDetailTab === 'NOTE' && (
+                     <div className="bg-white rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 border border-white min-h-[400px] flex flex-col">
+                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-8 flex items-center gap-4">
+                           <FileText size={20} className="text-slate-400" /> Annotazioni Amministrative Riservate
+                        </h3>
+                        <div className="flex-1 p-10 bg-slate-50 rounded-[2rem] border-2 border-slate-100 shadow-inner">
+                           {selectedAgentForDetails.noteInterne ? (
+                             <p className="text-base font-bold text-slate-700 whitespace-pre-wrap leading-relaxed">{selectedAgentForDetails.noteInterne}</p>
+                           ) : (
+                             <div className="h-full flex flex-col items-center justify-center text-center">
+                                <FileText size={48} className="text-slate-200 mb-4" />
+                                <p className="text-sm font-bold text-slate-400 italic">Nessuna nota presente per questo operatore.</p>
+                                <p className="text-[10px] uppercase font-black text-slate-300 mt-2 tracking-widest">Puoi aggiungerle cliccando su "Gestisci" nella scheda principale</p>
+                             </div>
+                           )}
+                        </div>
+                     </div>
+                   )}
 
                 </div>
              </div>
              
-             {/* Footer Actions */}
-             <div className="bg-slate-50 px-10 py-6 border-t border-slate-200 flex justify-end gap-4 shrink-0">
-                <button onClick={() => setSelectedAgentForDetails(null)} className="px-8 py-3 bg-slate-200 text-slate-700 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-300 transition-all">Chiudi</button>
+             {/* Footer Enhanced */}
+             <div className="bg-white px-12 py-8 border-t-2 border-slate-50 flex justify-between items-center shrink-0">
+                <div className="flex items-center gap-4">
+                   <div className={`w-3 h-3 rounded-full ${selectedAgentForDetails.isUfficiale ? 'bg-indigo-500' : 'bg-slate-400'}`}></div>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sistema Gestionale Caserma · Profilo {selectedAgentForDetails.isUfficiale ? 'Ufficiale' : 'Agente'}</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setSelectedAgentForDetails(null);
+                    setAgentBalances(null);
+                    setActiveDetailTab("ANAGRAFICA");
+                  }} 
+                  className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-blue-600 transition-all shadow-xl active:scale-95"
+                >
+                  Chiudi Documento
+                </button>
              </div>
           </div>
         </div>
