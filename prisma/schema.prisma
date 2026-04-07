@@ -317,16 +317,19 @@ model ShiftSwapRequest {
   tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   requesterId     String
   requester       User     @relation("SentSwaps", fields: [requesterId], references: [id])
-  targetUserId    String
-  targetUser      User     @relation("ReceivedSwaps", fields: [targetUserId], references: [id])
+  targetUserId    String?  // Null = offerta aperta a tutta la caserma (Bacheca)
+  targetUser      User?    @relation("ReceivedSwaps", fields: [targetUserId], references: [id])
   shiftId         String
   shift           Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  message         String?  // Nota dell'agente: "Non posso, ho un impegno familiare"
+  acceptedById    String?  // Chi ha accettato l'offerta aperta
   status          String   @default("PENDING") // PENDING, ACCEPTED, REJECTED, APPROVED_BY_ADMIN
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@index([requesterId])
   @@index([targetUserId])
+  @@index([tenantId, status])
 }
 
 model AgentRequest {

@@ -17,6 +17,8 @@ import {
   FileText,
   Menu,
   X,
+  Car,
+  ArrowLeftRight,
 } from "lucide-react"
 
 type NavSection = {
@@ -35,6 +37,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Ordine di Servizio", href: "/admin/ods", icon: FileText, description: "Gestione Assegnazioni Giornaliere" },
       { label: "Stampa O.d.S.", href: "/admin/stampa-ods", icon: Printer, description: "Anteprima e Stampa PDF" },
       { label: "Generatore Ciclico", href: "/admin/auto-compila", icon: Wand2, description: "Auto-Compilazione Turni" },
+      { label: "Bacheca Scambi", href: "/admin/bacheca-scambi", icon: ArrowLeftRight, description: "Marketplace cessione turni" },
     ],
   },
   {
@@ -50,7 +53,7 @@ const NAV_SECTIONS: NavSection[] = [
     accent: "text-amber-400",
     items: [
       { label: "Setup Caserma", href: "/admin/sezioni", icon: Shield, description: "Configurazione Sezioni e Servizi" },
-      { label: "Parco Auto", href: "/admin/parco-auto", icon: Shield, description: "Gestione Veicoli e Scadenze" },
+      { label: "Parco Auto", href: "/admin/parco-auto", icon: Car, description: "Gestione Veicoli e Scadenze" },
     ],
   },
   {
