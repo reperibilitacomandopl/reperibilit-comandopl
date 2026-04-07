@@ -58,13 +58,35 @@ const NAV_SECTIONS: NavSection[] = [
 interface AdminSidebarProps {
   userName: string
   userMatricola: string
+  isSuperAdmin?: boolean
+  currentTenantId?: string | null
   signOutAction: () => Promise<void>
 }
 
-export default function AdminSidebar({ userName, userMatricola, signOutAction }: AdminSidebarProps) {
+export default function AdminSidebar({ userName, userMatricola, isSuperAdmin, currentTenantId, signOutAction }: AdminSidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [isEnding, setIsEnding] = useState(false)
+
+  const isImpersonating = isSuperAdmin && !!currentTenantId
+
+  const handleEndImpersonation = async () => {
+    setIsEnding(true)
+    try {
+      const res = await fetch("/api/superadmin/impersonate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tenantId: null })
+      })
+      if (!res.ok) throw new Error("Errore")
+      window.location.href = "/admin/superadmin"
+    } catch {
+      alert("Errore durante il ripristino sessione")
+    } finally {
+      setIsEnding(false)
+    }
+  }
 
   return (
     <>
@@ -107,14 +129,28 @@ export default function AdminSidebar({ userName, userMatricola, signOutAction }:
         {!collapsed && (
           <div className="overflow-hidden">
             <h1 className="text-sm font-black text-white tracking-wide leading-tight truncate">
-              Polizia Locale
+              {isImpersonating ? "Supporto Attivo" : "Polizia Locale"}
             </h1>
-            <p className="text-[10px] text-slate-500 font-semibold tracking-wider uppercase leading-tight">
-              Altamura
+            <p className={`text-[10px] font-semibold tracking-wider uppercase leading-tight ${isImpersonating ? "text-purple-400 animate-pulse" : "text-slate-500"}`}>
+              {isImpersonating ? "Impersonificazione" : "Comando Locale"}
             </p>
           </div>
         )}
       </div>
+
+      {/* Super-Admin Back Button (If Impersonating) */}
+      {isImpersonating && !collapsed && (
+        <div className="px-4 py-3 bg-purple-500/10 border-b border-purple-500/20">
+          <button 
+            disabled={isEnding}
+            onClick={handleEndImpersonation}
+            className="w-full flex items-center justify-center gap-2 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-purple-900/20"
+          >
+            <Shield size={12} />
+            {isEnding ? "Ripristino..." : "Torna Super-Admin"}
+          </button>
+        </div>
+      )}
 
       {/* Navigation Items */}
       <nav className="flex-1 py-4 px-2 space-y-5 overflow-y-auto custom-scrollbar">

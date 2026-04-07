@@ -51,8 +51,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     })
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
+        token.id = user.id
         token.role = user.role as string
         token.matricola = user.matricola as string
         token.forcePasswordChange = user.forcePasswordChange as boolean
@@ -63,12 +64,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     async session({ session, token }) {
       if (session.user) {
+        session.user.id = (token.id as string) || (token.sub as string)
         session.user.role = token.role as string
         session.user.matricola = token.matricola as string
-        session.user.id = token.sub as string
         session.user.forcePasswordChange = token.forcePasswordChange as boolean
-        session.user.tenantId = token.tenantId as string
         session.user.isSuperAdmin = (token.isSuperAdmin as boolean) || false
+        
+        // Se è SuperAdmin, proviamo a recuperare il tenantId in tempo reale
+        if (session.user.isSuperAdmin && session.user.id) {
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: session.user.id },
+              select: { tenantId: true }
+            })
+            session.user.tenantId = dbUser?.tenantId || null
+          } catch (e) {
+            console.error("Error fetching live tenantId for SuperAdmin:", e)
+            session.user.tenantId = token.tenantId as string
+          }
+        } else {
+          session.user.tenantId = token.tenantId as string
+        }
       }
       return session
     }

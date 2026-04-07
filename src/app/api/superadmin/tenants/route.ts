@@ -126,3 +126,36 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: "Errore" }, { status: 500 })
   }
 }
+
+// PATCH: Aggiorna i dati di un tenant
+export async function PATCH(req: Request) {
+  const session = await auth()
+  if (!session?.user?.isSuperAdmin) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  try {
+    const { tenantId, name, planType, maxAgents, address, partitaIva } = await req.json()
+
+    if (!tenantId) {
+      return NextResponse.json({ error: "ID Tenant mancante" }, { status: 400 })
+    }
+
+    const updated = await prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        name,
+        planType,
+        maxAgents,
+        address,
+        partitaIva,
+        trialEndsAt: planType === "TRIAL" ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) : undefined
+      }
+    })
+
+    return NextResponse.json({ success: true, tenant: updated })
+  } catch (error) {
+    console.error("[UPDATE TENANT ERROR]", error)
+    return NextResponse.json({ error: "Errore durante l'aggiornamento" }, { status: 500 })
+  }
+}
