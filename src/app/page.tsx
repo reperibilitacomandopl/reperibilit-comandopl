@@ -25,13 +25,16 @@ export default async function Home({ searchParams }: { searchParams: { view?: st
   const currentYear = yearStr ? parseInt(yearStr, 10) : now.getFullYear()
   const currentMonth = monthStr ? parseInt(monthStr, 10) : (now.getMonth() + 1)
 
+  const tenantId = session.user.tenantId
+
   const users = await prisma.user.findMany({
-    where: { role: "AGENTE" },
+    where: { role: "AGENTE", ...(tenantId ? { tenantId } : {}) },
     orderBy: { name: 'asc' },
   })
 
   const shifts = await prisma.shift.findMany({
     where: {
+      ...(tenantId ? { tenantId } : {}),
       date: {
         gte: new Date(Date.UTC(currentYear, currentMonth - 1, 1)),
         lt: new Date(Date.UTC(currentYear, currentMonth, 2)),
