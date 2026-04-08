@@ -1389,23 +1389,31 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                         {dayInfo.map(di => {
                           const targetDate = new Date(Date.UTC(currentYear, currentMonth - 1, di.day)).toISOString()
                           const dailyRepShifts = shifts.filter(s => s.repType?.includes("REP") && new Date(s.date).toISOString() === targetDate)
-                          const countUff = dailyRepShifts.filter(s => {
-                            const agent = allAgents.find(a => a.id === s.userId)
-                            return agent?.isUfficiale
-                          }).length
                           
+                          // Estraiamo tutti gli agenti presenti per questo giorno
+                          const agentsPresent = dailyRepShifts.map(s => allAgents.find(a => a.id === s.userId)).filter(Boolean)
+                          
+                          const countUff = agentsPresent.filter(a => a?.isUfficiale).length
                           const isZero = countUff === 0 && dailyRepShifts.length > 0
+
+                          // Calcolo del Grado più alto (Sostituto Legale) basato sul gradoLivello (numero più basso = gerarchia più alta)
+                          let substituteName = "Nessuna asseganzione"
+                          if (isZero && agentsPresent.length > 0) {
+                            agentsPresent.sort((a, b) => (a!.gradoLivello || 99) - (b!.gradoLivello || 99))
+                            substituteName = agentsPresent[0]!.name
+                          }
 
                           return (
                             <td 
                               key={di.isNextMonth ? `next-uff-${di.day}` : `curr-uff-${di.day}`} 
-                              className={`px-1 py-3 text-center font-black text-xs transition-all ${di.isNextMonth ? "opacity-20" : ""} ${
+                              title={isZero ? `⚠ ALLERTA UFFICIALE ⚠\nSostituto al Comando: ${substituteName}` : undefined}
+                              className={`px-1 py-3 text-center font-black transition-all ${di.isNextMonth ? "opacity-20" : ""} ${
                                 isZero 
-                                  ? "bg-rose-600 text-white shadow-lg animate-pulse" 
-                                  : countUff > 0 ? "text-indigo-600 bg-indigo-50/40" : "text-slate-100"
+                                  ? "bg-red-500 text-yellow-300 text-sm shadow-[0_0_12px_rgba(239,68,68,0.8)] border border-red-500 hover:scale-125 cursor-help z-10 relative saturate-150" 
+                                  : countUff > 0 ? "text-indigo-600 bg-indigo-50/40 text-xs" : "text-slate-100 text-xs"
                               }`} 
                             >
-                              {isZero ? "⚠" : countUff || "·"}
+                              {isZero ? "⚠️" : countUff || "·"}
                             </td>
                           )
                         })}
