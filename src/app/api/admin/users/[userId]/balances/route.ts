@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 
 export async function GET(req: Request, { params }: { params: Promise<{ userId: string }> }) {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageUsers) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { userId } = await params
   const { searchParams } = new URL(req.url)

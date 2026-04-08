@@ -6,7 +6,7 @@ export async function POST(req: Request) {
   const session = await auth()
   
   // Solo gli ADMIN possono cambiare i permessi
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (!session?.user || (session.user.role !== "ADMIN" && !session?.user?.canManageUsers)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

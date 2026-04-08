@@ -7,7 +7,7 @@ import { getShortCode } from '@/utils/agenda-codes'
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const session = await auth()
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (!session?.user || (session.user.role !== "ADMIN" && !session?.user?.canManageShifts)) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 403 })
   }
 

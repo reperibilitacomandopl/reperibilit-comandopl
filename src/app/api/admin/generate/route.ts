@@ -15,7 +15,7 @@ function getDayOfWeek(day: number, month: number, year: number): number {
 
 export async function POST(req: Request) {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN") {
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageShifts) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

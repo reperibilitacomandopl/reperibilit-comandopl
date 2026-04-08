@@ -5,7 +5,7 @@ import { normalizeShiftData } from "@/utils/sync-shift"
 
 export async function GET(req: Request) {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageShifts) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   try {
     const { searchParams } = new URL(req.url)
@@ -49,7 +49,7 @@ export async function GET(req: Request) {
 
 export async function PUT(req: Request) {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageShifts) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   try {
     const body = await req.json()

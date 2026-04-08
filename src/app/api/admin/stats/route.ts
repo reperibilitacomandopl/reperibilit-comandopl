@@ -5,7 +5,7 @@ import { isHoliday } from "@/utils/holidays"
 
 export async function GET(req: Request) {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN") {
+  if (session?.user?.role !== "ADMIN" && (!session?.user?.canManageShifts && !session?.user?.canManageUsers)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

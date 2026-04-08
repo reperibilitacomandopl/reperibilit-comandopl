@@ -4,7 +4,7 @@ import { auth } from "@/auth"
 
 export async function GET(request: Request) {
   const session = await auth()
-  if (!session || session.user.role !== "ADMIN") return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
+  if (!session?.user || (session.user.role !== "ADMIN" && !session?.user?.canManageShifts)) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
 
   const { searchParams } = new URL(request.url)
   const month = parseInt(searchParams.get("month") || "1")
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   const session = await auth()
-  if (!session || session.user.role !== "ADMIN") return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
+  if (!session?.user || (session.user.role !== "ADMIN" && !session?.user?.canManageShifts)) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
 
   try {
     const { updates } = await request.json()
@@ -155,7 +155,7 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   const session = await auth()
-  if (!session || session.user.role !== "ADMIN") return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
+  if (!session?.user || (session.user.role !== "ADMIN" && !session?.user?.canManageShifts)) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
 
   try {
     const { year, month, months, userId } = await request.json()

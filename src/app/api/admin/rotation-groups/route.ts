@@ -5,7 +5,7 @@ import { auth } from "@/auth"
 
 export async function GET() {
   const session = await auth()
-  if (!session || session.user.role !== "ADMIN") return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
+  if (!session?.user || (session.user.role !== "ADMIN" && !session?.user?.canManageShifts)) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
 
   try {
     const tenantId = session.user.tenantId
@@ -26,7 +26,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const session = await auth()
-  if (!session || session.user.role !== "ADMIN") return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
+  if (!session?.user || (session.user.role !== "ADMIN" && !session?.user?.canManageShifts)) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
 
   try {
     const { name, pattern, mStartTime, mEndTime, pStartTime, pEndTime, startDate } = await request.json()
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   const session = await auth()
-  if (!session || session.user.role !== "ADMIN") return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
+  if (!session?.user || (session.user.role !== "ADMIN" && !session?.user?.canManageShifts)) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
 
   try {
     const { id, name, pattern, mStartTime, mEndTime, pStartTime, pEndTime, startDate } = await request.json()
@@ -79,7 +79,7 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   const session = await auth()
-  if (!session || session.user.role !== "ADMIN") return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
+  if (!session?.user || (session.user.role !== "ADMIN" && !session?.user?.canManageShifts)) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
 
   try {
     const { searchParams } = new URL(request.url)

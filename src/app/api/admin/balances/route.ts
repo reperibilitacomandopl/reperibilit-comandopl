@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 
 export async function GET(req: Request) {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageShifts) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
   const year = parseInt(searchParams.get("year") || new Date().getFullYear().toString())
@@ -58,7 +58,7 @@ export async function GET(req: Request) {
 
 export async function PUT(req: Request) {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageShifts) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   try {
     const { year, updates } = await req.json()
@@ -96,7 +96,7 @@ export async function PUT(req: Request) {
 // Carry Over logic: Year N-1 -> Year N
 export async function POST(req: Request) {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageShifts) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   try {
     const { fromYear, toYear } = await req.json()

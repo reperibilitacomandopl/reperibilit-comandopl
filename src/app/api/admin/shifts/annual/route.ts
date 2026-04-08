@@ -6,7 +6,7 @@ import { isAssenza, formatShiftCode, isMattina, isPomeriggio } from "@/utils/shi
 
 export async function POST(request: Request) {
   const session = await auth()
-  if (!session || session.user.role !== "ADMIN") {
+  if (!session?.user || (session.user.role !== "ADMIN" && !session?.user?.canManageShifts)) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
   }
 

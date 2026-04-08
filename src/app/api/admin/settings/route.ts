@@ -7,7 +7,7 @@ import { logAudit } from "@/lib/audit"
 // GET: Retrieve current settings + all agents with massimale + PEC config
 export async function GET() {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN") {
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canConfigureSystem) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -55,7 +55,7 @@ export async function GET() {
 // PUT: Update settings and/or agent massimale
 export async function PUT(req: Request) {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN") {
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canConfigureSystem) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

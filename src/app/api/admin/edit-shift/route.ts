@@ -8,7 +8,7 @@ import { normalizeShiftData } from "@/utils/sync-shift"
 // PUT: Update or create a single shift/absence for an agent on a specific day
 export async function PUT(req: Request) {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN") {
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageShifts) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

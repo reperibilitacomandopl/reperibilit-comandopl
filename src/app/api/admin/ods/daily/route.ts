@@ -23,7 +23,7 @@ function calculateDurationAndOvertime(timeRange: string | null): { durationHours
 
 export async function GET(req: Request) {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageShifts) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const url = new URL(req.url)
   const dateStr = url.searchParams.get("date")
@@ -67,7 +67,7 @@ export async function GET(req: Request) {
 
 export async function PUT(req: Request) {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageShifts) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   try {
     const { updates } = await req.json()

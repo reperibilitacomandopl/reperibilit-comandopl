@@ -7,7 +7,7 @@ import { logAudit } from "@/lib/audit"
 
 export async function GET(req: Request) {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN") {
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageUsers) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
   try {
@@ -26,7 +26,7 @@ export async function GET(req: Request) {
 
 export async function PUT(req: Request) {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN") {
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageUsers) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -116,7 +116,7 @@ export async function PUT(req: Request) {
 
 export async function POST(req: Request) {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN") {
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageUsers) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -171,7 +171,7 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN") {
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageUsers) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

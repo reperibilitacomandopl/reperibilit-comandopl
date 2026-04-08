@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 
 export async function PUT(req: Request) {
   const session = await auth()
-  if (!session?.user || session.user.role !== "ADMIN") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (!session?.user || (session.user.role !== "ADMIN" && !session?.user?.canConfigureSystem)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const tenantId = session.user.tenantId
   if (!tenantId) return NextResponse.json({ error: "No Tenant" }, { status: 400 })

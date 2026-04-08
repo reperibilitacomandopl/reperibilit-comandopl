@@ -25,7 +25,7 @@ function classifyShift(type: string): "M" | "P" | "N" | "OFF" {
 
 export async function POST(req: Request) {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageShifts) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   try {
     const { date } = await req.json()

@@ -21,7 +21,7 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
 
 export async function GET(req: Request) {
   const session = await auth()
-  if (!session?.user || session.user.role !== "ADMIN") return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (!session?.user || (session.user.role !== "ADMIN" && !session?.user?.canVerifyClockIns)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const tenantId = session.user.tenantId
   if (!tenantId) return NextResponse.json({ error: "No Tenant" }, { status: 400 })

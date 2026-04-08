@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 // GET: Mostra una pagina con bottone per eseguire la migrazione
 export async function GET() {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN") {
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canConfigureSystem) {
     return new Response("Non autorizzato. Effettua il login come Admin.", { status: 401 })
   }
 
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
   const session = await auth()
   
   // Solo ADMIN o SUPER_ADMIN possono eseguire la migrazione
-  if (session?.user?.role !== "ADMIN") {
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canConfigureSystem) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
