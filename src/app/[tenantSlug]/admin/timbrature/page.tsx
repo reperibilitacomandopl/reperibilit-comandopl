@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic"
 
 export default async function TimbraturePage() {
   const session = await auth()
-  if (!session?.user || session.user.role !== "ADMIN") redirect("/login")
+  if (!session?.user) redirect("/login")
 
   const tenantId = session.user.tenantId
   if (!tenantId) redirect("/admin/pannello")

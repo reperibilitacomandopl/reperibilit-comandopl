@@ -9,7 +9,7 @@ export default async function RisorsePage({ params }: { params: { tenantSlug: st
   const { tenantSlug: urlSlug } = await params
   const session = await auth()
 
-  if (!session?.user || session.user.role !== "ADMIN") redirect("/login")
+  if (!session?.user) redirect("/login")
   
   // Verifica coerenza Slug
   if (urlSlug !== session.user.tenantSlug && !session.user.isSuperAdmin) {

@@ -8,7 +8,7 @@ export const metadata = {
 
 export default async function OdsPage({ params }: { params: { tenantSlug: string } }) {
   const session = await auth()
-  if (!session || session.user.role !== "ADMIN") redirect("/login")
+  if (!session?.user) redirect("/login")
   
   const { tenantSlug } = params
 

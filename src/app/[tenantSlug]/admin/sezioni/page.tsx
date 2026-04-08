@@ -8,7 +8,7 @@ export const metadata = {
 
 export default async function SezioniPage() {
   const session = await auth()
-  if (!session || session.user.role !== "ADMIN") redirect("/login")
+  if (!session?.user) redirect("/login")
 
   return (
     <div className="h-full">

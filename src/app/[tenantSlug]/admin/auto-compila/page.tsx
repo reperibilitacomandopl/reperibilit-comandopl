@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic"
 
 export default async function AutoCompilaPage({ params }: { params: { tenantSlug: string } }) {
   const session = await auth()
-  if (!session?.user || session.user.role !== "ADMIN") redirect("/login")
+  if (!session?.user) redirect("/login")
   
   const { tenantSlug } = params
 

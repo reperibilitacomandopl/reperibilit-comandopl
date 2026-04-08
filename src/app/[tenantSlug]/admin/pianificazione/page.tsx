@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic"
 
 export default async function PianificazionePage({ params, searchParams }: { params: { tenantSlug: string }, searchParams: { month?: string; year?: string } }) {
   const session = await auth()
-  if (!session?.user || session.user.role !== "ADMIN") redirect("/login")
+  if (!session?.user) redirect("/login")
 
   const { tenantSlug } = params
   const tenantId = session.user.tenantId || "N0T-EX1ST1NG"

@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic"
 export default async function AgentDossierPage({ params }: { params: { id: string, tenantSlug: string } }) {
   const { id, tenantSlug } = params
   const session = await auth()
-  if (!session?.user || session.user.role !== "ADMIN") redirect("/login")
+  if (!session?.user) redirect("/login")
 
   const year = new Date().getFullYear()
 

@@ -7,7 +7,7 @@ export const dynamicConfig = "force-dynamic"
 export default async function StampaOdsPage() {
   const session = await auth()
   
-  if (!session || session.user.role !== "ADMIN") {
+  if (!session?.user) {
     redirect("/login")
   }
 
