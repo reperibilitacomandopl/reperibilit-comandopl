@@ -31,7 +31,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const user = await prisma.user.findFirst({
           where: { 
             matricola: credentials.matricola as string,
-            tenantId: tenant.id
+            tenantId: tenant.id,
+            isActive: true
           }
         })
 

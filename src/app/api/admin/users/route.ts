@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     if (!tenantId) return NextResponse.json({ error: "Tenant non identificato" }, { status: 400 })
     
     const users = await prisma.user.findMany({
-      where: { role: "AGENTE", tenantId },
+      where: { role: "AGENTE", tenantId, isActive: true },
       orderBy: { name: "asc" }
     })
     return NextResponse.json({ users })
@@ -186,9 +186,14 @@ export async function DELETE(req: Request) {
     })
     if (!targetUser) return NextResponse.json({ error: "Utente non trovato o non appartenente al tuo comando" }, { status: 404 })
 
-    await prisma.absence.deleteMany({ where: { userId, tenantId: tenantId || null } })
-    await prisma.shift.deleteMany({ where: { userId, tenantId: tenantId || null } })
-    await prisma.user.delete({ where: { id: userId, tenantId: tenantId || null } })
+    const timestamp = Date.now()
+    await prisma.user.update({ 
+      where: { id: userId, tenantId: tenantId || null },
+      data: { 
+        isActive: false,
+        matricola: `${targetUser.matricola}_ARCHIVED_${timestamp}`
+      }
+    })
 
     await logAudit({
       tenantId,

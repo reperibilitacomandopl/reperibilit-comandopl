@@ -62,6 +62,7 @@ model User {
   password    String    // Hashed password
   role        String    @default("AGENTE") // AGENTE o ADMIN
   isUfficiale  Boolean   @default(false)
+  isActive    Boolean   @default(true)     // Soft-Delete flag per conservare lo storico
   
   // Permessi Granulari per delegare funzioni Admin
   canManageShifts    Boolean @default(false)
