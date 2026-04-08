@@ -1,17 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, Printer, X } from "lucide-react"
+import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, Printer, X, Save } from "lucide-react"
 
 export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose?: () => void, tenantName?: string | null }) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [loading, setLoading] = useState(true)
-  const [showConfig, setShowConfig] = useState(false)
   
   const [users, setUsers] = useState<any[]>([])
   const [shifts, setShifts] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
 
   const loadData = async () => {
     setLoading(true)
@@ -24,10 +22,7 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
       const data = await res.json()
       if (data.users) setUsers(data.users)
       if (data.shifts) setShifts(data.shifts)
-      if (data.categories) {
-          setCategories(data.categories)
-          setSelectedCategories(data.categories.map((c: any) => c.name))
-      }
+      if (data.categories) setCategories(data.categories)
     } catch {}
     setLoading(false)
   }
@@ -40,535 +35,226 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
     setCurrentDate(next)
   }
 
-  const printDocument = () => {
-    window.print()
+  const handleDetailsUpdate = async (shift: any, value: string) => {
+    if (shift.serviceDetails === value) return; // Nessuna modifica effettiva
+
+    // Optimistic UI Update
+    setShifts(prev => prev.map(s => s.id === shift.id ? { ...s, serviceDetails: value } : s))
+    
+    try {
+      const targetDate = new Date(currentDate);
+      targetDate.setHours(12, 0, 0, 0); 
+      const dateStr = targetDate.toISOString().split("T")[0];
+
+      await fetch(`/api/admin/shifts/daily`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          date: dateStr,
+          userId: shift.userId,
+          type: shift.type,
+          serviceDetails: value
+        })
+      })
+    } catch (e) {
+      console.error("Errore salvataggio dettagli:", e)
+    }
   }
 
-  // Raggruppiamo i turni in: MATTINO, POMERIGGIO, REPERIBILITA NOTTURNA + ASSENTI
-  const isWorking = (type: string) => {
-    const t = (type || "").toUpperCase().replace(/[()]/g, "").trim()
-    return /^[MPN]\d/.test(t)
+  // --- CALCOLO LINGUETTE DELLA SETTIMANA ---
+  const getWeekDates = (curr: Date) => {
+     const w = [];
+     const start = new Date(curr);
+     const day = start.getDay();
+     const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+     start.setDate(diff);
+     for(let i=0; i<7; i++) {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        w.push(d);
+     }
+     return w;
+  }
+  const weekDates = getWeekDates(currentDate);
+
+  // --- DOWNLOAD PDF LEGACY ---
+  const downloadPDF = async () => {
+    const { default: jsPDF } = await import("jspdf")
+    const { default: autoTable } = await import("jspdf-autotable")
+    const doc = new jsPDF()
+    const pageWidth = doc.internal.pageSize.width
+    const dateStr = currentDate.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })
+    
+    doc.setFontSize(22)
+    doc.text(`POLIZIA LOCALE ${tenantName || "NAZIONALE"}`, pageWidth / 2, 25, { align: "center" })
+    doc.setFontSize(14)
+    doc.text("ORDINE DI SERVIZIO GIORNALIERO", pageWidth / 2, 33, { align: "center" })
+    doc.setFontSize(12)
+    doc.text(dateStr.toUpperCase(), pageWidth / 2, 40, { align: "center" })
+    
+    autoTable(doc, { startY: 50, head: [['Stampa temporaneamente semplificata causa transizione ad Excel Grid.']], body: [] })
+    doc.save(`OdS_${currentDate.toISOString().split("T")[0]}.pdf`)
   }
 
+  // --- LOGICA RAGGRUPPAMENTI ---
+  const isWorking = (type: string) => /^[MPN]\d/.test((type || "").toUpperCase().replace(/[()]/g, "").trim())
   const presentShifts = shifts.filter(s => isWorking(s.type))
-  const absentShifts = shifts.filter(s => !isWorking(s.type))
   const mattinieri = presentShifts.filter(s => /^M/i.test((s.type||"").replace(/[()]/g,"")))
   const pomeridiani = presentShifts.filter(s => /^P/i.test((s.type||"").replace(/[()]/g,"")))
-  const reperibili = presentShifts.filter(s => s.repType != null && s.repType.includes("REP"))
 
-  // Funzione helper per renderizzare una Macro Fascia Oraria (Mattino/Pomeriggio)
-  const renderFascia = (titolo: string, listaTurni: any[]) => {
+  const renderFasciaOrizzontale = (titolo: string, listaTurni: any[]) => {
     if (listaTurni.length === 0) return null
 
-    // Separa Ufficiali da Agenti
-    const ufficiali = listaTurni.filter(s => {
-        const u = users.find(user => user.id === s.userId);
-        return u?.isUfficiale;
-    });
+    // Ufficiali
+    const ufficiali = listaTurni.filter(s => users.find(u => u.id === s.userId)?.isUfficiale)
+    const agenti = listaTurni.filter(s => !users.find(u => u.id === s.userId)?.isUfficiale)
 
-    const agenti = listaTurni.filter(s => {
-        const u = users.find(user => user.id === s.userId);
-        return !u?.isUfficiale;
-    });
-
-    // Raggruppiamo gli AGENTI per ServiceCategory.name
     const gruppiAgenti: Record<string, any[]> = {}
     agenti.forEach(s => {
       const catName = s.serviceCategory ? s.serviceCategory.name : "ALTRI SERVIZI"
-      if (!selectedCategories.includes(catName) && s.serviceCategory) return;
       if (!gruppiAgenti[catName]) gruppiAgenti[catName] = []
       gruppiAgenti[catName].push(s)
     })
 
     return (
       <div className="mb-0">
-        <div className="bg-yellow-100/60 border-y-2 border-slate-300 text-center py-1">
-          <h2 className="font-black text-blue-900 tracking-widest uppercase text-lg">{titolo}</h2>
-        </div>
-
-        {/* TABELLA UFFICIALI (Se presenti) */}
-        {ufficiali.length > 0 && (
-          <div className="border-b-2 border-slate-200">
-            <div className="bg-blue-50 text-blue-800 py-1 px-4 text-[10px] font-black uppercase tracking-widest border-b border-slate-200">
-              Ufficiali di Servizio / Coordinamento
-            </div>
-            <table className="w-full text-sm">
-              <tbody>
-                {ufficiali.map((s, idx) => renderShiftRow(s, idx))}
-              </tbody>
-            </table>
+        {titolo === "POMERIGGIO" && (
+          <div className="bg-amber-100/80 border-y border-amber-300 text-center py-1 mt-4">
+            <h2 className="font-black text-amber-900 tracking-widest uppercase text-sm">POMERIGGIO</h2>
           </div>
         )}
 
-        {/* GRUPPI AGENTI PER CATEGORIA */}
-        {Object.entries(gruppiAgenti).map(([catName, servs]) => (
-          <div key={catName}>
-            <div className="bg-purple-100/50 border-b border-slate-200 text-center py-1 font-bold text-purple-900 italic text-xs">
-              {catName}
-            </div>
-            <table className="w-full text-sm border-b border-slate-300">
-              <tbody>
-                {servs.map((s, idx) => {
-                  // Se il turno precedente ha lo stesso patrolGroupId, visualizziamo senza il bordo superiore (o come blocco unico)
-                  const prevShift = servs[idx - 1];
-                  const isLinked = s.patrolGroupId && prevShift && s.patrolGroupId === prevShift.patrolGroupId;
-                  return renderShiftRow(s, idx, isLinked);
-                })}
-              </tbody>
-            </table>
-          </div>
-        ))}
+        <table className="w-full text-xs text-left border-collapse border border-slate-200 bg-white">
+           <thead className="bg-slate-50 border-b border-slate-200">
+             <tr className="text-slate-500 font-bold tracking-wider">
+               <th className="p-2 border-r border-slate-200 w-1/4">QUALIFICA E COGNOME NOME</th>
+               <th className="p-2 border-r border-slate-200 w-28 text-center">ORARIO</th>
+               <th className="p-2 border-r border-slate-200 w-1/4">SERVIZIO E VEICOLO</th>
+               <th className="p-2">DISPOSIZIONI E LUOGHI (Editabile)</th>
+             </tr>
+           </thead>
+           <tbody>
+             {/* Ufficiali */}
+             {ufficiali.length > 0 && (
+               <>
+                 <tr>
+                   <td colSpan={4} className="bg-purple-100/50 py-1 text-center font-bold text-purple-900 text-[11px] border-b border-slate-200">
+                     Ufficiali
+                   </td>
+                 </tr>
+                 {ufficiali.map((s) => renderRigaTabella(s))}
+               </>
+             )}
+             
+             {/* Categorie Agenti */}
+             {Object.entries(gruppiAgenti).map(([catName, servs]) => (
+               <React.Fragment key={catName}>
+                 <tr>
+                   <td colSpan={4} className="bg-purple-100/50 py-1 text-center font-bold text-purple-900 text-[11px] border-b border-slate-200 border-t border-slate-300">
+                     {catName}
+                   </td>
+                 </tr>
+                 {servs.map((s) => renderRigaTabella(s))}
+               </React.Fragment>
+             ))}
+           </tbody>
+        </table>
       </div>
     )
   }
 
-  // Helper per renderizzare la singola riga di turno (riutilizzabile)
-  const renderShiftRow = (s: any, idx: number, isLinked: boolean = false) => {
+  const renderRigaTabella = (s: any) => {
     const u = users.find(u => u.id === s.userId)
     if (!u) return null
     const qualifica = u.qualifica || (u.isUfficiale ? "Uff.le" : "Agente")
     
-    let orario = s.timeRange
-    if (!orario && u.rotationGroup) {
-      if (s.type.startsWith("M")) orario = `${u.rotationGroup.mStartTime}-${u.rotationGroup.mEndTime}`
-      else if (s.type.startsWith("P")) orario = `${u.rotationGroup.pStartTime}-${u.rotationGroup.pEndTime}`
-    }
-    
-    if (!orario) {
-      const match = s.type.match(/([MP])(\d+)(?:,(\d+))?/)
-      if (match) {
-        const [,, h, m] = match
-        const hour = h.padStart(2, "0")
-        const min = (m || "00").padEnd(2, "0")
-        const endHour = parseInt(h) + 6
-        orario = `${hour}:${min}-${String(endHour).padStart(2, "0")}:${min}`
-      } else {
-        orario = (s.type.startsWith("M") ? "07:00-13:00" : s.type.startsWith("P") ? "14:00-20:00" : "-")
-      }
-    }
-    
-    // Se è collegato, nascondiamo il nome del servizio e il veicolo nella riga successiva per non duplicare
-    const hideServiceInfo = isLinked;
+    let orario = s.timeRange || (s.type.startsWith("M") ? "08:00-14:00" : s.type.startsWith("P") ? "14:00-20:00" : "00:00-00:00");
+    const serviceName = s.serviceType ? s.serviceType.name : (u.servizio || "Vigilanza")
+    const vehicleName = s.vehicle ? ` (${s.vehicle.name})` : ""
 
     return (
-      <tr key={s.id} className={`${idx % 2 === 0 ? "bg-white" : "bg-blue-50/20"} ${isLinked ? 'border-t border-dashed border-slate-200' : 'border-t border-slate-300'}`}>
-        <td className={`py-1 px-4 border-r border-slate-200 w-1/4 font-semibold text-slate-800 ${isLinked ? 'pl-8' : ''}`}>
-          {isLinked && <span className="text-slate-300 mr-2">↳</span>}
-          <span className="text-[10px] text-slate-500 font-normal mr-2">{qualifica}</span>
-          {u.name}
-          {u.servizio && (
-            <span className="ml-2 text-[9px] font-bold text-blue-700 bg-blue-100 border border-blue-200 px-1.5 py-0.5 rounded">
-              {u.servizio}
-            </span>
-          )}
+      <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors group">
+        <td className="p-2 border-r border-slate-200">
+           <span className="text-[10px] text-slate-500 mr-2">{qualifica}</span>
+           <span className="font-bold text-slate-800">{u.name}</span>
         </td>
-        <td className="py-1 px-4 border-r border-slate-200 w-[120px] text-center font-mono text-xs">
-          {orario}
+        <td className="p-2 border-r border-slate-200 font-mono text-center text-[11px] text-slate-600">
+           {orario}
         </td>
-        <td className="py-1 px-4 w-1/2">
-          {!hideServiceInfo ? (
-            <>
-              <span className="font-bold">{s.serviceType ? s.serviceType.name : (u.servizio ? u.servizio : "Servizio")}</span>
-              {s.vehicle && <span className="ml-2 text-slate-600">({s.vehicle.name})</span>}
-              {s.serviceDetails && <span className="ml-2 italic text-slate-500">- {s.serviceDetails}</span>}
-            </>
-          ) : (
-            <span className="text-[10px] text-slate-400 italic">(Equipaggio sopra indicato)</span>
-          )}
+        <td className="p-2 border-r border-slate-200 font-medium text-slate-700">
+           {serviceName} <span className="text-slate-400 font-normal">{vehicleName}</span>
+        </td>
+        <td className="p-0 align-top">
+           <input 
+             type="text" 
+             defaultValue={s.serviceDetails || ""}
+             onBlur={(e) => handleDetailsUpdate(s, e.target.value)}
+             className="w-full h-full p-2 text-xs bg-transparent focus:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-400 transition-all font-medium text-slate-700 placeholder:text-slate-300"
+             placeholder="Clicca per inserire (Es: 08:00-08:45 Sc. Golgota...)"
+           />
         </td>
       </tr>
     )
   }
 
-  const downloadPDF = async () => {
-    const { default: jsPDF } = await import("jspdf")
-    const { default: autoTable } = await import("jspdf-autotable")
-
-    const doc = new jsPDF()
-    const pageWidth = doc.internal.pageSize.width
-    const dateStr = currentDate.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })
-    
-    // --- Header Istituzionale ---
-    doc.setFont("helvetica", "bold")
-    doc.setFontSize(22)
-    doc.setTextColor(30, 41, 59)
-    doc.text(`POLIZIA LOCALE ${tenantName ? tenantName.toUpperCase() : "NAZIONALE"}`, pageWidth / 2, 25, { align: "center" })
-    
-    doc.setFontSize(14)
-    doc.setTextColor(71, 85, 105)
-    doc.text(tenantName ? `Comune di ${tenantName}` : "Comando Locale", pageWidth / 2, 33, { align: "center" })
-    
-    doc.setDrawColor(30, 41, 59)
-    doc.setLineWidth(1)
-    doc.line(20, 40, pageWidth - 20, 40)
-    
-    doc.setFontSize(16)
-    doc.setTextColor(15, 23, 42)
-    doc.text("ORDINE DI SERVIZIO GIORNALIERO", pageWidth / 2, 52, { align: "center" })
-    
-    doc.setFontSize(12)
-    doc.setFont("helvetica", "normal")
-    doc.text(dateStr.toUpperCase(), pageWidth / 2, 60, { align: "center" })
-
-    let currentY = 70
-
-    const renderPDFSection = (title: string, shiftsData: any[], options = { startY: 0 }) => {
-      if (shiftsData.length === 0) return options.startY
-
-      // Titolo Fascia
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(14)
-      doc.setFillColor(241, 245, 249) // slate-100
-      doc.rect(14, options.startY, pageWidth - 28, 10, "F")
-      doc.setTextColor(30, 41, 59)
-      doc.text(title.toUpperCase(), pageWidth / 2, options.startY + 7, { align: "center" })
-      
-      const tableRows: any[] = []
-      
-      // Separazione Ufficiali vs Agenti per questa fascia
-      const uffs = shiftsData.filter(s => users.find(u => u.id === s.userId)?.isUfficiale)
-      const ags = shiftsData.filter(s => !users.find(u => u.id === s.userId)?.isUfficiale)
-
-      // Helper per righe tabella
-      const getRow = (s: any) => {
-        const u = users.find(usr => usr.id === s.userId)
-        const qual = u?.qualifica || (u?.isUfficiale ? "Uff.le" : "Agente")
-        
-        let orario = s.timeRange
-        if (!orario && u?.rotationGroup) {
-          if (s.type.startsWith("M")) orario = `${u.rotationGroup.mStartTime}-${u.rotationGroup.mEndTime}`
-          else if (s.type.startsWith("P")) orario = `${u.rotationGroup.pStartTime}-${u.rotationGroup.pEndTime}`
-        }
-        if (!orario) orario = s.type.startsWith("M") ? "07:00-13:00" : "14:00-20:00"
-
-        const service = s.serviceType ? s.serviceType.name : (u?.servizio || "Operativo")
-        const vehicle = s.vehicle ? ` (${s.vehicle.name})` : ""
-        const details = s.serviceDetails ? ` - ${s.serviceDetails}` : ""
-
-        return [
-          { content: `${qual} ${u?.name || "N/D"}`, styles: { fontStyle: 'bold' as const } },
-          { content: orario, styles: { halign: 'center' as const } },
-          { content: `${service}${vehicle}${details}` }
-        ]
-      }
-
-      // Add Official Rows
-      if (uffs.length > 0) {
-        tableRows.push([{ content: "UFFICIALI DI SERVIZIO / COORDINAMENTO", colSpan: 3, styles: { fillColor: [219, 234, 254], fontStyle: 'bold' as const, fontSize: 10 } }])
-        uffs.forEach(s => tableRows.push(getRow(s)))
-      }
-
-      // Add Agent Groups by Category
-      const groups: Record<string, any[]> = {}
-      ags.forEach(s => {
-        const cat = s.serviceCategory ? s.serviceCategory.name : "ALTRI SERVIZI"
-        if (!selectedCategories.includes(cat) && s.serviceCategory) return
-        if (!groups[cat]) groups[cat] = []
-        groups[cat].push(s)
-      })
-
-      Object.entries(groups).forEach(([cat, sList]) => {
-        tableRows.push([{ content: cat, colSpan: 3, styles: { fillColor: [243, 232, 255], fontStyle: 'italic' as const, fontSize: 9 } }])
-        sList.forEach(s => tableRows.push(getRow(s)))
-      })
-
-      autoTable(doc, {
-        startY: options.startY + 10,
-        head: [['AGENTE / QUALIFICA', 'ORARIO', 'SERVIZIO / VEICOLO / DETTAGLI']],
-        body: tableRows,
-        theme: 'grid',
-        headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
-        columnStyles: {
-          0: { cellWidth: 55 },
-          1: { cellWidth: 35 },
-          2: { cellWidth: 'auto' }
-        },
-        styles: { fontSize: 9, cellPadding: 3 },
-        margin: { left: 14, right: 14 }
-      })
-
-      return (doc as any).lastAutoTable.finalY + 10
-    }
-
-    // 1. Mattino
-    currentY = renderPDFSection("Sezione Mattina", mattinieri, { startY: currentY })
-
-    // 2. Pomeriggio
-    if (currentY > 240) { doc.addPage(); currentY = 20 }
-    currentY = renderPDFSection("Sezione Pomeriggio", pomeridiani, { startY: currentY })
-
-    // 3. Reperibilità
-    if (reperibili.length > 0) {
-      if (currentY > 230) { doc.addPage(); currentY = 20 }
-      doc.setFont("helvetica", "bold")
-      doc.setFontSize(14)
-      doc.setFillColor(30, 41, 59)
-      doc.rect(14, currentY, pageWidth - 28, 10, "F")
-      doc.setTextColor(255, 255, 255)
-      doc.text("REPERIBILITÀ E PRONTA DISPONIBILITÀ", pageWidth / 2, currentY + 7, { align: "center" })
-
-      const repRows = reperibili.map(s => {
-        const u = users.find(usr => usr.id === s.userId)
-        return [
-          { content: `${u?.qualifica || "Agente"} ${u?.name || "N/D"}`, styles: { fontStyle: 'bold' as const } },
-          { content: "22:00 - 07:00", styles: { halign: 'center' as const } },
-          { content: `Reperibilità Notturna ${s.repType === "REP 22-07" ? "" : `(${s.repType})`}` }
-        ]
-      })
-
-      autoTable(doc, {
-        startY: currentY + 10,
-        body: repRows,
-        theme: 'grid',
-        columnStyles: { 0: { cellWidth: 55 }, 1: { cellWidth: 35 }, 2: { cellWidth: 'auto' } },
-        styles: { fontSize: 9, cellPadding: 3 },
-      })
-      currentY = (doc as any).lastAutoTable.finalY + 15
-    }
-
-    // 4. Assenti (In forma di lista compatta)
-    if (absentShifts.length > 0) {
-       if (currentY > 240) { doc.addPage(); currentY = 20 }
-       doc.setFontSize(10)
-       doc.setFont("helvetica", "bold")
-       doc.setTextColor(225, 29, 72) // rose-600
-       doc.text(`PERSONALE ASSENTE / NON DISPONIBILE (${absentShifts.length})`, 14, currentY)
-       
-       const absNames = absentShifts.map(s => {
-         const u = users.find(usr => usr.id === s.userId)
-         return `${u?.name || ""} (${s.type})`
-       }).join(", ")
-
-       doc.setFont("helvetica", "normal")
-       doc.setFontSize(8)
-       doc.setTextColor(100, 116, 139)
-       const lines = doc.splitTextToSize(absNames, pageWidth - 28)
-       doc.text(lines, 14, currentY + 5)
-       currentY += (lines.length * 4) + 15
-    }
-
-    // 5. Firma
-    if (currentY > 250) doc.addPage()
-    const footerY = doc.internal.pageSize.height - 30
-    doc.setFontSize(10)
-    doc.setTextColor(30, 41, 59)
-    doc.text("IL COMANDANTE", pageWidth - 60, footerY, { align: "center" })
-    doc.setDrawColor(200, 200, 200)
-    doc.line(pageWidth - 85, footerY + 15, pageWidth - 35, footerY + 15)
-
-    doc.save(`OdS_${currentDate.toISOString().split("T")[0]}.pdf`)
-  }
-
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] bg-slate-50 rounded-[2.5rem] overflow-hidden shadow-2xl relative animate-fade-up">
+    <div className="flex flex-col h-[calc(100vh-2rem)] bg-white overflow-hidden animate-fade-in shadow-2xl">
       
-      {/* Premium Header - HIDDEN IN PRINT */}
-      <div className="bg-slate-900 border-b border-slate-800 p-5 flex flex-col md:flex-row items-center justify-between gap-6 shrink-0 print:hidden px-8">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-500/20 ring-1 ring-white/10">
-            <CalendarIcon size={24} className="text-white" />
-          </div>
-          <div>
-            <h2 className="text-xl font-black text-white tracking-tight font-sans">Ordine di <span className="text-indigo-400">Servizio</span></h2>
-            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em]">Gestione Operativa Giornaliera</p>
-          </div>
-        </div>
-        
-        <div className="flex items-center glass-effect border border-slate-700/50 rounded-2xl p-1 shadow-inner ring-1 ring-white/5">
-          <button 
-            onClick={() => changeDate(-1)} 
-            className="p-2.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all active:scale-90"
-          >
-            <ChevronLeft size={20}/>
-          </button>
-          
-          <div className="px-8 font-black text-xs tracking-[0.15em] text-white font-sans uppercase">
-            {currentDate.toLocaleDateString("it-IT", { weekday: "short", day: "2-digit", month: "short", year: "numeric" })}
-          </div>
-          
-          <button 
-            onClick={() => changeDate(1)} 
-            className="p-2.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all active:scale-90"
-          >
-            <ChevronRight size={20}/>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setShowConfig(!showConfig)} 
-            className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all border border-slate-700/50"
-          >
-            Filtra Servizi
-          </button>
-          <button 
-            onClick={downloadPDF} 
-            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-xl shadow-indigo-900/40 transition-all active:scale-95"
-          >
-            <Printer size={16}/> Scarica PDF Ufficiale
-          </button>
-          {onClose && (
-            <button onClick={onClose} className="p-2.5 bg-slate-800 hover:bg-rose-500 text-slate-400 hover:text-white rounded-xl transition-all border border-slate-700/50">
-              <X size={20}/>
+      {/* Header Intestazione */}
+      <div className="bg-slate-900 border-b border-slate-800 p-4 shrink-0 flex justify-between items-center px-6">
+         <h2 className="text-lg font-black text-white tracking-widest uppercase">Grid <span className="text-indigo-400">O.d.S.</span></h2>
+         
+         <div className="flex gap-2">
+            <button onClick={downloadPDF} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-xl shadow-indigo-900/40">
+              <Printer size={14}/> STAMPA
             </button>
-          )}
-        </div>
+            {onClose && (
+              <button onClick={onClose} className="p-2 bg-slate-800 text-slate-400 hover:bg-rose-500 hover:text-white rounded-lg transition-all border border-slate-700">
+                <X size={16}/>
+              </button>
+            )}
+         </div>
       </div>
 
-      {/* FILTER PANEL */}
-      {showConfig && !loading && (
-        <div className="bg-white border-b border-slate-200 p-8 print:hidden shadow-inner max-h-80 overflow-y-auto animate-fade-down">
-           <div className="max-w-4xl mx-auto">
-             <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Seleziona Servizi da visualizzare nel PDF</h3>
-             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {categories.map((c) => (
-                  <div 
-                    key={c.id} 
-                    onClick={() => {
-                      if (selectedCategories.includes(c.name)) setSelectedCategories(selectedCategories.filter(x => x !== c.name))
-                      else setSelectedCategories([...selectedCategories, c.name])
-                    }}
-                    className={`flex justify-between items-center px-4 py-3 rounded-2xl border transition-all cursor-pointer ${
-                      selectedCategories.includes(c.name) 
-                        ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm' 
-                        : 'bg-slate-50 border-slate-100 text-slate-500 hover:bg-white hover:border-slate-300'
-                    }`}
-                  >
-                    <span className="font-bold text-sm font-sans tracking-tight">{c.name}</span>
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border-2 transition-all ${
-                       selectedCategories.includes(c.name) 
-                        ? 'bg-indigo-600 border-indigo-600 text-white scale-110' 
-                        : 'bg-white border-slate-200'
-                    }`}>
-                      {selectedCategories.includes(c.name) && <span className="text-[10px] font-black">✓</span>}
-                    </div>
-                  </div>
-                ))}
+      {/* TABS SETTIMANALI (Come da Screenshot) */}
+      <div className="bg-slate-50 border-b border-slate-200 flex overflow-x-auto shrink-0 px-2 pt-2">
+         {weekDates.map((wd, index) => {
+            const isSelected = wd.getDate() === currentDate.getDate()
+            const lblDay = wd.toLocaleDateString("it-IT", { weekday: "long" }).charAt(0).toUpperCase() + wd.toLocaleDateString("it-IT", { weekday: "long" }).slice(1)
+            const dateStr = wd.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
+            return (
+              <button 
+                key={index} 
+                onClick={() => setCurrentDate(wd)}
+                className={`px-6 py-2.5 text-xs font-bold whitespace-nowrap transition-all border-x border-t rounded-t-lg -mb-[1px] relative
+                  ${isSelected ? 'bg-white border-slate-200 text-indigo-700 z-10 font-black' : 'bg-slate-100 border-transparent text-slate-400 hover:bg-slate-200'}
+                `}
+              >
+                {lblDay} {dateStr}
+              </button>
+            )
+         })}
+      </div>
+
+      {/* Corpo Griglia */}
+      <div className="flex-1 overflow-auto p-4 bg-white relative">
+         {loading ? (
+             <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm z-20">
+               <Loader2 size={40} className="animate-spin text-indigo-500" />
              </div>
-           </div>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="flex-1 flex items-center justify-center"><Loader2 size={40} className="animate-spin text-slate-400" /></div>
-      ) : (
-        <div className="flex-1 overflow-y-auto p-8 lg:p-12 print:p-0 bg-white" id="service-order-printable">
-          {/* FOGLIO A4 STILE */}
-          <div className="max-w-[210mm] min-h-[297mm] mx-auto bg-white print:shadow-none shadow-xl border border-slate-200 print:border-none p-10 print:p-6 print:m-0">
-            
-            {/* INTESTAZIONE STAMPA */}
-            <div className="text-center mb-12 border-b-4 border-double border-slate-800 pb-6">
-              <h1 className="text-3xl font-black uppercase tracking-widest text-slate-900 font-sans">Polizia Locale <span className="text-indigo-600">Comune di {tenantName || "Locale"}</span></h1>
-              <h2 className="text-xl font-bold mt-3 text-slate-700 uppercase tracking-tight">Ordine di Servizio Giornaliero</h2>
-              <h3 className="text-sm font-black text-slate-500 mt-2 uppercase tracking-[0.3em]">
-                {currentDate.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
-              </h3>
+         ) : (
+            <div className="max-w-[1900px] mx-auto pb-20">
+               {renderFasciaOrizzontale("MATTINA", mattinieri)}
+               {renderFasciaOrizzontale("POMERIGGIO", pomeridiani)}
+               
+               {mattinieri.length === 0 && pomeridiani.length === 0 && (
+                  <div className="p-12 text-center text-slate-400 italic">Vuoto per questa giornata.</div>
+               )}
             </div>
+         )}
+      </div>
 
-            {/* TABELLA */}
-            <div className="border-[3px] border-slate-800">
-              
-              {renderFascia("MATTINO", mattinieri)}
-              {renderFascia("POMERIGGIO", pomeridiani)}
-              
-              {/* SEZIONE REPERIBILITÀ */}
-              {reperibili.length > 0 && (
-                <div className="mb-0">
-                  <div className="bg-slate-800 text-white border-y-2 border-slate-800 text-center py-1 mt-4">
-                    <h2 className="font-black tracking-widest uppercase text-lg">REPERIBILITÀ NOTTURNA E PRONTA DISPONIBILITÀ</h2>
-                  </div>
-                  <table className="w-full text-sm">
-                    <tbody>
-                      {reperibili.map((s, idx) => {
-                        const u = users.find(u => u.id === s.userId)
-                        if (!u) return null
-                        const qualifica = u.qualifica || (u.isUfficiale ? "Uff.le" : "Agente")
-                        
-                        return (
-                          <tr key={s.id} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50"}>
-                            <td className="py-1.5 px-4 border-r border-slate-200 w-1/4 font-semibold text-slate-800">
-                              <span className="text-[10px] text-slate-500 font-normal mr-2">{qualifica}</span>
-                              {u.name}
-                            </td>
-                            <td className="py-1.5 px-4 border-r border-slate-200 w-[120px] text-center font-mono text-xs">
-                              22:00 - 07:00
-                            </td>
-                            <td className="py-1.5 px-4 w-1/2 font-bold text-slate-700">
-                              Reperibilità Notturna {s.repType === "REP 22-07" ? "" : `(${s.repType})`}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {(mattinieri.length === 0 && pomeridiani.length === 0 && reperibili.length === 0) && (
-                <div className="p-10 text-center text-slate-400 font-bold italic">
-                  Nessun servizio assegnato in questa data.
-                </div>
-              )}
-            </div>
-
-            {/* SEZIONE ASSENTI */}
-            {absentShifts.length > 0 && (
-              <div className="mt-8">
-                <div className="bg-rose-50 border-2 border-rose-200 rounded-lg overflow-hidden">
-                  <div className="bg-rose-500 text-white text-center py-2">
-                    <h2 className="font-black tracking-widest uppercase text-sm">Personale Assente / Non Disponibile ({absentShifts.length})</h2>
-                  </div>
-                  <div className="p-4">
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                      {absentShifts.map(s => {
-                        const u = users.find(u => u.id === s.userId)
-                        if (!u) return null
-                        return (
-                          <div key={s.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-rose-100">
-                            <div>
-                              <span className="font-bold text-slate-800 text-sm">{u.name}</span>
-                              {u.servizio && <span className="ml-2 text-[9px] font-bold text-rose-600 bg-rose-50 px-1 py-0.5 rounded">{u.servizio}</span>}
-                            </div>
-                            <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded">{s.type}</span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* FIRME */}
-            <div className="mt-16 flex justify-end">
-              <div className="text-center w-64">
-                <p className="text-xs mb-12">Il Comandante</p>
-                <div className="border-b border-slate-400 w-full mb-2"></div>
-                <p className="text-[10px] uppercase text-slate-500 tracking-wider">Firma</p>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* Tailwind utility classes for print styling */}
-      <style dangerouslySetInnerHTML={{__html: `
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          #service-order-printable, #service-order-printable * {
-            visibility: visible;
-          }
-          #service-order-printable {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-        }
-      `}} />
     </div>
   )
 }
+import React from 'react';
