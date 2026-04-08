@@ -5,7 +5,14 @@ import NotificationHub from "@/components/NotificationHub"
 
 export const dynamic = "force-dynamic"
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ 
+  children,
+  params
+}: { 
+  children: React.ReactNode,
+  params: { tenantSlug: string }
+}) {
+  const { tenantSlug } = await params
   const session = await auth()
 
   if (!session?.user) redirect("/login")
@@ -21,6 +28,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         userName={name || "Admin"}
         userMatricola={matricola || ""}
         tenantName={session.user.tenantName}
+        tenantSlug={tenantSlug}
         isSuperAdmin={session.user.isSuperAdmin}
         currentTenantId={session.user.tenantId}
         signOutAction={async () => {

@@ -9,8 +9,8 @@ import OperativeAssignmentEditor from "@/components/OperativeAssignmentEditor"
 
 export const dynamic = "force-dynamic"
 
-export default async function AgentDossierPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
+export default async function AgentDossierPage({ params }: { params: { id: string, tenantSlug: string } }) {
+  const { id, tenantSlug } = params
   const session = await auth()
   if (!session?.user || session.user.role !== "ADMIN") redirect("/login")
 
@@ -31,7 +31,7 @@ export default async function AgentDossierPage({ params }: { params: Promise<{ i
     }
   })
 
-  if (!agent) redirect("/admin/risorse")
+  if (!agent) redirect(`/${tenantSlug}/admin/risorse`)
   
   const tenantId = session.user.tenantId
   const rotationGroups = await prisma.rotationGroup.findMany({ where: { tenantId: tenantId || null }, orderBy: { name: 'asc' } })
@@ -79,7 +79,7 @@ export default async function AgentDossierPage({ params }: { params: Promise<{ i
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-6">
          <div className="flex items-center gap-4">
-            <Link href="/admin/risorse" className="p-3 bg-white border border-slate-200 hover:bg-slate-50 transition-colors rounded-xl text-slate-500">
+            <Link href={`/${tenantSlug}/admin/risorse`} className="p-3 bg-white border border-slate-200 hover:bg-slate-50 transition-colors rounded-xl text-slate-500">
                <ArrowLeft size={20} />
             </Link>
             <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600">

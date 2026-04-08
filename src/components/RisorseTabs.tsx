@@ -2,18 +2,19 @@
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import { Users, Briefcase } from "lucide-react"
+import { Users, Briefcase, Key } from "lucide-react"
 import AnagraficaPanel from "./AnagraficaPanel"
 import ServicesSettings from "./ServicesSettings"
 import PatrolSettingsPanel from "./PatrolSettingsPanel"
 import SquadreManager from "./SquadreManager"
+import PermissionsPanel from "./PermissionsPanel"
 import { Shield, RotateCcw } from "lucide-react"
 
 export default function RisorseTabs({ agents, rotationGroups, categories }: any) {
   const searchParams = useSearchParams()
   const initialTab = searchParams.get("tab") as any
-  const [activeTab, setActiveTab] = useState<"personale" | "cicli" | "servizi" | "pattuglie">(
-    initialTab && ["personale", "cicli", "servizi", "pattuglie"].includes(initialTab) 
+  const [activeTab, setActiveTab] = useState<"personale" | "cicli" | "servizi" | "pattuglie" | "permessi">(
+    initialTab && ["personale", "cicli", "servizi", "pattuglie", "permessi"].includes(initialTab) 
       ? initialTab 
       : "personale"
   )
@@ -21,7 +22,7 @@ export default function RisorseTabs({ agents, rotationGroups, categories }: any)
   // Opzionale: aggiorna il tab se il parametro cambia (es. navigazione interna)
   useEffect(() => {
     const tab = searchParams.get("tab")
-    if (tab && ["personale", "cicli", "servizi", "pattuglie"].includes(tab)) {
+    if (tab && ["personale", "cicli", "servizi", "pattuglie", "permessi"].includes(tab)) {
       setActiveTab(tab as any)
     }
   }, [searchParams])
@@ -70,6 +71,15 @@ export default function RisorseTabs({ agents, rotationGroups, categories }: any)
           <Shield size={18} />
           Pattuglie Fisse
         </button>
+        <button
+          onClick={() => setActiveTab("permessi")}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+            activeTab === "permessi" ? "bg-white text-indigo-600 shadow-sm shadow-indigo-100" : "text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          <Key size={18} />
+          Permessi Operativi
+        </button>
       </div>
 
       <div className="mt-4">
@@ -93,6 +103,11 @@ export default function RisorseTabs({ agents, rotationGroups, categories }: any)
         {activeTab === "cicli" && (
           <div className="animate-in fade-in duration-500 bg-white p-6 md:p-10 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-orange-100/50">
             <SquadreManager />
+          </div>
+        )}
+        {activeTab === "permessi" && (
+          <div className="animate-in fade-in duration-500 bg-white p-6 md:p-10 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-indigo-100/50">
+            <PermissionsPanel users={agents} />
           </div>
         )}
 

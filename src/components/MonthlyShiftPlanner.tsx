@@ -6,7 +6,7 @@ import toast from "react-hot-toast"
 import Link from "next/link"
 import { formatShiftCode, isAssenza, isMalattia, isMattina, isPomeriggio } from "@/utils/shift-logic"
 
-export default function MonthlyShiftPlanner() {
+export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: string }) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -418,7 +418,7 @@ export default function MonthlyShiftPlanner() {
             {isPublishing ? <Loader2 className="animate-spin" size={16}/> : <span>🚀 Invia Telegram</span>}
           </button>
 
-          <Link href="/" className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-bold flex items-center gap-2 border border-slate-600">
+          <Link href={`/${tenantSlug || ''}`} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-bold flex items-center gap-2 border border-slate-600">
             <ChevronLeft size={16}/> Esci
           </Link>
         </div>
@@ -493,7 +493,7 @@ export default function MonthlyShiftPlanner() {
             </button>
             
             <Link 
-              href="/admin/risorse?tab=cicli" 
+              href={`/${tenantSlug || 'admin'}/admin/risorse?tab=cicli`} 
               className="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg text-sm shadow-md transition-all active:scale-95 flex items-center gap-2"
             >
               ⚙ Gestisci Squadre

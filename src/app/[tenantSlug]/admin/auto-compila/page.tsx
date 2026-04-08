@@ -4,14 +4,16 @@ import MonthlyShiftPlanner from "@/components/MonthlyShiftPlanner"
 
 export const dynamic = "force-dynamic"
 
-export default async function AutoCompilaPage() {
+export default async function AutoCompilaPage({ params }: { params: { tenantSlug: string } }) {
   const session = await auth()
   if (!session?.user || session.user.role !== "ADMIN") redirect("/login")
+  
+  const { tenantSlug } = params
 
   return (
     <div className="h-full relative z-10">
       <div className="h-[calc(100vh-0px)] overflow-hidden">
-        <MonthlyShiftPlanner />
+        <MonthlyShiftPlanner tenantSlug={tenantSlug} />
       </div>
     </div>
   )

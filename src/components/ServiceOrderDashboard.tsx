@@ -360,50 +360,91 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] bg-slate-50 rounded-3xl overflow-hidden shadow-2xl relative animate-in fade-in duration-300">
+    <div className="flex flex-col h-[calc(100vh-80px)] bg-slate-50 rounded-[2.5rem] overflow-hidden shadow-2xl relative animate-fade-up">
       
-      {/* Header Stampante NASCOSTO IN STAMPA */}
-      <div className="bg-slate-800 text-white p-4 flex items-center justify-between shrink-0 print:hidden">
-        <div className="flex items-center gap-3">
-          <CalendarIcon className="text-blue-400" />
-          <h2 className="text-xl font-bold">Ordine di Servizio</h2>
+      {/* Premium Header - HIDDEN IN PRINT */}
+      <div className="bg-slate-900 border-b border-slate-800 p-5 flex flex-col md:flex-row items-center justify-between gap-6 shrink-0 print:hidden px-8">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-500/20 ring-1 ring-white/10">
+            <CalendarIcon size={24} className="text-white" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-white tracking-tight font-sans">Ordine di <span className="text-indigo-400">Servizio</span></h2>
+            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em]">Gestione Operativa Giornaliera</p>
+          </div>
         </div>
         
-        <div className="flex items-center bg-slate-700 rounded-xl p-1">
-          <button onClick={() => changeDate(-1)} className="p-2 hover:bg-slate-600 rounded-lg transition-colors"><ChevronLeft size={20}/></button>
-          <div className="px-6 font-bold tracking-wide">
-            {currentDate.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }).toUpperCase()}
+        <div className="flex items-center glass-effect border border-slate-700/50 rounded-2xl p-1 shadow-inner ring-1 ring-white/5">
+          <button 
+            onClick={() => changeDate(-1)} 
+            className="p-2.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all active:scale-90"
+          >
+            <ChevronLeft size={20}/>
+          </button>
+          
+          <div className="px-8 font-black text-xs tracking-[0.15em] text-white font-sans uppercase">
+            {currentDate.toLocaleDateString("it-IT", { weekday: "short", day: "2-digit", month: "short", year: "numeric" })}
           </div>
-          <button onClick={() => changeDate(1)} className="p-2 hover:bg-slate-600 rounded-lg transition-colors"><ChevronRight size={20}/></button>
+          
+          <button 
+            onClick={() => changeDate(1)} 
+            className="p-2.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all active:scale-90"
+          >
+            <ChevronRight size={20}/>
+          </button>
         </div>
 
-        <div className="flex gap-2">
-          <button onClick={() => setShowConfig(!showConfig)} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-bold flex items-center gap-2">⚙️ Filtra Servizi</button>
-          <button onClick={downloadPDF} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg shadow-emerald-900/20"><Printer size={16}/> Scarica PDF Ufficiale</button>
-          {onClose && <button onClick={onClose} className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg"><X size={20}/></button>}
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setShowConfig(!showConfig)} 
+            className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all border border-slate-700/50"
+          >
+            Filtra Servizi
+          </button>
+          <button 
+            onClick={downloadPDF} 
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-xl shadow-indigo-900/40 transition-all active:scale-95"
+          >
+            <Printer size={16}/> Scarica PDF Ufficiale
+          </button>
+          {onClose && (
+            <button onClick={onClose} className="p-2.5 bg-slate-800 hover:bg-rose-500 text-slate-400 hover:text-white rounded-xl transition-all border border-slate-700/50">
+              <X size={20}/>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* PANNELLO CHECKLIST CATEGORIE (Simile alla foto) */}
+      {/* FILTER PANEL */}
       {showConfig && !loading && (
-        <div className="bg-white border-b-4 border-slate-200 p-6 print:hidden shadow-inner max-h-64 overflow-y-auto">
-           <h3 className="text-lg font-black text-slate-800 mb-4">Seleziona Servizi da visualizzare (Checklist)</h3>
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 border border-slate-200 rounded-none overflow-hidden">
-              {categories.map((c, i) => (
-                <div 
-                  key={c.id} 
-                  onClick={() => {
-                    if (selectedCategories.includes(c.name)) setSelectedCategories(selectedCategories.filter(x => x !== c.name))
-                    else setSelectedCategories([...selectedCategories, c.name])
-                  }}
-                  className={`flex justify-between items-center p-3 border-b border-r border-slate-200 cursor-pointer hover:bg-blue-50 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}
-                >
-                  <span className="font-bold text-slate-900 text-sm">{c.name}</span>
-                  {selectedCategories.includes(c.name) && (
-                    <span className="text-black font-black text-lg">✔</span>
-                  )}
-                </div>
-              ))}
+        <div className="bg-white border-b border-slate-200 p-8 print:hidden shadow-inner max-h-80 overflow-y-auto animate-fade-down">
+           <div className="max-w-4xl mx-auto">
+             <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Seleziona Servizi da visualizzare nel PDF</h3>
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {categories.map((c) => (
+                  <div 
+                    key={c.id} 
+                    onClick={() => {
+                      if (selectedCategories.includes(c.name)) setSelectedCategories(selectedCategories.filter(x => x !== c.name))
+                      else setSelectedCategories([...selectedCategories, c.name])
+                    }}
+                    className={`flex justify-between items-center px-4 py-3 rounded-2xl border transition-all cursor-pointer ${
+                      selectedCategories.includes(c.name) 
+                        ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm' 
+                        : 'bg-slate-50 border-slate-100 text-slate-500 hover:bg-white hover:border-slate-300'
+                    }`}
+                  >
+                    <span className="font-bold text-sm font-sans tracking-tight">{c.name}</span>
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border-2 transition-all ${
+                       selectedCategories.includes(c.name) 
+                        ? 'bg-indigo-600 border-indigo-600 text-white scale-110' 
+                        : 'bg-white border-slate-200'
+                    }`}>
+                      {selectedCategories.includes(c.name) && <span className="text-[10px] font-black">✓</span>}
+                    </div>
+                  </div>
+                ))}
+             </div>
            </div>
         </div>
       )}
@@ -416,16 +457,16 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
           <div className="max-w-[210mm] min-h-[297mm] mx-auto bg-white print:shadow-none shadow-xl border border-slate-200 print:border-none p-10 print:p-6 print:m-0">
             
             {/* INTESTAZIONE STAMPA */}
-            <div className="text-center mb-8 border-b-2 border-slate-800 pb-4">
-              <h1 className="text-2xl font-black uppercase tracking-widest text-slate-900">Polizia Locale - Comune di {tenantName || "Locale"}</h1>
-              <h2 className="text-xl font-bold mt-2 text-slate-700">Ordine di Servizio Giornaliero</h2>
-              <h3 className="text-lg font-medium text-slate-600 mt-1 uppercase">
+            <div className="text-center mb-12 border-b-4 border-double border-slate-800 pb-6">
+              <h1 className="text-3xl font-black uppercase tracking-widest text-slate-900 font-sans">Polizia Locale <span className="text-indigo-600">Comune di {tenantName || "Locale"}</span></h1>
+              <h2 className="text-xl font-bold mt-3 text-slate-700 uppercase tracking-tight">Ordine di Servizio Giornaliero</h2>
+              <h3 className="text-sm font-black text-slate-500 mt-2 uppercase tracking-[0.3em]">
                 {currentDate.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
               </h3>
             </div>
 
             {/* TABELLA */}
-            <div className="border-2 border-slate-800">
+            <div className="border-[3px] border-slate-800">
               
               {renderFascia("MATTINO", mattinieri)}
               {renderFascia("POMERIGGIO", pomeridiani)}

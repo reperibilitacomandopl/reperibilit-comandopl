@@ -128,7 +128,7 @@ type AgendaItem = {
   note: string | null
 }
 
-export default function AgentDashboard({ currentUser, shifts, allAgents, currentYear, currentMonth, isPublished, currentView, tenantName }: { currentUser: { id: string, matricola: string, name: string, telegramChatId?: string | null }, shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], allAgents: any[], currentYear: number, currentMonth: number, isPublished: boolean, currentView?: string, tenantName?: string | null }) {
+export default function AgentDashboard({ currentUser, shifts, allAgents, currentYear, currentMonth, isPublished, currentView, tenantName, tenantSlug }: { currentUser: { id: string, matricola: string, name: string, telegramChatId?: string | null }, shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], allAgents: any[], currentYear: number, currentMonth: number, isPublished: boolean, currentView?: string, tenantName?: string | null, tenantSlug?: string | null }) {
   const router = useRouter()
   const [showSyncModal, setShowSyncModal] = useState(false)
   const [showAgenda, setShowAgenda] = useState(false)
@@ -531,7 +531,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
 
         <div className="flex gap-4">
           <Link 
-            href={`/?month=${prevMonth}&year=${prevYear}${currentView ? `&view=${currentView}` : ''}`}
+            href={`/${tenantSlug}?month=${prevMonth}&year=${prevYear}${currentView ? `&view=${currentView}` : ''}`}
             className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all shadow-sm"
           >
             <ChevronLeft size={18} />
@@ -540,7 +540,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
           
           <select 
             value={currentMonth}
-            onChange={(e) => router.push(`/?month=${e.target.value}&year=${currentYear}${currentView ? `&view=${currentView}` : ''}`)}
+            onChange={(e) => router.push(`/${tenantSlug}?month=${e.target.value}&year=${currentYear}${currentView ? `&view=${currentView}` : ''}`)}
             className="px-6 py-3 bg-white border border-slate-200 text-slate-800 rounded-xl font-bold text-sm focus:ring-2 focus:ring-blue-500 cursor-pointer"
           >
             {monthNames.map((name, i) => <option key={name} value={i + 1}>{name}</option>)}
@@ -690,7 +690,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
             <div className="flex items-center gap-2 mt-8">
               <div className="flex items-center bg-white/10 backdrop-blur-md rounded-2xl p-1 border border-white/10">
                 <Link 
-                  href={`/?month=${prevMonth}&year=${prevYear}${currentView ? `&view=${currentView}` : ''}`} 
+                  href={`/${tenantSlug}?month=${prevMonth}&year=${prevYear}${currentView ? `&view=${currentView}` : ''}`} 
                   className="p-2 hover:bg-white/20 rounded-xl transition-all"
                   title="Mese precedente"
                 >
@@ -700,7 +700,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                 <div className="flex items-center gap-1">
                   <select 
                     value={currentMonth}
-                    onChange={(e) => router.push(`/?month=${e.target.value}&year=${currentYear}${currentView ? `&view=${currentView}` : ''}`)}
+                    onChange={(e) => router.push(`/${tenantSlug}?month=${e.target.value}&year=${currentYear}${currentView ? `&view=${currentView}` : ''}`)}
                     className="bg-transparent border-none text-xs font-black uppercase tracking-widest text-center focus:ring-0 cursor-pointer py-2 pl-2 pr-6 appearance-none"
                     style={{ backgroundPosition: 'right 0.2rem center' }}
                   >
@@ -710,7 +710,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                   </select>
                   <select 
                     value={currentYear}
-                    onChange={(e) => router.push(`/?month=${currentMonth}&year=${e.target.value}${currentView ? `&view=${currentView}` : ''}`)}
+                    onChange={(e) => router.push(`/${tenantSlug}?month=${currentMonth}&year=${e.target.value}${currentView ? `&view=${currentView}` : ''}`)}
                     className="bg-transparent border-none text-xs font-black text-white/40 focus:ring-0 cursor-pointer py-2 pl-1 pr-6 appearance-none"
                     style={{ backgroundPosition: 'right 0.2rem center' }}
                   >
@@ -719,9 +719,9 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                     ))}
                   </select>
                 </div>
-
+ 
                 <Link 
-                  href={`/?month=${nextMonth}&year=${nextYear}${currentView ? `&view=${currentView}` : ''}`} 
+                  href={`/${tenantSlug}?month=${nextMonth}&year=${nextYear}${currentView ? `&view=${currentView}` : ''}`} 
                   className="p-2 hover:bg-white/10 rounded-xl transition-all"
                   title="Mese successivo"
                 >

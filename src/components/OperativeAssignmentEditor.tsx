@@ -84,14 +84,14 @@ export default function OperativeAssignmentEditor({ agent, rotationGroups, categ
 
   if (isEditing) {
     return (
-      <div className="bg-white border-2 border-blue-400 rounded-xl p-4 flex flex-col md:flex-row gap-4 mt-4 md:mt-0 shadow-lg relative min-w-[320px]">
-        <div className="flex-1 space-y-3">
+      <div className="premium-card p-6 flex flex-col md:flex-row gap-6 mt-4 md:mt-0 shadow-2xl shadow-indigo-500/10 ring-2 ring-indigo-500/20 relative min-w-[320px] animate-fade-up">
+        <div className="flex-1 space-y-5">
           <div>
-            <label className="block text-[10px] font-black text-blue-700 uppercase tracking-wide mb-1">Turnazione / Squadra</label>
+            <label className="block text-[10px] font-black text-indigo-700 uppercase tracking-[0.1em] mb-2 font-sans">Turnazione / Squadra</label>
             <select
               value={groupId}
               onChange={e => setGroupId(e.target.value)}
-              className="w-full text-sm border-2 border-blue-100 rounded-lg py-1.5 px-3 focus:border-blue-500 outline-none text-slate-800 font-bold"
+              className="w-full text-sm border-2 border-slate-100 bg-slate-50 rounded-xl py-2 px-4 focus:border-indigo-500 focus:bg-white outline-none text-slate-800 font-bold transition-all"
             >
               <option value="">Nessuna Squadra Fissa</option>
               {rotationGroups.map(g => (
@@ -100,39 +100,41 @@ export default function OperativeAssignmentEditor({ agent, rotationGroups, categ
             </select>
           </div>
           
-          <div className="space-y-2">
-             <label className="block text-[10px] font-black text-blue-700 uppercase tracking-wide mb-1">Sezione OdS e Note</label>
-             <select
-               value={catId}
-               onChange={e => handleCatChange(e.target.value)}
-               className="w-full text-sm border-2 border-blue-100 rounded-lg py-1.5 px-3 focus:border-blue-500 outline-none text-slate-800 font-bold"
-             >
-               <option value="">Nessuna Sezione Default</option>
-               {categories.map(c => (
-                 <option key={c.id} value={c.id}>{c.name}</option>
-               ))}
-             </select>
+          <div className="space-y-4">
+             <label className="block text-[10px] font-black text-indigo-700 uppercase tracking-[0.1em] mb-2 font-sans">Sezione OdS e Note</label>
+             <div className="grid grid-cols-1 gap-2">
+                <select
+                  value={catId}
+                  onChange={e => handleCatChange(e.target.value)}
+                  className="w-full text-sm border-2 border-slate-100 bg-slate-50 rounded-xl py-2 px-4 focus:border-indigo-500 focus:bg-white outline-none text-slate-800 font-bold transition-all"
+                >
+                  <option value="">Nessuna Sezione Default</option>
+                  {categories.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
 
-             {catId && (
-               <select
-                 value={typeId}
-                 onChange={e => setTypeId(e.target.value)}
-                 className="w-full text-xs border border-slate-300 bg-slate-50 rounded-lg py-1.5 px-3 focus:border-blue-500 outline-none text-slate-700 font-bold"
-               >
-                 <option value="">Incarico Generico (Nessun Default)</option>
-                 {categories.find(c => c.id === catId)?.types.map((t: any) => (
-                   <option key={t.id} value={t.id}>{t.name}</option>
-                 ))}
-               </select>
-             )}
+                {catId && (
+                  <select
+                    value={typeId}
+                    onChange={e => setTypeId(e.target.value)}
+                    className="w-full text-xs border border-slate-200 bg-white rounded-xl py-2 px-4 focus:border-indigo-500 outline-none text-slate-700 font-bold transition-all"
+                  >
+                    <option value="">Incarico Generico (Nessun Default)</option>
+                    {categories.find(c => c.id === catId)?.types.map((t: any) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                )}
 
-             <input 
-               type="text" 
-               value={servizio} 
-               onChange={e => setServizio(e.target.value)} 
-               placeholder="Dicitura testuale..."
-               className="w-full text-xs border border-slate-300 rounded-lg py-1.5 px-3 focus:border-blue-500 outline-none text-slate-700"
-             />
+                <input 
+                  type="text" 
+                  value={servizio} 
+                  onChange={e => setServizio(e.target.value)} 
+                  placeholder="Dicitura testuale personalizzata..."
+                  className="w-full text-xs border border-slate-200 bg-white rounded-xl py-2 px-4 focus:border-indigo-500 outline-none text-slate-700 transition-all"
+                />
+             </div>
           </div>
         </div>
 
@@ -140,7 +142,7 @@ export default function OperativeAssignmentEditor({ agent, rotationGroups, categ
           <button
             onClick={handleSave}
             disabled={loading}
-            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold text-xs transition-colors"
+            className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
           >
             {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
             SALVA
@@ -148,7 +150,7 @@ export default function OperativeAssignmentEditor({ agent, rotationGroups, categ
           <button
             onClick={() => setIsEditing(false)}
             disabled={loading}
-            className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg font-bold text-xs transition-colors"
+            className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
           >
             <X size={16} />
             ANNULLA
@@ -160,25 +162,32 @@ export default function OperativeAssignmentEditor({ agent, rotationGroups, categ
 
   // View Mode
   return (
-    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-6 mt-4 md:mt-0 group hover:border-slate-300 transition-colors">
-      <div className="flex gap-6">
-        <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1 flex items-center gap-1">Motore Ciclico (Squadra)</p>
-          <p className="text-sm font-black text-slate-800">{agent.rotationGroup?.name || agent.squadra || "Non Assegnata"}</p>
+    <div className="bg-white/60 backdrop-blur-sm border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-6 mt-4 md:mt-0 group hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-500/5 transition-all duration-300">
+      <div className="flex flex-col sm:flex-row gap-8 items-start sm:items-center">
+        <div className="space-y-1">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-1">
+            <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+            Motore Ciclico (Squadra)
+          </p>
+          <p className="text-[13px] font-black text-slate-800 font-sans tracking-tight">{agent.rotationGroup?.name || agent.squadra || "Non Assegnata"}</p>
         </div>
-        <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Sezione OdS di Default</p>
-          <p className="text-sm font-black text-slate-800">
+        <div className="space-y-1">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-1">
+             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+             Sezione OdS di Default
+          </p>
+          <p className="text-[13px] font-black text-slate-800 font-sans tracking-tight">
             {agent.defaultServiceCategory?.name || agent.servizio || "Nessuna Sezione Base"} 
           </p>
         </div>
       </div>
       <button 
         onClick={() => setIsEditing(true)}
-        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="flex items-center gap-2 px-4 py-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded-xl transition-all duration-300 font-black text-[10px] uppercase tracking-widest ring-1 ring-indigo-100 group-hover:shadow-md"
         title="Modifica Assegnazione Operativa"
       >
-        <Edit2 size={16} />
+        <Edit2 size={14} />
+        MODIFICA
       </button>
     </div>
   )

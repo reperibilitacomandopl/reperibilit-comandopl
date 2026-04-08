@@ -16,7 +16,7 @@ import { AGENDA_CATEGORIES, getCategoryColor } from "../utils/agenda-codes"
 
 type EditingCell = { agentId: string; agentName: string; day: number; currentType: string; warningMsg?: string } | null
 
-export default function AdminDashboard({ allAgents, shifts, currentYear, currentMonth, isPublished, currentView, settings, rotationGroups, categories }: { 
+export default function AdminDashboard({ allAgents, shifts, currentYear, currentMonth, isPublished, currentView, settings, rotationGroups, categories, tenantSlug }: { 
   allAgents: { 
     id: string, name: string, matricola: string, isUfficiale: boolean, 
     email: string | null, phone: string | null, qualifica: string | null, 
@@ -35,7 +35,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
   currentView?: string, 
   settings?: { massimaleAgente: number, massimaleUfficiale: number },
   rotationGroups?: any[],
-  categories?: any[]
+  categories?: any[],
+  tenantSlug?: string | null
 }) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
@@ -825,15 +826,15 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
           </div>
           
           <Link 
-            href="/admin/auto-compila"
+            href={`/${tenantSlug}/admin/auto-compila`}
             className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-indigo-200"
           >
             <CalendarIcon size={18} />
-            Pianificazione Mensile
+            Pianificazione
           </Link>
 
           <Link 
-            href="/admin/risorse"
+            href={`/${tenantSlug}/admin/risorse`}
             className="flex items-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-amber-200"
           >
             <Users size={18} />
@@ -841,7 +842,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
           </Link>
 
           <Link 
-            href="/admin/ods"
+            href={`/${tenantSlug}/admin/ods`}
             className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-blue-200"
           >
             <ClipboardList size={18} />
@@ -849,7 +850,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
           </Link>
 
           <Link 
-            href="/admin/stampa-ods"
+            href={`/${tenantSlug}/admin/stampa-ods`}
             className="flex items-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-purple-200"
           >
             <Printer size={18} />
@@ -1121,42 +1122,38 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 <thead>
                   <tr>
                     <th 
-                      className="p-2 text-left font-bold text-slate-700 w-44 min-w-[176px] sticky left-0 z-20 bg-slate-100 border-b-2 border-r-2 border-slate-300 cursor-pointer hover:bg-slate-200 transition-colors" 
+                      className="p-3 text-left font-black text-slate-900 w-52 min-w-[200px] sticky left-0 z-30 bg-slate-50 border-b-4 border-r-2 border-slate-200 cursor-pointer hover:bg-slate-100 transition-all font-sans italic uppercase tracking-tighter" 
                       rowSpan={2}
                       onClick={() => toggleSort('name')}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between px-1">
                         Agente
-                        <span className="text-[10px] text-slate-400">{sortConfig?.key === 'name' ? (sortConfig.dir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[10px] text-indigo-400">{sortConfig?.key === 'name' ? (sortConfig.dir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                     {dayInfo.map((di, dIdx) => (
                       <th 
                         key={di.isNextMonth ? 'next-1' : di.day} 
-                        className={`px-0.5 pt-2 pb-0 text-center font-bold border-b border-slate-200 min-w-[38px] ${di.isNextMonth ? "bg-slate-200 text-slate-400 opacity-60" : (di.isWeekend ? "bg-red-50 text-red-600" : "bg-slate-50 text-slate-600")}`}
+                        className={`px-1 pt-3 pb-1 text-center font-black border-b border-slate-100 min-w-[42px] font-sans text-[11px] ${di.isNextMonth ? "bg-slate-100 text-slate-300 opacity-50" : (di.isWeekend ? "bg-rose-50/50 text-rose-600 border-rose-100" : "bg-white text-slate-500")}`}
                         title={di.isNextMonth ? `1 ${monthNames[nextMonth - 1]} (Contesto)` : ""}
                       >
                         {di.isNextMonth ? '1*' : di.day}
                       </th>
                     ))}
-                    <th className="px-1 pt-2 pb-0 text-center font-bold bg-purple-50 text-purple-700 border-b border-l-2 border-slate-300 min-w-[34px]" rowSpan={2} title="Reperibilità nei giorni Festivi e Weekend">
-                      <div className="flex flex-col items-center justify-center leading-none">
-                        FEST
-                      </div>
+                    <th className="px-2 pt-3 pb-1 text-center font-black bg-indigo-50 text-indigo-700 border-b-4 border-l-4 border-indigo-100 min-w-[40px] font-sans text-[9px] uppercase tracking-tighter" rowSpan={2} title="Reperibilità nei giorni Festivi e Weekend">
+                      FEST
                     </th>
-                    <th className="px-1 pt-2 pb-0 text-center font-bold bg-blue-50 text-blue-700 border-b border-slate-200 min-w-[34px]" rowSpan={2} title="Reperibilità nei giorni Feriali">
-                      <div className="flex flex-col items-center justify-center leading-none">
-                        FER
-                      </div>
+                    <th className="px-2 pt-3 pb-1 text-center font-black bg-slate-50 text-slate-600 border-b-4 border-slate-200 min-w-[40px] font-sans text-[9px] uppercase tracking-tighter" rowSpan={2} title="Reperibilità nei giorni Feriali">
+                      FER
                     </th>
                     <th 
-                      className="px-2 pt-2 pb-0 text-center font-bold bg-emerald-50 text-emerald-700 border-b border-l-2 border-slate-300 min-w-[44px] cursor-pointer hover:bg-emerald-100 transition-colors" 
+                      className="px-3 pt-3 pb-1 text-center font-black bg-indigo-600 text-white border-b-4 border-l-4 border-indigo-900 min-w-[50px] cursor-pointer hover:bg-indigo-700 transition-colors font-sans text-[10px] uppercase tracking-widest" 
                       rowSpan={2}
                       onClick={() => toggleSort('repTotal')}
                     >
-                      <div className="flex flex-col items-center justify-center leading-none">
+                      <div className="flex flex-col items-center justify-center">
                         REP
-                        <span className="text-[8px] opacity-70 mt-1">{sortConfig?.key === 'repTotal' ? (sortConfig.dir === 'asc' ? '▲' : '▼') : '↕'}</span>
+                        <span className="text-[8px] opacity-60 mt-1">{sortConfig?.key === 'repTotal' ? (sortConfig.dir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
                   </tr>
@@ -1164,9 +1161,9 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                     {dayInfo.map((di, dIdx) => (
                       <th 
                         key={di.isNextMonth ? 'next-dow-1' : `dow-${di.day}`} 
-                        className={`px-0.5 pb-1.5 pt-0 text-center font-medium text-[9px] border-b-2 border-slate-300 ${di.isNextMonth ? "bg-slate-100 text-slate-300 opacity-60" : (di.isWeekend ? "bg-red-50 text-red-400" : "bg-slate-50 text-slate-400")}`}
+                        className={`px-1 pb-2 pt-0 text-center font-black text-[9px] border-b-4 border-slate-200 uppercase tracking-tighter ${di.isNextMonth ? "bg-slate-50 text-slate-200" : (di.isWeekend ? "bg-rose-50/50 text-rose-400 border-rose-100" : "bg-white text-slate-400")}`}
                       >
-                        {di.name}
+                        {di.name.substring(0, 3)}
                       </th>
                     ))}
                   </tr>
@@ -1204,29 +1201,31 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
                         return (
                           <tr key={agent.id} className={`${idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"} hover:bg-blue-50/30 transition-colors`}>
-                            <td className={`px-2 py-1 font-semibold sticky left-0 z-10 border-r-2 border-slate-200 whitespace-nowrap text-[11px] ${idx % 2 === 0 ? "bg-white" : "bg-slate-50"} ${agent.isUfficiale ? "text-blue-700" : "text-slate-800"}`}>
-                              <div className="flex items-center gap-1 group/name">
+                            <td className={`px-4 py-2 sticky left-0 z-20 border-r-4 border-slate-200/50 whitespace-nowrap ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"} ${agent.isUfficiale ? "text-indigo-700" : "text-slate-800 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.05)]"}`}>
+                              <div className="flex items-center gap-3">
                                 <button 
                                   onClick={() => handleToggleUff(agent.id)}
                                   disabled={isTogglingUff === agent.id}
                                   className={`transition-all ${isTogglingUff === agent.id ? "animate-spin" : ""}`}
-                                  title={agent.isUfficiale ? "Rimuovi stato Ufficiale" : "Imposta come Ufficiale"}
                                 >
                                   {agent.isUfficiale ? (
-                                    <span className="text-[10px] bg-blue-100 text-blue-700 border border-blue-200 rounded px-1.5 py-0.5 font-bold hover:bg-red-100 hover:text-red-700 hover:border-red-200 transition-colors cursor-pointer" title="Rimuovi stato Ufficiale">UFF</span>
+                                    <span className="text-[9px] bg-indigo-600 text-white rounded px-1.5 py-0.5 font-black shadow-sm ring-1 ring-indigo-900/10">UFF</span>
                                   ) : (
-                                    <span className="text-[10px] bg-slate-100 text-slate-400 border border-slate-200 rounded px-1.5 py-0.5 font-bold hover:bg-blue-100 hover:text-blue-700 hover:border-blue-200 transition-colors cursor-pointer" title="Imposta come Ufficiale">AGT</span>
+                                    <span className="text-[9px] bg-slate-200 text-slate-500 rounded px-1.5 py-0.5 font-black border border-slate-300">AGT</span>
                                   )}
                                 </button>
-                                <div className="flex items-center gap-1 group/recalc">
-                                  <span className="truncate max-w-[120px]">{agent.name}</span>
-                                  <button 
-                                    onClick={() => handleRecalcAgent(agent.id)}
-                                    className="p-1 hover:bg-blue-100 rounded-full text-blue-600 opacity-0 group-hover/recalc:opacity-100 transition-opacity"
-                                    title="Ricalcola Reperibilità per questo agente"
-                                  >
-                                    <RefreshCw size={10} className={recalcAgent === agent.id ? "animate-spin" : ""} />
-                                  </button>
+                                <div className="flex flex-col gap-0.5 min-w-0">
+                                  <span className="text-[12px] font-black font-sans tracking-tight truncate">{agent.name}</span>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[9px] text-slate-400 font-mono font-bold">MATR. {agent.matricola}</span>
+                                    <button 
+                                      onClick={() => handleRecalcAgent(agent.id)}
+                                      className="p-1 hover:bg-indigo-100 rounded-full text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title="Ricalcola"
+                                    >
+                                      <RefreshCw size={10} className={recalcAgent === agent.id ? "animate-spin" : ""} />
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             </td>
@@ -1276,7 +1275,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                               return (
                                   <td
                                     key={di.isNextMonth ? `next-cell-${di.day}` : `curr-cell-${di.day}`}
-                                  className={`px-0 py-0.5 text-center border-r border-slate-100 transition-all group/cell ${cellBg} ${di.isNextMonth ? "opacity-40 grayscale cursor-not-allowed" : "cursor-pointer hover:ring-2 hover:ring-blue-400 hover:ring-inset"}`}
+                                  className={`px-0 py-1 text-center border-r border-slate-100 transition-all group/cell ${cellBg} ${di.isNextMonth ? "opacity-30 grayscale cursor-not-allowed" : "cursor-pointer hover:bg-slate-100 hover:shadow-[0_0_0_2px_rgba(79,70,229,0.3)_inset]"}`}
                                   onClick={() => {
                                     if (di.isNextMonth) {
                                       toast.error("Giorno di sola lettura (Mese successivo)");
@@ -1285,15 +1284,14 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                     openCellEditor(agent.id, agent.name, di.day, rType || sType || "");
                                   }}
                                 >
-                                  <div className="relative w-full h-full flex items-center justify-center">
+                                  <div className="relative w-full h-full flex items-center justify-center py-1">
                                     {badge ? (
-                                      <div className={`mx-auto w-[34px] h-[22px] flex items-center justify-center rounded text-[9px] leading-none ${badgeClass}`}>
+                                      <div className={`mx-auto w-[36px] h-[24px] flex items-center justify-center rounded-lg text-[9px] font-black leading-none shadow-sm transition-transform group-hover/cell:scale-110 ${badgeClass}`}>
                                         {badge}
                                       </div>
                                     ) : null}
-                                    {/* Small indicator if there's an underlying base shift hidden by REP */}
                                     {rType && sType && (
-                                      <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-blue-500 rounded-bl-sm opacity-50" title={`Base: ${sType}`}></div>
+                                      <div className="absolute top-0 right-0 w-2 h-2 bg-indigo-500 rounded-bl-sm opacity-60 shadow-sm" title={`Base: ${sType}`}></div>
                                     )}
                                   </div>
                                 </td>
@@ -1337,53 +1335,56 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                           </tr>
                         )
                       })}
-                      {/* Ripetizione Header Date */}
-                      <tr>
-                        <td className="p-2 border-r-2 border-b-2 border-slate-300 text-right text-[10px] font-bold text-slate-400 bg-slate-50 uppercase shadow-[inset_0_4px_6px_-6px_rgba(0,0,0,0.1)]">Riepilogo Giorni &rarr;</td>
+                      {/* Summary Section Header */}
+                      <tr className="border-t-4 border-slate-300 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+                        <td className="p-3 border-r-4 border-b-2 border-slate-300 text-right text-[10px] font-black text-slate-500 bg-slate-50 uppercase italic tracking-widest font-sans">Riepilogo Giorni &rarr;</td>
                         {dayInfo.map(di => (
-                          <td key={`bot-header-${di.isNextMonth ? 'next' : 'curr'}-${di.day}`} className={`px-0.5 pt-2 pb-1 text-center font-bold text-[10px] border-b-2 border-slate-300 min-w-[38px] shadow-[inset_0_4px_6px_-6px_rgba(0,0,0,0.1)] ${di.isWeekend ? "bg-red-50 text-red-500" : "bg-slate-100 text-slate-500"}`}>
+                          <td key={`bot-header-${di.isNextMonth ? 'next' : 'curr'}-${di.day}`} className={`px-1 pt-3 pb-2 text-center font-black text-[10px] border-b-2 border-slate-300 min-w-[38px] font-sans ${di.isWeekend ? "bg-rose-100/30 text-rose-500" : "bg-slate-50 text-slate-400"}`}>
                             {di.day}<br/>
-                            <span className="font-medium text-[8px]">{di.name}</span>
+                            <span className="font-bold text-[8px] opacity-70 uppercase">{di.name.substring(0, 3)}</span>
                           </td>
                         ))}
-                        <td className="bg-slate-50 border-b-2 border-l-2 border-slate-300 shadow-[inset_0_4px_6px_-6px_rgba(0,0,0,0.1)]"></td>
+                        <td className="bg-slate-50 border-b-2 border-l-4 border-slate-300"></td>
                       </tr>
-                      {/* Daily totals row */}
-                      <tr className="bg-slate-100 border-t-2 border-slate-400">
-                        <td className="px-2 py-2 font-black text-slate-800 sticky left-0 z-10 bg-slate-100 border-r-2 border-slate-300 text-[11px]">
-                          TOTALE GIORNO
+
+                      {/* Daily Totals Row */}
+                      <tr className="bg-white group/total">
+                        <td className="px-4 py-4 font-black text-slate-900 sticky left-0 z-20 bg-white border-r-4 border-slate-200 text-[11px] uppercase tracking-tighter italic shadow-[4px_0_12px_-4px_rgba(0,0,0,0.05)]">
+                          <div className="flex items-center gap-2">
+                             <div className="w-1.5 h-6 bg-indigo-600 rounded-full" />
+                             Totale Giorno
+                          </div>
                         </td>
                         {dayInfo.map(di => {
                           const targetDate = new Date(Date.UTC(currentYear, di.isNextMonth ? currentMonth : currentMonth - 1, di.day)).toISOString()
                           const dailyShifts = shifts.filter(s => s.repType?.includes("REP") && new Date(s.date).toISOString() === targetDate)
                           const count = dailyShifts.length
-                          const isLow = count > 0 && count < 7
-                          const isGood = count >= 7 && count <= 8
-                          const isBad = count > 8
-
-                          const agentsOnCall = dailyShifts.map(s => {
-                            const a = allAgents.find(ag => ag.id === s.userId)
-                            return a ? `${a.name}${a.isUfficiale ? ' (UFF)' : ''}` : 'Ignoto'
-                          }).join('\n')
+                          
+                          const isLow = count > 0 && count < 6
+                          const isGood = count >= 6
+                          const isBad = count > 10
 
                           return (
                             <td 
                               key={di.isNextMonth ? `next-tot-${di.day}` : `curr-tot-${di.day}`} 
-                              className={`px-0 py-1.5 text-center font-black text-sm cursor-help hover:opacity-80 transition-opacity ${di.isNextMonth ? "opacity-30" : ""} ${isGood ? "bg-emerald-100 text-emerald-700" : isLow ? "bg-amber-100 text-amber-700" : isBad ? "bg-red-100 text-red-700" : ""}`}
-                              title={agentsOnCall ? `In turno il ${di.day}:\n${agentsOnCall}` : "Nessuno in turno"}
+                              className={`px-1 py-3 text-center font-black text-sm cursor-help transition-all ${di.isNextMonth ? "opacity-20" : ""} ${isGood ? "text-emerald-600 bg-emerald-50/30" : isLow ? "text-amber-600 bg-amber-50/30" : isBad ? "text-rose-600 bg-rose-50/30" : "text-slate-200"}`}
                             >
-                              {count || ""}
+                              {count || "·"}
                             </td>
                           )
                         })}
-                        <td className="px-2 py-1.5 text-center font-black text-emerald-800 border-l-2 border-slate-300 bg-emerald-100 text-sm">
+                        <td className="px-2 py-3 text-center font-black text-indigo-700 border-l-4 border-indigo-200 bg-indigo-50/50 text-base italic">
                           {shifts.filter(s => s.repType?.includes("REP")).length}
                         </td>
                       </tr>
-                      {/* Officers daily totals row */}
-                      <tr className="bg-slate-50 border-t border-slate-300">
-                        <td className="px-2 py-2 font-black text-blue-800 sticky left-0 z-10 bg-slate-50 border-r-2 border-slate-300 text-[10px]">
-                          di cui UFFICIALI
+
+                      {/* Officers Row */}
+                      <tr className="bg-slate-50/50 border-t border-slate-200">
+                        <td className="px-4 py-4 font-black text-indigo-700 sticky left-0 z-20 bg-slate-50 border-r-4 border-slate-200 text-[10px] uppercase tracking-tighter shadow-[4px_0_12px_-4px_rgba(0,0,0,0.05)]">
+                          <div className="flex items-center gap-2">
+                             <div className="w-1.5 h-6 bg-indigo-400 rounded-full" />
+                             di cui Ufficiali
+                          </div>
                         </td>
                         {dayInfo.map(di => {
                           const targetDate = new Date(Date.UTC(currentYear, currentMonth - 1, di.day)).toISOString()
@@ -1393,43 +1394,22 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                             return agent?.isUfficiale
                           }).length
                           
-                          const isZero = countUff === 0
-
-                          // Find highest-ranking substitute when no officer
-                          let substituteInfo = ""
-                          if (isZero && dailyRepShifts.length > 0) {
-                            const agentsOnCall = dailyRepShifts.map(s => allAgents.find(a => a.id === s.userId)).filter(Boolean)
-                            if (agentsOnCall.length > 0) {
-                              const highest = agentsOnCall.reduce((best, curr) => 
-                                (curr!.gradoLivello < best!.gradoLivello) ? curr : best
-                              )
-                              if (highest) {
-                                substituteInfo = `${highest.name} (${highest.qualifica || 'N/D'})`
-                              }
-                            }
-                          }
+                          const isZero = countUff === 0 && dailyRepShifts.length > 0
 
                           return (
                             <td 
                               key={di.isNextMonth ? `next-uff-${di.day}` : `curr-uff-${di.day}`} 
-                              className={`px-0 py-1.5 text-center font-black text-xs cursor-help ${di.isNextMonth ? "opacity-30" : ""} ${
+                              className={`px-1 py-3 text-center font-black text-xs transition-all ${di.isNextMonth ? "opacity-20" : ""} ${
                                 isZero 
-                                  ? (substituteInfo 
-                                    ? "bg-yellow-400 text-yellow-900 shadow-[0_0_10px_rgba(250,204,21,0.5)_inset]" 
-                                    : "bg-red-500 text-white shadow-[0_0_10px_rgba(239,68,68,0.5)_inset]") 
-                                  : "bg-blue-100 text-blue-700"
+                                  ? "bg-rose-600 text-white shadow-lg animate-pulse" 
+                                  : countUff > 0 ? "text-indigo-600 bg-indigo-50/40" : "text-slate-100"
                               }`} 
-                              title={isZero 
-                                ? (substituteInfo 
-                                  ? `NESSUN UFFICIALE!\nSostituto più alto in grado:\n⭐ ${substituteInfo}` 
-                                  : "NESSUN UFFICIALE E NESSUN REPERIBILE!") 
-                                : `${countUff} ufficiale/i in turno`}
                             >
-                              {isZero ? (substituteInfo ? "⚠" : "0") : countUff}
+                              {isZero ? "⚠" : countUff || "·"}
                             </td>
                           )
                         })}
-                        <td className="px-2 py-1.5 text-center font-black text-blue-800 border-l-2 border-slate-300 bg-blue-100 text-sm">
+                        <td className="px-2 py-3 text-center font-black text-indigo-800 border-l-4 border-indigo-300 bg-indigo-100 text-sm italic">
                           {shifts.filter(s => {
                             if(!s.repType?.includes("REP")) return false;
                             const agent = allAgents.find(a => a.id === s.userId)
@@ -1871,7 +1851,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
 
       {/* Settings Panel Modal */}
-      {showSettings && <SettingsPanel initialTab={typeof showSettings === 'string' ? showSettings as any : undefined} onClose={() => { setShowSettings(false); router.refresh() }} />}
+      {showSettings && <SettingsPanel tenantSlug={tenantSlug} initialTab={typeof showSettings === 'string' ? showSettings as any : undefined} onClose={() => { setShowSettings(false); router.refresh() }} />}
       
       {/* MODALE AUDIT LOG */}
       {showAuditLog && (
@@ -2326,8 +2306,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                    
                    {activeDetailTab === 'ANAGRAFICA' && (
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                        <div className="bg-white rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 border border-white space-y-8">
-                           <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-4">
+                        <div className="premium-card p-10 space-y-8">
+                           <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-4 font-outfit">
                               <Users size={20} className="text-blue-500" /> Profilo Professionale
                            </h3>
                            <div className="space-y-6">

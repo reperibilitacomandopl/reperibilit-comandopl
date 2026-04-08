@@ -44,6 +44,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         const tenantName = tenant.name
+        const tenantSlug = tenant.slug
 
         return {
           id: user.id,
@@ -54,7 +55,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           forcePasswordChange: user.forcePasswordChange,
           tenantId: user.tenantId || undefined,
           tenantName: tenantName,
-          isSuperAdmin: user.isSuperAdmin
+          tenantSlug: tenantSlug,
+          isSuperAdmin: user.isSuperAdmin,
+          canManageShifts: user.canManageShifts,
+          canManageUsers: user.canManageUsers,
+          canVerifyClockIns: user.canVerifyClockIns,
+          canConfigureSystem: user.canConfigureSystem
         }
       }
     })
@@ -68,7 +74,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.forcePasswordChange = user.forcePasswordChange as boolean
         token.tenantId = (user as any).tenantId as string | undefined
         token.tenantName = (user as any).tenantName as string | undefined
+        token.tenantSlug = (user as any).tenantSlug as string | undefined
         token.isSuperAdmin = (user as any).isSuperAdmin as boolean | undefined
+        token.canManageShifts = (user as any).canManageShifts as boolean | undefined
+        token.canManageUsers = (user as any).canManageUsers as boolean | undefined
+        token.canVerifyClockIns = (user as any).canVerifyClockIns as boolean | undefined
+        token.canConfigureSystem = (user as any).canConfigureSystem as boolean | undefined
       }
       return token
     },
@@ -79,33 +90,33 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.matricola = token.matricola as string
         session.user.forcePasswordChange = token.forcePasswordChange as boolean
         session.user.isSuperAdmin = (token.isSuperAdmin as boolean) || false
+        session.user.tenantId = token.tenantId as string
+        session.user.tenantName = token.tenantName as string
+        session.user.tenantSlug = token.tenantSlug as string
+        session.user.canManageShifts = token.canManageShifts as boolean
+        session.user.canManageUsers = token.canManageUsers as boolean
+        session.user.canVerifyClockIns = token.canVerifyClockIns as boolean
+        session.user.canConfigureSystem = token.canConfigureSystem as boolean
         
-        // Se è SuperAdmin, proviamo a recuperare il tenantId e tenantName in tempo reale
-        if (session.user.isSuperAdmin && session.user.id) {
+        // Se è SuperAdmin e non ha un tenantId in sessione, proviamo a recuperarlo
+        if (session.user.isSuperAdmin && !session.user.tenantId && session.user.id) {
           try {
             const dbUser = await prisma.user.findUnique({
               where: { id: session.user.id },
               select: { tenantId: true }
             })
-            session.user.tenantId = dbUser?.tenantId || null
-            
-            if (session.user.tenantId) {
+            if (dbUser?.tenantId) {
+              session.user.tenantId = dbUser.tenantId
               const tenant = await prisma.tenant.findUnique({
-                where: { id: session.user.tenantId },
-                select: { name: true }
+                where: { id: dbUser.tenantId },
+                select: { name: true, slug: true }
               })
               session.user.tenantName = tenant?.name || null
-            } else {
-              session.user.tenantName = null
+              session.user.tenantSlug = tenant?.slug || null
             }
           } catch (e) {
             console.error("Error fetching live tenantId for SuperAdmin:", e)
-            session.user.tenantId = token.tenantId as string
-            session.user.tenantName = token.tenantName as string
           }
-        } else {
-          session.user.tenantId = token.tenantId as string
-          session.user.tenantName = token.tenantName as string
         }
       }
       return session

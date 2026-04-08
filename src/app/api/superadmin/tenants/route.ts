@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     }
 
     // Verifica matricola unica
-    const existingUser = await prisma.user.findUnique({ where: { matricola: adminMatricola } })
+    const existingUser = await prisma.user.findFirst({ where: { matricola: adminMatricola } })
     if (existingUser) {
       return NextResponse.json({ error: `La matricola "${adminMatricola}" è già in uso` }, { status: 400 })
     }

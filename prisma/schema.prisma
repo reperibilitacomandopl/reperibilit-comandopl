@@ -62,6 +62,12 @@ model User {
   password    String    // Hashed password
   role        String    @default("AGENTE") // AGENTE o ADMIN
   isUfficiale  Boolean   @default(false)
+  
+  // Permessi Granulari per delegare funzioni Admin
+  canManageShifts    Boolean @default(false)
+  canManageUsers     Boolean @default(false)
+  canVerifyClockIns  Boolean @default(false)
+  canConfigureSystem Boolean @default(false)
   qualifica    String?   @default("Agente di P.L.")
   gradoLivello Int       @default(13)
   massimale    Int       @default(8)

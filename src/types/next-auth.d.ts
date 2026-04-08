@@ -1,33 +1,39 @@
-import NextAuth, { DefaultSession } from "next-auth"
-import { JWT } from "next-auth/jwt"
+import { DefaultSession } from "next-auth"
 
 declare module "next-auth" {
-  interface Session {
-    user: {
-      id: string;
-      role: string;
-      matricola: string;
-      forcePasswordChange: boolean;
-      tenantId: string;
-      isSuperAdmin: boolean;
-    } & DefaultSession["user"]
+  interface User {
+    id: string
+    role: string
+    matricola: string
+    forcePasswordChange: boolean
+    tenantId?: string | null
+    tenantName?: string | null
+    tenantSlug?: string | null
+    isSuperAdmin: boolean
+    canManageShifts: boolean
+    canManageUsers: boolean
+    canVerifyClockIns: boolean
+    canConfigureSystem: boolean
   }
 
-  interface User {
-    role: string;
-    matricola: string;
-    forcePasswordChange: boolean;
-    tenantId?: string;
-    isSuperAdmin?: boolean;
+  interface Session {
+    user: User & DefaultSession["user"]
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
-    role?: string;
-    matricola?: string;
-    forcePasswordChange?: boolean;
-    tenantId?: string;
-    isSuperAdmin?: boolean;
+    id: string
+    role: string
+    matricola: string
+    forcePasswordChange: boolean
+    tenantId: string | null
+    tenantName: string | null
+    tenantSlug: string | null
+    isSuperAdmin: boolean
+    canManageShifts: boolean
+    canManageUsers: boolean
+    canVerifyClockIns: boolean
+    canConfigureSystem: boolean
   }
 }

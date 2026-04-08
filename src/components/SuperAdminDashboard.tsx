@@ -112,10 +112,11 @@ export default function SuperAdminDashboard({ tenants, currentUser }: { tenants:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tenantId })
       })
+      const targetTenant = tenants.find(t => t.id === tenantId)
       if (!res.ok) throw new Error("Errore")
       toast.success("🚀 Accesso in corso...")
       setTimeout(() => {
-        window.location.href = "/admin/pannello"
+        window.location.href = `/${targetTenant?.slug || 'admin'}/admin/pannello`
       }, 500)
     } catch {
       toast.error("Errore durante l'accesso")
@@ -198,7 +199,7 @@ export default function SuperAdminDashboard({ tenants, currentUser }: { tenants:
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-slate-400 font-medium">{currentUser.name}</span>
-            <a href="/admin/pannello" className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg font-bold transition-all">
+            <a href="/" className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg font-bold transition-all">
               ← Torna al Pannello
             </a>
           </div>

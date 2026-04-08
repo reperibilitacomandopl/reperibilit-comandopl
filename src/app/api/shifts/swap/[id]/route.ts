@@ -53,8 +53,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           data: { 
             repType: null,
             serviceDetails: originalShift.serviceDetails 
-              ? `${originalShift.serviceDetails} | Reperibilità ceduta a ${swapRequest.targetUser.name}`
-              : `Reperibilità ceduta a ${swapRequest.targetUser.name}`
+              ? `${originalShift.serviceDetails} | Reperibilità ceduta a ${swapRequest.targetUser?.name || 'nuovo agente'}`
+              : `Reperibilità ceduta a ${swapRequest.targetUser?.name || 'nuovo agente'}`
           }
         }),
 

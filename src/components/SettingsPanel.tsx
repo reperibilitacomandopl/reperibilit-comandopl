@@ -28,7 +28,7 @@ type PecConfig = {
   host: string; port: string; user: string; pass: string; from: string
 }
 
-export default function SettingsPanel({ onClose, embedded, initialTab = "algorithm" }: { onClose: () => void; embedded?: boolean, initialTab?: TabType }) {
+export default function SettingsPanel({ onClose, embedded, initialTab = "algorithm", tenantSlug }: { onClose: () => void; embedded?: boolean, initialTab?: TabType, tenantSlug?: string }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>(initialTab)

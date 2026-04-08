@@ -3,7 +3,7 @@ const prisma = new PrismaClient()
 
 async function main() {
   console.log('--- AUDIT UTENTI ---')
-  const user = await prisma.user.findUnique({
+  const user = await prisma.user.findFirst({
     where: { matricola: 'admin' }
   })
   
@@ -23,7 +23,7 @@ async function main() {
     console.log('L\'utente admin è GIÀ un Super-Admin.')
   }
 
-  const check = await prisma.user.findUnique({
+  const check = await prisma.user.findFirst({
     where: { matricola: 'admin' },
     select: { matricola: true, name: true, isSuperAdmin: true }
   })

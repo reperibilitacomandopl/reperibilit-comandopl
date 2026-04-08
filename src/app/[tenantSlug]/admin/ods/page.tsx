@@ -6,13 +6,15 @@ export const metadata = {
   title: "Ordine di Servizio | Comando PL",
 }
 
-export default async function OdsPage() {
+export default async function OdsPage({ params }: { params: { tenantSlug: string } }) {
   const session = await auth()
   if (!session || session.user.role !== "ADMIN") redirect("/login")
+  
+  const { tenantSlug } = params
 
   return (
     <div className="h-full">
-      <ServiceManagerPanel />
+      <ServiceManagerPanel tenantSlug={tenantSlug} />
     </div>
   )
 }

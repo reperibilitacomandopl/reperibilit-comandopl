@@ -5,16 +5,22 @@ import RisorseTabs from "@/components/RisorseTabs"
 
 export const dynamic = "force-dynamic"
 
-export default async function RisorsePage() {
+export default async function RisorsePage({ params }: { params: { tenantSlug: string } }) {
+  const { tenantSlug: urlSlug } = await params
   const session = await auth()
+
   if (!session?.user || session.user.role !== "ADMIN") redirect("/login")
+  
+  // Verifica coerenza Slug
+  if (urlSlug !== session.user.tenantSlug && !session.user.isSuperAdmin) {
+    redirect(`/${session.user.tenantSlug}/admin/risorse`)
+  }
 
   const tenantId = session.user.tenantId || "N0T-EX1ST1NG"
 
   const [users, rotationGroups, categories] = await Promise.all([
     prisma.user.findMany({
       where: { 
-        role: "AGENTE",
         tenantId: tenantId
       },
       orderBy: { name: "asc" },
@@ -22,7 +28,12 @@ export default async function RisorsePage() {
         id: true,
         name: true,
         matricola: true,
+        role: true,
         isUfficiale: true,
+        canManageShifts: true,
+        canManageUsers: true,
+        canVerifyClockIns: true,
+        canConfigureSystem: true,
         email: true,
         phone: true,
         qualifica: true,

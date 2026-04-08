@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 const prisma = new PrismaClient()
 
 async function main() {
-  const existingAdmin = await prisma.user.findUnique({
+  const existingAdmin = await prisma.user.findFirst({
     where: { matricola: 'ADMIN' },
   })
   

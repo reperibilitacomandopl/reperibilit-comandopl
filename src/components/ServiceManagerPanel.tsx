@@ -14,7 +14,7 @@ interface CopiedAgentData {
   serviceDetails: string | null
 }
 
-export default function ServiceManagerPanel({ onClose }: { onClose?: () => void }) {
+export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?: () => void, tenantSlug?: string }) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [loading, setLoading] = useState(true)
   
@@ -723,7 +723,7 @@ export default function ServiceManagerPanel({ onClose }: { onClose?: () => void 
               </button>
             )}
 
-            <Link href="/admin/stampa-ods" className="hidden sm:flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm">
+            <Link href={`/${tenantSlug || 'admin'}/admin/stampa-ods`} className="hidden sm:flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm">
                <Printer size={14}/> Stampa
             </Link>
 
