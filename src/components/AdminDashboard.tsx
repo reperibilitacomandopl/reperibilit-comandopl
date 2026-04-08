@@ -1851,7 +1851,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
 
       {/* Settings Panel Modal */}
-      {showSettings && <SettingsPanel tenantSlug={tenantSlug} initialTab={typeof showSettings === 'string' ? showSettings as any : undefined} onClose={() => { setShowSettings(false); router.refresh() }} />}
+      {showSettings && <SettingsPanel tenantSlug={tenantSlug || undefined} initialTab={typeof showSettings === 'string' ? showSettings as any : undefined} onClose={() => { setShowSettings(false); router.refresh() }} />}
       
       {/* MODALE AUDIT LOG */}
       {showAuditLog && (

@@ -128,7 +128,7 @@ type AgendaItem = {
   note: string | null
 }
 
-export default function AgentDashboard({ currentUser, shifts, allAgents, currentYear, currentMonth, isPublished, currentView, tenantName, tenantSlug }: { currentUser: { id: string, matricola: string, name: string, telegramChatId?: string | null }, shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], allAgents: any[], currentYear: number, currentMonth: number, isPublished: boolean, currentView?: string, tenantName?: string | null, tenantSlug?: string | null }) {
+export default function AgentDashboard({ currentUser, shifts, allAgents, currentYear, currentMonth, isPublished, currentView, tenantName, tenantSlug, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem, userRole }: { currentUser: { id: string, matricola: string, name: string, telegramChatId?: string | null }, shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], allAgents: any[], currentYear: number, currentMonth: number, isPublished: boolean, currentView?: string, tenantName?: string | null, tenantSlug?: string | null, canManageShifts?: boolean, canManageUsers?: boolean, canVerifyClockIns?: boolean, canConfigureSystem?: boolean, userRole?: string }) {
   const router = useRouter()
   const [showSyncModal, setShowSyncModal] = useState(false)
   const [showAgenda, setShowAgenda] = useState(false)
@@ -743,6 +743,15 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
             </div>
             
             <div className="flex items-center justify-between sm:justify-start gap-4">
+              {(canManageShifts || canManageUsers || canVerifyClockIns || canConfigureSystem || userRole === "ADMIN") && (
+                <Link
+                  href={`/${tenantSlug}/admin/pannello`}
+                  className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <ShieldCheck size={18} />
+                  <span className="hidden sm:inline">Area Admin</span>
+                </Link>
+              )}
               <NotificationHub />
               <button 
                 onClick={() => setShowSyncModal(true)}

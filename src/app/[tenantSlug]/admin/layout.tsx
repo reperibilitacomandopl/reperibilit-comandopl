@@ -10,14 +10,20 @@ export default async function AdminLayout({
   params
 }: { 
   children: React.ReactNode,
-  params: { tenantSlug: string }
+  params: Promise<{ tenantSlug: string }>
 }) {
   const { tenantSlug } = await params
   const session = await auth()
-
   if (!session?.user) redirect("/login")
-  if (session.user.forcePasswordChange) redirect("/change-password")
-  if (session.user.role !== "ADMIN") redirect("/login")
+
+  const hasAdminAccess = 
+    session.user.role === "ADMIN" || 
+    session.user.canManageShifts || 
+    session.user.canManageUsers || 
+    session.user.canVerifyClockIns || 
+    session.user.canConfigureSystem
+
+  if (!hasAdminAccess) redirect("/login")
 
   const { name, matricola } = session.user
 
@@ -35,6 +41,11 @@ export default async function AdminLayout({
           "use server"
           await signOut()
         }}
+        canManageShifts={session.user.canManageShifts}
+        canManageUsers={session.user.canManageUsers}
+        canVerifyClockIns={session.user.canVerifyClockIns}
+        canConfigureSystem={session.user.canConfigureSystem}
+        userRole={session.user.role}
       />
 
       {/* Main Content */}

@@ -110,6 +110,11 @@ export default async function Home({
           currentView={view} 
           tenantName={session.user.tenantName}
           tenantSlug={urlSlug}
+          canManageShifts={session.user.canManageShifts}
+          canManageUsers={session.user.canManageUsers}
+          canVerifyClockIns={session.user.canVerifyClockIns}
+          canConfigureSystem={session.user.canConfigureSystem}
+          userRole={session.user.role}
         />
       </main>
 

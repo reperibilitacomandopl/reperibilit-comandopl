@@ -78,6 +78,12 @@ interface AdminSidebarProps {
   isSuperAdmin?: boolean
   currentTenantId?: string | null
   signOutAction: () => Promise<void>
+  // New permissions
+  canManageShifts?: boolean
+  canManageUsers?: boolean
+  canVerifyClockIns?: boolean
+  canConfigureSystem?: boolean
+  userRole?: string
 }
 
 export default function AdminSidebar({ 
@@ -87,7 +93,12 @@ export default function AdminSidebar({
   tenantSlug,
   isSuperAdmin, 
   currentTenantId, 
-  signOutAction 
+  signOutAction,
+  canManageShifts,
+  canManageUsers,
+  canVerifyClockIns,
+  canConfigureSystem,
+  userRole
 }: AdminSidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
@@ -176,58 +187,80 @@ export default function AdminSidebar({
           </button>
         </div>
       )}
-
       {/* Navigation Items */}
       <nav className="flex-1 py-4 px-2 space-y-5 overflow-y-auto custom-scrollbar pb-20">
-        {NAV_SECTIONS.map((section) => (
-          <div key={section.title}>
-            {!collapsed && (
-              <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] px-3 mb-2 ${section.accent}`}>
-                {section.title}
-              </h3>
-            )}
-            <div className="space-y-0.5">
-              {section.items.map((item) => {
-                const itemHref = `/${tenantSlug}/admin${item.href.replace("/admin", "")}`
-                const isActive = pathname === itemHref || pathname?.startsWith(itemHref + "/")
-                const Icon = item.icon
-                return (
-                  <Link
-                    key={item.href}
-                    href={itemHref}
-                    title={collapsed ? item.label : undefined}
-                    className={`group flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 relative ${
-                      isActive
-                        ? "bg-indigo-600/10 text-indigo-400 ring-1 ring-inset ring-indigo-500/20"
-                        : "text-slate-400 hover:text-white hover:bg-slate-800/40"
-                    }`}
-                  >
-                    {isActive && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[4px] h-6 bg-indigo-500 rounded-r-full shadow-[0_0_12px_rgba(79,70,229,0.8)]" />
-                    )}
-                    <Icon
-                      size={20}
-                      className={`shrink-0 transition-colors ${
-                        isActive ? "text-blue-400" : "text-slate-500 group-hover:text-slate-300"
+        {NAV_SECTIONS.map((section) => {
+          // Filter items based on permissions
+          const filteredItems = section.items.filter(item => {
+            if (userRole === "ADMIN") return true;
+
+            if (section.title === "Centro Operativo") return canManageShifts;
+            if (section.title === "Risorse Umane") {
+              if (item.label === "Timbrature GPS") return canVerifyClockIns;
+              return canManageUsers;
+            }
+            if (section.title === "Logistica & Mezzi") return canConfigureSystem;
+            if (section.title === "Amministrazione") return canConfigureSystem;
+            
+            // Overview is always visible for anyone who can enter admin layout
+            if (item.label === "Overview & KPI") return true;
+
+            return false;
+          });
+
+          if (filteredItems.length === 0) return null;
+
+          return (
+            <div key={section.title}>
+              {!collapsed && (
+                <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] px-3 mb-2 ${section.accent}`}>
+                  {section.title}
+                </h3>
+              )}
+              <div className="space-y-0.5">
+                {filteredItems.map((item) => {
+                  const itemHref = `/${tenantSlug}/admin${item.href.replace("/admin", "")}`
+                  const isActive = pathname === itemHref || pathname?.startsWith(itemHref + "/")
+                  const Icon = item.icon
+                  return (
+                    <Link
+                      key={item.href}
+                      href={itemHref}
+                      title={collapsed ? item.label : undefined}
+                      className={`group flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 relative ${
+                        isActive
+                          ? "bg-indigo-600/10 text-indigo-400 ring-1 ring-inset ring-indigo-500/20"
+                          : "text-slate-400 hover:text-white hover:bg-slate-800/40"
                       }`}
-                    />
-                    {!collapsed && (
-                      <div className="overflow-hidden flex-1">
-                        <span className={`text-[13px] font-bold block truncate tracking-tight ${isActive ? "text-indigo-300" : "group-hover:text-slate-200"}`}>
-                          {item.label}
-                        </span>
-                        <span className="text-[10px] text-slate-500 group-hover:text-slate-400 font-medium block truncate">
-                          {item.description}
-                        </span>
-                      </div>
-                    )}
-                  </Link>
-                )
-              })}
+                    >
+                      {isActive && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[4px] h-6 bg-indigo-500 rounded-r-full shadow-[0_0_12px_rgba(79,70,229,0.8)]" />
+                      )}
+                      <Icon
+                        size={20}
+                        className={`shrink-0 transition-colors ${
+                          isActive ? "text-blue-400" : "text-slate-500 group-hover:text-slate-300"
+                        }`}
+                      />
+                      {!collapsed && (
+                        <div className="overflow-hidden flex-1">
+                          <span className={`text-[13px] font-bold block truncate tracking-tight ${isActive ? "text-indigo-300" : "group-hover:text-slate-200"}`}>
+                            {item.label}
+                          </span>
+                          <span className="text-[10px] text-slate-500 group-hover:text-slate-400 font-medium block truncate">
+                            {item.description}
+                          </span>
+                        </div>
+                      )}
+                    </Link>
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </nav>
+
 
       {/* Collapse toggle */}
       <button
