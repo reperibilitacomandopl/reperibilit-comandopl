@@ -71,12 +71,13 @@ const NAV_SECTIONS: NavSection[] = [
 interface AdminSidebarProps {
   userName: string
   userMatricola: string
+  tenantName?: string | null
   isSuperAdmin?: boolean
   currentTenantId?: string | null
   signOutAction: () => Promise<void>
 }
 
-export default function AdminSidebar({ userName, userMatricola, isSuperAdmin, currentTenantId, signOutAction }: AdminSidebarProps) {
+export default function AdminSidebar({ userName, userMatricola, tenantName, isSuperAdmin, currentTenantId, signOutAction }: AdminSidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -142,10 +143,10 @@ export default function AdminSidebar({ userName, userMatricola, isSuperAdmin, cu
         {!collapsed && (
           <div className="overflow-hidden">
             <h1 className="text-sm font-black text-white tracking-wide leading-tight truncate">
-              {isImpersonating ? "Supporto Attivo" : "Polizia Locale"}
+              {isImpersonating ? "Supporto Attivo" : (tenantName || "Polizia Locale")}
             </h1>
             <p className={`text-[10px] font-semibold tracking-wider uppercase leading-tight ${isImpersonating ? "text-purple-400 animate-pulse" : "text-slate-500"}`}>
-              {isImpersonating ? "Impersonificazione" : "Comando Locale"}
+              {isImpersonating ? "Impersonificazione" : (tenantName ? "Comando Locale" : "Sistema Gestionale")}
             </p>
           </div>
         )}

@@ -9,9 +9,14 @@ export default async function RisorsePage() {
   const session = await auth()
   if (!session?.user || session.user.role !== "ADMIN") redirect("/login")
 
+  const tenantId = session.user.tenantId || "N0T-EX1ST1NG"
+
   const [users, rotationGroups, categories] = await Promise.all([
     prisma.user.findMany({
-      where: { role: "AGENTE" },
+      where: { 
+        role: "AGENTE",
+        tenantId: tenantId
+      },
       orderBy: { name: "asc" },
       select: {
         id: true,
@@ -31,8 +36,15 @@ export default async function RisorsePage() {
         rotationGroup: { select: { id: true, name: true } },
       },
     }),
-    prisma.rotationGroup.findMany({ orderBy: { name: "asc" } }),
-    prisma.serviceCategory.findMany({ include: { types: true }, orderBy: { orderIndex: "asc" } }),
+    prisma.rotationGroup.findMany({ 
+      where: { tenantId: tenantId },
+      orderBy: { name: "asc" } 
+    }),
+    prisma.serviceCategory.findMany({ 
+      where: { tenantId: tenantId },
+      include: { types: true }, 
+      orderBy: { orderIndex: "asc" } 
+    }),
   ])
 
   return (

@@ -11,6 +11,6 @@ const ServiceOrderDashboard = dynamic(() => import("@/components/ServiceOrderDas
   )
 })
 
-export default function ServiceOrderClient() {
-  return <ServiceOrderDashboard />
+export default function ServiceOrderClient({ tenantName }: { tenantName?: string | null }) {
+  return <ServiceOrderDashboard tenantName={tenantName} />
 }

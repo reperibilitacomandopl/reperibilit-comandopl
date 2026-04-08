@@ -54,7 +54,7 @@ model User {
   id          String    @id @default(uuid())
   tenantId    String?
   tenant      Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  matricola   String    @unique
+  matricola   String
   name        String
   isSuperAdmin Boolean  @default(false)
   email       String?   @unique
@@ -102,6 +102,8 @@ model User {
   agentBalances AgentBalance[] @relation("AgentBalances")
   notifications Notification[]
   clockRecords  ClockRecord[]
+
+  @@unique([tenantId, matricola])
 }
 
 model Absence {

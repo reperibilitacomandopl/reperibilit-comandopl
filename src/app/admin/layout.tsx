@@ -20,6 +20,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <AdminSidebar
         userName={name || "Admin"}
         userMatricola={matricola || ""}
+        tenantName={session.user.tenantName}
         isSuperAdmin={session.user.isSuperAdmin}
         currentTenantId={session.user.tenantId}
         signOutAction={async () => {

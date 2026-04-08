@@ -9,16 +9,32 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     CredentialsProvider({
       name: "Credentials",
       credentials: {
+        tenantSlug: { label: "Codice Comando", type: "text" },
         matricola: { label: "Matricola", type: "text" },
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        if (!credentials?.matricola || !credentials?.password) {
+        if (!credentials?.matricola || !credentials?.password || !credentials?.tenantSlug) {
           return null
         }
-        const user = await prisma.user.findUnique({
-          where: { matricola: credentials.matricola as string }
+
+        // 1. Trova il Tenant per slug
+        const tenant = await prisma.tenant.findUnique({
+          where: { slug: (credentials.tenantSlug as string).toLowerCase() }
         })
+
+        if (!tenant || !tenant.isActive) {
+          throw new Error("Comando non trovato o non attivo")
+        }
+
+        // 2. Trova l'utente per matricola ALL'INTERNO del tenant
+        const user = await prisma.user.findFirst({
+          where: { 
+            matricola: credentials.matricola as string,
+            tenantId: tenant.id
+          }
+        })
+
         if (!user) {
           return null
         }
@@ -27,15 +43,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null
         }
 
-        // Verifica che il tenant dell'utente sia attivo (se presente)
-        if (user.tenantId) {
-          const tenant = await prisma.tenant.findUnique({
-            where: { id: user.tenantId }
-          })
-          if (tenant && !tenant.isActive) {
-            return null // Tenant disattivato, blocca il login
-          }
-        }
+        const tenantName = tenant.name
 
         return {
           id: user.id,
@@ -45,6 +53,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           matricola: user.matricola,
           forcePasswordChange: user.forcePasswordChange,
           tenantId: user.tenantId || undefined,
+          tenantName: tenantName,
           isSuperAdmin: user.isSuperAdmin
         }
       }
@@ -58,6 +67,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.matricola = user.matricola as string
         token.forcePasswordChange = user.forcePasswordChange as boolean
         token.tenantId = (user as any).tenantId as string | undefined
+        token.tenantName = (user as any).tenantName as string | undefined
         token.isSuperAdmin = (user as any).isSuperAdmin as boolean | undefined
       }
       return token
@@ -70,7 +80,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.forcePasswordChange = token.forcePasswordChange as boolean
         session.user.isSuperAdmin = (token.isSuperAdmin as boolean) || false
         
-        // Se è SuperAdmin, proviamo a recuperare il tenantId in tempo reale
+        // Se è SuperAdmin, proviamo a recuperare il tenantId e tenantName in tempo reale
         if (session.user.isSuperAdmin && session.user.id) {
           try {
             const dbUser = await prisma.user.findUnique({
@@ -78,12 +88,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               select: { tenantId: true }
             })
             session.user.tenantId = dbUser?.tenantId || null
+            
+            if (session.user.tenantId) {
+              const tenant = await prisma.tenant.findUnique({
+                where: { id: session.user.tenantId },
+                select: { name: true }
+              })
+              session.user.tenantName = tenant?.name || null
+            } else {
+              session.user.tenantName = null
+            }
           } catch (e) {
             console.error("Error fetching live tenantId for SuperAdmin:", e)
             session.user.tenantId = token.tenantId as string
+            session.user.tenantName = token.tenantName as string
           }
         } else {
           session.user.tenantId = token.tenantId as string
+          session.user.tenantName = token.tenantName as string
         }
       }
       return session

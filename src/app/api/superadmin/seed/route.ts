@@ -24,6 +24,8 @@ export async function POST(req: Request) {
       // 1. Pulisci dipendenze
       await tx.shift.deleteMany({ where: { tenantId } })
       await tx.vehicle.deleteMany({ where: { tenantId } })
+      await tx.rotationGroup.deleteMany({ where: { tenantId } })
+      await tx.globalSettings.deleteMany({ where: { tenantId } })
       await tx.serviceType.deleteMany({ where: { tenantId } })
       await tx.serviceCategory.deleteMany({ where: { tenantId } })
       await tx.agentBalance.deleteMany({ where: { tenantId } })
@@ -66,6 +68,44 @@ export async function POST(req: Request) {
         ]
       })
 
+      // 5. Gruppi di Rotazione (Squadre Cicliche)
+      const patternM = JSON.stringify(Array(28).fill("").map((_, i) => (i % 7 < 5) ? "M" : "RP"))
+      const patternP = JSON.stringify(Array(28).fill("").map((_, i) => (i % 7 < 5) ? "P" : "RP"))
+      
+      const groupA = await tx.rotationGroup.create({
+        data: {
+          tenantId,
+          name: "Squadra ALFA (Mattina)",
+          pattern: patternM,
+          mStartTime: "07:00",
+          mEndTime: "13:00",
+          pStartTime: "13:00",
+          pEndTime: "19:00"
+        }
+      })
+      const groupB = await tx.rotationGroup.create({
+        data: {
+          tenantId,
+          name: "Squadra BETA (Pomeriggio)",
+          pattern: patternP,
+          mStartTime: "07:00",
+          mEndTime: "13:00",
+          pStartTime: "13:00",
+          pEndTime: "19:00"
+        }
+      })
+
+      // 5b. Impostazioni Globali
+      await tx.globalSettings.create({
+        data: {
+          tenantId,
+          minUfficiali: 1,
+          massimaleAgente: 8,
+          massimaleUfficiale: 10,
+          usaProporzionale: true
+        }
+      })
+
       // 5. Agenti (Template Istituzionale)
       const hashedPassword = await bcrypt.hash("password123", 10)
       
@@ -86,15 +126,33 @@ export async function POST(req: Request) {
         { name: "Ag. Bruno Davide", matricola: "AGT008", qualifica: "Agente" }
       ]
 
-      for (const o of officersRaw) {
+      for (let i = 0; i < officersRaw.length; i++) {
+        const o = officersRaw[i]
         await tx.user.create({
-          data: { ...o, tenantId, password: hashedPassword, role: "AGENTE", isUfficiale: true, forcePasswordChange: false }
+          data: { 
+            ...o, 
+            tenantId, 
+            password: hashedPassword, 
+            role: "AGENTE", 
+            isUfficiale: true, 
+            forcePasswordChange: false,
+            rotationGroupId: i % 2 === 0 ? groupA.id : groupB.id
+          }
         })
       }
 
-      for (const a of agentsRaw) {
+      for (let i = 0; i < agentsRaw.length; i++) {
+        const a = agentsRaw[i]
         await tx.user.create({
-          data: { ...a, tenantId, password: hashedPassword, role: "AGENTE", isUfficiale: false, forcePasswordChange: false }
+          data: { 
+            ...a, 
+            tenantId, 
+            password: hashedPassword, 
+            role: "AGENTE", 
+            isUfficiale: false, 
+            forcePasswordChange: false,
+            rotationGroupId: i % 2 === 0 ? groupA.id : groupB.id
+          }
         })
       }
 
@@ -145,8 +203,12 @@ export async function POST(req: Request) {
     })
 
     return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error("[SEED TENANT ERROR]", error)
-    return NextResponse.json({ error: "Errore durante il seeding" }, { status: 500 })
-  }
+    } catch (error: any) {
+      console.error("[SEED TENANT ERROR]", error)
+      return NextResponse.json({ 
+        error: "Errore durante il seeding", 
+        details: error.message,
+        code: error.code 
+      }, { status: 500 })
+    }
 }

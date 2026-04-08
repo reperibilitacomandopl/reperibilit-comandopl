@@ -15,11 +15,15 @@ export async function GET(request: Request) {
     const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59))
 
     const users = await prisma.user.findMany({ 
+      where: { tenantId: session.user.tenantId, role: "AGENTE" },
       select: { id: true, name: true, rotationGroupId: true, rotationGroup: true, fixedRestDay: true }, 
       orderBy: { name: 'asc' } 
     })
     const shifts = await prisma.shift.findMany({
-      where: { date: { gte: startDate, lte: endDate } },
+      where: { 
+        tenantId: session.user.tenantId,
+        date: { gte: startDate, lte: endDate } 
+      },
       select: { id: true, userId: true, date: true, type: true, timeRange: true, isSyncedToVerbatel: true }
     })
 
@@ -53,6 +57,7 @@ export async function PUT(request: Request) {
     
     const existingShifts = await prisma.shift.findMany({
       where: {
+        tenantId: session.user.tenantId,
         userId: { in: userIds },
         date: { gte: minDate, lte: maxDate }
       },
@@ -165,6 +170,7 @@ export async function DELETE(request: Request) {
       const lastDay = new Date(Date.UTC(year, m, 0, 23, 59, 59))
 
       const where: any = {
+        tenantId: session.user.tenantId,
         date: { gte: startDate, lte: lastDay }
       }
       if (userId) where.userId = userId

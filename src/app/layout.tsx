@@ -22,8 +22,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Portale Caserma Altamura",
-  description: "Sistema di Gestione Reperibilità e Turni PL",
+  title: "Portale Polizia Locale",
+  description: "Sistema di Gestione Reperibilità e Turni",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

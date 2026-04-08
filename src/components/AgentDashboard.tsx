@@ -128,7 +128,7 @@ type AgendaItem = {
   note: string | null
 }
 
-export default function AgentDashboard({ currentUser, shifts, allAgents, currentYear, currentMonth, isPublished, currentView }: { currentUser: { id: string, matricola: string, name: string, telegramChatId?: string | null }, shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], allAgents: any[], currentYear: number, currentMonth: number, isPublished: boolean, currentView?: string }) {
+export default function AgentDashboard({ currentUser, shifts, allAgents, currentYear, currentMonth, isPublished, currentView, tenantName }: { currentUser: { id: string, matricola: string, name: string, telegramChatId?: string | null }, shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], allAgents: any[], currentYear: number, currentMonth: number, isPublished: boolean, currentView?: string, tenantName?: string | null }) {
   const router = useRouter()
   const [showSyncModal, setShowSyncModal] = useState(false)
   const [showAgenda, setShowAgenda] = useState(false)
@@ -450,7 +450,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
     
     doc.setFontSize(10)
     doc.setTextColor(100, 116, 139) // slate-500
-    doc.text(`Comando Polizia Locale di Altamura`, 14, 30)
+    doc.text(`Polizia Locale ${tenantName ? `di ${tenantName}` : "Nazionale"}`, 14, 30)
     doc.text(`Generato il: ${new Date().toLocaleDateString('it-IT')} alle ${new Date().toLocaleTimeString('it-IT')}`, 14, 35)
     
     // Personal Info

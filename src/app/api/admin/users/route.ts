@@ -12,8 +12,10 @@ export async function GET(req: Request) {
   }
   try {
     const tenantId = session.user.tenantId
+    if (!tenantId) return NextResponse.json({ error: "Tenant non identificato" }, { status: 400 })
+    
     const users = await prisma.user.findMany({
-      where: { role: "AGENTE", ...(tenantId ? { tenantId } : {}) },
+      where: { role: "AGENTE", tenantId },
       orderBy: { name: "asc" }
     })
     return NextResponse.json({ users })

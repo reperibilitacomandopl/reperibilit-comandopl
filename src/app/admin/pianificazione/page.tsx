@@ -10,8 +10,8 @@ export default async function PianificazionePage({ searchParams }: { searchParam
   const session = await auth()
   if (!session?.user || session.user.role !== "ADMIN") redirect("/login")
 
-  const tenantId = session.user.tenantId
-  const tf = tenantId ? { tenantId } : {}
+  const tenantId = session.user.tenantId || "N0T-EX1ST1NG"
+  const tf = { tenantId }
 
   const monthStr = (await searchParams).month
   const yearStr = (await searchParams).year

@@ -60,7 +60,7 @@ export default async function Home({ searchParams }: { searchParams: { view?: st
               PL
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-sm font-bold text-slate-800 leading-tight">Polizia Locale di Altamura</h1>
+              <h1 className="text-sm font-bold text-slate-800 leading-tight">Polizia Locale {session.user.tenantName ? `di ${session.user.tenantName}` : "Nazionale"}</h1>
               <p className="text-[10px] text-slate-400 font-medium leading-tight">Gestione Reperibilità</p>
             </div>
           </div>
@@ -88,16 +88,25 @@ export default async function Home({ searchParams }: { searchParams: { view?: st
 
       {/* Agent Dashboard */}
       <main className={`flex-1 ${containerClass} py-4 sm:py-6 lg:py-8`}>
-        <DynamicAgentDashboard currentUser={{ id: session?.user?.id || "", matricola: matricola || "", name: name || "" }} shifts={shifts} allAgents={users as any} currentYear={currentYear} currentMonth={currentMonth} isPublished={isPublished} currentView={view} />
+        <DynamicAgentDashboard 
+          currentUser={{ id: session?.user?.id || "", matricola: matricola || "", name: name || "" }} 
+          shifts={shifts} 
+          allAgents={users as any} 
+          currentYear={currentYear} 
+          currentMonth={currentMonth} 
+          isPublished={isPublished} 
+          currentView={view} 
+          tenantName={session.user.tenantName}
+        />
       </main>
 
       <footer className="border-t border-slate-200 bg-white mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">
-            Comando di Polizia Locale di Altamura
+            Comando di Polizia Locale {session.user.tenantName ? `di ${session.user.tenantName}` : ""}
           </p>
           <p className="text-[10px] text-slate-300 font-medium">
-            Sistema Reperibilità v2.0
+            Sistema Reperibilità v2.1
           </p>
         </div>
       </footer>

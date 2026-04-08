@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, Printer, X } from "lucide-react"
 
-export default function ServiceOrderDashboard({ onClose }: { onClose?: () => void }) {
+export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose?: () => void, tenantName?: string | null }) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [loading, setLoading] = useState(true)
   const [showConfig, setShowConfig] = useState(false)
@@ -192,11 +192,11 @@ export default function ServiceOrderDashboard({ onClose }: { onClose?: () => voi
     doc.setFont("helvetica", "bold")
     doc.setFontSize(22)
     doc.setTextColor(30, 41, 59)
-    doc.text("POLIZIA LOCALE ALTAMURA", pageWidth / 2, 25, { align: "center" })
+    doc.text(`POLIZIA LOCALE ${tenantName ? tenantName.toUpperCase() : "NAZIONALE"}`, pageWidth / 2, 25, { align: "center" })
     
     doc.setFontSize(14)
     doc.setTextColor(71, 85, 105)
-    doc.text("Comune di Altamura", pageWidth / 2, 33, { align: "center" })
+    doc.text(tenantName ? `Comune di ${tenantName}` : "Comando Locale", pageWidth / 2, 33, { align: "center" })
     
     doc.setDrawColor(30, 41, 59)
     doc.setLineWidth(1)
@@ -417,7 +417,7 @@ export default function ServiceOrderDashboard({ onClose }: { onClose?: () => voi
             
             {/* INTESTAZIONE STAMPA */}
             <div className="text-center mb-8 border-b-2 border-slate-800 pb-4">
-              <h1 className="text-2xl font-black uppercase tracking-widest text-slate-900">Polizia Locale - Comune di Altamura</h1>
+              <h1 className="text-2xl font-black uppercase tracking-widest text-slate-900">Polizia Locale - Comune di {tenantName || "Locale"}</h1>
               <h2 className="text-xl font-bold mt-2 text-slate-700">Ordine di Servizio Giornaliero</h2>
               <h3 className="text-lg font-medium text-slate-600 mt-1 uppercase">
                 {currentDate.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}

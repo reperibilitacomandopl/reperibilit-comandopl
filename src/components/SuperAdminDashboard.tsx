@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Building2, Users, Calendar, Truck, Plus, Power, PowerOff, RefreshCw, Shield, X, ChevronRight, Globe, Zap, Clock, Settings } from "lucide-react"
 import toast from "react-hot-toast"
 
@@ -26,6 +26,12 @@ export default function SuperAdminDashboard({ tenants, currentUser }: { tenants:
   const [isSeeding, setIsSeeding] = useState<string | null>(null)
   const [isToggling, setIsToggling] = useState<string | null>(null)
   const [editingTenant, setEditingTenant] = useState<TenantData | null>(null)
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
   
   // Form state
   const [formName, setFormName] = useState("")
@@ -296,7 +302,10 @@ export default function SuperAdminDashboard({ tenants, currentUser }: { tenants:
                       )}
                     </td>
                     <td className="text-center px-4 py-4 text-xs text-slate-500 font-medium">
-                      {new Date(tenant.createdAt).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                      {isClient ? 
+                        new Date(tenant.createdAt).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' }) 
+                        : '...'
+                      }
                     </td>
                     <td className="text-right px-6 py-4">
                       <div className="flex items-center justify-end gap-2">

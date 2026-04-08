@@ -1,14 +1,29 @@
 "use client"
 
 import { signIn } from "next-auth/react"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Shield, Lock, ArrowRight } from "lucide-react"
+import { useState, useEffect, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Shield, Lock, ArrowRight, Building2 } from "lucide-react"
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Caricamento...</div>}>
+      <LoginForm />
+    </Suspense>
+  )
+}
+
+function LoginForm() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [tenantSlug, setTenantSlug] = useState("")
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const c = searchParams.get("c") || searchParams.get("comando")
+    if (c) setTenantSlug(c)
+  }, [searchParams])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -18,8 +33,10 @@ export default function LoginPage() {
     const formData = new FormData(e.currentTarget)
     const matricola = formData.get("matricola")
     const password = formData.get("password")
+    const slug = formData.get("tenantSlug")
 
     const res = await signIn("credentials", {
+      tenantSlug: slug,
       matricola,
       password,
       redirect: false,
@@ -56,10 +73,10 @@ export default function LoginPage() {
             <Shield size={40} className="text-blue-400" />
           </div>
           <h1 className="text-2xl font-black text-white tracking-tight">
-            Polizia Locale
+            Portale Polizia Locale
           </h1>
           <p className="text-blue-300/60 text-sm font-medium mt-1">
-            Comando di Altamura
+            Sistema Gestione Reperibilità
           </p>
         </div>
 
@@ -74,6 +91,22 @@ export default function LoginPage() {
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-[11px] font-bold text-blue-200/70 uppercase tracking-wider mb-2" htmlFor="tenantSlug">
+                  Codice Comando
+                </label>
+                <div className="relative">
+                  <input
+                    className="w-full bg-white/5 border-2 border-white/10 rounded-xl px-4 py-3 text-sm text-white font-semibold placeholder:text-white/20 focus:border-blue-400/50 focus:bg-white/10 focus:outline-none transition-all"
+                    id="tenantSlug" type="text" name="tenantSlug" 
+                    placeholder="Es. altamura" required
+                    value={tenantSlug}
+                    onChange={(e) => setTenantSlug(e.target.value)}
+                  />
+                  <Building2 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/15" />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-[11px] font-bold text-blue-200/70 uppercase tracking-wider mb-2" htmlFor="matricola">
                   Matricola
@@ -129,7 +162,7 @@ export default function LoginPage() {
           {/* Footer */}
           <div className="border-t border-white/10 px-8 py-4 bg-white/5">
             <p className="text-[10px] text-white/30 text-center font-medium">
-              Comando di Polizia Locale di Altamura · Sistema Reperibilità v1.0
+              Accesso riservato al personale autorizzato · v2.1
             </p>
           </div>
         </div>
