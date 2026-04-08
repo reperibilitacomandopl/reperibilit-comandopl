@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { vehicleSchema, vehicleUpdateSchema } from "@/lib/validations/admin"
+import { logAudit } from "@/lib/audit"
 
 export async function GET() {
   const session = await auth()
@@ -26,8 +28,12 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json()
-    const { name, targa, scadenzaAssicurazione, scadenzaBollo, scadenzaRevisione, stato } = body
-    if (!name) return NextResponse.json({ error: "Nome veicolo obbligatorio" }, { status: 400 })
+    const parsed = vehicleSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Dati veicolo invalidi", details: parsed.error.format() }, { status: 400 })
+    }
+    
+    const { name, targa, scadenzaAssicurazione, scadenzaBollo, scadenzaRevisione, stato } = parsed.data
 
     const tenantId = session.user.tenantId
     if (!tenantId) return NextResponse.json({ error: "Fail-Safe: Nessun comando attivo" }, { status: 400 })
@@ -43,6 +49,17 @@ export async function POST(req: Request) {
         tenantId,
       }
     })
+
+    await logAudit({
+      tenantId,
+      adminId: session.user.id!,
+      adminName: session.user.name!,
+      action: "CREATE_VEHICLE",
+      targetId: vehicle.id,
+      targetName: vehicle.name,
+      details: `Aggiunto nuovo veicolo: ${vehicle.name} (Targa: ${vehicle.targa || 'Assente'}) - Stato: ${vehicle.stato}`
+    })
+
     return NextResponse.json({ vehicle })
   } catch (error) {
     console.error("[VEHICLE CREATE]", error)
@@ -56,14 +73,18 @@ export async function PUT(req: Request) {
 
   try {
     const body = await req.json()
-    const { id, name, targa, scadenzaAssicurazione, scadenzaBollo, scadenzaRevisione, stato } = body
-    if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 })
+    const parsed = vehicleUpdateSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Dati veicolo invalidi", details: parsed.error.format() }, { status: 400 })
+    }
+
+    const { id, name, targa, scadenzaAssicurazione, scadenzaBollo, scadenzaRevisione, stato } = parsed.data
 
     const tenantId = session.user.tenantId
     if (!tenantId) return NextResponse.json({ error: "Fail-Safe: Nessun comando attivo" }, { status: 400 })
 
     const vehicle = await prisma.vehicle.update({
-      where: { id },
+      where: { id, tenantId: tenantId || null },
       data: {
         name: name || undefined,
         targa: targa !== undefined ? (targa || null) : undefined,
@@ -73,6 +94,17 @@ export async function PUT(req: Request) {
         stato: stato || undefined,
       }
     })
+
+    await logAudit({
+      tenantId,
+      adminId: session.user.id!,
+      adminName: session.user.name!,
+      action: "UPDATE_VEHICLE",
+      targetId: vehicle.id,
+      targetName: vehicle.name,
+      details: `Aggiornato veicolo: ${vehicle.name} - Nuovo Stato: ${vehicle.stato}`
+    })
+
     return NextResponse.json({ vehicle })
   } catch (error) {
     console.error("[VEHICLE UPDATE]", error)
@@ -92,11 +124,25 @@ export async function DELETE(req: Request) {
     const tenantId = session.user.tenantId
     if (!tenantId) return NextResponse.json({ error: "Fail-Safe: Nessun comando attivo" }, { status: 400 })
 
+    const targetVehicle = await prisma.vehicle.findUnique({ where: { id } })
+
     await prisma.vehicle.delete({
-      where: { id }
+      where: { id, tenantId: tenantId || null }
     })
+
+    await logAudit({
+      tenantId,
+      adminId: session.user.id!,
+      adminName: session.user.name!,
+      action: "DELETE_VEHICLE",
+      targetId: id,
+      targetName: targetVehicle?.name,
+      details: `Veicolo rimosso dal parco auto: ${targetVehicle?.name}`
+    })
+
     return NextResponse.json({ success: true })
   } catch (error) {
+    console.error("[VEHICLE DELETE]", error)
     return NextResponse.json({ error: "Internal Error" }, { status: 500 })
   }
 }

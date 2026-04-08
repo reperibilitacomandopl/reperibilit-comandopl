@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { normalizeShiftData } from "@/utils/sync-shift"
+import { logAudit } from "@/lib/audit"
+import { dailyShiftSchema } from "@/lib/validations/admin"
 
 export async function GET(req: Request) {
   const session = await auth()
@@ -53,7 +55,12 @@ export async function PUT(req: Request) {
 
   try {
     const body = await req.json()
-    const { date, userId, type, timeRange, serviceCategoryId, serviceTypeId, vehicleId, serviceDetails, patrolGroupId } = body
+    const parsed = dailyShiftSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Formato dati non valido", details: parsed.error.format() }, { status: 400 })
+    }
+
+    const { date, userId, type, timeRange, serviceCategoryId, serviceTypeId, vehicleId, serviceDetails, patrolGroupId } = parsed.data
     const tenantId = session.user.tenantId
 
     // Crea la data esattamente a mezzanotte UTC
@@ -111,6 +118,18 @@ export async function PUT(req: Request) {
           }
         })
     }
+
+    // Registra nel database l'azione specifica sul turno agente
+    const targetAgent = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } })
+    await logAudit({
+      tenantId: tenantId || null,
+      adminId: session.user.id!,
+      adminName: session.user.name!,
+      action: existingShift ? "UPDATE_SINGLE_SHIFT" : "CREATE_SINGLE_SHIFT",
+      targetId: shift.id,
+      targetName: targetAgent ? targetAgent.name : "Agente",
+      details: `${existingShift ? "Aggiornato" : "Creato"} O.d.S per ${targetAgent?.name || 'Agente'} in data ${date}. Valori: ${normalized.type} ${normalized.timeRange || ''}`
+    })
 
     return NextResponse.json({ success: true, shift })
   } catch (error) {
