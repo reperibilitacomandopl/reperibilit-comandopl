@@ -118,10 +118,11 @@ export async function GET(req: Request) {
 
       for(const s of agentShifts) {
         if (!s.type) continue;
-        const upType = s.type.toUpperCase();
+        const upType = s.type.toUpperCase().trim();
 
-        if (upType === "R" || upType === "RR" || upType.includes("FERIE") || upType.includes("MALATTIA")) {
-           continue; // Non conteggiato come turno operativo
+        // 🛑 FILTRO ASSENZE: Qualsiasi riposo o sigla racchiusa tra parentesi (Es: (F), (L 104), (INFR)) non è calcolata come presenza
+        if (upType === "R" || upType === "RR" || upType.startsWith("(")) {
+           continue; 
         }
 
         presenzeTotali++;
