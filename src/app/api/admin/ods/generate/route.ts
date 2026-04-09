@@ -63,42 +63,43 @@ export async function POST(req: Request) {
       const templateMemberIds = patrol.members.map(m => m.id)
       if (templateMemberIds.length < 2) continue
 
-      // Find if these members have a working shift today
+      // Find if these members have a working shift today AND are in the same quadrant
       const membersShiftsToday = shifts.filter(s => 
         templateMemberIds.includes(s.userId) && 
         classifyShift(s.type) !== "OFF" &&
         !processedShiftIds.has(s.id)
       )
 
-      // Se almeno 2 componenti della pattuglia lavorano 
-      if (membersShiftsToday.length >= 2) {
-        // Devono anche essere nello stesso quadrante (M o P). Altrimenti non pattugliano insieme.
-        // Raggruppo per quadrante
-        const mShifts = membersShiftsToday.filter(s => classifyShift(s.type) === "M")
-        const pShifts = membersShiftsToday.filter(s => classifyShift(s.type) === "P")
+      if (membersShiftsToday.length < 2) continue
 
-        let matchedShifts: any[] = []
-        if (mShifts.length >= 2 && (patrol.preferredShift === "ALL" || patrol.preferredShift === "M")) {
-          matchedShifts = mShifts
-        } else if (pShifts.length >= 2 && (patrol.preferredShift === "ALL" || patrol.preferredShift === "P")) {
-          matchedShifts = pShifts
-        }
+      // Group by quadrant
+      const mShifts = membersShiftsToday.filter(s => classifyShift(s.type) === "M")
+      const pShifts = membersShiftsToday.filter(s => classifyShift(s.type) === "P")
 
-        if (matchedShifts.length >= 2) {
-          const groupId = `patrol_${patrol.id}_${Date.now()}`
-          for (const s of matchedShifts) {
-            updates.push({
-              id: s.id,
-              serviceCategoryId: patrol.serviceCategoryId,
-              serviceTypeId: patrol.serviceTypeId,
-              vehicleId: patrol.vehicleId,
-              patrolGroupId: groupId,
-              timeRange: getTimeRangeFromShiftType(s.type) || s.timeRange,
-              serviceDetails: s.user.servizio || patrol.members[0].servizio || null
-            })
-            processedShiftIds.add(s.id)
-          }
+      let assignedInPatrol = false
+      const processMatched = (matched: any[]) => {
+        if (matched.length < 2) return
+        const groupId = `patrol_${patrol.id}_${Date.now()}`
+        for (const s of matched) {
+          updates.push({
+            id: s.id,
+            serviceCategoryId: patrol.serviceCategoryId,
+            serviceTypeId: patrol.serviceTypeId,
+            vehicleId: patrol.vehicleId,
+            patrolGroupId: groupId,
+            timeRange: getTimeRangeFromShiftType(s.type) || s.timeRange,
+            serviceDetails: s.user.servizio || patrol.name || null
+          })
+          processedShiftIds.add(s.id)
         }
+        assignedInPatrol = true
+      }
+
+      if (patrol.preferredShift === "M" || patrol.preferredShift === "ALL") {
+        processMatched(mShifts)
+      }
+      if (!assignedInPatrol && (patrol.preferredShift === "P" || patrol.preferredShift === "ALL")) {
+        processMatched(pShifts)
       }
     }
 

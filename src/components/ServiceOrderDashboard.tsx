@@ -144,15 +144,28 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
       if (!u) return
       
       const qualifica = u.qualifica || (u.isUfficiale ? "Uff.le" : "Agente")
-      const orario = s.timeRange || (s.type.startsWith("M") ? "08:00-14:00" : s.type.startsWith("P") ? "14:00-20:00" : "22:00-04:00")
-      const servizio = s.serviceType ? s.serviceType.name : (u.servizio || "Comando")
+      
+      // Se ci sono dettagli (es. orari scuole), cerchiamo di estrarre l'orario specifico
+      let orarioPrincipale = s.timeRange || (s.type.startsWith("M") ? "08:00-14:00" : s.type.startsWith("P") ? "14:00-20:00" : "22:00-04:00")
+      let disposizioni = s.serviceDetails || ""
+      
+      // Rilevamento orari scuola (es. 07:45-08:30 o solo 07:45)
+      const schoolTimeMatch = disposizioni.match(/(\d{2}:\d{2})(-(\d{2}:\d{2}))?/)
+      
+      let orarioStampa = orarioPrincipale
+      if (schoolTimeMatch) {
+         // Se è un servizio scuola, mettiamo l'orario della scuola in primo piano
+         orarioStampa = `${schoolTimeMatch[0]}\n(${orarioPrincipale})`
+      }
+
+      const servizio = s.serviceType ? s.serviceType.name : (u.servizio || "Vigilanza")
       const veicolo = s.vehicle ? `\n(${s.vehicle.name})` : ""
       
       body.push([
         { content: `${qualifica}\n${u.name}`, styles: { fontStyle: 'bold' } },
-        { content: orario, styles: { halign: 'center', fontSize: 8 } },
-        { content: `${servizio}${veicolo}` },
-        { content: s.serviceDetails || "" }
+        { content: orarioStampa, styles: { halign: 'center', fontSize: 8, fontStyle: schoolTimeMatch ? 'bold' : 'normal' } },
+        { content: `${servizio}${veicolo}`, styles: { fontStyle: schoolTimeMatch ? 'bold' : 'normal' } },
+        { content: disposizioni, styles: { fontSize: 8 } }
       ])
     })
 

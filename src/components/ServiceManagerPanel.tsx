@@ -543,11 +543,39 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                                     </div>
                                     
                                     <div className="bg-white divide-y divide-slate-100">
-                                        {agentiInQuestoServizio.map(shiftAssegnato => {
-                                            const agente = users.find(u => u.id === shiftAssegnato.userId)
-                                            if(!agente) return null
-                                            return renderAgentCard(agente, shiftAssegnato)
-                                        })}
+                                        {(() => {
+                                            const renderedGroups = new Set<string>();
+                                            return agentiInQuestoServizio.map(shiftAssegnato => {
+                                                const pgId = shiftAssegnato.patrolGroupId;
+                                                
+                                                if (pgId) {
+                                                    if (renderedGroups.has(pgId)) return null;
+                                                    renderedGroups.add(pgId);
+                                                    
+                                                    const compagni = agentiInQuestoServizio.filter(s => s.patrolGroupId === pgId);
+                                                    return (
+                                                        <div key={pgId} className="m-1.5 p-1 bg-slate-800 rounded-xl shadow-inner border-2 border-slate-700 overflow-hidden">
+                                                            <div className="px-3 py-1 bg-slate-700/50 flex justify-between items-center mb-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse shadow-[0_0_8px_rgba(96,165,250,0.6)]"></div>
+                                                                    <span className="text-[9px] font-black text-blue-200 uppercase tracking-[0.2em]">Equipaggio</span>
+                                                                </div>
+                                                                <Shield size={10} className="text-slate-500" />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                {compagni.map(c => {
+                                                                    const a = users.find(u => u.id === c.userId);
+                                                                    return a ? renderAgentCard(a, c) : null;
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                const agente = users.find(u => u.id === shiftAssegnato.userId);
+                                                return agente ? renderAgentCard(agente, shiftAssegnato) : null;
+                                            });
+                                        })()}
                                         {agentiInQuestoServizio.length === 0 && (
                                             <div className="p-3 text-center text-[10px] uppercase font-bold tracking-widest text-slate-400 bg-slate-50 border-t border-dashed border-slate-200">
                                                 Nessun equipaggio
