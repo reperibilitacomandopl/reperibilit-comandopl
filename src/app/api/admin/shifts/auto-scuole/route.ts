@@ -31,7 +31,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Nessuna scuola censita per questo giorno o in generale." }, { status: 400 })
     }
 
-    // 2. Fetch all morning shifts (M*) for this date that don't have details yet
+    // 2. Fetch all morning (M*) and afternoon (P*) shifts for this date
     const shifts = await prisma.shift.findMany({
       where: {
         tenantId,
@@ -39,10 +39,19 @@ export async function POST(req: Request) {
           gte: new Date(targetDate),
           lte: new Date(new Date(targetDate).setUTCHours(23, 59, 59, 999))
         },
-        type: { startsWith: "M" },
-        OR: [
-          { serviceDetails: null },
-          { serviceDetails: "" }
+        AND: [
+          {
+            OR: [
+              { type: { startsWith: "M" } },
+              { type: { startsWith: "P" } }
+            ]
+          },
+          {
+            OR: [
+              { serviceDetails: null },
+              { serviceDetails: "" }
+            ]
+          }
         ]
       },
       orderBy: { user: { name: "asc" } }
@@ -51,21 +60,46 @@ export async function POST(req: Request) {
     if (shifts.length === 0) {
       return NextResponse.json({ 
         success: false, 
-        message: "Nessun turno di mattina disponibile o già assegnato." 
+        message: "Nessun turno disponibile o già assegnato." 
       })
     }
 
-    // 3. Assign individually
+    // 3. Split shifts by type
+    const morningShifts = shifts.filter(s => s.type.startsWith("M"))
+    const afternoonShifts = shifts.filter(s => s.type.startsWith("P"))
+
+    // 4. Assign individually
     let assignedCount = 0
     const updates = []
 
-    for (let i = 0; i < Math.min(shifts.length, schools.length); i++) {
-      const shift = shifts[i]
+    // --- Assign Morning Schools ---
+    for (let i = 0; i < Math.min(morningShifts.length, schools.length); i++) {
+      const shift = morningShifts[i]
       const school = schools[i]
-      const schedule = school.schedules[0] // Only one per dayOfWeek
+      const schedule = school.schedules[0] 
 
       if (schedule) {
-        const note = `${schedule.entranceTime || "07:45-08:30"} ENTRATA SCUOLA ${school.name} / ${schedule.exitTime || "13:00-14:00"} USCITA SCUOLA ${school.name}`
+        const note = `${schedule.entranceTime || "07:45-08:30"} ENTRATA / ${schedule.exitTime || "13:00-14:00"} USCITA ${school.name}`
+        
+        updates.push(prisma.shift.update({
+          where: { id: shift.id },
+          data: { serviceDetails: note }
+        }))
+        assignedCount++
+      }
+    }
+
+    // --- Assign Afternoon Schools (Late Exit) ---
+    // Filter schools that have an afternoon exit time
+    const schoolsWithAfternoon = schools.filter(s => s.schedules[0]?.afternoonExitTime)
+    
+    for (let i = 0; i < Math.min(afternoonShifts.length, schoolsWithAfternoon.length); i++) {
+      const shift = afternoonShifts[i]
+      const school = schoolsWithAfternoon[i]
+      const schedule = school.schedules[0]
+
+      if (schedule?.afternoonExitTime) {
+        const note = `${schedule.afternoonExitTime} USCITA ${school.name}`
         
         updates.push(prisma.shift.update({
           where: { id: shift.id },
@@ -82,7 +116,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ 
       success: true, 
       assignedCount,
-      message: `Assegnate ${assignedCount} scuole agli agenti in turno di mattina.`
+      message: `Assegnati ${assignedCount} servizi scolastici (Mattina e Pomeriggio).`
     })
 
   } catch (error) {

@@ -142,7 +142,7 @@ export default function SchoolsManager() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {dayLabels.slice(1, 7).concat(dayLabels[0]).map((label, idx) => {
                        const dow = (idx + 1) % 7; // Convert logic to match 0=Sun, 1=Mon...
-                       const schedule = school.schedules.find((s: any) => s.dayOfWeek === dow) || { dayOfWeek: dow, entranceTime: "07:45-08:30", exitTime: "13:00-14:00" };
+                       const schedule = school.schedules.find((s: any) => s.dayOfWeek === dow) || { dayOfWeek: dow, entranceTime: "07:45-08:30", exitTime: "13:00-14:00", afternoonExitTime: "" };
                        
                        return (
                          <div key={dow} className="bg-slate-50 p-4 rounded-2xl space-y-3 ring-1 ring-slate-100">
@@ -151,7 +151,7 @@ export default function SchoolsManager() {
                               <Clock size={12} className="text-slate-300" />
                            </div>
                            <div className="space-y-1">
-                              <span className="text-[9px] font-black text-slate-400 uppercase">Ingresso</span>
+                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Ingresso (Mattina)</span>
                               <input 
                                 type="text"
                                 className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none focus:ring-1 focus:ring-indigo-400"
@@ -161,13 +161,13 @@ export default function SchoolsManager() {
                                   const updatedSchedules = [...school.schedules];
                                   const sIdx = updatedSchedules.findIndex((s: any) => s.dayOfWeek === dow);
                                   if (sIdx > -1) updatedSchedules[sIdx].entranceTime = newVal;
-                                  else updatedSchedules.push({ dayOfWeek: dow, entranceTime: newVal, exitTime: "13:00-14:00" });
+                                  else updatedSchedules.push({ dayOfWeek: dow, entranceTime: newVal, exitTime: "13:00-14:00", afternoonExitTime: "" });
                                   setSchools(prev => prev.map(s => s.id === school.id ? { ...s, schedules: updatedSchedules } : s));
                                 }}
                               />
                            </div>
                            <div className="space-y-1">
-                              <span className="text-[9px] font-black text-slate-400 uppercase">Uscita</span>
+                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Uscita (Mattina)</span>
                               <input 
                                 type="text"
                                 className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 outline-none focus:ring-1 focus:ring-indigo-400"
@@ -177,7 +177,26 @@ export default function SchoolsManager() {
                                   const updatedSchedules = [...school.schedules];
                                   const sIdx = updatedSchedules.findIndex((s: any) => s.dayOfWeek === dow);
                                   if (sIdx > -1) updatedSchedules[sIdx].exitTime = newVal;
-                                  else updatedSchedules.push({ dayOfWeek: dow, entranceTime: "07:45-08:30", exitTime: newVal });
+                                  else updatedSchedules.push({ dayOfWeek: dow, entranceTime: "07:45-08:30", exitTime: newVal, afternoonExitTime: "" });
+                                  setSchools(prev => prev.map(s => s.id === school.id ? { ...s, schedules: updatedSchedules } : s));
+                                }}
+                              />
+                           </div>
+                           <div className="space-y-1">
+                              <span className="text-[9px] font-black text-amber-600 uppercase tracking-tighter flex items-center gap-1">
+                                <Clock size={10} /> Uscita (Pomeriggio)
+                              </span>
+                              <input 
+                                type="text"
+                                placeholder="es. 14:15-14:45"
+                                className="w-full bg-amber-50/50 border border-amber-100 rounded-lg p-2 text-xs font-bold text-amber-900 outline-none focus:ring-1 focus:ring-amber-400 placeholder:text-amber-200"
+                                value={schedule.afternoonExitTime || ""}
+                                onChange={(e) => {
+                                  const newVal = e.target.value;
+                                  const updatedSchedules = [...school.schedules];
+                                  const sIdx = updatedSchedules.findIndex((s: any) => s.dayOfWeek === dow);
+                                  if (sIdx > -1) updatedSchedules[sIdx].afternoonExitTime = newVal;
+                                  else updatedSchedules.push({ dayOfWeek: dow, entranceTime: "07:45-08:30", exitTime: "13:00-14:00", afternoonExitTime: newVal });
                                   setSchools(prev => prev.map(s => s.id === school.id ? { ...s, schedules: updatedSchedules } : s));
                                 }}
                               />

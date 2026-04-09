@@ -438,12 +438,13 @@ model School {
 }
 
 model SchoolSchedule {
-  id            String   @id @default(uuid())
-  schoolId      String
-  school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  dayOfWeek     Int      // 0 (Dom) - 6 (Sab)
-  entranceTime  String?  @default("07:45-08:30")
-  exitTime      String?  @default("13:00-14:00")
+  id                String   @id @default(uuid())
+  schoolId          String
+  school            School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  dayOfWeek         Int      // 0 (Dom) - 6 (Sab)
+  entranceTime      String   @default("07:45-08:30")
+  exitTime          String   @default("13:00-14:00")
+  afternoonExitTime String?  // Per le uscite alle 14:15-14:30
   
   @@unique([schoolId, dayOfWeek])
 }

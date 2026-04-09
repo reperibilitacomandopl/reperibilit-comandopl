@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, User, Shield, Car, Printer, RefreshCw, GripVertical, Info, Clock, AlertTriangle, Wand2, Radio, Copy, ClipboardPaste, ChevronDown, ChevronUp, CalendarCheck, RotateCcw, PanelLeftClose, PanelLeft, Users, Link2 } from "lucide-react"
+import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, User, Shield, Car, Printer, RefreshCw, GripVertical, Info, Clock, AlertTriangle, Wand2, Radio, Copy, ClipboardPaste, ChevronDown, ChevronUp, CalendarCheck, RotateCcw, PanelLeftClose, PanelLeft, Users, Link2, GraduationCap } from "lucide-react"
 import toast from "react-hot-toast"
 import Link from "next/link"
 import { isAssenza, formatShiftCode } from "../utils/shift-logic"
@@ -17,12 +17,14 @@ interface CopiedAgentData {
 export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?: () => void, tenantSlug?: string }) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [loading, setLoading] = useState(true)
+  const [isAutoAssigning, setIsAutoAssigning] = useState(false)
   
   const [users, setUsers] = useState<any[]>([])
   const [shifts, setShifts] = useState<any[]>([])
   const [absences, setAbsences] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [vehicles, setVehicles] = useState<any[]>([])
+  const [schools, setSchools] = useState<any[]>([])
 
   // Collapsible state
   const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>({})
@@ -90,6 +92,10 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
       if (data.absences) setAbsences(data.absences)
       if (data.categories) setCategories(data.categories)
       if (data.vehicles) setVehicles(data.vehicles)
+      
+      const schoolsRes = await fetch("/api/admin/schools")
+      const schoolsData = await schoolsRes.json()
+      setSchools(schoolsData)
     } catch {}
     setLoading(false)
   }
@@ -231,6 +237,32 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
       toast.error("Errore di rete")
     }
     setLoading(false)
+  }
+
+  const handleAutoSchools = async () => {
+    setIsAutoAssigning(true)
+    try {
+      const y = currentDate.getFullYear()
+      const m = String(currentDate.getMonth() + 1).padStart(2, "0")
+      const d = String(currentDate.getDate()).padStart(2, "0")
+      const dateStr = `${y}-${m}-${d}`
+
+      const res = await fetch("/api/admin/shifts/auto-scuole", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: dateStr })
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success(data.message)
+        loadData()
+      } else {
+        toast.error(data.error || "Nessun potenziale assegnamento trovato")
+      }
+    } catch {
+      toast.error("Errore durante l'automazione")
+    }
+    setIsAutoAssigning(false)
   }
 
   // Ripristina OdS — rimuove tutte le assegnazioni servizio
@@ -566,14 +598,50 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                             className="text-[11px] font-black text-slate-700 bg-transparent border-none p-0 focus:ring-0 w-[70px] hover:bg-slate-100 rounded focus:bg-white"
                             placeholder="hh:mm-hh:mm"
                          />
-                         <input
-                            title="Dettaglio / Note Servizio"
-                            type="text"
-                            defaultValue={shiftAssegnato.serviceDetails || agente.servizio || ""}
-                            onBlur={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, timeRangeStr, e.target.value)}
-                            className="text-[10px] font-bold text-blue-800 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded focus:ring-0 w-[120px] focus:bg-white hover:border-blue-400"
-                            placeholder="Es. Fiera, Piantone..."
-                         />
+                         <div className="flex items-center gap-1">
+                            <input
+                                title="Dettaglio / Note Servizio"
+                                type="text"
+                                id={`note-${agente.id}`}
+                                defaultValue={shiftAssegnato.serviceDetails || agente.servizio || ""}
+                                onBlur={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, timeRangeStr, e.target.value)}
+                                className="text-[10px] font-bold text-blue-800 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded focus:ring-0 w-[120px] focus:bg-white hover:border-blue-400"
+                                placeholder="Es. Fiera, Piantone..."
+                            />
+                            {schools.length > 0 && (
+                              <div className="relative group/schools">
+                                 <button className="p-1 text-amber-600 hover:bg-amber-50 rounded" title="Abbina Scuola Manualmente">
+                                    <GraduationCap size={12} />
+                                 </button>
+                                 <div className="absolute right-0 top-full mt-1 hidden group-hover/schools:block z-[100] bg-white border border-slate-200 shadow-2xl rounded-xl p-2 w-48 animate-in fade-in zoom-in-95 duration-200">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase mb-2 px-1 tracking-widest border-b border-slate-50">Seleziona Plesso</p>
+                                    <div className="max-h-40 overflow-y-auto custom-scrollbar space-y-1">
+                                       {schools.map(s => {
+                                          const day = currentDate.getUTCDay()
+                                          const sched = s.schedules.find((sc: any) => sc.dayOfWeek === day)
+                                          const isM = shiftAssegnato.type.startsWith("M")
+                                          const noteText = isM 
+                                            ? `${sched?.entranceTime || "07:45-08:30"} ENTRATA / ${sched?.exitTime || "13:00-14:00"} USCITA ${s.name}`
+                                            : `${sched?.afternoonExitTime || "14:15"} USCITA ${s.name}`
+
+                                          return (
+                                             <button 
+                                                key={s.id}
+                                                onClick={() => {
+                                                   assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, timeRangeStr, noteText)
+                                                   toast.success(`Abbinato: ${s.name}`)
+                                                }}
+                                                className="w-full text-left px-2 py-1.5 hover:bg-amber-50 rounded text-[10px] font-bold text-slate-700 truncate"
+                                             >
+                                                {s.name}
+                                             </button>
+                                          )
+                                       })}
+                                    </div>
+                                 </div>
+                              </div>
+                            )}
+                         </div>
                        </div>
                    </div>
                 </div>
@@ -694,6 +762,15 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                   <ClipboardPaste size={14}/> Incolla OdS
               </button>
             )}
+
+            <button 
+                onClick={handleAutoSchools}
+                disabled={isAutoAssigning || loading}
+                className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white font-black px-4 py-2.5 rounded-xl hover:shadow-lg hover:shadow-amber-500/30 transition-all active:scale-95 disabled:opacity-50 text-xs tracking-wider"
+                title="Assegna automaticamente le scuole caricate in anagrafica"
+            >
+                <GraduationCap size={16}/> {isAutoAssigning ? "..." : "AUTO-SCUOLE"}
+            </button>
 
             <button 
                 onClick={autoGenerate}
