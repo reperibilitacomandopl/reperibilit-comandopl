@@ -6,11 +6,11 @@ import AdminDashboard from "@/components/AdminDashboard"
 
 export const dynamic = "force-dynamic"
 
-export default async function PianificazionePage({ params, searchParams }: { params: { tenantSlug: string }, searchParams: { month?: string; year?: string } }) {
+export default async function PianificazionePage({ params, searchParams }: { params: Promise<{ tenantSlug: string }>, searchParams: Promise<{ month?: string; year?: string }> }) {
   const session = await auth()
   if (!session?.user) redirect("/login")
 
-  const { tenantSlug } = params
+  const { tenantSlug } = await params
   const tenantId = session.user.tenantId || "N0T-EX1ST1NG"
   const tf = { tenantId }
 

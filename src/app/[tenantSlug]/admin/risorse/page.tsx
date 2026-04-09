@@ -5,7 +5,7 @@ import RisorseTabs from "@/components/RisorseTabs"
 
 export const dynamic = "force-dynamic"
 
-export default async function RisorsePage({ params }: { params: { tenantSlug: string } }) {
+export default async function RisorsePage({ params }: { params: Promise<{ tenantSlug: string }> }) {
   const { tenantSlug: urlSlug } = await params
   const session = await auth()
 

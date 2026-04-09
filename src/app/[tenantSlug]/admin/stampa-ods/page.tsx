@@ -2,7 +2,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import ServiceOrderClient from "@/components/ServiceOrderClient"
 
-export const dynamicConfig = "force-dynamic"
+export const dynamic = "force-dynamic"
 
 export default async function StampaOdsPage() {
   const session = await auth()

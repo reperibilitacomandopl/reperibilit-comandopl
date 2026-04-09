@@ -8,8 +8,8 @@ export default async function Home({
   params,
   searchParams 
 }: { 
-  params: { tenantSlug: string }, 
-  searchParams: { view?: string, month?: string, year?: string } 
+  params: Promise<{ tenantSlug: string }>, 
+  searchParams: Promise<{ view?: string, month?: string, year?: string }> 
 }) {
   const session = await auth()
   
