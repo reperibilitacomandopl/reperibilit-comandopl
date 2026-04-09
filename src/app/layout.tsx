@@ -29,7 +29,6 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Portale Polizia Locale",
   description: "Sistema di Gestione Reperibilità e Turni",
-  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -39,6 +38,8 @@ export const metadata: Metadata = {
     telephone: false,
   },
 };
+
+import PWAListener from "@/components/PWAListener";
 
 export default function RootLayout({
   children,
@@ -53,6 +54,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         {children}
         <Toaster position="bottom-right" toastOptions={{ className: 'text-sm font-semibold rounded-xl shadow-lg border border-slate-100', duration: 4000 }} />
+        <PWAListener />
       </body>
     </html>
   );
