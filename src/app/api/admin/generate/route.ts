@@ -106,7 +106,13 @@ export async function POST(req: Request) {
 
     for (const agent of agents) {
       const isUff = agent.isUfficiale
-      const baseTarget = isUff ? repPerUfficialeBase : repPerAgenteBase
+      
+      // Gerarchia Massimale: Personale Agente > Setting Globale > Fallback 5
+      let baseTarget = isUff ? (settings?.massimaleUfficiale || 6) : (settings?.massimaleAgente || 5)
+      
+      if (agent.massimale && agent.massimale !== 8) {
+        baseTarget = agent.massimale
+      }
 
       let availableDays = 0
       for (let d = 1; d <= daysInMonth; d++) {

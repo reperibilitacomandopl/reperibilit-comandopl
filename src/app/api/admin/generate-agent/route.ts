@@ -33,7 +33,13 @@ export async function POST(req: Request) {
     if (!agent) return NextResponse.json({ error: "Agent not found or unauthorized" }, { status: 404 })
 
     const isUff = agent.isUfficiale
-    const baseTargetLimit = isUff ? (settings?.massimaleUfficiale ?? 6) : (settings?.massimaleAgente ?? 5)
+    
+    // Gerarchia Massimale: Personale Agente > Setting Globale > Fallback 5
+    let baseTargetLimit = isUff ? (settings?.massimaleUfficiale || 6) : (settings?.massimaleAgente || 5)
+    
+    if (agent.massimale && agent.massimale !== 8) {
+      baseTargetLimit = agent.massimale
+    }
     const minSpacingGlobal = settings?.distaccoMinimo ?? 2
     const allowConsecutive = settings?.permettiConsecutivi ?? false
 

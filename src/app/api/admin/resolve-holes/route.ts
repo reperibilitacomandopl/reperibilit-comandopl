@@ -136,8 +136,19 @@ export async function POST(req: Request) {
       const candidates: { agentId: string, score: number, isUff: boolean }[] = []
 
       for (const agent of agents) {
-        // [1] Limite Mensile (Settings Globali o Agente)
-        const maxRep = agent.massimale || settings?.massimaleAgente || 8
+        // [1] Limite Mensile (Gerarchia: Agente specifico > Setting Globale > Fallback)
+        let maxRep = 5 // Fallback prudenziale
+        if (agent.isUfficiale) {
+          maxRep = settings?.massimaleUfficiale || 6
+        } else {
+          maxRep = settings?.massimaleAgente || 5
+        }
+        
+        // Se l'agente ha un massimale personalizzato nel profilo (diverso dal default 8 di Prisma) lo usiamo
+        if (agent.massimale && agent.massimale !== 8) {
+          maxRep = agent.massimale
+        }
+
         if (repCount[agent.id] >= maxRep) continue;
 
         // [2] Turnover: già assegnato oggi o ieri/domani?
