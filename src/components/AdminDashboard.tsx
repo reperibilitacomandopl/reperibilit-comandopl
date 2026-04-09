@@ -39,6 +39,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
   tenantSlug?: string | null
 }) {
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isResolving, setIsResolving] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
   const [uploadStatus, setUploadStatus] = useState("")
   const [editingCell, setEditingCell] = useState<EditingCell>(null)
@@ -1022,6 +1023,41 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 <Play size={18} fill="currentColor" />
                 Genera Reperibilità
               </>
+            )}
+          </button>
+
+          <button 
+            disabled={isResolving || isGenerating}
+            onClick={async () => {
+              if (!confirm('Vuoi attivare l\'Assistente AI per scansionare il mese e coprire i buchi di reperibilità?\n\nL\'algoritmo rispetterà:\n• Stacco minimo notturno (no M il giorno dopo)\n• Massimale individuale\n• Assenze e malattie\n• Equità weekend (Sab/Dom)')) return
+              setIsResolving(true)
+              setUploadStatus("🧙‍♂️ Assistente AI in Calcolo...")
+              try {
+                const res = await fetch('/api/admin/resolve-holes', { 
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ month: currentMonth, year: currentYear })
+                })
+                const data = await res.json()
+                if (!res.ok) throw new Error(data.error || 'Errore resolver')
+                setUploadStatus(`✅ ${data.holesResolved} buchi coperti in sicurezza!`)
+                toast.success(`Coperti ${data.holesResolved} turni mancanti!`)
+                router.refresh()
+              } catch (err: any) {
+                setUploadStatus(`❌ Errore: ${err.message}`)
+                toast.error(`Errore AI: ${err.message}`)
+              } finally {
+                setIsResolving(false)
+                setTimeout(() => setUploadStatus(""), 6000)
+              }
+            }}
+            className="flex items-center gap-2 bg-gradient-to-r from-fuchsia-700 to-purple-800 hover:from-fuchsia-600 hover:to-purple-700 text-white px-5 py-2 rounded-xl text-sm font-black transition-all shadow-lg shadow-purple-500/20 active:scale-95 disabled:opacity-50 hover:shadow-xl"
+            title="L'Assistente AI scansiona il mese e copre i buchi senza toccare le assegnazioni esistenti"
+          >
+            {isResolving ? (
+              <><RefreshCw size={18} className="animate-spin" /> Calcolo...</>
+            ) : (
+              <><Shield size={18} /> Copertura Buchi REP.</>
             )}
           </button>
         </div>
