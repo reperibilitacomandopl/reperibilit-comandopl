@@ -21,6 +21,7 @@ import {
   ArrowLeftRight,
   Clock,
   Key,
+  GraduationCap
 } from "lucide-react"
 
 type NavSection = {
@@ -57,6 +58,7 @@ const NAV_SECTIONS: NavSection[] = [
     accent: "text-amber-400",
     items: [
       { label: "Setup Caserma", href: "/admin/sezioni", icon: Shield, description: "Configurazione Sezioni e Servizi" },
+      { label: "Anagrafica Scuole", href: "/admin/impostazioni?tab=schools", icon: GraduationCap, description: "Gestione plessi e orari scolastici" },
       { label: "Parco Auto", href: "/admin/parco-auto", icon: Car, description: "Gestione Veicoli e Scadenze" },
     ],
   },

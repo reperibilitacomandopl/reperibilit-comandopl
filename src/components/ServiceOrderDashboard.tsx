@@ -1,11 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, Printer, X, Save } from "lucide-react"
+import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, Printer, X, Save, GraduationCap } from "lucide-react"
+import toast from "react-hot-toast"
 
 export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose?: () => void, tenantName?: string | null }) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [loading, setLoading] = useState(true)
+  const [isAutoAssigning, setIsAutoAssigning] = useState(false)
   
   const [users, setUsers] = useState<any[]>([])
   const [shifts, setShifts] = useState<any[]>([])
@@ -77,22 +79,111 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
   }
   const weekDates = getWeekDates(currentDate);
 
-  // --- DOWNLOAD PDF LEGACY ---
+  // --- AUTOMAZIONE SCUOLE ---
+  const handleAutoSchools = async () => {
+    setIsAutoAssigning(true)
+    try {
+      const y = currentDate.getFullYear()
+      const m = String(currentDate.getMonth() + 1).padStart(2, "0")
+      const d = String(currentDate.getDate()).padStart(2, "0")
+      const dateStr = `${y}-${m}-${d}`
+
+      const res = await fetch("/api/admin/shifts/auto-scuole", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: dateStr })
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success(data.message)
+        loadData() // Ricarica la griglia
+      } else {
+        toast.error(data.error || "Nessun potenziale assegnamento trovato")
+      }
+    } catch {
+      toast.error("Errore durante l'automazione")
+    }
+    setIsAutoAssigning(false)
+  }
+
+  // --- DOWNLOAD PDF FIX ---
   const downloadPDF = async () => {
     const { default: jsPDF } = await import("jspdf")
     const { default: autoTable } = await import("jspdf-autotable")
+    
     const doc = new jsPDF()
     const pageWidth = doc.internal.pageSize.width
     const dateStr = currentDate.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })
     
+    // Header Istituzionale - Pulizia doppioni
     doc.setFontSize(22)
-    doc.text(`POLIZIA LOCALE ${tenantName || "NAZIONALE"}`, pageWidth / 2, 25, { align: "center" })
-    doc.setFontSize(14)
-    doc.text("ORDINE DI SERVIZIO GIORNALIERO", pageWidth / 2, 33, { align: "center" })
-    doc.setFontSize(12)
-    doc.text(dateStr.toUpperCase(), pageWidth / 2, 40, { align: "center" })
+    doc.setTextColor(15, 23, 42) // Slate-900
+    const headerTitle = tenantName?.toUpperCase().includes("POLIZIA LOCALE") 
+      ? tenantName.toUpperCase() 
+      : `POLIZIA LOCALE ${tenantName?.toUpperCase() || "COMANDO"}`
+    doc.text(headerTitle, pageWidth / 2, 20, { align: "center" })
     
-    autoTable(doc, { startY: 50, head: [['Stampa temporaneamente semplificata causa transizione ad Excel Grid.']], body: [] })
+    doc.setFontSize(14)
+    doc.text("ORDINE DI SERVIZIO GIORNALIERO", pageWidth / 2, 28, { align: "center" })
+    
+    doc.setFontSize(10)
+    doc.setTextColor(100, 116, 139) // Slate-400
+    doc.text(dateStr.toUpperCase(), pageWidth / 2, 34, { align: "center" })
+    
+    // Preparazione Dati
+    const body: any[] = []
+
+    const isWorking = (type: string) => /^[MPN]\d/.test((type || "").toUpperCase().replace(/[()]/g, "").trim())
+    const currentShifts = shifts.filter(s => isWorking(s.type))
+    
+    // Ordiniamo per fascia (M poi P poi N)
+    const sortedShifts = [...currentShifts].sort((a,b) => a.type.localeCompare(b.type))
+
+    sortedShifts.forEach(s => {
+      const u = users.find(u => u.id === s.userId)
+      if (!u) return
+      
+      const qualifica = u.qualifica || (u.isUfficiale ? "Uff.le" : "Agente")
+      const orario = s.timeRange || (s.type.startsWith("M") ? "08:00-14:00" : s.type.startsWith("P") ? "14:00-20:00" : "22:00-04:00")
+      const servizio = s.serviceType ? s.serviceType.name : (u.servizio || "Comando")
+      const veicolo = s.vehicle ? `\n(${s.vehicle.name})` : ""
+      
+      body.push([
+        { content: `${qualifica}\n${u.name}`, styles: { fontStyle: 'bold' } },
+        { content: orario, styles: { halign: 'center', fontSize: 8 } },
+        { content: `${servizio}${veicolo}` },
+        { content: s.serviceDetails || "" }
+      ])
+    })
+
+    if (body.length === 0) {
+      toast.error("Nessun turno operativo trovato per questa data. Il PDF sarebbe vuoto.")
+      return
+    }
+
+    autoTable(doc, {
+      startY: 45,
+      head: [['QUALIFICA / NOME', 'ORARIO', 'SERVIZIO / MEZZO', 'DISPOSIZIONI E LUOGHI']],
+      body: body,
+      theme: 'grid',
+      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontSize: 10, halign: 'center' },
+      bodyStyles: { fontSize: 9, cellPadding: 4, textColor: 50 },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: {
+        0: { cellWidth: 50 },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 45 },
+        3: { cellWidth: 'auto' }
+      }
+    })
+
+    // Footer
+    const finalY = (doc as any).lastAutoTable.finalY + 20
+    doc.setFontSize(10)
+    doc.text("L'UFFICIALE DI TURNO", pageWidth - 60, finalY, { align: "center" })
+    doc.setDrawColor(200, 200, 200)
+    doc.line(pageWidth - 90, finalY + 10, pageWidth - 30, finalY + 10)
+
     doc.save(`OdS_${currentDate.toISOString().split("T")[0]}.pdf`)
   }
 
@@ -205,6 +296,13 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
          <h2 className="text-lg font-black text-white tracking-widest uppercase">Grid <span className="text-indigo-400">O.d.S.</span></h2>
          
          <div className="flex gap-2">
+            <button 
+              onClick={handleAutoSchools} 
+              disabled={isAutoAssigning}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-white rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-xl shadow-amber-900/40 disabled:opacity-50"
+            >
+              <GraduationCap size={14}/> {isAutoAssigning ? "Assegnazione..." : "🪄 Auto-Scuole"}
+            </button>
             <button onClick={downloadPDF} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-xl shadow-indigo-900/40">
               <Printer size={14}/> STAMPA
             </button>

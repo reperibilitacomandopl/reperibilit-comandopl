@@ -1,15 +1,24 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import toast from "react-hot-toast"
-import { Settings, RefreshCw, FileDown, ClipboardList, Play, Shield, ArrowRight, Terminal } from "lucide-react"
+import { Settings, RefreshCw, FileDown, ClipboardList, Play, Shield, ArrowRight, Terminal, GraduationCap } from "lucide-react"
 import SettingsPanel from "./SettingsPanel"
+import SchoolsManager from "./SchoolsManager"
 import Link from "next/link"
 
 export default function ImpostazioniPanel({ tenantSlug }: { tenantSlug?: string }) {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<"settings" | "audit" | "verbatel">("settings")
+  const [activeTab, setActiveTab] = useState<"settings" | "audit" | "verbatel" | "schools">("settings")
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const tab = searchParams.get("tab")
+    if (tab === "schools") setActiveTab("schools")
+    if (tab === "audit") setActiveTab("audit")
+    if (tab === "verbatel") setActiveTab("verbatel")
+  }, [searchParams])
 
   // Audit state
   const [auditLogs, setAuditLogs] = useState<any[]>([])
@@ -49,6 +58,7 @@ export default function ImpostazioniPanel({ tenantSlug }: { tenantSlug?: string 
 
   const tabs = [
     { id: "settings" as const, label: "Configurazione", icon: Settings, accent: "indigo" },
+    { id: "schools" as const, label: "Gestione Scuole", icon: GraduationCap, accent: "blue" },
     { id: "audit" as const, label: "Audit Log", icon: ClipboardList, accent: "slate" },
     { id: "verbatel" as const, label: "Integrazione Verbatel", icon: FileDown, accent: "orange" },
   ]
@@ -97,6 +107,13 @@ export default function ImpostazioniPanel({ tenantSlug }: { tenantSlug?: string 
       {activeTab === "settings" && (
         <div className="premium-card overflow-hidden border-t-4 border-t-indigo-600 slide-in-from-left-4 animate-in duration-500">
           <SettingsPanel onClose={() => router.refresh()} embedded />
+        </div>
+      )}
+
+      {/* Schools Tab */}
+      {activeTab === "schools" && (
+        <div className="slide-in-from-right-4 animate-in duration-500">
+           <SchoolsManager />
         </div>
       )}
 
