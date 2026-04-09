@@ -136,8 +136,14 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
     const isWorking = (type: string) => /^[MPN]\d/.test((type || "").toUpperCase().replace(/[()]/g, "").trim())
     const currentShifts = shifts.filter(s => isWorking(s.type))
     
-    // Ordiniamo per fascia (M poi P poi N)
-    const sortedShifts = [...currentShifts].sort((a,b) => a.type.localeCompare(b.type))
+    // Ordiniamo per fascia (M poi P poi N) e poi per patrolGroupId affinché gli equipaggi siano vicini
+    const sortedShifts = [...currentShifts].sort((a,b) => {
+      if (a.type !== b.type) return a.type.localeCompare(b.type)
+      if (a.patrolGroupId && b.patrolGroupId) return a.patrolGroupId.localeCompare(b.patrolGroupId)
+      if (a.patrolGroupId) return -1
+      if (b.patrolGroupId) return 1
+      return 0
+    })
 
     sortedShifts.forEach(s => {
       const u = users.find(u => u.id === s.userId)
@@ -161,12 +167,18 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
       const servizio = s.serviceType ? s.serviceType.name : (u.servizio || "Vigilanza")
       const veicolo = s.vehicle ? `\n(${s.vehicle.name})` : ""
       
-      body.push([
+      // Aggiungiamo metadati per lo stile (non verranno stampati se non gestiti)
+      const rowData = [
         { content: `${qualifica}\n${u.name}`, styles: { fontStyle: 'bold' } },
         { content: orarioStampa, styles: { halign: 'center', fontSize: 8, fontStyle: schoolTimeMatch ? 'bold' : 'normal' } },
         { content: `${servizio}${veicolo}`, styles: { fontStyle: schoolTimeMatch ? 'bold' : 'normal' } },
         { content: disposizioni, styles: { fontSize: 8 } }
-      ])
+      ]
+      
+      // @ts-ignore - Custom property per il rendering
+      rowData.isPatrol = !!s.patrolGroupId
+      
+      body.push(rowData)
     })
 
     if (body.length === 0) {
@@ -178,6 +190,13 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
       startY: 45,
       head: [['QUALIFICA / NOME', 'ORARIO', 'SERVIZIO / MEZZO', 'DISPOSIZIONI E LUOGHI']],
       body: body,
+      didParseCell: (data) => {
+        // Se la riga appartiene a una pattuglia, coloriamo leggermente lo sfondo
+        const row = body[data.row.index];
+        if (row && row.isPatrol && data.section === 'body') {
+          data.cell.styles.fillColor = [224, 231, 255] // Indigo-100 un po' più chiaro
+        }
+      },
       theme: 'grid',
       headStyles: { fillColor: [15, 23, 42], textColor: 255, fontSize: 10, halign: 'center' },
       bodyStyles: { fontSize: 9, cellPadding: 4, textColor: 50 },
