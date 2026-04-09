@@ -554,18 +554,18 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                                                     
                                                     const compagni = agentiInQuestoServizio.filter(s => s.patrolGroupId === pgId);
                                                     return (
-                                                        <div key={pgId} className="m-1.5 p-1 bg-slate-800 rounded-xl shadow-inner border-2 border-slate-700 overflow-hidden">
+                                                        <div key={pgId} className="mx-1.5 my-2 p-1 bg-slate-800 rounded-xl shadow-inner border-2 border-slate-700 overflow-hidden">
                                                             <div className="px-3 py-1 bg-slate-700/50 flex justify-between items-center mb-1">
                                                                 <div className="flex items-center gap-2">
-                                                                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse shadow-[0_0_8px_rgba(96,165,250,0.6)]"></div>
-                                                                    <span className="text-[9px] font-black text-blue-200 uppercase tracking-[0.2em]">Equipaggio</span>
+                                                                    <div className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse shadow-[0_0_8px_rgba(96,165,250,0.6)]"></div>
+                                                                    <span className="text-[10px] font-black text-blue-100 uppercase tracking-widest">Equipaggio</span>
                                                                 </div>
-                                                                <Shield size={10} className="text-slate-500" />
+                                                                <Shield size={12} className="text-slate-500" />
                                                             </div>
-                                                            <div className="space-y-1">
+                                                            <div className="space-y-0.5">
                                                                 {compagni.map(c => {
                                                                     const a = users.find(u => u.id === c.userId);
-                                                                    return a ? renderAgentCard(a, c) : null;
+                                                                    return a ? renderAgentCard(a, c, true) : null;
                                                                 })}
                                                             </div>
                                                         </div>
@@ -573,7 +573,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                                                 }
 
                                                 const agente = users.find(u => u.id === shiftAssegnato.userId);
-                                                return agente ? renderAgentCard(agente, shiftAssegnato) : null;
+                                                return agente ? renderAgentCard(agente, shiftAssegnato, false) : null;
                                             });
                                         })()}
                                         {agentiInQuestoServizio.length === 0 && (
@@ -596,12 +596,12 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
   }
 
   // Refactoring card agente
-  const renderAgentCard = (agente: any, shiftAssegnato: any) => {
+  const renderAgentCard = (agente: any, shiftAssegnato: any, isDark: boolean = false) => {
     const timeRangeStr = shiftAssegnato.timeRange || (shiftAssegnato.type==="M7" ? "07:00-13:00" : shiftAssegnato.type==="M8" ? "08:00-14:00" : "14:00-20:00")
 
     return (
-        <div key={agente.id} draggable onDragStart={e => handleDragStart(e, agente.id)} className={`p-2 flex flex-col hover:bg-blue-50 transition-colors cursor-grab active:cursor-grabbing group/card ${patrolSelection.has(shiftAssegnato.id) ? 'bg-indigo-50 ring-2 ring-indigo-400' : ''}`}>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-50 pb-2 mb-2">
+        <div key={agente.id} draggable onDragStart={e => handleDragStart(e, agente.id)} className={`p-2 flex flex-col hover:bg-white/5 transition-colors cursor-grab active:cursor-grabbing group/card ${patrolSelection.has(shiftAssegnato.id) ? 'bg-indigo-500/20 ring-2 ring-indigo-400' : ''}`}>
+            <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2 mb-2 ${isDark ? 'border-white/5' : 'border-slate-50'}`}>
                 <div className="flex items-center gap-3">
                    <input 
                      type="checkbox"
@@ -611,10 +611,10 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                      className="w-4 h-4 rounded text-indigo-600 border-slate-300 cursor-pointer shrink-0"
                      title="Seleziona per pattuglia"
                    />
-                   <div className={`w-1.5 h-1.5 rounded-full shadow-[0_0_5px_rgba(16,185,129,0.8)] ${agente.isUfficiale ? 'bg-blue-500' : 'bg-emerald-500'}`}></div>
+                   <div className={`w-1.5 h-1.5 rounded-full shadow-[0_0_5px_rgba(16,185,129,0.8)] ${agente.isUfficiale ? 'bg-blue-400' : 'bg-emerald-400'}`}></div>
                    <div className="flex flex-col">
-                       <span className="text-[12px] font-black text-slate-900 tracking-wide uppercase">
-                           {agente.isUfficiale && <span className="text-[10px] text-blue-700 font-black mr-1">[UFF]</span>}
+                       <span className={`text-[12px] font-black tracking-wide uppercase ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                           {agente.isUfficiale && <span className="text-[10px] text-blue-400 font-black mr-1">[UFF]</span>}
                            {agente.name}
                        </span>
                        <div className="flex items-center gap-2">
@@ -623,7 +623,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                             type="text" 
                             defaultValue={timeRangeStr}
                             onBlur={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, e.target.value, shiftAssegnato.serviceDetails)}
-                            className="text-[11px] font-black text-slate-700 bg-transparent border-none p-0 focus:ring-0 w-[70px] hover:bg-slate-100 rounded focus:bg-white"
+                            className={`text-[11px] font-black bg-transparent border-none p-0 focus:ring-0 w-[70px] rounded focus:bg-white/20 ${isDark ? 'text-blue-100 hover:bg-white/10' : 'text-slate-700 hover:bg-slate-100'}`}
                             placeholder="hh:mm-hh:mm"
                          />
                          <div className="flex items-center gap-1">
@@ -633,12 +633,12 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                                 id={`note-${agente.id}`}
                                 defaultValue={shiftAssegnato.serviceDetails || agente.servizio || ""}
                                 onBlur={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, timeRangeStr, e.target.value)}
-                                className="text-[10px] font-bold text-blue-800 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded focus:ring-0 w-[120px] focus:bg-white hover:border-blue-400"
+                                className={`text-[10px] font-bold border px-1.5 py-0.5 rounded focus:ring-0 w-[120px] focus:bg-white transition-all ${isDark ? 'text-white bg-slate-700 border-slate-600 hover:border-blue-400' : 'text-blue-800 bg-blue-50 border-blue-200 hover:border-blue-400'}`}
                                 placeholder="Es. Fiera, Piantone..."
                             />
                             {schools.length > 0 && (
                               <div className="relative group/schools">
-                                 <button className="p-1 text-amber-600 hover:bg-amber-50 rounded" title="Abbina Scuola Manualmente">
+                                 <button className={`p-1 rounded ${isDark ? 'text-amber-400 hover:bg-white/10' : 'text-amber-600 hover:bg-amber-50'}`} title="Abbina Scuola Manualmente">
                                     <GraduationCap size={12} />
                                  </button>
                                  <div className="absolute right-0 top-full mt-1 hidden group-hover/schools:block z-[100] bg-white border border-slate-200 shadow-2xl rounded-xl p-2 w-48 animate-in fade-in zoom-in-95 duration-200">
