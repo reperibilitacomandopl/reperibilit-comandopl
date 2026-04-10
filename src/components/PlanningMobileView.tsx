@@ -1,7 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { Calendar, User, Shield, Info, ChevronLeft, ChevronRight, Clock, MapPin } from "lucide-react"
+import { Calendar, User, Shield, Info, ChevronLeft, ChevronRight, Clock, MapPin, AlertCircle, RefreshCw } from "lucide-react"
+import toast from "react-hot-toast"
+import { storeOfflineRequest } from "@/lib/offline-sync"
 
 interface Agent {
   id: string
@@ -46,6 +48,7 @@ export default function PlanningMobileView({
   const [viewType, setViewType] = useState<'day' | 'agent'>('day')
   const [selectedDay, setSelectedDay] = useState(new Date().getDate())
   const [selectedAgentId, setSelectedAgentId] = useState(agents[0]?.id || "")
+  const [loadingSOS, setLoadingSOS] = useState(false)
 
   const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
 
@@ -77,6 +80,51 @@ export default function PlanningMobileView({
       <span className={`px-3 py-1 rounded-full text-[10px] tracking-widest uppercase shadow-sm ${badgeClass}`}>
         {label}
       </span>
+    )
+  }
+
+  const handleSOS = () => {
+    if (!confirm("🚨 INVIARE SOS GPS ALLA CENTRALE? La tua posizione attuale verrà trasmessa immediatamente.")) return
+    
+    setLoadingSOS(true)
+    const toastId = toast.loading("Invio segnale SOS geolocalizzato...")
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const res = await fetch('/api/admin/alert-emergency', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              type: 'SOS',
+              message: `🆘 SOS GPS! Richiesta intervento immediato dal Terminale Mobile.`,
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude
+            })
+          })
+          if (res.ok) {
+            toast.success("🚨 SEGNALE SOS INVIATO! Resta in attesa.", { id: toastId })
+          } else {
+            throw new Error("API SOS failed")
+          }
+        } catch (err) {
+          console.warn("[PWA] Errore API, archiviazione locale SOS...", err)
+          await storeOfflineRequest('/api/admin/alert-emergency', 'POST', {
+            type: 'SOS',
+            message: `🆘 SOS GPS (OFFLINE)! Richiesta intervento dal Terminale Mobile.`,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+          })
+          toast.success("🚨 SOS ARCHIVIATO! Verrà inviato appena torna il segnale.", { id: toastId, duration: 8000 })
+        } finally {
+          setLoadingSOS(false)
+        }
+      },
+      (err) => {
+        setLoadingSOS(false)
+        toast.error("Impossibile ottenere GPS per SOS. Verifica permessi.", { id: toastId })
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
     )
   }
 
@@ -187,6 +235,27 @@ export default function PlanningMobileView({
           </div>
         )}
       </div>
+
+      {/* SOS Quick Action for Terminale di Pattuglia */}
+      {!isAdmin && (
+        <div className="px-4 pb-6">
+          <button 
+            onClick={handleSOS}
+            disabled={loadingSOS}
+            className="w-full bg-gradient-to-r from-red-600 to-red-700 active:scale-95 text-white rounded-3xl py-5 px-4 flex items-center justify-center gap-4 shadow-xl shadow-red-200 border-b-4 border-red-800 transition-all font-black"
+          >
+            {loadingSOS ? (
+              <RefreshCw className="animate-spin" size={32} />
+            ) : (
+              <AlertCircle size={32} className="animate-pulse" />
+            )}
+            <div className="text-left leading-tight">
+              <p className="text-lg uppercase">SOS EMERGENZA</p>
+              <p className="text-[10px] font-bold opacity-70 uppercase tracking-widest italic">Invia Posizione GPS ora</p>
+            </div>
+          </button>
+        </div>
+      )}
 
       <div className="p-4 bg-slate-100/50 border-t border-slate-200">
         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] text-center">

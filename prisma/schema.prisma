@@ -111,6 +111,7 @@ model User {
   agentRequests AgentRequest[] @relation("AgentRequests")
   agentBalances AgentBalance[] @relation("AgentBalances")
   notifications Notification[]
+  pushSubscriptions PushSubscription[]
   clockRecords  ClockRecord[]
 
   @@unique([tenantId, matricola])
@@ -316,6 +317,8 @@ model EmergencyAlert {
   admin       User     @relation("AdminAlerts", fields: [adminId], references: [id])
   date        DateTime @default(now())
   message     String
+  lat         Float?
+  lng         Float?
   status      String   @default("PENDING") // PENDING, ACKNOWLEDGED
   recipients  AlertRecipient[]
 }
@@ -410,6 +413,16 @@ model Notification {
   createdAt DateTime @default(now())
 
   @@index([userId, tenantId])
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
 }
 
 model ClockRecord {

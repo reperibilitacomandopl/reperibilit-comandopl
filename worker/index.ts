@@ -49,11 +49,51 @@ registerRoute(
   })
 );
 
-// Listener per messaggi personalizzati (opzionale)
-self.addEventListener('message', (event: ExtendableMessageEvent) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
+
+// 3. Notifiche Push (Enterprise Sentinel)
+self.addEventListener('push', (event: PushEvent) => {
+  try {
+    const data = event.data ? event.data.json() : { title: 'Notifica Sentinel', body: 'Nuovo aggiornamento disponibile dal Comando.' };
+    
+    event.waitUntil(
+      self.registration.showNotification(data.title, {
+        body: data.body,
+        icon: '/icon-192.png',
+        badge: '/badge-icon.png', // Assicurati di avere questa icona
+        data: {
+          url: data.url || '/'
+        },
+        vibrate: [200, 100, 200],
+        actions: [
+          { action: 'open', title: 'Apri Portale' }
+        ]
+      } as any)
+    );
+  } catch (e) {
+    console.error('[PWA-PUSH] Errore parsing push:', e);
   }
+});
+
+self.addEventListener('notificationclick', (event: NotificationEvent) => {
+  event.notification.close();
+  
+  const urlToOpen = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      // Se c'è già una finestra aperta, facciamo focus
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Altrimenti ne apriamo una nuova
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(urlToOpen);
+      }
+    })
+  );
 });
 
 console.log('[SENTINEL-PWA] Service Worker Custom Inizializzato Correttamente.');

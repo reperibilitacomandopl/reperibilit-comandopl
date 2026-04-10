@@ -15,8 +15,19 @@ type Record = {
   isVerified: boolean
 }
 
-export default function TimbratureClient({ initialRecords, tenantSettings }: { initialRecords: Record[], tenantSettings: any }) {
+type Alert = {
+  id: string
+  message: string
+  lat: number | null
+  lng: number | null
+  status: string
+  date: string
+  admin: { name: string }
+}
+
+export default function TimbratureClient({ initialRecords, tenantSettings, activeAlerts }: { initialRecords: Record[], tenantSettings: any, activeAlerts: Alert[] }) {
   const [records, setRecords] = useState(initialRecords)
+  const [alerts, setAlerts] = useState<Alert[]>(activeAlerts || [])
   const [settings, setSettings] = useState({
     lat: tenantSettings?.lat || "",
     lng: tenantSettings?.lng || "",
@@ -38,6 +49,20 @@ export default function TimbratureClient({ initialRecords, tenantSettings }: { i
       toast.error(err.message)
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleResolveAlert = async (alertId: string) => {
+    try {
+      const res = await fetch(`/api/admin/alert-emergency/${alertId}`, {
+        method: "PUT"
+      })
+      if (res.ok) {
+        setAlerts(alerts.filter(a => a.id !== alertId))
+        toast.success("Emergenza archiviata.")
+      }
+    } catch (err) {
+      toast.error("Errore durante l'archiviazione.")
     }
   }
 
@@ -67,6 +92,55 @@ export default function TimbratureClient({ initialRecords, tenantSettings }: { i
            </span>
         </div>
       </div>
+
+      {/* EMERGENCY SOS BANNER (Sentinel) */}
+      {alerts.length > 0 && (
+        <div className="space-y-4 animate-in fade-in zoom-in duration-500">
+          <h3 className="text-sm font-black text-rose-600 uppercase tracking-[0.3em] flex items-center gap-2">
+            <span className="w-2 h-2 bg-rose-600 rounded-full animate-ping" />
+            Emergenze Sentinel Attive
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {alerts.map(alert => (
+              <div key={alert.id} className="bg-white border-2 border-rose-500 rounded-3xl p-6 shadow-2xl shadow-rose-200 overflow-hidden relative">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                  <Shield size={60} className="text-rose-600" />
+                </div>
+                <div className="flex justify-between items-start relative z-10">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-rose-600 text-white p-2 rounded-xl">
+                        <ArrowRightLeft size={20} className="animate-pulse" />
+                      </div>
+                      <span className="text-lg font-black text-slate-900 tracking-tight">SOS da {alert.admin.name}</span>
+                    </div>
+                    <p className="text-rose-700 font-bold italic text-sm">{alert.message}</p>
+                    <div className="flex items-center gap-4 text-[10px] font-black uppercase text-slate-400">
+                       <span>{new Date(alert.date).toLocaleTimeString()}</span>
+                       {alert.lat && <span>LOC: {alert.lat.toFixed(4)}, {alert.lng?.toFixed(4)}</span>}
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => handleResolveAlert(alert.id)}
+                    className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black hover:bg-emerald-600 transition-colors shadow-lg"
+                  >
+                    ARCHIVIA
+                  </button>
+                </div>
+                {alert.lat && (
+                  <a 
+                    href={`https://www.google.com/maps?q=${alert.lat},${alert.lng}`}
+                    target="_blank"
+                    className="mt-6 w-full flex items-center justify-center gap-3 bg-rose-50 border-2 border-rose-100 hover:bg-rose-100 py-4 rounded-2xl text-rose-700 font-black text-xs transition-all uppercase tracking-widest"
+                  >
+                    <Map size={24} /> VEDI POSIZIONE AGENTE ORA
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         

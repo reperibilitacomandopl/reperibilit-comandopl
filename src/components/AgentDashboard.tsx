@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation"
 import { isMalattia, isMattina } from "@/utils/shift-logic"
 import NotificationHub from "@/components/NotificationHub"
 import PlanningMobileView from "./PlanningMobileView"
+import NotificationManager from "./NotificationManager"
 import { cacheDataset, getCachedDataset, storeOfflineRequest, syncOfflineRequests } from "@/lib/offline-sync"
 
 // ====== CODICI AGENDA PERSONALE ======
@@ -606,6 +607,9 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
 
   return (
     <div className="space-y-8 pb-10">
+      {/* Gestore Notifiche PWA */}
+      <NotificationManager />
+
       {/* Duty Officer Dashboard Section (Solo se in servizio oggi) */}
       {isOfficerOnDuty && dutyTeam.length > 0 && (
         <div className="bg-white rounded-[2rem] border-4 border-blue-600 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-700">

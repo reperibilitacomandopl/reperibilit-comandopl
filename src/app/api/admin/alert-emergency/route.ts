@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { sendTelegramMessage } from "@/lib/telegram";
+import { sendPushNotification } from "@/lib/push-notifications";
 
 export async function POST(req: Request) {
   try {
@@ -10,17 +11,57 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { type, message, lat, lng } = await req.json().catch(() => ({}));
+    const tenantId = session.user.tenantId;
+    const userId = session.user.id;
+
+    // --- CASO 1: SOS AGENTE (Bottom-Up) ---
+    if (type === "SOS") {
+      // 1. Registra l'SOS nel database delle emergenze
+      const alert = await prisma.emergencyAlert.create({
+        data: {
+          tenantId: tenantId || null,
+          adminId: userId, // In questo caso è l'agente che lancia
+          message: message || `🆘 SOS GPS lanciato da ${session.user.name}`,
+          lat: lat || null,
+          lng: lng || null,
+          status: "PENDING",
+        }
+      });
+
+      // 2. Trova tutti gli ADMIN del tenant per inviare notifiche push
+      const admins = await prisma.user.findMany({
+        where: { tenantId: tenantId || null, role: "ADMIN" },
+        select: { id: true, name: true }
+      });
+
+      // 3. Invia Push agli Admin
+      const pushPayload = {
+        title: "🚨 EMERGENZA SOS!",
+        body: `L'agente ${session.user.name} ha lanciato un SOS.`,
+        url: `/${session.user.tenantSlug}/admin/timbrature?alertId=${alert.id}`
+      };
+
+      for (const admin of admins) {
+        await sendPushNotification(admin.id, pushPayload);
+      }
+
+      // 4. Invia anche un messaggio Telegram se l'admin ha il bot attivo (opzionale)
+      // Qui potresti iterare gli admin e mandare telegram individuali...
+
+      return NextResponse.json({ success: true, alertId: alert.id });
+    }
+
+    // --- CASO 2: ALLERTA COMANDO (Top-Down - Logica Preesistente) ---
     const today = new Date();
     const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
-
-    const tenantId = session.user.tenantId;
     const tf = tenantId ? { tenantId } : {};
 
     // Check if Admin OR Officer on duty today
     const isOfficerOnDuty = await prisma.shift.findFirst({
       where: {
         ...tf,
-        userId: session.user.id,
+        userId: userId,
         date: todayUTC,
         user: { isUfficiale: true },
         repType: { not: null }
@@ -53,8 +94,8 @@ export async function POST(req: Request) {
     const alert = await prisma.emergencyAlert.create({
       data: {
         tenantId: tenantId || null,
-        adminId: session.user.id,
-        message: "🚨 URGENZA! Recarsi in comando entro 30 min.",
+        adminId: userId,
+        message: message || "🚨 URGENZA! Recarsi in comando entro 30 min.",
         status: "PENDING",
         recipients: {
           create: repUsers.map(s => ({ userId: s.userId, status: "SENT" }))

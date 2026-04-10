@@ -24,10 +24,21 @@ export default async function TimbraturePage() {
     select: { lat: true, lng: true, clockInRadius: true }
   })
 
+  const alerts = await prisma.emergencyAlert.findMany({
+    where: { 
+      tenantId,
+      status: "PENDING",
+      date: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Ultime 24 ore
+    },
+    include: { admin: { select: { name: true } } },
+    orderBy: { date: "desc" }
+  })
+
   return (
     <TimbratureClient 
       initialRecords={JSON.parse(JSON.stringify(records))} 
       tenantSettings={tenant}
+      activeAlerts={JSON.parse(JSON.stringify(alerts))}
     />
   )
 }

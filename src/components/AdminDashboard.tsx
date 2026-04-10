@@ -769,10 +769,9 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
         if (s.userId !== ag.id) return false;
         if (!s.repType?.toUpperCase().includes("REP")) return false;
         
-        // Confronto robusto basato su anno/mese del turno
-        const d = new Date(s.date);
-        const y = d.getUTCFullYear();
-        const m = d.getUTCMonth() + 1;
+        // Confronto robusto (YYYY-MM-DD) per evitare derive di fuso orario
+        const shiftDate = typeof s.date === 'string' ? s.date.split('T')[0] : new Date(s.date).toISOString().split('T')[0];
+        const [y, m] = shiftDate.split('-').map(Number);
         return y === currentYear && m === currentMonth;
       }).length
       return { ...ag, repTotal }
@@ -801,11 +800,17 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       })
     }
     return list
-  }, [allAgents, shifts, sortConfig, searchQuery, roleFilter, onlyRepFilter])
+  }, [allAgents, shifts, sortConfig, searchQuery, roleFilter, onlyRepFilter, currentYear, currentMonth])
 
   const filteredAnagraficaAgents = useMemo(() => {
     let list = allAgents.map(ag => {
-      const repTotal = shifts.filter(s => s.userId === ag.id && s.repType?.toUpperCase().includes("REP")).length
+      const repTotal = shifts.filter(s => {
+        if (s.userId !== ag.id) return false;
+        if (!s.repType?.toUpperCase().includes("REP")) return false;
+        const shiftDate = typeof s.date === 'string' ? s.date.split('T')[0] : new Date(s.date).toISOString().split('T')[0];
+        const [y, m] = shiftDate.split('-').map(Number);
+        return y === currentYear && m === currentMonth;
+      }).length
       return { ...ag, repTotal }
     })
     
