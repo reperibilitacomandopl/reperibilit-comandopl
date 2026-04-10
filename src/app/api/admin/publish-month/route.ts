@@ -47,6 +47,8 @@ export async function POST(req: Request) {
         select: { id: true, telegramChatId: true, name: true }
       })
 
+      const text = `📢 <b>PIANIFICAZIONE PUBBLICATA</b>\n\nAttenzione, i turni per il mese di <b>${monthName} ${year}</b> sono stati pubblicati ufficialmente.\n\nControlla ora il tuo pannello agente per visualizzare i dettagli.`
+
       // Invio asincrono a tutti (Telegram + Hub)
       for (const agent of allAgents) {
         if (agent.telegramChatId) {
