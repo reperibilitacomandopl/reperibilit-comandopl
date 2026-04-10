@@ -13,6 +13,7 @@ interface Notification {
   type: NotificationType
   link?: string
   isRead: boolean
+  isArchived: boolean
   createdAt: string
   metadata?: any // Per dati aggiuntivi come coordinate o ID scambi
 }
