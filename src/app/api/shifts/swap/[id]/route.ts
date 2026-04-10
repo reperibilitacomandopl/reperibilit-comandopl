@@ -60,15 +60,21 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
            data: { status: "ACCEPTED" } // Stato intermedio: accettato tra agenti, attesa admin
          })
 
-         // Notifica agli ADMIN per il "Visto finale"
-         const admins = await prisma.user.findMany({
-           where: { tenantId: swapRequest.tenantId, role: "ADMIN" },
+         // Notifica agli ADMIN e SEGRETERIA per il "Visto finale"
+         const adminsAndStaff = await prisma.user.findMany({
+           where: { 
+             tenantId: swapRequest.tenantId, 
+             OR: [
+               { role: "ADMIN" },
+               { canManageShifts: true }
+             ]
+           },
            select: { id: true }
          })
 
-         if (admins.length > 0) {
+         if (adminsAndStaff.length > 0) {
             await (prisma as any).notification.createMany({
-              data: admins.map(a => ({
+              data: adminsAndStaff.map(a => ({
                 tenantId: swapRequest.tenantId,
                 userId: a.id,
                 title: "Visto Scambio Richiesto",

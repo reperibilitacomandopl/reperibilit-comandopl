@@ -162,8 +162,8 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   const [reqEndTime, setReqEndTime] = useState('')
   const [reqHours, setReqHours] = useState('')
   const [isHourlyRequest, setIsHourlyRequest] = useState(false)
-  const [reqLoading, setReqLoading] = useState(false)
   const [selectedShiftForSwap, setSelectedShiftForSwap] = useState<any>(null)
+  const [swapDate, setSwapDate] = useState<string>(new Date().toISOString().split('T')[0])
   const [targetColleagueId, setTargetColleagueId] = useState('')
   const [swapLoading, setSwapLoading] = useState(false)
   
@@ -889,6 +889,16 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                 </Link>
               )}
               <button 
+                onClick={() => {
+                  setSelectedShiftForSwap(null);
+                  setShowSwapModal(true);
+                }}
+                className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-black text-white px-5 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <RefreshCw size={18} />
+                <span className="hidden sm:inline">Scambia Turno</span>
+              </button>
+              <button 
                 onClick={() => setShowSyncModal(true)}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-3 bg-white text-slate-900 px-6 py-4 rounded-2xl font-black text-xs sm:text-sm shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
@@ -956,20 +966,22 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                       {myOds.shift.serviceCategory?.name || "Operativo"} 
                       {myOds.shift.serviceType && ` · ${myOds.shift.serviceType.name}`}
                     </span>
-                    {myOds.shift.type !== "RIPOSO" && (
-                      <button 
-                        onClick={() => {
-                          setSelectedShiftForSwap(myOds.shift);
-                          setShowSwapModal(true);
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1 bg-blue-600 hover:bg-black text-white text-[10px] font-black uppercase rounded-lg transition-all active:scale-95 shadow-lg shadow-blue-200"
-                      >
-                        <RefreshCw size={12} />
-                        Scambia Turno
-                      </button>
-                    )}
+                {myOds.shift.type !== "RIPOSO" && (
+                  <div className="absolute top-4 right-4 sm:relative sm:top-auto sm:right-auto">
+                    <button 
+                      onClick={() => {
+                        setSelectedShiftForSwap(myOds.shift);
+                        setShowSwapModal(true);
+                      }}
+                      className="p-3 bg-blue-600 hover:bg-black text-white rounded-xl transition-all shadow-lg shadow-blue-200 group-hover:scale-110 active:scale-95"
+                      title="Scambia il turno di oggi"
+                    >
+                      <RefreshCw size={20} />
+                    </button>
                   </div>
-                </div>
+                )}
+              </div>
+            </div>
               ) : (
                 <div>
                   <h3 className="text-2xl font-black text-slate-400 leading-tight italic tracking-tight">Servizio non assegnato</h3>
@@ -1615,13 +1627,13 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
         </div>
       </div>
 
-      {/* Modal Scambio */}
-      {showSwapModal && selectedShiftForSwap && (
+      {showSwapModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowSwapModal(false)}></div>
-          <div className="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-8 text-white">
-              <div className="flex justify-between items-start mb-4">
+          <div className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 p-8 text-white relative">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-xl"></div>
+              <div className="flex justify-between items-start mb-4 relative z-10">
                 <div className="p-3 bg-white/20 rounded-2xl border border-white/20">
                   <RefreshCw size={24} />
                 </div>
@@ -1629,20 +1641,37 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                   <X size={24} />
                 </button>
               </div>
-              <h3 className="text-2xl font-black tracking-tight">Proponi Scambio</h3>
-              <p className="text-blue-100 text-sm mt-2 opacity-80">
-                Data: <b>{new Date(selectedShiftForSwap.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}</b>
-              </p>
+              <h3 className="text-2xl font-black tracking-tight relative z-10">Proposta Scambio Turno</h3>
+              <p className="text-blue-100 text-sm mt-2 opacity-80 relative z-10 font-medium">Inverti il tuo incarico con un collega per una data specifica.</p>
             </div>
 
-            <div className="p-8 space-y-6">
+            <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+              {/* Selezione Data */}
               <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Seleziona il collega</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <Calendar size={14} className="text-blue-500" /> DATA DELLO SCAMBIO
+                </label>
+                <input 
+                  type="date"
+                  value={selectedShiftForSwap ? new Date(selectedShiftForSwap.date).toISOString().split('T')[0] : swapDate}
+                  onChange={(e) => {
+                    setSwapDate(e.target.value)
+                    if (selectedShiftForSwap) setSelectedShiftForSwap(null) // Passiamo a modalità manuale
+                  }}
+                  className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl px-4 py-4 text-sm font-bold text-slate-800 focus:border-blue-500 focus:outline-none transition-all"
+                />
+              </div>
+
+              {/* Selezione Collega */}
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <Users size={14} className="text-blue-500" /> SELEZIONA IL COLLEGA
+                </label>
                 <div className="relative">
                   <select 
                     value={targetColleagueId}
                     onChange={(e) => setTargetColleagueId(e.target.value)}
-                    className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl px-4 py-4 text-sm font-bold text-slate-800 focus:border-blue-500 focus:outline-none appearance-none cursor-pointer hover:bg-white transition-all shadow-sm"
+                    className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl px-4 py-4 text-sm font-bold text-slate-800 focus:border-blue-500 focus:outline-none appearance-none cursor-pointer"
                   >
                     <option value="">Scegli un collega...</option>
                     {allAgents.filter(a => a.id !== currentUser.id).map(agent => (
@@ -1655,19 +1684,109 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                 </div>
               </div>
 
-              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
-                <p className="text-[10px] text-blue-700 font-bold uppercase tracking-widest text-center leading-relaxed">
-                  ⚠️ Una volta inviata, il collega dovrà accettare la proposta. Successivamente l'Admin darà l'OK finale per aggiornare la griglia.
+              {/* Anteprima Riepilogo Turni (M8 <-> P16) */}
+              {(swapDate || selectedShiftForSwap) && targetColleagueId && (
+                <div className="bg-slate-50 rounded-[2rem] border border-slate-200 p-6 space-y-4">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center border-b border-slate-200 pb-3 mb-2">
+                    Anteprima Inversione Turni
+                  </p>
+                  
+                  {(() => {
+                    const dateToCheck = selectedShiftForSwap ? new Date(selectedShiftForSwap.date).toISOString().split('T')[0] : swapDate
+                    const myShift = myShifts.find(s => new Date(s.date).toISOString().split('T')[0] === dateToCheck)
+                    const targetShift = shifts.find(s => s.userId === targetColleagueId && new Date(s.date).toISOString().split('T')[0] === dateToCheck)
+                    const colName = allAgents.find(a => a.id === targetColleagueId)?.name || "Collega"
+
+                    const isForbidden = (!myShift || myShift.type === "RIPOSO") || (!targetShift || targetShift.type === "RIPOSO")
+
+                    if (isForbidden) {
+                       return (
+                         <div className="flex items-center gap-3 p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600">
+                           <AlertTriangle size={20} className="shrink-0" />
+                           <p className="text-xs font-bold leading-tight uppercase tracking-tighter italic">
+                             SCAMBIO NON POSSIBILE: Uno dei due operatori è a RIPOSO in questa data.
+                           </p>
+                         </div>
+                       )
+                    }
+
+                    return (
+                      <div className="grid grid-cols-1 gap-4">
+                        {/* Tuo Turno */}
+                        <div className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                           <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-black text-xs">TU</div>
+                              <div>
+                                 <p className="text-[10px] text-slate-400 font-bold uppercase">Cedi il turno</p>
+                                 <p className="text-sm font-black text-slate-800">{myShift.type} <span className="text-slate-400 font-medium ml-1">({myShift.timeRange})</span></p>
+                              </div>
+                           </div>
+                           <ArrowRight size={20} className="text-slate-300" />
+                        </div>
+
+                        {/* Turno Collega */}
+                        <div className="flex items-center justify-between p-4 bg-indigo-600 text-white rounded-2xl shadow-md">
+                           <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-white/20 text-white rounded-lg flex items-center justify-center font-black text-xs uppercase">RICEVI</div>
+                              <div>
+                                 <p className="text-[10px] text-white/60 font-bold uppercase tracking-widest">Dal collega {colName.split(' ')[0]}</p>
+                                 <p className="text-sm font-black">{targetShift.type} <span className="text-indigo-200 font-medium ml-1">({targetShift.timeRange})</span></p>
+                              </div>
+                           </div>
+                           <Check size={20} className="text-indigo-300" />
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </div>
+              )}
+
+              <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
+                <p className="text-[9px] text-amber-700 font-black uppercase tracking-widest text-center leading-relaxed italic">
+                  ⚠️ Premendo "Invia Proposta", il sistema chiederà prima l'accordo al collega e poi il visto finale dell'Admin o della Segreteria.
                 </p>
               </div>
 
               <button 
-                disabled={!targetColleagueId || swapLoading}
-                onClick={handleRequestSwap}
-                className="w-full bg-slate-900 hover:bg-black text-white py-4 rounded-2xl font-black text-sm transition-all hover:scale-[1.02] active:scale-[0.98] shadow-xl disabled:opacity-50 disabled:scale-100 disabled:pointer-events-none flex items-center justify-center gap-2"
+                disabled={!targetColleagueId || swapLoading || !(() => {
+                  const dateToCheck = selectedShiftForSwap ? new Date(selectedShiftForSwap.date).toISOString().split('T')[0] : swapDate
+                  const myShift = myShifts.find(s => new Date(s.date).toISOString().split('T')[0] === dateToCheck)
+                  const targetShift = shifts.find(s => s.userId === targetColleagueId && new Date(s.date).toISOString().split('T')[0] === dateToCheck)
+                  return myShift && myShift.type !== "RIPOSO" && targetShift && targetShift.type !== "RIPOSO"
+                })()}
+                onClick={async () => {
+                  if (selectedShiftForSwap) {
+                    handleRequestSwap();
+                  } else {
+                    // Se modalità manuale, cerchiamo lo shift prima di mandare
+                    const dateToCheck = swapDate;
+                    const myShift = myShifts.find(s => new Date(s.date).toISOString().split('T')[0] === dateToCheck);
+                    if (myShift) {
+                      setSwapLoading(true);
+                      try {
+                        const res = await fetch('/api/swaps', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ targetUserId: targetColleagueId, shiftId: myShift.id })
+                        });
+                        if (res.ok) {
+                          toast.success('Proposta di scambio inviata con successo!');
+                          setShowSwapModal(false);
+                          setTargetColleagueId('');
+                        } else {
+                          const data = await res.json();
+                          toast.error(data.error || 'Impossibile inviare la proposta.');
+                        }
+                      } finally {
+                        setSwapLoading(false);
+                      }
+                    }
+                  }
+                }}
+                className="w-full bg-slate-900 hover:bg-black text-white py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] transition-all hover:scale-[1.02] active:scale-[0.98] shadow-2xl disabled:opacity-50 disabled:scale-100 disabled:pointer-events-none flex items-center justify-center gap-3"
               >
                 {swapLoading ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
-                Invia Proposta
+                Invia Proposta Scambio
               </button>
             </div>
           </div>
