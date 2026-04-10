@@ -90,8 +90,12 @@ export async function GET(req: Request) {
        }
     })
 
-  } catch (err) {
-    console.error("Error fetching balance:", err)
-    return NextResponse.json({ error: "Internal Error" }, { status: 500 })
+  } catch (err: any) {
+    console.error("[BALANCE_API_ERROR]", {
+      message: err.message,
+      stack: err.stack,
+      userId: session?.user?.id
+    })
+    return NextResponse.json({ error: "Internal Error", details: err.message }, { status: 500 })
   }
 }

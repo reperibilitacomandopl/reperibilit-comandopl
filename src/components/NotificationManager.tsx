@@ -47,10 +47,11 @@ export default function NotificationManager() {
       }
 
       // 2. Ottieni sottoscrizione dal browser
+      const vapidKey = (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "").trim().replace(/["']/g, "")
       const registration = await navigator.serviceWorker.ready
       const sub = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!)
+        applicationServerKey: urlBase64ToUint8Array(vapidKey)
       })
 
       // 3. Invia al Backend
