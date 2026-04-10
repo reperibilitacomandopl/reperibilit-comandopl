@@ -2,8 +2,8 @@ import { prisma } from "@/lib/prisma"
 import { ShieldCheck, ShieldAlert, Calendar, User, Building, Fingerprint, Clock, FileCheck } from "lucide-react"
 import Image from "next/image"
 
-export default async function VerifyPage({ params }: { params: { hash: string } }) {
-  const { hash } = params
+export default async function VerifyPage({ params }: { params: Promise<{ hash: string }> }) {
+  const { hash } = await params
   
   const doc = await prisma.certifiedDocument.findUnique({
     where: { hash },

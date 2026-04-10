@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, User, Shield, Car, Printer, RefreshCw, GripVertical, Info, Clock, AlertTriangle, Wand2, Radio, Copy, ClipboardPaste, ChevronDown, ChevronUp, CalendarCheck, RotateCcw, PanelLeftClose, PanelLeft, Users, Link2, GraduationCap } from "lucide-react"
+import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, User, Shield, Car, Printer, RefreshCw, GripVertical, Info, Clock, AlertTriangle, Wand2, Radio, Copy, ClipboardPaste, ChevronDown, ChevronUp, CalendarCheck, RotateCcw, PanelLeftClose, PanelLeft, Users, Link2, GraduationCap, Sparkles } from "lucide-react"
 import toast from "react-hot-toast"
 import Link from "next/link"
 import { isAssenza, formatShiftCode } from "../utils/shift-logic"
@@ -263,6 +263,35 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
       toast.error("Errore durante l'automazione")
     }
     setIsAutoAssigning(false)
+  }
+
+  const handleAIResolve = async () => {
+    if (!confirm("L'Assistente AI analizzerà l'intero mese per identificare e coprire i 'buchi' nelle reperibilità, rispettando i riposi e l'equità dei weekend. Procedere?")) return
+    
+    setLoading(true)
+    try {
+      const res = await fetch("/api/admin/resolve-holes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          year: currentDate.getFullYear(),
+          month: currentDate.getMonth() + 1
+        })
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success(`AI: Risolti ${data.holesResolved} buchi di copertura!`, {
+          icon: '🛡️',
+          duration: 4000
+        })
+        loadData()
+      } else {
+        toast.error(data.error || "L'AI non ha trovato soluzioni ottimali")
+      }
+    } catch {
+      toast.error("Errore di connessione con il modulo AI")
+    }
+    setLoading(false)
   }
 
   // Ripristina OdS — rimuove tutte le assegnazioni servizio
@@ -807,6 +836,15 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                 title="Autocompila Ordine di Servizio basato sui Template"
             >
                 <Wand2 size={16}/> {loading ? "..." : "AUTOCONFIGURA"}
+            </button>
+
+            <button 
+                onClick={handleAIResolve}
+                disabled={loading}
+                className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black px-4 py-2.5 rounded-xl hover:shadow-lg hover:shadow-emerald-500/30 transition-all active:scale-95 disabled:opacity-50 text-xs tracking-wider"
+                title="Assistente AI per coprire i buchi nelle reperibilità del mese"
+            >
+                <Sparkles size={16} className={loading ? "" : "animate-pulse"}/> {loading ? "..." : "RISOLVI BUCHI AI"}
             </button>
 
             {/* RIPRISTINA ODS */}

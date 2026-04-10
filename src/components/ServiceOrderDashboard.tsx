@@ -1,8 +1,9 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, Printer, X, Save, GraduationCap } from "lucide-react"
+import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, Printer, X, Save, GraduationCap, ShieldCheck } from "lucide-react"
 import toast from "react-hot-toast"
+import { generateODSPDF } from "@/utils/pdf-generator"
 
 interface DashboardUser {
   id: string;
@@ -241,14 +242,55 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
     doc.text("IL COMANDANTE DEL CORPO", pageWidth - 55, finalY, { align: "center" })
     doc.line(pageWidth - 85, finalY + 12, pageWidth - 25, finalY + 12)
 
-    // Validazione Digitale (Mock hash for ODS for now, or generate real one)
-    doc.setFontSize(6)
-    doc.setTextColor(150, 150, 150)
-    const mockHash = Math.random().toString(16).slice(2, 10).toUpperCase()
-    doc.text(`Identificativo Digitale: OdS-${currentDate.getFullYear()}-${mockHash}`, 14, doc.internal.pageSize.height - 10)
-    doc.text(`Sentinel Security Suite - Generato il ${new Date().toLocaleString('it-IT')}`, 14, doc.internal.pageSize.height - 7)
+    doc.save(`ODS_${currentDate.toISOString().split('T')[0]}.pdf`)
+  }
 
-    doc.save(`OdS_${currentDate.toISOString().split("T")[0]}.pdf`)
+  const certifyAndEmit = async () => {
+    if (!confirm("ATTENZIONE: La certificazione apporrà un sigillo digitale inappellabile a questo Ordine di Servizio. Una volta emesso, ogni modifica successiva invaliderà la firma. Procedere?")) return
+    
+    setLoading(true)
+    try {
+      // 1. Generiamo il PDF tramite il nuovo generatore (che include l'hash interno)
+      const hash = await generateODSPDF({
+        date: currentDate,
+        users: users as any,
+        shifts: shifts as any,
+        tenantName: tenantName || "Comando Polizia Locale"
+      })
+
+      // 2. Registriamo la certificazione sul database tramite API
+      const res = await fetch("/api/admin/certify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hash,
+          type: "ODS",
+          metadata: {
+            date: currentDate.toISOString().split('T')[0],
+            agentsCount: shifts.filter(s => /^[MPN]\d/.test(s.type)).length,
+            tenantName
+          }
+        })
+      })
+
+      if (res.ok) {
+        toast.success("ORDINE DI SERVIZIO CERTIFICATO ED EMESSO!", {
+          duration: 5000,
+          icon: '🔏'
+        })
+      } else {
+        const err = await res.json()
+        if (res.status === 409) {
+          toast.success("Documento già certificato in precedenza. PDF rigenerato.")
+        } else {
+          toast.error(`Errore persistenza: ${err.error}`)
+        }
+      }
+    } catch (e) {
+      console.error("Errore Certificazione:", e)
+      toast.error("Errore durante la procedura di firma digitale")
+    }
+    setLoading(false)
   }
 
   // --- LOGICA RAGGRUPPAMENTI ---
@@ -366,9 +408,21 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
             >
               <GraduationCap size={14}/> {isAutoAssigning ? "Assegnazione..." : "🪄 Auto-Scuole"}
             </button>
-            <button onClick={downloadPDF} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-xl shadow-indigo-900/40">
-              <Printer size={14}/> STAMPA
-            </button>
+            <button 
+                onClick={certifyAndEmit}
+                disabled={loading}
+                className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black px-6 py-2.5 rounded-xl hover:shadow-lg hover:shadow-emerald-500/30 transition-all active:scale-95 disabled:opacity-50 text-xs tracking-wider border border-emerald-500/50"
+              >
+                <ShieldCheck size={18}/> {loading ? "..." : "CERTIFICA ED EMETTI"}
+              </button>
+
+              <button 
+                onClick={downloadPDF}
+                disabled={loading}
+                className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-2.5 rounded-xl transition-all border border-slate-700"
+              >
+                <Printer size={18}/> Stampa Semplice
+              </button>
             {onClose && (
               <button onClick={onClose} className="p-2 bg-slate-800 text-slate-400 hover:bg-rose-500 hover:text-white rounded-lg transition-all border border-slate-700">
                 <X size={16}/>
