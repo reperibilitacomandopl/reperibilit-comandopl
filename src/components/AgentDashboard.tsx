@@ -12,6 +12,21 @@ import PlanningMobileView from "./PlanningMobileView"
 import NotificationManager from "./NotificationManager"
 import { cacheDataset, getCachedDataset, storeOfflineRequest, syncOfflineRequests } from "@/lib/offline-sync"
 
+export interface DashboardShift {
+  id: string
+  userId: string
+  date: Date | string
+  type: string
+  repType: string | null
+  timeRange?: string | null
+  serviceCategory?: any
+  serviceType?: any
+  vehicle?: any
+  serviceDetails?: string | null
+  durationHours?: number
+  overtimeHours?: number
+}
+
 // ====== CODICI AGENDA PERSONALE ======
 const AGENDA_CATEGORIES = [
   {
@@ -131,7 +146,7 @@ type AgendaItem = {
   note: string | null
 }
 
-export default function AgentDashboard({ currentUser, shifts, allAgents, currentYear, currentMonth, isPublished, currentView, tenantName, tenantSlug, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem, userRole }: { currentUser: { id: string, matricola: string, name: string, telegramChatId?: string | null }, shifts: { userId: string, date: Date | string, type: string, repType: string | null, timeRange?: string | null, serviceCategory?: any, serviceType?: any, vehicle?: any, serviceDetails?: string | null }[], allAgents: any[], currentYear: number, currentMonth: number, isPublished: boolean, currentView?: string, tenantName?: string | null, tenantSlug?: string | null, canManageShifts?: boolean, canManageUsers?: boolean, canVerifyClockIns?: boolean, canConfigureSystem?: boolean, userRole?: string }) {
+export default function AgentDashboard({ currentUser, shifts, allAgents, currentYear, currentMonth, isPublished, currentView, tenantName, tenantSlug, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem, userRole }: { currentUser: { id: string, matricola: string, name: string, telegramChatId?: string | null }, shifts: DashboardShift[], allAgents: any[], currentYear: number, currentMonth: number, isPublished: boolean, currentView?: string, tenantName?: string | null, tenantSlug?: string | null, canManageShifts?: boolean, canManageUsers?: boolean, canVerifyClockIns?: boolean, canConfigureSystem?: boolean, userRole?: string }) {
   const router = useRouter()
   const [showSyncModal, setShowSyncModal] = useState(false)
   const [showAgenda, setShowAgenda] = useState(false)
@@ -1697,7 +1712,19 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                     const targetShift = shifts.find(s => s.userId === targetColleagueId && new Date(s.date).toISOString().split('T')[0] === dateToCheck)
                     const colName = allAgents.find(a => a.id === targetColleagueId)?.name || "Collega"
 
-                    const isForbidden = (!myShift || myShift.type === "RIPOSO") || (!targetShift || targetShift.type === "RIPOSO")
+                    // Controlli di sicurezza per TypeScript
+                    if (!myShift || !targetShift) {
+                       return (
+                         <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-100 rounded-2xl text-amber-600">
+                           <AlertCircle size={20} className="shrink-0" />
+                           <p className="text-xs font-bold leading-tight uppercase tracking-tighter italic">
+                             Seleziona un collega e una data valida per vedere l'anteprima.
+                           </p>
+                         </div>
+                       )
+                    }
+
+                    const isForbidden = (myShift.type === "RIPOSO") || (targetShift.type === "RIPOSO")
 
                     if (isForbidden) {
                        return (
