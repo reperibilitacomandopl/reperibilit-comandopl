@@ -49,9 +49,22 @@ export default async function AdminLayout({
       />
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto bg-slate-950 relative">
+      <main className="flex-1 overflow-y-auto bg-slate-950 relative custom-scrollbar">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/10 via-transparent to-transparent pointer-events-none"></div>
         
+        {/* TOP HEADER */}
+        <header className="sticky top-0 z-40 w-full bg-slate-950/80 backdrop-blur-xl border-b border-white/5 px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="h-8 w-[2px] bg-indigo-500 rounded-full hidden lg:block"></div>
+            <h2 className="text-white text-xs font-black uppercase tracking-[0.2em] opacity-80">
+              Admin Dashboard <span className="text-slate-500 mx-2">/</span> <span className="text-indigo-400 capitalize">{tenantSlug}</span>
+            </h2>
+          </div>
+          
+          <div className="flex items-center gap-6">
+            <NotificationHub userRole={session.user.role} />
+          </div>
+        </header>
 
         <div className="relative z-10">
           {children}
