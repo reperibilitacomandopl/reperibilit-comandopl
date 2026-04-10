@@ -196,3 +196,37 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: "Internal Error" }, { status: 500 })
   }
 }
+
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params
+    const session = await auth()
+    if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+    const swapRequest = await prisma.shiftSwapRequest.findUnique({
+      where: { id },
+      include: { 
+        shift: true,
+        requester: { select: { name: true, matricola: true } },
+        targetUser: { select: { name: true, matricola: true } }
+      }
+    })
+
+    if (!swapRequest) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
+    // Cerchiamo anche il turno del destinatario per mostrare il confronto
+    const targetShift = await prisma.shift.findFirst({
+      where: { userId: swapRequest.targetUserId!, date: swapRequest.shift.date }
+    })
+
+    return NextResponse.json({ 
+      success: true, 
+      swap: {
+        ...swapRequest,
+        targetShift
+      }
+    })
+  } catch (err) {
+    return NextResponse.json({ error: "Error" }, { status: 500 })
+  }
+}

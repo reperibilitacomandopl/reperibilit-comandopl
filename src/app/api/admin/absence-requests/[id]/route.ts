@@ -103,3 +103,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: "Errore durante il processamento." }, { status: 500 })
   }
 }
+
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params
+    const session = await auth()
+    if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+    const request = await prisma.agentRequest.findUnique({
+      where: { id },
+      include: { user: { select: { name: true, matricola: true } } }
+    })
+
+    if (!request) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
+    return NextResponse.json({ success: true, request })
+  } catch (err) {
+    return NextResponse.json({ error: "Error" }, { status: 500 })
+  }
+}

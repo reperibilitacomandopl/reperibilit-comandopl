@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Bell, Check, Info, AlertTriangle, CheckCircle, Clock, X, Map, BellRing, Settings2 } from "lucide-react"
+import { Bell, Check, Info, AlertTriangle, CheckCircle, Clock, X, Map, BellRing, Settings2, RefreshCw, User, Calendar, ArrowRight, ChevronRight } from "lucide-react"
 import toast from "react-hot-toast"
 
 type NotificationType = "REQUEST" | "SUCCESS" | "ALERT" | "INFO"
@@ -22,6 +22,9 @@ export default function NotificationHub({ userRole }: { userRole?: string }) {
   const [unreadCount, setUnreadCount] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
   const [lastNotificationId, setLastNotificationId] = useState<string | null>(null)
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null)
+  const [detailData, setDetailData] = useState<any | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -89,6 +92,7 @@ export default function NotificationHub({ userRole }: { userRole?: string }) {
         if (res.ok) {
           toast.success("Scambio processato!", { id: toastId })
           markAsRead(notificationId)
+          if (selectedNotification?.id === notificationId) setSelectedNotification(null)
         } else {
           const errData = await res.json()
           toast.error(errData.error || "Errore durante lo scambio.", { id: toastId })
@@ -104,6 +108,7 @@ export default function NotificationHub({ userRole }: { userRole?: string }) {
         if (res.ok) {
           toast.success("Richiesta aggiornata!", { id: toastId })
           markAsRead(notificationId)
+          if (selectedNotification?.id === notificationId) setSelectedNotification(null)
         } else {
           const errData = await res.json()
           toast.error(errData.error || "Errore durante l'aggiornamento.", { id: toastId })
@@ -113,6 +118,31 @@ export default function NotificationHub({ userRole }: { userRole?: string }) {
       }
     } catch (err) {
       toast.error("Errore di rete.", { id: toastId })
+    }
+  }
+
+  const openDetails = async (notification: Notification) => {
+    setSelectedNotification(notification)
+    setDetailData(null)
+    setDetailLoading(true)
+
+    try {
+      let metadata = notification.metadata
+      if (typeof metadata === 'string') metadata = JSON.parse(metadata)
+
+      if (metadata?.swapId) {
+        const res = await fetch(`/api/shifts/swap/${metadata.swapId}`)
+        const data = await res.json()
+        if (data.success) setDetailData({ type: 'SWAP', ...data.swap })
+      } else if (metadata?.requestId) {
+        const res = await fetch(`/api/admin/absence-requests/${metadata.requestId}`)
+        const data = await res.json()
+        if (data.success) setDetailData({ type: 'REQUEST', ...data.request })
+      }
+    } catch (err) {
+      console.error("Failed to fetch notification details", err)
+    } finally {
+      setDetailLoading(false)
     }
   }
 
@@ -251,17 +281,15 @@ export default function NotificationHub({ userRole }: { userRole?: string }) {
                                <Map size={12} /> VEDI MAPPA
                              </a>
                           )}
-                          {n.link && n.type !== 'ALERT' && (
-                            <button 
-                              onClick={() => {
-                                if(!n.isRead) markAsRead(n.id)
-                                window.location.href = n.link || '#'
-                              }}
-                              className="text-[10px] font-black text-indigo-400 hover:text-indigo-300 uppercase tracking-[0.2em]"
-                            >
-                              Vedi Dettagli
-                            </button>
-                          )}
+                          <button 
+                            onClick={() => {
+                              if(!n.isRead) markAsRead(n.id)
+                              openDetails(n)
+                            }}
+                            className="text-[10px] font-black text-indigo-400 hover:text-indigo-300 uppercase tracking-[0.2em] flex items-center gap-1.5"
+                          >
+                            Vedi Dettagli <ChevronRight size={12} />
+                          </button>
                           <button 
                             onClick={() => markAsRead(n.id)}
                             className="text-[9px] font-bold text-slate-600 hover:text-slate-400 ml-auto"
@@ -282,6 +310,138 @@ export default function NotificationHub({ userRole }: { userRole?: string }) {
                 <Settings2 size={14} />
                 <span className="text-[10px] font-black uppercase tracking-widest">Impostazioni Sentinel</span>
              </button>
+          </div>
+        </div>
+      )}
+      {/* MODALE DETTAGLI SENTINEL HUB */}
+      {selectedNotification && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setSelectedNotification(null)}></div>
+          <div className="relative w-full max-w-lg bg-slate-900 border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Header Modale */}
+            <div className={`p-8 bg-gradient-to-r flex justify-between items-start text-white ${
+              selectedNotification.type === 'ALERT' ? 'from-rose-600 to-rose-700' :
+              selectedNotification.type === 'REQUEST' ? 'from-indigo-600 to-indigo-700' :
+              'from-slate-800 to-slate-900'
+            }`}>
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-white/20 rounded-2xl border border-white/20">
+                  {selectedNotification.type === 'ALERT' ? <AlertTriangle size={24} /> : <Info size={24} />}
+                </div>
+                <div>
+                  <h3 className="text-xl font-black uppercase tracking-tight">{selectedNotification.title}</h3>
+                  <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mt-1">Dettaglio Messaggio Sentinel</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedNotification(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Contenuto Modale */}
+            <div className="p-8 space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-slate-500">
+                  <Clock size={14} />
+                  <span className="text-[10px] font-black uppercase tracking-widest">{getTimeAgo(selectedNotification.createdAt)}</span>
+                </div>
+                <p className="text-white text-sm leading-relaxed font-medium">
+                  {selectedNotification.message}
+                </p>
+              </div>
+
+              {detailLoading ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-4">
+                  <RefreshCw size={32} className="text-indigo-500 animate-spin" />
+                  <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Recupero dati in corso...</p>
+                </div>
+              ) : detailData ? (
+                <div className="mt-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                  
+                  {/* DETTAGLI SCAMBIO */}
+                  {detailData.type === 'SWAP' && (
+                    <div className="space-y-4">
+                       <div className="flex items-center gap-3 p-4 bg-white/5 rounded-2xl border border-white/5">
+                          <Calendar className="text-indigo-400" size={20} />
+                          <div>
+                            <p className="text-[9px] text-slate-500 font-bold uppercase">Data Turno</p>
+                            <p className="text-sm font-black text-white">{new Date(detailData.shift.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                          </div>
+                       </div>
+
+                       <div className="grid grid-cols-2 gap-4">
+                          <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-2">
+                             <div className="flex items-center gap-2 text-indigo-400">
+                                <User size={14} />
+                                <span className="text-[9px] font-black uppercase tracking-widest">Richiedente</span>
+                             </div>
+                             <p className="text-sm font-black text-white">{detailData.requester.name}</p>
+                             <p className="text-[11px] text-slate-400">{detailData.shift.type} ({detailData.shift.timeRange})</p>
+                          </div>
+                          <div className="p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/20 space-y-2">
+                             <div className="flex items-center gap-2 text-indigo-400">
+                                <User size={14} />
+                                <span className="text-[9px] font-black uppercase tracking-widest">Destinatario</span>
+                             </div>
+                             <p className="text-sm font-black text-white">{detailData.targetUser?.name}</p>
+                             <p className="text-[11px] text-indigo-300">{detailData.targetShift?.type} ({detailData.targetShift?.timeRange || 'N/A'})</p>
+                          </div>
+                       </div>
+                    </div>
+                  )}
+
+                  {/* DETTAGLI RICHIESTA ASSENZA */}
+                  {detailData.type === 'REQUEST' && (
+                    <div className="space-y-4">
+                       <div className="flex items-center gap-3 p-4 bg-white/5 rounded-2xl border border-white/5">
+                          <User className="text-indigo-400" size={20} />
+                          <div>
+                            <p className="text-[9px] text-slate-500 font-bold uppercase">Agente</p>
+                            <p className="text-sm font-black text-white">{detailData.user.name}</p>
+                          </div>
+                       </div>
+                       <div className="flex items-center gap-3 p-4 bg-white/5 rounded-2xl border border-white/5">
+                          <Calendar className="text-indigo-400" size={20} />
+                          <div>
+                            <p className="text-[9px] text-slate-500 font-bold uppercase">Periodo</p>
+                            <p className="text-sm font-black text-white">
+                              {new Date(detailData.date).toLocaleDateString('it-IT')} 
+                              {detailData.endDate && ` al ${new Date(detailData.endDate).toLocaleDateString('it-IT')}`}
+                            </p>
+                          </div>
+                       </div>
+                    </div>
+                  )}
+
+                  {/* Azioni Modale */}
+                  {selectedNotification.type === 'REQUEST' && (
+                    <div className="flex gap-4 pt-4">
+                      <button 
+                        onClick={() => handleAction(selectedNotification.id, "ACCEPT", selectedNotification.metadata)}
+                        className="flex-1 bg-white hover:bg-slate-100 text-slate-900 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl transition-all active:scale-95"
+                      >
+                        Approva Subito
+                      </button>
+                      <button 
+                        onClick={() => handleAction(selectedNotification.id, "REJECT", selectedNotification.metadata)}
+                        className="flex-1 bg-slate-800 hover:bg-rose-600/20 hover:text-rose-500 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest border border-white/5 transition-all"
+                      >
+                        Rifiuta
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-8 p-6 bg-slate-800/30 rounded-3xl border border-white/5 text-center">
+                   <p className="text-slate-500 text-xs font-medium italic">Nessun dettaglio aggiuntivo disponibile per questa tipologia di allerta.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Modale */}
+            <div className="p-6 border-t border-white/5 bg-black/20 text-center">
+               <p className="text-[8px] text-slate-600 font-black uppercase tracking-[0.3em]">Sentinel Autonomous Monitoring System</p>
+            </div>
           </div>
         </div>
       )}
