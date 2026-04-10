@@ -13,26 +13,21 @@ export async function GET(req: Request) {
     const tenantId = session.user.tenantId
     const userId = session.user.id
 
-    const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000)
-
     const notifications = await (prisma as any).notification.findMany({
       where: { 
         userId,
-        tenantId: tenantId || null,
-        OR: [
-          { type: { notIn: ["INFO", "SUCCESS"] } }, // Gli ALERT e REQUEST restano
-          { createdAt: { gte: twoDaysAgo } }      // INFO e SUCCESS solo se recenti
-        ]
+        tenantId: tenantId || null
       },
       orderBy: { createdAt: "desc" },
-      take: 20
+      take: 100
     })
 
     const unreadCount = await (prisma as any).notification.count({
       where: { 
         userId,
         tenantId: tenantId || null,
-        isRead: false
+        isRead: false,
+        isArchived: false
       }
     })
 
@@ -53,26 +48,29 @@ export async function PUT(req: Request) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   try {
-    const { notificationId, markAllAsRead } = await req.json()
+    const { notificationId, markAllAsRead, archiveAll, archiveId } = await req.json()
     const tenantId = session.user.tenantId
     const userId = session.user.id
 
     if (markAllAsRead) {
       await (prisma as any).notification.updateMany({
-        where: { 
-          userId,
-          tenantId: tenantId || null,
-          isRead: false
-        },
+        where: { userId, tenantId: tenantId || null, isRead: false },
         data: { isRead: true }
+      })
+    } else if (archiveAll) {
+      await (prisma as any).notification.updateMany({
+        where: { userId, tenantId: tenantId || null, isArchived: false },
+        data: { isArchived: true, isRead: true }
       })
     } else if (notificationId) {
       await (prisma as any).notification.update({
-        where: { 
-          id: notificationId,
-          userId // Sicurezza: garantisce che l'utente stia leggendo la propria
-        },
+        where: { id: notificationId, userId },
         data: { isRead: true }
+      })
+    } else if (archiveId) {
+      await (prisma as any).notification.update({
+        where: { id: archiveId, userId },
+        data: { isArchived: true, isRead: true }
       })
     }
 

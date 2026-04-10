@@ -390,7 +390,8 @@ model Notification {
   type      String   @default("INFO")
   link      String?
   isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
+  isArchived Boolean  @default(false)
+  createdAt  DateTime @default(now())
   metadata  String?
   tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
