@@ -164,6 +164,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   const [dutyTeam, setDutyTeam] = useState<any[]>([])
   const [isOfficerOnDuty, setIsOfficerOnDuty] = useState(false)
   const [loadingDutyTeam, setLoadingDutyTeam] = useState(false)
+  const [reqLoading, setReqLoading] = useState(false)
 
   // Shift Swap State
   const [swapRequests, setSwapRequests] = useState<any[]>([])
