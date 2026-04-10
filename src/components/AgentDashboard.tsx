@@ -438,9 +438,14 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
           })
 
           const data = await res.json()
-          setIsClockedIn(type)
-          setLastClockTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
-          toast.success(`Timbratura ${type === 'IN' ? 'Entrata' : 'Uscita'} registrata!`, { id: toastId })
+
+          if (res.ok) {
+            setIsClockedIn(type)
+            setLastClockTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+            toast.success(`Timbratura ${type === 'IN' ? 'Entrata' : 'Uscita'} registrata!`, { id: toastId })
+          } else {
+            toast.error(data.error || "Errore durante la timbratura", { id: toastId })
+          }
         } catch (err: any) {
           console.warn('[PWA] Invio timbratura fallito, tento archiviazione locale...', err)
           

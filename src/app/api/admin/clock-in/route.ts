@@ -46,8 +46,17 @@ export async function POST(req: Request) {
 
   try {
     const { type, lat, lng, accuracy } = await req.json()
-    const tenantId = session.user.tenantId
+    let tenantId = session.user.tenantId
     const userId = session.user.id
+
+    // Fallback: se tenantId manca nella sessione, recuperalo dal DB User
+    if (!tenantId) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { tenantId: true }
+      })
+      tenantId = dbUser?.tenantId
+    }
 
     if (!tenantId) return NextResponse.json({ error: "No Tenant" }, { status: 400 })
 
