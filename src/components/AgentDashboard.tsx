@@ -632,7 +632,21 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   }
 
   return (
-    <div className="space-y-8 pb-10">
+    <div className="space-y-8 pb-10 relative">
+      {/* GLOBAL MOBILE HEADER (Fixed at top for Operators) */}
+      <header className="lg:hidden sticky top-0 z-[100] bg-slate-900/95 backdrop-blur-xl border-b border-white/5 p-4 flex items-center justify-between shadow-lg -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-indigo-500/20 rounded-xl">
+            <Shield className="text-indigo-400" size={20} />
+          </div>
+          <div>
+            <h1 className="text-white text-[10px] font-black uppercase tracking-[0.2em] leading-none">Sentinel Mobile</h1>
+            <p className="text-[8px] text-slate-500 font-bold uppercase tracking-tighter mt-1">Comando Polizia Locale</p>
+          </div>
+        </div>
+        <NotificationHub userRole={userRole} />
+      </header>
+
       {/* Gestore Notifiche PWA */}
       <NotificationManager />
 
