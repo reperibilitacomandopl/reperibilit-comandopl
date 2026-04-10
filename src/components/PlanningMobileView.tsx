@@ -131,6 +131,7 @@ export default function PlanningMobileView({
     )
   }
 
+  return (
     <div className="flex flex-col bg-slate-50 min-h-[400px] rounded-3xl overflow-hidden border border-slate-200 shadow-inner">
       {/* Mobile Top Header */}
       <div className="sticky top-0 z-[50] bg-slate-900/95 backdrop-blur-xl border-b border-white/5 p-4 flex items-center justify-between shadow-lg">
