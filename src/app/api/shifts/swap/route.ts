@@ -74,7 +74,21 @@ export async function POST(req: Request) {
         requesterId: session.user.id,
         targetUserId,
         shiftId,
-        status: "PENDING"
+        status: "PENDING",
+        tenantId: session.user.tenantId
+      }
+    })
+
+    // 4. CREA NOTIFICA PER IL COLLEGA (Cruciale!)
+    await (prisma as any).notification.create({
+      data: {
+        tenantId: session.user.tenantId,
+        userId: targetUserId,
+        title: "Proposta di Scambio",
+        message: `${session.user.name} ti ha proposto uno scambio turno per il giorno ${new Date(shift.date).toLocaleDateString("it-IT")}.`,
+        type: "REQUEST",
+        metadata: JSON.stringify({ swapId: request.id }),
+        link: "/?view=agent"
       }
     })
 

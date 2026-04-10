@@ -316,7 +316,7 @@ export default function NotificationHub({ userRole }: { userRole?: string }) {
                              )}
                              {!n.isRead && (
                                <button onClick={() => markAsRead(n.id)} className="text-[9px] font-black text-emerald-500 hover:text-emerald-400 uppercase tracking-widest">
-                                 Leta
+                                 Letta
                                </button>
                              )}
                           </div>
@@ -343,7 +343,7 @@ export default function NotificationHub({ userRole }: { userRole?: string }) {
       {selectedNotification && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setSelectedNotification(null)}></div>
-          <div className="relative w-full max-w-lg bg-slate-900 border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="relative w-full max-w-lg bg-slate-900 border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 my-auto flex flex-col max-h-[90vh]">
             
             {/* Timbro Digitale */}
             <DigitalStamp status={detailData?.status} />
@@ -368,7 +368,7 @@ export default function NotificationHub({ userRole }: { userRole?: string }) {
               </button>
             </div>
 
-            <div className="p-8 space-y-6">
+            <div className="p-8 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-slate-500">
                   <Clock size={14} />
