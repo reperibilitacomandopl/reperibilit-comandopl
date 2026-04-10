@@ -13,10 +13,16 @@ export async function GET(req: Request) {
     const tenantId = session.user.tenantId
     const userId = session.user.id
 
+    const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000)
+
     const notifications = await (prisma as any).notification.findMany({
       where: { 
         userId,
-        tenantId: tenantId || null
+        tenantId: tenantId || null,
+        OR: [
+          { type: { notIn: ["INFO", "SUCCESS"] } }, // Gli ALERT e REQUEST restano
+          { createdAt: { gte: twoDaysAgo } }      // INFO e SUCCESS solo se recenti
+        ]
       },
       orderBy: { createdAt: "desc" },
       take: 20

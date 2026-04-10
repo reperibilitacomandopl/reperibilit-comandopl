@@ -2,12 +2,20 @@ import webpush from "web-push"
 import { prisma } from "./prisma"
 
 // Inizializzazione VAPID
-if (process.env.VAPID_PRIVATE_KEY && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
-  webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || "mailto:admin@caserma.it",
-    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
-  )
+const vapidPublic = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim();
+const vapidPrivate = process.env.VAPID_PRIVATE_KEY?.trim();
+const vapidSubject = process.env.VAPID_SUBJECT?.trim() || "mailto:admin@caserma.it";
+
+if (vapidPublic && vapidPrivate) {
+  try {
+    webpush.setVapidDetails(
+      vapidSubject,
+      vapidPublic,
+      vapidPrivate
+    );
+  } catch (err) {
+    console.error("[PUSH-SERVICE] Errore inizializzazione VAPID:", err);
+  }
 }
 
 /**

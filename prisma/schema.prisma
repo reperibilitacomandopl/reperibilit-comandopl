@@ -410,6 +410,7 @@ model Notification {
   type      String   @default("INFO") // REQUEST, SUCCESS, ALERT, INFO
   link      String?
   isRead    Boolean  @default(false)
+  metadata  String?  // JSON string per azioni (es. { swapId: '...', lat: '...' })
   createdAt DateTime @default(now())
 
   @@index([userId, tenantId])

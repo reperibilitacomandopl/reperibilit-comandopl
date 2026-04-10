@@ -55,7 +55,7 @@ export default async function AdminLayout({
         {/* Top Header Floating for Notifications */}
         <div className="sticky top-0 right-0 z-40 flex justify-end p-4 pointer-events-none">
           <div className="pointer-events-auto bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-2xl p-1 shadow-2xl">
-            <NotificationHub />
+            <NotificationHub userRole={session.user.role} />
           </div>
         </div>
 

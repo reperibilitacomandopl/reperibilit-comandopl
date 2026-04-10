@@ -55,17 +55,22 @@ self.addEventListener('push', (event: PushEvent) => {
   try {
     const data = event.data ? event.data.json() : { title: 'Notifica Sentinel', body: 'Nuovo aggiornamento disponibile dal Comando.' };
     
+    // Pattern vibrazione SOS: Lunghi impulsi ripetuti
+    const sosVibration = [500, 100, 500, 100, 500, 100, 500];
+    const defaultVibration = [200, 100, 200];
+    const isSos = data.title?.includes('SOS') || data.title?.includes('EMERGENZA');
+
     event.waitUntil(
       self.registration.showNotification(data.title, {
         body: data.body,
         icon: '/icon-192.png',
-        badge: '/badge-icon.png', // Assicurati di avere questa icona
+        badge: '/badge-icon.png',
         data: {
           url: data.url || '/'
         },
-        vibrate: [200, 100, 200],
+        vibrate: isSos ? sosVibration : defaultVibration,
         actions: [
-          { action: 'open', title: 'Apri Portale' }
+          { action: 'open', title: isSos ? 'RISPONDI ORA' : 'Vedi Dettagli' }
         ]
       } as any)
     );

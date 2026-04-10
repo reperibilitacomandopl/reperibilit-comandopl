@@ -24,5 +24,25 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: 'maskable',
       },
     ],
+    shortcuts: [
+      {
+        name: '🆘 SOS GPS',
+        short_name: 'SOS',
+        url: '/?action=sos',
+        icons: [{ src: '/icon-192.png', sizes: '192x192' }]
+      },
+      {
+        name: '⏱️ Timbra Entrata',
+        short_name: 'Timbra',
+        url: '/?action=clockin',
+        icons: [{ src: '/icon-192.png', sizes: '192x192' }]
+      },
+      {
+        name: '📅 I miei Turni',
+        short_name: 'Turni',
+        url: '/?action=planning',
+        icons: [{ src: '/icon-192.png', sizes: '192x192' }]
+      }
+    ]
   }
 }

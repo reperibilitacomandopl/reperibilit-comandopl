@@ -269,8 +269,34 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
        syncOfflineRequests()
     }
     window.addEventListener('online', handleOnline)
+
+    // Gestione AZIONI da URL (PWA Shortcuts)
+    const urlParams = new URLSearchParams(window.location.search)
+    const action = urlParams.get('action')
+    if (action) {
+      if (action === 'sos') {
+        const confirmSos = window.confirm("🚨 INVIARE SOS GPS ALLA CENTRALE? La tua posizione attuale verrà trasmessa immediatamente.")
+        if (confirmSos) {
+          // Trigger manuale SOS (uso timeout per garantire che il componente sia pronto)
+          setTimeout(() => {
+             const sosBtn = document.getElementById('btn-sos-pwa')
+             if (sosBtn) (sosBtn as HTMLElement).click()
+          }, 500)
+        }
+      } else if (action === 'clockin') {
+        if (isClockedIn !== 'IN') {
+           setTimeout(() => handleClockAction('IN'), 800)
+        }
+      } else if (action === 'planning') {
+        toast("Visualizzazione turni mensili", { icon: "📅" })
+      }
+      
+      // Pulisci URL per evitare loop
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+
     return () => window.removeEventListener('online', handleOnline)
-  }, [fetchDutyTeam, fetchSwaps, fetchBalances])
+  }, [fetchDutyTeam, fetchSwaps, fetchBalances, isClockedIn])
 
   const handleRespondSwap = async (id: string, status: "ACCEPTED" | "REJECTED") => {
     setSwapLoading(true)
@@ -685,6 +711,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
       {/* EMERGENCY SOS QUICK ACTION */}
       <div className="block lg:hidden px-2 mb-2">
          <button 
+           id="btn-sos-pwa"
            onClick={async () => {
              if (!confirm('🚨 INVIARE SOS GPS ALLA CENTRALE? La tua posizione attuale verrà trasmessa immediatamente.')) return
              const toastId = toast.loading("Inviando SOS GPS...")
@@ -848,7 +875,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                   <span className="hidden sm:inline">Area Admin</span>
                 </Link>
               )}
-              <NotificationHub />
+              <NotificationHub userRole={userRole} />
               <button 
                 onClick={() => setShowSyncModal(true)}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-3 bg-white text-slate-900 px-6 py-4 rounded-2xl font-black text-xs sm:text-sm shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"

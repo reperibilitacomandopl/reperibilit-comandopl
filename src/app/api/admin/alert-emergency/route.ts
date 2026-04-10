@@ -35,7 +35,7 @@ export async function POST(req: Request) {
         select: { id: true, name: true }
       });
 
-      // 3. Invia Push agli Admin
+      // 3. Invia Push agli Admin e crea Notifica nel DB
       const pushPayload = {
         title: "🚨 EMERGENZA SOS!",
         body: `L'agente ${session.user.name} ha lanciato un SOS.`,
@@ -43,11 +43,22 @@ export async function POST(req: Request) {
       };
 
       for (const admin of admins) {
+        // Notifica Push (Browsers)
         await sendPushNotification(admin.id, pushPayload);
+        
+        // Notifica Hub (Database)
+        await prisma.notification.create({
+          data: {
+            tenantId: tenantId || null,
+            userId: admin.id,
+            title: pushPayload.title,
+            message: pushPayload.body,
+            type: "ALERT",
+            link: pushPayload.url,
+            metadata: JSON.stringify({ lat, lng, alertId: alert.id })
+          }
+        });
       }
-
-      // 4. Invia anche un messaggio Telegram se l'admin ha il bot attivo (opzionale)
-      // Qui potresti iterare gli admin e mandare telegram individuali...
 
       return NextResponse.json({ success: true, alertId: alert.id });
     }
@@ -114,7 +125,19 @@ export async function POST(req: Request) {
         const text = `🚨 <b>ALLERTA URGENZA DAL COMANDO</b> 🚨\n\nAgente <b>${shift.user.name}</b>, sei in reperibilità oggi (${shift.repType}).\nDevi recarti in comando entro 30 minuti.\n\nClicca il pulsante qui sotto per confermare la presa visione.`;
         
         const ok = await sendTelegramMessage(chatId, text, keyboard);
-        if (ok) sentCount++;
+        if (ok) {
+          sentCount++;
+          // Crea anche notifica interna nel portale
+          await prisma.notification.create({
+            data: {
+              tenantId: tenantId || null,
+              userId: shift.userId,
+              title: "🚨 ALLERTA URGENZA",
+              message: "Il Comando ha richiesto la tua presenza immediata. Controlla Telegram per i dettagli.",
+              type: "ALERT"
+            }
+          });
+        }
       }
     }
 
