@@ -15,12 +15,20 @@ export async function POST(req: Request) {
 
     const tenantId = session.user.tenantId
 
-    // Verify shift belongs to requester and correct tenant
+    // 1. Verifica che il turno del richiedente NON sia un riposo
     const shift = await prisma.shift.findFirst({ 
       where: { id: shiftId, userId: session.user.id, tenantId: tenantId || null } 
     })
-    if (!shift) {
-      return NextResponse.json({ error: 'Turno non trovato o non di tua competenza' }, { status: 400 })
+    if (!shift || shift.type === "RIPOSO") {
+      return NextResponse.json({ error: 'Non puoi scambiare un giorno di riposo' }, { status: 400 })
+    }
+
+    // 2. Verifica che il turno del destinatario per quel giorno NON sia un riposo
+    const targetShift = await prisma.shift.findFirst({
+      where: { userId: targetUserId, date: shift.date, tenantId: tenantId || null }
+    })
+    if (!targetShift || targetShift.type === "RIPOSO") {
+      return NextResponse.json({ error: 'Il collega selezionato è a riposo in questa data e non può effettuare scambi' }, { status: 400 })
     }
 
     // Check if swap already requested for this shift and user

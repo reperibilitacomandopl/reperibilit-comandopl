@@ -104,6 +104,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           where: { userId: swapRequest.targetUserId!, date: originalShift.date }
         });
 
+        if (!targetUserShift || targetUserShift.type === "RIPOSO" || originalShift.type === "RIPOSO") {
+          return NextResponse.json({ error: "Uno dei turni è diventato a riposo. Scambio non possibile." }, { status: 400 })
+        }
+
         // Definiamo i campi da scambiare (Universal Swap)
         const fieldsToSwapFromA = {
           type: originalShift.type,
@@ -117,7 +121,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           overtimeHours: originalShift.overtimeHours,
         };
 
-        const fieldsToSwapFromB = targetUserShift ? {
+        const fieldsToSwapFromB = {
           type: targetUserShift.type,
           repType: targetUserShift.repType,
           timeRange: targetUserShift.timeRange,
@@ -127,16 +131,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           serviceDetails: targetUserShift.serviceDetails,
           durationHours: targetUserShift.durationHours,
           overtimeHours: targetUserShift.overtimeHours,
-        } : {
-          type: "RIPOSO",
-          repType: null,
-          timeRange: null,
-          serviceCategoryId: null,
-          serviceTypeId: null,
-          vehicleId: null,
-          serviceDetails: null,
-          durationHours: 6.0,
-          overtimeHours: 0.0,
         };
 
         // Eseguiamo la transazione effettiva di inversione totale
@@ -152,30 +146,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             }
           }),
 
-          // 2. Applica i dati di A a B (aggiorna o crea)
-          ...(targetUserShift ? [
-            prisma.shift.update({
-               where: { id: targetUserShift.id },
-               data: {
-                 ...fieldsToSwapFromA,
-                 serviceDetails: fieldsToSwapFromA.serviceDetails
-                   ? `${fieldsToSwapFromA.serviceDetails} | Scambiato con ${swapRequest.requester.name} (Visto Admin)`
-                   : `Turno scambiato con ${swapRequest.requester.name} (Visto Admin)`
-               }
-            })
-          ] : [
-            prisma.shift.create({
-               data: {
-                 userId: swapRequest.targetUserId!,
-                 date: originalShift.date,
-                 tenantId: swapRequest.tenantId,
-                 ...fieldsToSwapFromA,
-                 serviceDetails: fieldsToSwapFromA.serviceDetails
-                   ? `${fieldsToSwapFromA.serviceDetails} | Scambiato con ${swapRequest.requester.name} (Visto Admin)`
-                   : `Turno scambiato con ${swapRequest.requester.name} (Visto Admin)`
-               }
-            })
-          ]),
+          // 2. Applica i dati di A a B
+          prisma.shift.update({
+             where: { id: targetUserShift.id },
+             data: {
+               ...fieldsToSwapFromA,
+               serviceDetails: fieldsToSwapFromA.serviceDetails
+                 ? `${fieldsToSwapFromA.serviceDetails} | Scambiato con ${swapRequest.requester.name} (Visto Admin)`
+                 : `Turno scambiato con ${swapRequest.requester.name} (Visto Admin)`
+             }
+          }),
 
           // 3. Completa la richiesta
           prisma.shiftSwapRequest.update({
