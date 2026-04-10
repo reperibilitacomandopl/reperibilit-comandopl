@@ -16,7 +16,10 @@ export async function GET(req: Request) {
     const notifications = await (prisma as any).notification.findMany({
       where: { 
         userId,
-        tenantId: tenantId || null
+        OR: [
+          { tenantId: tenantId || null },
+          { tenantId: null } // Fallback per notifiche orfane
+        ]
       },
       orderBy: { createdAt: "desc" },
       take: 100

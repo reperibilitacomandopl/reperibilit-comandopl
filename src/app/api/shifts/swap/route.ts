@@ -68,21 +68,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Il collega è assente in questa data" }, { status: 400 })
     }
 
-    // 3. Crea la richiesta
+    // 3. Crea la richiesta con il tenantId del turno
     const request = await prisma.shiftSwapRequest.create({
       data: {
         requesterId: session.user.id,
         targetUserId,
         shiftId,
         status: "PENDING",
-        tenantId: session.user.tenantId
+        tenantId: shift.tenantId
       }
     })
 
-    // 4. CREA NOTIFICA PER IL COLLEGA (Cruciale!)
+    // 4. CREA NOTIFICA PER IL COLLEGA (Usando il tenantId del turno)
     await (prisma as any).notification.create({
       data: {
-        tenantId: session.user.tenantId,
+        tenantId: shift.tenantId,
         userId: targetUserId,
         title: "Proposta di Scambio",
         message: `${session.user.name} ti ha proposto uno scambio turno per il giorno ${new Date(shift.date).toLocaleDateString("it-IT")}.`,
