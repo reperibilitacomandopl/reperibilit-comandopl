@@ -66,9 +66,19 @@ export default function NotificationHub({ userRole }: { userRole?: string }) {
     }
   }
 
-  const handleAction = async (notificationId: string, action: "ACCEPT" | "REJECT", metadata: any) => {
+  const handleAction = async (notificationId: string, action: "ACCEPT" | "REJECT", metadataRaw: any) => {
     const toastId = toast.loading("Elaborazione in corso...")
     try {
+      // Parsing dei metadati se sono in formato stringa
+      let metadata = metadataRaw
+      if (typeof metadataRaw === 'string') {
+        try {
+          metadata = JSON.parse(metadataRaw)
+        } catch (e) {
+          console.error("Failed to parse metadata", e)
+        }
+      }
+
       // 1. GESTIONE SCAMBI TURNO
       if (metadata?.swapId) {
         const res = await fetch(`/api/shifts/swap/${metadata.swapId}`, {
@@ -98,6 +108,8 @@ export default function NotificationHub({ userRole }: { userRole?: string }) {
           const errData = await res.json()
           toast.error(errData.error || "Errore durante l'aggiornamento.", { id: toastId })
         }
+      } else {
+        toast.error("Metadati mancanti o non validi per l'azione.", { id: toastId })
       }
     } catch (err) {
       toast.error("Errore di rete.", { id: toastId })

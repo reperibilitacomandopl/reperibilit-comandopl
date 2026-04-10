@@ -951,11 +951,23 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                   <h3 className="text-2xl font-black text-slate-900 leading-tight tracking-tight">
                     {myOds.shift.timeRange || myOds.shift.type}
                   </h3>
-                  <div className="flex items-center gap-2 mt-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-3">
                     <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
                       {myOds.shift.serviceCategory?.name || "Operativo"} 
                       {myOds.shift.serviceType && ` · ${myOds.shift.serviceType.name}`}
                     </span>
+                    {myOds.shift.type !== "RIPOSO" && (
+                      <button 
+                        onClick={() => {
+                          setSelectedShiftForSwap(myOds.shift);
+                          setShowSwapModal(true);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1 bg-blue-600 hover:bg-black text-white text-[10px] font-black uppercase rounded-lg transition-all active:scale-95 shadow-lg shadow-blue-200"
+                      >
+                        <RefreshCw size={12} />
+                        Scambia Turno
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -1167,7 +1179,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                 return (
                   <div 
                     key={di.isNextMonth ? 'next-1' : di.day} 
-                    className={`relative rounded-lg sm:rounded-xl p-1 sm:p-2 h-16 sm:h-20 flex flex-col items-center justify-start transition-all overflow-hidden ${di.isNextMonth ? "bg-slate-100 opacity-40 grayscale cursor-not-allowed" : `cursor-pointer ${cellBg} ${borderStyle}`}`}
+                    className={`relative rounded-lg sm:rounded-xl p-1 sm:p-2 h-16 sm:h-20 flex flex-col items-center justify-start transition-all overflow-hidden group ${di.isNextMonth ? "bg-slate-100 opacity-40 grayscale cursor-not-allowed" : `cursor-pointer ${cellBg} ${borderStyle}`}`}
                     onClick={() => { 
                       if (di.isNextMonth) return
                       setAgendaDate(String(di.day))
@@ -1185,6 +1197,20 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                     {badgeEl}
                     {isRep && sType && !di.isNextMonth && (
                       <span className="text-[7px] font-bold text-emerald-700 mt-0.5">base: {sType}</span>
+                    )}
+                    {/* Pulsante Scambio Rapido in Agenda */}
+                    {sObj && sType !== "RIPOSO" && !di.isNextMonth && isPublished && (
+                      <div 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedShiftForSwap(sObj);
+                          setShowSwapModal(true);
+                        }}
+                        className="absolute bottom-1 right-1 p-1 bg-white/60 hover:bg-white text-slate-600 rounded-md opacity-0 group-hover:opacity-100 transition-all shadow-sm border border-slate-200"
+                        title="Proponi Scambio per questa data"
+                      >
+                        <RefreshCw size={12} />
+                      </div>
                     )}
                   </div>
                 )

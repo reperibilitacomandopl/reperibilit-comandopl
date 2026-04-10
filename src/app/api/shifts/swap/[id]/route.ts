@@ -9,7 +9,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const { status: requestedAction } = await req.json() // "ACCEPTED" or "REJECTED"
-    const isAdmin = session.user.role === "ADMIN"
+    const isAdmin = session.user.role === "ADMIN" || session.user.canManageShifts === true
 
     const swapRequest = await prisma.shiftSwapRequest.findUnique({
       where: { id },
