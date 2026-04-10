@@ -43,6 +43,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       }
 
       // Verifichiamo se il destinatario ha già un turno base in quella data
+      if (!swapRequest.targetUserId) {
+        return NextResponse.json({ error: "Destinatario non specificato" }, { status: 400 })
+      }
+
       const targetUserShift = await prisma.shift.findFirst({
         where: { userId: swapRequest.targetUserId, date: originalShift.date }
       });
