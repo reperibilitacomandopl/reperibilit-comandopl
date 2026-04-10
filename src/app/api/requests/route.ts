@@ -66,7 +66,8 @@ export async function POST(req: Request) {
             title: "Nuova Richiesta",
             message: `${session.user.name} ha richiesto ${code} per il ${new Date(date).toLocaleDateString("it-IT")}.`,
             type: "REQUEST",
-            link: `/admin/richieste`
+            link: `/admin/richieste`,
+            metadata: JSON.stringify({ requestId: request.id })
           }))
         })
       }

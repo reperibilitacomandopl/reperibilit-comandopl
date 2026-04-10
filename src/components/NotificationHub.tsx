@@ -69,7 +69,7 @@ export default function NotificationHub({ userRole }: { userRole?: string }) {
   const handleAction = async (notificationId: string, action: "ACCEPT" | "REJECT", metadata: any) => {
     const toastId = toast.loading("Elaborazione in corso...")
     try {
-      // Esempio: Azione per scambi turno
+      // 1. GESTIONE SCAMBI TURNO
       if (metadata?.swapId) {
         const res = await fetch(`/api/shifts/swap/${metadata.swapId}`, {
           method: 'PATCH',
@@ -77,10 +77,26 @@ export default function NotificationHub({ userRole }: { userRole?: string }) {
           body: JSON.stringify({ status: action === "ACCEPT" ? "ACCEPTED" : "REJECTED" })
         })
         if (res.ok) {
-          toast.success("Azione completata con successo!", { id: toastId })
+          toast.success("Scambio processato!", { id: toastId })
           markAsRead(notificationId)
         } else {
-          toast.error("Errore durante l'azione.", { id: toastId })
+          const errData = await res.json()
+          toast.error(errData.error || "Errore durante lo scambio.", { id: toastId })
+        }
+      } 
+      // 2. GESTIONE RICHIESTE GENERICHE (FERIE/PERMESSI)
+      else if (metadata?.requestId) {
+        const res = await fetch(`/api/admin/requests/${metadata.requestId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: action === "ACCEPT" ? "APPROVED" : "REJECTED" })
+        })
+        if (res.ok) {
+          toast.success("Richiesta aggiornata!", { id: toastId })
+          markAsRead(notificationId)
+        } else {
+          const errData = await res.json()
+          toast.error(errData.error || "Errore durante l'aggiornamento.", { id: toastId })
         }
       }
     } catch (err) {

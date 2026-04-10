@@ -23,8 +23,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       }
     })
 
-    if (!swapRequest || swapRequest.targetUserId !== session.user.id) {
-       return NextResponse.json({ error: "Richiesta non trovata o non indirizzata a te" }, { status: 403 })
+    const isAdmin = session.user.role === "ADMIN"
+
+    if (!swapRequest || (swapRequest.targetUserId !== session.user.id && !isAdmin)) {
+       return NextResponse.json({ error: "Richiesta non trovata o non autorizzato" }, { status: 403 })
     }
 
     if (swapRequest.status !== "PENDING") {

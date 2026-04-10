@@ -57,7 +57,8 @@ export async function POST(req: Request) {
           title: "Proposta Scambio Turno",
           message: `${session.user.name} ti ha proposto uno scambio per il turno del ${new Date(shift.date).toLocaleDateString("it-IT")}.`,
           type: "REQUEST",
-          link: "/?view=agent" // O la sezione specifica degli scambi se separata
+          link: "/?view=agent",
+          metadata: JSON.stringify({ swapId: swapRequest.id })
         }
       })
     } catch (notifyError) {
