@@ -1068,7 +1068,15 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
               </div>
               <h4 className="text-lg font-bold text-slate-800">Turni In Fase di Elaborazione</h4>
               <p className="text-sm text-slate-500 max-w-sm mt-2">I turni di reperibilità per questo mese non sono ancora stati consolidati e pubblicati dall&apos;Amministratore.</p>
-            </div>
+              <PlanningMobileView 
+                 agents={[{ ...currentUser, isUfficiale: false } as any]}
+                 shifts={shifts}
+                 dayInfo={dayInfo}
+                 currentYear={currentYear}
+                 currentMonth={currentMonth}
+                 userRole={userRole}
+               />
+             </div>
           ) : isMobileView ? (
              <div className="pb-4">
                <PlanningMobileView 
@@ -1077,6 +1085,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                  dayInfo={dayInfo}
                  currentYear={currentYear}
                  currentMonth={currentMonth}
+                 userRole={userRole}
                />
              </div>
           ) : (

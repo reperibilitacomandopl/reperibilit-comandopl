@@ -133,7 +133,7 @@ export default function NotificationHub({ userRole }: { userRole?: string }) {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-4 w-[22rem] sm:w-[26rem] bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[60] overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className="fixed sm:absolute right-4 sm:right-0 left-4 sm:left-auto mt-4 w-auto sm:w-[26rem] bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[60] overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
           
           <div className="p-6 border-b border-white/5 bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/30 flex items-center justify-between">
             <div>

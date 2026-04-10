@@ -42,22 +42,28 @@ export async function POST(req: Request) {
       const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
       const monthName = monthNames[month - 1] || month
       
-      const agentsToNotify = await prisma.user.findMany({
-        where: { 
-          tenantId: tenantId || null, 
-          telegramChatId: { not: null },
-          isActive: true
-        },
-        select: { telegramChatId: true, name: true }
+      const allAgents = await prisma.user.findMany({
+        where: { tenantId: tenantId || null, isActive: true },
+        select: { id: true, telegramChatId: true, name: true }
       })
 
-      const text = `📢 <b>PIANIFICAZIONE PUBBLICATA</b>\n\nAttenzione, i turni per il mese di <b>${monthName} ${year}</b> sono stati pubblicati ufficialmente.\n\nControlla ora il tuo pannello agente per visualizzare i dettagli.`
-      
-      // Invio asincrono a tutti
-      for (const agent of agentsToNotify) {
+      // Invio asincrono a tutti (Telegram + Hub)
+      for (const agent of allAgents) {
         if (agent.telegramChatId) {
           await sendTelegramMessage(agent.telegramChatId, text)
         }
+
+        // Creazione Notifica Hub (Database)
+        await (prisma as any).notification.create({
+          data: {
+            title: "📅 Turni Pubblicati",
+            message: `Il comando ha pubblicato ufficialmente i turni per ${monthName} ${year}.`,
+            type: "SUCCESS",
+            userId: agent.id,
+            tenantId: tenantId || null,
+            link: `/${session.user.tenantSlug}/dashboard`
+          }
+        })
       }
     }
 
