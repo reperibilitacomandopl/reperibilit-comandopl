@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { Calendar, Wand2, Save, Loader2, Users, ShieldAlert, Car, MapPin, Printer } from "lucide-react"
 import toast from "react-hot-toast"
+import { cacheDataset, getCachedDataset, storeOfflineRequest, syncOfflineRequests } from "@/lib/offline-sync"
 
 export default function OdsDailyEditor() {
   const [date, setDate] = useState(new Date().toISOString().split("T")[0])
@@ -19,6 +20,10 @@ export default function OdsDailyEditor() {
   const loadData = async () => {
     setLoading(true)
     try {
+      if (navigator.onLine) {
+        syncOfflineRequests()
+      }
+
       const [resShifts, resCats, resVehs] = await Promise.all([
         fetch(`/api/admin/ods/daily?date=${date}`),
         fetch("/api/admin/services"),
@@ -30,10 +35,29 @@ export default function OdsDailyEditor() {
 
       if (dataShifts.shifts) {
         setShifts(dataShifts.shifts)
+        cacheDataset(`ods-shifts-${date}`, dataShifts.shifts)
       }
-      if (dataCats.categories) setCategories(dataCats.categories)
-      if (dataVehs.vehicles) setVehicles(dataVehs.vehicles)
-    } catch { toast.error("Errore di rete") }
+      if (dataCats.categories) {
+        setCategories(dataCats.categories)
+        cacheDataset('ods-categories', dataCats.categories)
+      }
+      if (dataVehs.vehicles) {
+        setVehicles(dataVehs.vehicles)
+        cacheDataset('ods-vehicles', dataVehs.vehicles)
+      }
+    } catch { 
+      // Fallback offline
+      const [cShifts, cCats, cVehs] = await Promise.all([
+        getCachedDataset(`ods-shifts-${date}`),
+        getCachedDataset('ods-categories'),
+        getCachedDataset('ods-vehicles')
+      ])
+      if (cShifts) setShifts(cShifts)
+      if (cCats) setCategories(cCats)
+      if (cVehs) setVehicles(cVehs)
+      
+      toast.error("Offline: Caricamento dati dalla cache locale")
+    }
     setLoading(false)
   }
 
@@ -42,16 +66,21 @@ export default function OdsDailyEditor() {
   const autoGenerate = async () => {
     if (!confirm("Verranno applicate le automazioni e sovrascritte le assegnazioni non salvate per questa data. Procedere?")) return
     setLoading(true)
-    const res = await fetch("/api/admin/ods/generate", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date })
-    })
-    const data = await res.json()
-    if (res.ok) {
-      toast.success(`Magia applicata! ${data.count} turni assegnati in automatico.`)
-      loadData()
-    } else {
-      toast.error(data.error || "Errore durante l'autocompilazione")
+    try {
+      const res = await fetch("/api/admin/ods/generate", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(`Magia applicata! ${data.count} turni assegnati in automatico.`)
+        loadData()
+      } else {
+        toast.error(data.error || "Errore durante l'autocompilazione")
+        setLoading(false)
+      }
+    } catch {
+      toast.error("Impossibile autocompilare in modalità offline.")
       setLoading(false)
     }
   }
@@ -68,19 +97,29 @@ export default function OdsDailyEditor() {
       serviceDetails: s.serviceDetails
     }))
 
-    const res = await fetch("/api/admin/ods/daily", {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ updates })
-    })
-    
-    if (res.ok) {
-      toast.success("OdS Salvato con successo!")
-      setSelectedForPatrol(new Set())
-      loadData() // Ricarica relazioni
-    } else {
-      toast.error("Errore salvataggio")
+    try {
+      const res = await fetch("/api/admin/ods/daily", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updates })
+      })
+      
+      if (res.ok) {
+        toast.success("OdS Salvato con successo!")
+        setSelectedForPatrol(new Set())
+        cacheDataset(`ods-shifts-${date}`, shifts) // Aggiorna cache locale con i nuovi dati salvati
+        loadData() 
+      } else {
+        const d = await res.json()
+        throw new Error(d.error || "Errore salvataggio")
+      }
+    } catch (err: any) {
+      console.warn('[PWA] Fallimento salvataggio OdS, tento parcheggio offline...', err)
+      await storeOfflineRequest("/api/admin/ods/daily", "PUT", { updates })
+      toast.success("⚠️ Offline: Modifiche OdS archiviate localmente. Verranno inviate appena torna il segnale.", { duration: 6000 })
+      cacheDataset(`ods-shifts-${date}`, shifts) // Teniamo i dati locali coerenti con l'ultima modifica
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   const updateShift = (id: string, field: string, value: any) => {

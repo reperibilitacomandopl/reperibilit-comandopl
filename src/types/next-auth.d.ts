@@ -9,6 +9,8 @@ declare module "next-auth" {
     tenantId?: string | null
     tenantName?: string | null
     tenantSlug?: string | null
+    tenantLogo?: string | null
+    tenantPrimaryColor?: string | null
     isSuperAdmin: boolean
     canManageShifts: boolean
     canManageUsers: boolean
@@ -30,6 +32,8 @@ declare module "next-auth/jwt" {
     tenantId: string | null
     tenantName: string | null
     tenantSlug: string | null
+    tenantLogo: string | null
+    tenantPrimaryColor: string | null
     isSuperAdmin: boolean
     canManageShifts: boolean
     canManageUsers: boolean

@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { name, slug, address, partitaIva, planType, maxAgents, adminName, adminMatricola, adminPassword } = await req.json()
+    const { name, slug, address, partitaIva, planType, maxAgents, adminName, adminMatricola, adminPassword, logoUrl, primaryColor } = await req.json()
 
     if (!name || !slug || !adminName || !adminMatricola || !adminPassword) {
       return NextResponse.json({ error: "Campi obbligatori mancanti" }, { status: 400 })
@@ -59,6 +59,8 @@ export async function POST(req: Request) {
           partitaIva: partitaIva || null,
           planType: planType || "TRIAL",
           maxAgents: maxAgents || 50,
+          logoUrl: logoUrl || null,
+          primaryColor: primaryColor || "#4f46e5",
           isActive: true,
           trialEndsAt: planType === "TRIAL" ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) : null
         }
@@ -135,7 +137,7 @@ export async function PATCH(req: Request) {
   }
 
   try {
-    const { tenantId, name, planType, maxAgents, address, partitaIva } = await req.json()
+    const { tenantId, name, planType, maxAgents, address, partitaIva, logoUrl, primaryColor } = await req.json()
 
     if (!tenantId) {
       return NextResponse.json({ error: "ID Tenant mancante" }, { status: 400 })
@@ -149,6 +151,8 @@ export async function PATCH(req: Request) {
         maxAgents,
         address,
         partitaIva,
+        logoUrl,
+        primaryColor,
         trialEndsAt: planType === "TRIAL" ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) : undefined
       }
     })

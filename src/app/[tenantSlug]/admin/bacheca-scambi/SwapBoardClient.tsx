@@ -185,7 +185,7 @@ export default function SwapBoardClient({ swaps: initial }: { swaps: Swap[] }) {
                       <div key={swap.id} className="bg-white/40 border border-slate-100 rounded-2xl px-5 py-4 flex items-center justify-between opacity-80 hover:opacity-100 transition-opacity">
                         <div className="flex items-center gap-4 flex-wrap">
                           <span className="text-sm font-bold text-slate-700 font-sans tracking-tight">{swap.requester.name}</span>
-                          <span className="text-slate-300 font-black tracking-widest">{" >> "}</span>
+                          <span className="text-slate-300 font-black tracking-widest">{"> >"}</span>
                           <span className="text-sm font-bold text-slate-500 font-sans">
                             {shiftDate.toLocaleDateString("it-IT", { day: "2-digit", month: "short" })}
                           </span>

@@ -4,6 +4,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { logAudit } from "@/lib/audit"
 import { normalizeShiftData } from "@/utils/sync-shift"
+import { sendTelegramMessage } from "@/lib/telegram"
 
 // PUT: Update or create a single shift/absence for an agent on a specific day
 export async function PUT(req: Request) {
@@ -57,6 +58,13 @@ export async function PUT(req: Request) {
         targetName: targetUser?.name,
         details: `Cancellato turno per il giorno ${new Date(date).toLocaleDateString("it-IT")}`
       })
+
+      // NOTIFICA TELEGRAM
+      const fullUser = await prisma.user.findUnique({ where: { id: userId } })
+      if (fullUser?.telegramChatId) {
+        const text = `ℹ️ <b>Aggiornamento Turni</b>\n\nCiao ${fullUser.name}, il tuo turno per il giorno <b>${new Date(date).toLocaleDateString("it-IT")}</b> è stato <b>CANCELLATO</b> dall'amministratore.`
+        await sendTelegramMessage(fullUser.telegramChatId, text)
+      }
 
       return NextResponse.json({ success: true, action: "cleared" })
     }
@@ -123,6 +131,14 @@ export async function PUT(req: Request) {
       targetName: targetUser?.name,
       details: `Aggiornato turno a ${value} per il giorno ${new Date(date).toLocaleDateString("it-IT")}`
     })
+
+    // NOTIFICA TELEGRAM
+    const fullUser = await prisma.user.findUnique({ where: { id: userId } })
+    if (fullUser?.telegramChatId) {
+      const typeDesc = value.toUpperCase().includes("REP") ? "Reperibilità" : "Servizio"
+      const text = `📅 <b>Variazione Turno</b>\n\nCiao ${fullUser.name}, il tuo stato per il giorno <b>${new Date(date).toLocaleDateString("it-IT")}</b> è stato aggiornato.\n\nNuovo stato: <b>${value.toUpperCase()}</b> (${typeDesc})`
+      await sendTelegramMessage(fullUser.telegramChatId, text)
+    }
 
     return NextResponse.json({ success: true, action: "saved" })
   } catch (error) {

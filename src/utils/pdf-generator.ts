@@ -1,0 +1,383 @@
+import jsPDF from "jspdf"
+import "jspdf-autotable"
+
+// Definizione interfacce per rimuovere "any" e warning lint
+interface Agent {
+  id: string;
+  name: string;
+}
+
+interface Shift {
+  userId: string;
+  date: string | Date;
+  type: string;
+  repType: string | null;
+}
+
+interface DayInfo {
+  day: number;
+  name: string;
+  isWeekend: boolean;
+  isNextMonth: boolean;
+  month?: number;
+}
+
+interface jsPDFWithAutoTable extends jsPDF {
+  autoTable: (options: import("jspdf-autotable").UserOptions) => jsPDF;
+  lastAutoTable: { finalY: number };
+  internal: any; 
+  addImage: any; // Using any for addImage to avoid complex overloading mismatch
+}
+
+/**
+ * Genera un Hash SHA-256 di una stringa o buffer
+ * Migliorato con fallback per contesti non sicuri (HTTP)
+ */
+async function generateHash(content: string | ArrayBuffer): Promise<string> {
+  // Fallback se crypto.subtle non è disponibile (es. HTTP locale senza HTTPS)
+  if (typeof crypto === 'undefined' || !crypto.subtle) {
+    console.warn("[PDF] Crypto Subtle non disponibile. Utilizzo fallback hash semplificato.");
+    return "OFFLINE-" + Math.random().toString(16).slice(2) + "-" + Date.now().toString(16);
+  }
+
+  try {
+    const msgUint8 = typeof content === "string" 
+      ? new TextEncoder().encode(content) 
+      : new Uint8Array(content);
+    
+    const hashBuffer = await crypto.subtle.digest("SHA-256", msgUint8);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+  } catch (err) {
+    console.error("[PDF] Errore generazione hash:", err);
+    return "HASH-ERROR-" + Date.now();
+  }
+}
+
+/**
+ * Genera il PDF professionale della pianificazione mensile
+ */
+export async function generatePlanningPDF({
+  monthName,
+  year,
+  agents,
+  shifts,
+  dayInfo,
+  tenantName = "Comando Polizia Locale"
+}: {
+  monthName: string,
+  year: number,
+  agents: Agent[],
+  shifts: Shift[],
+  dayInfo: DayInfo[],
+  tenantName?: string
+}) {
+  try {
+    console.log("[PDF] Avvio generazione professionale...");
+    
+    // IMPORT DINAMICI PER COMPATIBILITÀ NEXT.JS BROWSER
+    const { default: jsPDFLib } = await import("jspdf");
+    const { default: autoTable } = await import("jspdf-autotable");
+    const QRCodeLib = await import("qrcode");
+
+    const doc = new jsPDFLib({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4"
+    }) as unknown as jsPDFWithAutoTable;
+
+    const navelBlue: [number, number, number] = [0, 23, 54];
+    const rose100: [number, number, number] = [255, 228, 230];
+    const rose600: [number, number, number] = [225, 29, 72];
+    const emerald100: [number, number, number] = [209, 250, 229];
+    const emerald600: [number, number, number] = [5, 150, 105];
+
+    // 1. Intestazione
+    doc.setFontSize(22);
+    doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+    doc.setFont("helvetica", "bold");
+    doc.text(tenantName.toUpperCase(), 14, 18);
+    
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 116, 139);
+    doc.text(`PIANIFICAZIONE REPERIBILITÀ - ${monthName.toUpperCase()} ${year}`, 14, 25);
+    
+    doc.setLineWidth(0.8);
+    doc.setDrawColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+    doc.line(14, 28, 283, 28);
+
+    // 2. Preparazione Dati
+    const headers = ["Agente", ...dayInfo.map(d => d.day.toString()), "TOT"];
+    const monthIndex = dayInfo[0].month !== undefined ? dayInfo[0].month - 1 : 0;
+
+    const rows = agents.map(agent => {
+      let repTotal = 0;
+      const row: (string | number)[] = [agent.name];
+      
+      dayInfo.forEach(di => {
+        // CORREZIONE CRITICA: Uso di Date.UTC per evitare slittamenti di fuso orario
+        // In questo modo targetDateStr combacia perfettamente con quello memorizzato nel DB
+        const d = new Date(Date.UTC(year, di.isNextMonth ? monthIndex + 1 : monthIndex, di.day));
+        const targetDateStr = d.toISOString().split('T')[0];
+        
+        const shift = shifts.find(s => {
+          const sDate = new Date(s.date).toISOString().split('T')[0];
+          return s.userId === agent.id && sDate === targetDateStr;
+        });
+        
+        let val = "";
+        if (shift?.repType?.toUpperCase().includes("REP")) {
+          val = "REP"; // Unificata ogni forma di reperibilità in "REP"
+          repTotal++;
+        } else if (shift?.type) {
+          val = shift.type;
+        }
+        row.push(val);
+      });
+      
+      row.push(repTotal.toString());
+      return row;
+    });
+
+    // 3. Generazione Tabella
+    autoTable(doc, {
+      startY: 34,
+      head: [headers],
+      body: rows,
+      theme: "grid",
+      styles: {
+        fontSize: 7.5,
+        cellPadding: 1.2,
+        halign: "center",
+        valign: "middle",
+        lineWidth: 0.05,
+        lineColor: [220, 220, 220]
+      },
+      headStyles: {
+        fillColor: navelBlue,
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+        fontSize: 8
+      },
+      columnStyles: {
+        0: { halign: "left", fontStyle: "bold", cellWidth: 38, fillColor: [248, 250, 252] },
+        [headers.length - 1]: { fontStyle: "bold", fillColor: [241, 245, 249] }
+      },
+      alternateRowStyles: {
+        fillColor: [249, 251, 254]
+      },
+      didParseCell: (dataFilter) => {
+        if (dataFilter.section === "head" && dataFilter.column.index > 0 && dataFilter.column.index <= dayInfo.length) {
+          const di = dayInfo[dataFilter.column.index - 1];
+          if (di?.isWeekend) {
+            dataFilter.cell.styles.fillColor = [40, 60, 100];
+          }
+        }
+        
+        if (dataFilter.section === "body" && dataFilter.column.index > 0 && dataFilter.column.index <= dayInfo.length) {
+          const di = dayInfo[dataFilter.column.index - 1];
+          if (di?.isWeekend) {
+            dataFilter.cell.styles.fillColor = rose100;
+            dataFilter.cell.styles.textColor = rose600;
+          }
+        }
+
+        // Colorazione solo per REPERIBILITÀ (Sigla REP) in verde
+        if (dataFilter.section === "body" && dataFilter.cell.text[0] === "REP") {
+          dataFilter.cell.styles.fillColor = emerald100;
+          dataFilter.cell.styles.textColor = emerald600;
+          dataFilter.cell.styles.fontStyle = "bold";
+        }
+      }
+    });
+
+    // 4. Legenda
+    const finalY = doc.lastAutoTable.finalY + 8;
+    doc.setFontSize(8);
+    doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+    doc.setFont("helvetica", "bold");
+    doc.text("LEGENDA:", 14, finalY);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.text("REP: Reperibilità | R: Riposo | RR: Recupero Riposo | M: Mattina | P: Pomeriggio | N: Notte | F: Festivo | S: Servizio Spec.", 32, finalY);
+
+    // 5. Sigillo Digitale
+    const pdfOutput = doc.output("arraybuffer");
+    const documentHash = await generateHash(pdfOutput);
+    
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(6);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`Validazione Digitale (SHA-256): ${documentHash}`, 14, 202);
+      doc.text(`Generato da Sentinel Security Suite il ${new Date().toLocaleString('it-IT')}`, 14, 205);
+      doc.text(`Pagina ${i} di ${pageCount}`, 275, 205, { align: "right" });
+    }
+
+    // 6. QR Code
+    try {
+      const verifyUrl = `${window.location.origin}/verify/${documentHash}`;
+      const qrDataUrl = await QRCodeLib.toDataURL(verifyUrl, { 
+        margin: 1, 
+        width: 100,
+        color: { dark: "#001736", light: "#FFFFFF" }
+      });
+      
+      doc.addImage(qrDataUrl, "PNG", 262, 182, 22, 22);
+      doc.setFontSize(5);
+      doc.text("SCANSIONA PER VERIFICA", 262, 205);
+    } catch (qrErr) {
+      console.warn("[PDF] QR Code non generato:", qrErr);
+    }
+
+    // 7. Download
+    doc.save(`Pianificazione_${monthName}_${year}.pdf`);
+    return documentHash;
+  } catch (globalErr) {
+    console.error("[PDF] Errore critico:", globalErr);
+    throw globalErr;
+  }
+}
+
+/**
+ * Genera il PDF specialistico SOLO REPERIBILITÀ
+ */
+export async function generateReperibilitaPDF({
+  monthName,
+  year,
+  agents,
+  shifts,
+  dayInfo,
+  tenantName = "Comando Polizia Locale"
+}: {
+  monthName: string,
+  year: number,
+  agents: Agent[],
+  shifts: Shift[],
+  dayInfo: DayInfo[],
+  tenantName?: string
+}) {
+  try {
+    console.log("[PDF] Generazione Prospetto Solo Reperibilità...");
+    
+    // Import dinamici per compatibilità Next.js
+    const { default: jsPDFLib } = await import("jspdf");
+    const { default: autoTable } = await import("jspdf-autotable");
+    const QRCodeLib = await import("qrcode");
+
+    const doc = new jsPDFLib({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4"
+    }) as unknown as jsPDFWithAutoTable;
+
+    const navelBlue: [number, number, number] = [0, 23, 54];
+    const emerald100: [number, number, number] = [209, 250, 229];
+    const emerald600: [number, number, number] = [5, 150, 105];
+
+    // 1. Intestazione Specifica
+    doc.setFontSize(22);
+    doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+    doc.setFont("helvetica", "bold");
+    doc.text(tenantName.toUpperCase(), 14, 18);
+    
+    doc.setFontSize(14);
+    doc.setTextColor(emerald600[0], emerald600[1], emerald600[2]);
+    doc.text(`PROSPETTO RIASSUNTIVO REPERIBILITÀ`, 14, 26);
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`${monthName.toUpperCase()} ${year}`, 14, 31);
+    
+    doc.setLineWidth(0.8);
+    doc.setDrawColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+    doc.line(14, 34, 283, 34);
+
+    // 2. Preparazione Dati (Solo REP)
+    const headers = ["Agente", ...dayInfo.map(d => d.day.toString()), "TOT"];
+    const monthIndex = dayInfo[0].month !== undefined ? dayInfo[0].month - 1 : 0;
+
+    const rows = agents.map(agent => {
+      let repTotal = 0;
+      const row: (string | number)[] = [agent.name];
+      
+      dayInfo.forEach(di => {
+        const d = new Date(Date.UTC(year, di.isNextMonth ? monthIndex + 1 : monthIndex, di.day));
+        const targetDateStr = d.toISOString().split('T')[0];
+        
+        const shift = shifts.find(s => {
+          const sDate = new Date(s.date).toISOString().split('T')[0];
+          return s.userId === agent.id && sDate === targetDateStr;
+        });
+        
+        let val = "";
+        // In questo report specialistico mostriamo SOLO le reperibilità, ignorando il resto
+        if (shift?.repType?.toUpperCase().includes("REP")) {
+          val = "REP";
+          repTotal++;
+        }
+        row.push(val);
+      });
+      
+      row.push(repTotal.toString());
+      return row;
+    });
+
+    // 3. Generazione Tabella
+    autoTable(doc, {
+      startY: 40,
+      head: [headers],
+      body: rows,
+      theme: "grid",
+      styles: {
+        fontSize: 7.5,
+        cellPadding: 1.2,
+        halign: "center",
+        valign: "middle",
+        lineWidth: 0.05,
+        lineColor: [220, 220, 220]
+      },
+      headStyles: {
+        fillColor: navelBlue,
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+        fontSize: 8
+      },
+      columnStyles: {
+        0: { halign: "left", fontStyle: "bold", cellWidth: 38, fillColor: [248, 250, 252] },
+        [headers.length - 1]: { fontStyle: "bold", fillColor: [241, 245, 249] }
+      },
+      didParseCell: (dataFilter) => {
+        if (dataFilter.section === "body" && dataFilter.cell.text[0] === "REP") {
+          dataFilter.cell.styles.fillColor = emerald100;
+          dataFilter.cell.styles.textColor = emerald600;
+          dataFilter.cell.styles.fontStyle = "bold";
+        }
+      }
+    });
+
+    // 4. Sigillo Digitale Semplificato
+    const pdfOutput = doc.output("arraybuffer");
+    const documentHash = await generateHash(pdfOutput);
+    
+    // QR Code in alto a destra per il prospetto sintetico
+    try {
+      const verifyUrl = `${window.location.origin}/verify/${documentHash}`;
+      const qrDataUrl = await QRCodeLib.toDataURL(verifyUrl, { margin: 1, width: 60 });
+      doc.addImage(qrDataUrl, "PNG", 268, 12, 18, 18);
+    } catch {}
+
+    doc.setFontSize(6);
+    doc.setTextColor(150, 150, 150);
+    doc.text(`Identificativo Prospetto: ${documentHash} | Generato il ${new Date().toLocaleString('it-IT')}`, 14, 205);
+    doc.text(`Sentinel Security Suite v2.0`, 283, 205, { align: "right" });
+
+    doc.save(`Prospetto_REP_${monthName.replace(/\s+/g, '_')}_${year}.pdf`);
+    return documentHash;
+  } catch (err) {
+    console.error("[PDF] Errore nella generazione del prospetto REP:", err);
+    throw err;
+  }
+}

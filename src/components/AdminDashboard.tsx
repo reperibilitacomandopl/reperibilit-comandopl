@@ -2,7 +2,7 @@
 
 import toast from "react-hot-toast"
 import { useState, useRef, useMemo } from "react"
-import { Calendar as CalendarIcon, UploadCloud, Users, ChevronLeft, ChevronRight, Settings, FileDown, LogOut, CheckCircle2, RefreshCw, X, FileEdit, Trash2, Shield, AlertCircle, HelpCircle, EyeOff, Eye, Mail, Play, Plus, ClipboardList, Printer, Hash, Phone, Award, Calendar, FileText, MapPin, Briefcase, Save } from "lucide-react"
+import { Calendar as CalendarIcon, UploadCloud, Users, Smartphone, ChevronLeft, ChevronRight, Settings, FileDown, LogOut, CheckCircle2, RefreshCw, X, FileEdit, Trash2, Shield, AlertCircle, HelpCircle, EyeOff, Eye, Mail, Play, Plus, ClipboardList, Printer, Hash, Phone, Award, Calendar, FileText, MapPin, Briefcase, Save, Filter } from "lucide-react"
 import SettingsPanel from "./SettingsPanel"
 import ServiceManagerPanel from "./ServiceManagerPanel"
 import ServiceOrderDashboard from "./ServiceOrderDashboard"
@@ -13,29 +13,51 @@ import Link from "next/link"
 import { isHoliday } from "../utils/holidays"
 import { isMalattia, isMattina, isPomeriggio, isAssenza } from "../utils/shift-logic"
 import { AGENDA_CATEGORIES, getCategoryColor } from "../utils/agenda-codes"
+import { generatePlanningPDF } from "../utils/pdf-generator"
+import PlanningMobileView from "./PlanningMobileView"
+import { cacheDataset, syncOfflineRequests } from "@/lib/offline-sync"
 
 type EditingCell = { agentId: string; agentName: string; day: number; currentType: string; warningMsg?: string } | null
 
+interface DashboardAgent {
+  id: string;
+  name: string;
+  matricola: string;
+  isUfficiale: boolean;
+  email: string | null;
+  phone: string | null;
+  qualifica: string | null;
+  gradoLivello: number;
+  squadra: string | null;
+  massimale: number;
+  defaultServiceCategoryId?: string | null;
+  defaultServiceTypeId?: string | null;
+  rotationGroupId?: string | null;
+  dataAssunzione?: string | Date | null;
+  scadenzaPatente?: string | Date | null;
+  scadenzaPortoArmi?: string | Date | null;
+  noteInterne?: string | null;
+  repTotal?: number;
+}
+
+interface DashboardShift {
+  id: string;
+  userId: string;
+  date: Date | string;
+  type: string;
+  repType: string | null;
+}
+
 export default function AdminDashboard({ allAgents, shifts, currentYear, currentMonth, isPublished, currentView, settings, rotationGroups, categories, tenantSlug }: { 
-  allAgents: { 
-    id: string, name: string, matricola: string, isUfficiale: boolean, 
-    email: string | null, phone: string | null, qualifica: string | null, 
-    gradoLivello: number, squadra: string | null, massimale: number, 
-    defaultServiceCategoryId?: string | null, defaultServiceTypeId?: string | null, 
-    rotationGroupId?: string | null,
-    dataAssunzione?: string | Date | null,
-    scadenzaPatente?: string | Date | null,
-    scadenzaPortoArmi?: string | Date | null,
-    noteInterne?: string | null
-  }[], 
-  shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], 
+  allAgents: DashboardAgent[], 
+  shifts: DashboardShift[], 
   currentYear: number, 
   currentMonth: number, 
   isPublished: boolean, 
   currentView?: string, 
   settings?: { massimaleAgente: number, massimaleUfficiale: number },
-  rotationGroups?: any[],
-  categories?: any[],
+  rotationGroups?: { id: string, name: string }[],
+  categories?: { id: string, name: string, color?: string }[],
   tenantSlug?: string | null
 }) {
   const [isGenerating, setIsGenerating] = useState(false)
@@ -49,7 +71,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
   const [recalcAgent, setRecalcAgent] = useState<string | null>(null)
   const [showAnagrafica, setShowAnagrafica] = useState(false)
   const [showSettings, setShowSettings] = useState<boolean | string>(false)
-  const [editingAgent, setEditingAgent] = useState<any | null>(null)
+  const [editingAgent, setEditingAgent] = useState<DashboardAgent | null>(null)
   const [tempEmail, setTempEmail] = useState("")
   const [tempPhone, setTempPhone] = useState("")
   const [tempName, setTempName] = useState("")
@@ -64,6 +86,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
   const [isSavingUser, setIsSavingUser] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
   const [isSendingPec, setIsSendingPec] = useState(false)
+  const [onlyRepFilter, setOnlyRepFilter] = useState(false)
   const [sortConfig, setSortConfig] = useState<{key: 'name'|'repTotal', dir: 'asc'|'desc'} | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [roleFilter, setRoleFilter] = useState<"ALL"|"UFF"|"AGT">("ALL")
@@ -97,6 +120,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
   // Emergency Alert
   const [isSendingAlert, setIsSendingAlert] = useState(false)
+  const [isExportingPDF, setIsExportingPDF] = useState(false)
+  const [isMobileView, setIsMobileView] = useState(false)
 
   // Approvals (Swaps & Requests)
   const [showSwapApprovals, setShowSwapApprovals] = useState(false)
@@ -647,6 +672,76 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
     XLSX.writeFile(wb, `Reperibilita_Ufficiali_${currentYear}_${currentMonth}.xlsx`)
   }
 
+  const handleExportPDF = async () => {
+    setIsExportingPDF(true)
+    const toastId = toast.loading("Generazione PDF Certificato in corso...")
+    try {
+      const dayInfo = Array.from({ length: daysInMonth }, (_, i) => {
+        const d = i + 1
+        const date = new Date(currentYear, currentMonth - 1, d)
+        return { day: d, name: dayNames[date.getDay()], isWeekend: isHoliday(date), month: currentMonth, isNextMonth: false }
+      })
+
+      const hash = await generatePlanningPDF({
+        monthName: currentMonthName,
+        year: currentYear,
+        agents: sortedAgents,
+        shifts: shifts,
+        dayInfo: dayInfo,
+        tenantName: "Comando Polizia Locale Altamura"
+      })
+
+      // Registrazione Certificato nel DB per validazione QR
+      await fetch("/api/admin/certify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hash,
+          type: "PLANNING",
+          metadata: { month: currentMonth, year: currentYear, agentsCount: sortedAgents.length }
+        })
+      })
+
+      toast.success(`PDF Certificato! Sigillo: ${hash.substring(0, 8)}...`, { id: toastId })
+    } catch (err) {
+      console.error(err)
+      toast.error("Errore durante la generazione del PDF", { id: toastId })
+    } finally {
+      setIsExportingPDF(false)
+    }
+  }
+
+  const handleExportRepPDF = async () => {
+    setIsExportingPDF(true)
+    const toastId = toast.loading("Generazione Prospetto REPERIBILITÀ...")
+    try {
+      const { generateReperibilitaPDF } = await import("@/utils/pdf-generator")
+      
+      const dayInfo = Array.from({ length: daysInMonth }, (_, i) => {
+        const d = i + 1
+        const date = new Date(currentYear, currentMonth - 1, d)
+        return { day: d, name: dayNames[date.getDay()], isWeekend: isHoliday(date), month: currentMonth, isNextMonth: false }
+      })
+
+      // Filtriamo per mostrare solo i REP in questo speciale export
+      const hash = await generateReperibilitaPDF({
+        monthName: currentMonthName,
+        year: currentYear,
+        agents: sortedAgents.filter(a => a.repTotal > 0),
+        shifts: shifts,
+        dayInfo: dayInfo,
+        tenantName: "Comando Polizia Locale Altamura"
+      })
+
+      toast.success(`Prospetto REP Generato!`, { id: toastId })
+    } catch (err) {
+      console.error(err)
+      toast.error("Errore export Reperibilità", { id: toastId })
+    } finally {
+      setIsExportingPDF(false)
+    }
+  }
+
   const handlePublish = async () => {
     if (!confirm(`Sei sicuro di voler ${isPublished ? "NASCONDERE" : "PUBBLICARE"} i turni di ${currentMonthName}?`)) return
     setIsPublishing(true)
@@ -670,7 +765,16 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
   const sortedAgents = useMemo(() => {
     let list = allAgents.map(ag => {
-      const repTotal = shifts.filter(s => s.userId === ag.id && s.repType?.toUpperCase().includes("REP")).length
+      const repTotal = shifts.filter(s => {
+        if (s.userId !== ag.id) return false;
+        if (!s.repType?.toUpperCase().includes("REP")) return false;
+        
+        // Confronto robusto basato su anno/mese del turno
+        const d = new Date(s.date);
+        const y = d.getUTCFullYear();
+        const m = d.getUTCMonth() + 1;
+        return y === currentYear && m === currentMonth;
+      }).length
       return { ...ag, repTotal }
     })
     
@@ -685,6 +789,10 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       list = list.filter(ag => !ag.isUfficiale)
     }
 
+    if (onlyRepFilter) {
+      list = list.filter(ag => ag.repTotal > 0)
+    }
+
     if (sortConfig) {
       list.sort((a, b) => {
         if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.dir === 'asc' ? -1 : 1
@@ -693,7 +801,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       })
     }
     return list
-  }, [allAgents, shifts, sortConfig, searchQuery, roleFilter])
+  }, [allAgents, shifts, sortConfig, searchQuery, roleFilter, onlyRepFilter])
 
   const filteredAnagraficaAgents = useMemo(() => {
     let list = allAgents.map(ag => {
@@ -1132,6 +1240,42 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                   Ufficiali
                 </button>
               </div>
+              
+              <button 
+                onClick={handleExportPDF} 
+                disabled={isExportingPDF}
+                className="ml-2 text-[11px] bg-gradient-to-r from-slate-800 to-slate-900 text-white font-black flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all shadow-md hover:shadow-lg active:scale-95 disabled:opacity-50 whitespace-nowrap"
+              >
+                {isExportingPDF ? <RefreshCw size={14} className="animate-spin" /> : <Shield size={14} className="text-emerald-400" />}
+                PDF PRO
+              </button>
+
+              <button 
+                onClick={handleExportRepPDF} 
+                disabled={isExportingPDF}
+                title="Esporta solo Reperibilità"
+                className="text-[11px] bg-white text-emerald-700 border border-emerald-200 font-black flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all shadow-sm hover:bg-emerald-50 active:scale-95 disabled:opacity-50 whitespace-nowrap"
+              >
+                <Shield size={14} className="text-emerald-600" />
+                PDF REP
+              </button>
+              
+              <button 
+                onClick={() => setOnlyRepFilter(!onlyRepFilter)}
+                className={`p-1.5 rounded-lg transition-all border ${onlyRepFilter ? "bg-emerald-600 text-white border-emerald-700 shadow-lg scale-110" : "bg-white text-slate-400 border-slate-200 hover:border-emerald-300"}`}
+                title="Mostra solo chi ha REP"
+              >
+                <Filter size={16} />
+              </button>
+              
+              {/* Mobile Toggle */}
+              <button 
+                onClick={() => setIsMobileView(!isMobileView)}
+                className={`ml-2 p-1.5 rounded-lg transition-all border ${isMobileView ? "bg-indigo-600 text-white border-indigo-700" : "bg-white text-slate-400 border-slate-200"}`}
+                title="Cambia vista (Tabella/Card)"
+              >
+                <Smartphone size={16} />
+              </button>
             </div>
           </div>
         </div>
@@ -1152,6 +1296,22 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
               isWeekend: isHoliday(nextDay1),
               isNextMonth: true 
             })
+
+            if (isMobileView) {
+              return (
+                <div className="pb-10">
+                   <PlanningMobileView 
+                      agents={sortedAgents}
+                      shifts={shifts}
+                      dayInfo={dayInfo}
+                      currentYear={currentYear}
+                      currentMonth={currentMonth}
+                      isAdmin={true}
+                      onEditCell={openCellEditor}
+                   />
+                </div>
+              )
+            }
 
             return (
               <table className="w-full border-collapse text-xs">
@@ -2484,7 +2644,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                            </h3>
                         </div>
                         <div className="grid grid-cols-1 gap-4">
-                           {shifts.filter((s:any) => s.userId === selectedAgentForDetails.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((s:any) => (
+                           {shifts.filter((s: DashboardShift) => s.userId === selectedAgentForDetails.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((s: DashboardShift) => (
                               <div key={s.id} className="flex items-center gap-8 p-6 rounded-3xl hover:bg-slate-50 transition-all border-2 border-transparent hover:border-slate-100 group">
                                  <div className="w-20 shrink-0 text-center">
                                     <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{new Date(s.date).toLocaleDateString('it-IT', { weekday: 'short' })}</p>
@@ -2508,7 +2668,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                  </div>
                               </div>
                            ))}
-                           {shifts.filter((s:any) => s.userId === selectedAgentForDetails.id).length === 0 && (
+                           {shifts.filter((s: DashboardShift) => s.userId === selectedAgentForDetails.id).length === 0 && (
                               <div className="text-center py-20 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200">
                                  <p className="text-slate-400 font-bold italic text-sm">Nessuna attività registrata per questo mese.</p>
                               </div>

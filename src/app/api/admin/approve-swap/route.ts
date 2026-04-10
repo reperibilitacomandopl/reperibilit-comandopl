@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { sendTelegramMessage } from "@/lib/telegram"
 
 export async function POST(req: Request) {
   try {
@@ -56,6 +57,26 @@ export async function POST(req: Request) {
     ]
 
     const [updatedRequest, updatedShift, _] = await prisma.$transaction(transactions)
+
+    // NOTIFICA TELEGRAM
+    try {
+      const requester = await prisma.user.findUnique({ where: { id: swapRequest.requesterId } })
+      const target = await prisma.user.findUnique({ where: { id: swapRequest.targetUserId } })
+      
+      const dateStr = new Date(sourceShift.date).toLocaleDateString("it-IT")
+      
+      if (requester?.telegramChatId) {
+        const textToRequester = `✅ <b>Scambio Approvato</b>\n\nCiao ${requester.name}, il Comando ha approvato ufficialmente lo scambio del turno del <b>${dateStr}</b> con il collega ${target?.name || "un collega"}.`
+        await sendTelegramMessage(requester.telegramChatId, textToRequester)
+      }
+      
+      if (target?.telegramChatId) {
+        const textToTarget = `✅ <b>Scambio Approvato</b>\n\nCiao ${target.name}, il Comando ha approvato ufficialmente lo scambio del turno del <b>${dateStr}</b>. Ora il turno di ${sourceShift.repType || "Reperibilità"} è assegnato a te.`
+        await sendTelegramMessage(target.telegramChatId, textToTarget)
+      }
+    } catch (e) {
+      console.error("Telegram Notification Error (Swap):", e)
+    }
 
     return NextResponse.json({ success: true, request: updatedRequest, shift: updatedShift })
   } catch (err) {

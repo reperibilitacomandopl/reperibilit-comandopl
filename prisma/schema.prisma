@@ -19,6 +19,7 @@ model Tenant {
   maxAgents     Int      @default(100)  // Limite agenti per il piano
   planType      String   @default("TRIAL")  // TRIAL, BASIC, PRO
   trialEndsAt   DateTime?          // Scadenza trial
+  primaryColor  String   @default("#4f46e5") // Colore primario (Indigo-600)
   isActive      Boolean  @default(true)
   
   // Campi per Geofencing Timbrature
@@ -46,6 +47,7 @@ model Tenant {
   serviceTypes      ServiceType[]
   notifications     Notification[]
   schools           School[]
+  certifiedDocuments CertifiedDocument[]
   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -447,4 +449,18 @@ model SchoolSchedule {
   afternoonExitTime String?  // Per le uscite alle 14:15-14:30
   
   @@unique([schoolId, dayOfWeek])
+}
+
+model CertifiedDocument {
+  id          String   @id @default(uuid())
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  hash        String   @unique
+  type        String   // "PLANNING", "ODS"
+  issuerId    String
+  issuerName  String
+  issuedAt    DateTime @default(now())
+  metadata    String?  // JSON string con i dettagli (Mese, Anno, ecc.)
+  
+  @@index([hash, tenantId])
 }

@@ -1,17 +1,42 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, Printer, X, Save, GraduationCap } from "lucide-react"
 import toast from "react-hot-toast"
+
+interface DashboardUser {
+  id: string;
+  name: string;
+  qualifica?: string;
+  isUfficiale?: boolean;
+  servizio?: string;
+}
+
+interface DashboardShift {
+  id: string;
+  userId: string;
+  date: string;
+  type: string;
+  timeRange?: string;
+  serviceDetails?: string;
+  patrolGroupId?: string | null;
+  serviceType?: { id: string; name: string } | null;
+  vehicle?: { id: string; name: string } | null;
+}
+
+interface DashboardCategory {
+  id: string;
+  name: string;
+}
 
 export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose?: () => void, tenantName?: string | null }) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [loading, setLoading] = useState(true)
   const [isAutoAssigning, setIsAutoAssigning] = useState(false)
   
-  const [users, setUsers] = useState<any[]>([])
-  const [shifts, setShifts] = useState<any[]>([])
-  const [categories, setCategories] = useState<any[]>([])
+  const [users, setUsers] = useState<DashboardUser[]>([])
+  const [shifts, setShifts] = useState<DashboardShift[]>([])
+  const [categories, setCategories] = useState<DashboardCategory[]>([])
 
   const loadData = async () => {
     setLoading(true)
@@ -111,38 +136,43 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
     const { default: jsPDF } = await import("jspdf")
     const { default: autoTable } = await import("jspdf-autotable")
     
-    const doc = new jsPDF()
+    const doc = new jsPDF() as any
     const pageWidth = doc.internal.pageSize.width
     const dateStr = currentDate.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })
     
-    // Header Istituzionale - Pulizia doppioni
+    const navelBlue: [number, number, number] = [0, 23, 54] // Naval Blue Sentinel
+
+    // Header Istituzionale Premium
     doc.setFontSize(22)
-    doc.setTextColor(15, 23, 42) // Slate-900
+    doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2])
     const headerTitle = tenantName?.toUpperCase().includes("POLIZIA LOCALE") 
       ? tenantName.toUpperCase() 
       : `POLIZIA LOCALE ${tenantName?.toUpperCase() || "COMANDO"}`
+    doc.setFont("helvetica", "bold")
     doc.text(headerTitle, pageWidth / 2, 20, { align: "center" })
     
     doc.setFontSize(14)
     doc.text("ORDINE DI SERVIZIO GIORNALIERO", pageWidth / 2, 28, { align: "center" })
     
     doc.setFontSize(10)
-    doc.setTextColor(100, 116, 139) // Slate-400
+    doc.setFont("helvetica", "normal")
+    doc.setTextColor(100, 116, 139)
     doc.text(dateStr.toUpperCase(), pageWidth / 2, 34, { align: "center" })
+
+    doc.setDrawColor(navelBlue[0], navelBlue[1], navelBlue[2])
+    doc.setLineWidth(0.5)
+    doc.line(20, 38, pageWidth - 20, 38)
     
     // Preparazione Dati
     const body: any[] = []
 
-    const isWorking = (type: string) => /^[MPN]\d/.test((type || "").toUpperCase().replace(/[()]/g, "").trim())
-    const currentShifts = shifts.filter(s => isWorking(s.type))
+    const isWorkingShift = (type: string) => /^[MPN]\d/.test((type || "").toUpperCase().replace(/[()]/g, "").trim())
+    const currentShifts = shifts.filter(s => isWorkingShift(s.type))
     
-    // Ordiniamo per fascia (M poi P poi N) e poi per patrolGroupId affinché gli equipaggi siano vicini
     const sortedShifts = [...currentShifts].sort((a,b) => {
       if (a.type !== b.type) return a.type.localeCompare(b.type)
       if (a.patrolGroupId && b.patrolGroupId) return a.patrolGroupId.localeCompare(b.patrolGroupId)
-      if (a.patrolGroupId) return -1
-      if (b.patrolGroupId) return 1
-      return 0
+      return (a.patrolGroupId ? -1 : 1)
     })
 
     sortedShifts.forEach(s => {
@@ -150,71 +180,73 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
       if (!u) return
       
       const qualifica = u.qualifica || (u.isUfficiale ? "Uff.le" : "Agente")
-      
-      // Se ci sono dettagli (es. orari scuole), cerchiamo di estrarre l'orario specifico
       let orarioPrincipale = s.timeRange || (s.type.startsWith("M") ? "08:00-14:00" : s.type.startsWith("P") ? "14:00-20:00" : "22:00-04:00")
       let disposizioni = s.serviceDetails || ""
-      
-      // Rilevamento orari scuola (es. 07:45-08:30 o solo 07:45)
       const schoolTimeMatch = disposizioni.match(/(\d{2}:\d{2})(-(\d{2}:\d{2}))?/)
       
       let orarioStampa = orarioPrincipale
-      if (schoolTimeMatch) {
-         // Se è un servizio scuola, mettiamo l'orario della scuola in primo piano
-         orarioStampa = `${schoolTimeMatch[0]}\n(${orarioPrincipale})`
-      }
+      if (schoolTimeMatch) orarioStampa = `${schoolTimeMatch[0]}\n(${orarioPrincipale})`
 
       const servizio = s.serviceType ? s.serviceType.name : (u.servizio || "Vigilanza")
       const veicolo = s.vehicle ? `\n(${s.vehicle.name})` : ""
       
-      // Aggiungiamo metadati per lo stile (non verranno stampati se non gestiti)
       const rowData = [
         { content: `${qualifica}\n${u.name}`, styles: { fontStyle: 'bold' } },
-        { content: orarioStampa, styles: { halign: 'center', fontSize: 8, fontStyle: schoolTimeMatch ? 'bold' : 'normal' } },
+        { content: orarioStampa, styles: { halign: 'center', fontSize: 8, fontStyle: 'bold' } },
         { content: `${servizio}${veicolo}`, styles: { fontStyle: schoolTimeMatch ? 'bold' : 'normal' } },
         { content: disposizioni, styles: { fontSize: 8 } }
       ]
       
-      // @ts-ignore - Custom property per il rendering
+      // @ts-ignore
       rowData.isPatrol = !!s.patrolGroupId
-      
       body.push(rowData)
     })
 
     if (body.length === 0) {
-      toast.error("Nessun turno operativo trovato per questa data. Il PDF sarebbe vuoto.")
+      toast.error("Nessun turno operativo trovato")
       return
     }
 
     autoTable(doc, {
-      startY: 45,
+      startY: 42,
       head: [['QUALIFICA / NOME', 'ORARIO', 'SERVIZIO / MEZZO', 'DISPOSIZIONI E LUOGHI']],
       body: body,
-      didParseCell: (data) => {
-        // Se la riga appartiene a una pattuglia, coloriamo leggermente lo sfondo
-        const row = body[data.row.index];
-        if (row && row.isPatrol && data.section === 'body') {
-          data.cell.styles.fillColor = [224, 231, 255] // Indigo-100 un po' più chiaro
-        }
-      },
       theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontSize: 10, halign: 'center' },
-      bodyStyles: { fontSize: 9, cellPadding: 4, textColor: 50 },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
+      headStyles: { fillColor: navelBlue, textColor: 255, fontSize: 10, halign: 'center', fontStyle: 'bold' },
+      bodyStyles: { fontSize: 9, cellPadding: 3, textColor: 40 },
+      alternateRowStyles: { fillColor: [245, 247, 250] }, // Effetto Zebra Naval-ish
       columnStyles: {
-        0: { cellWidth: 50 },
-        1: { cellWidth: 30 },
+        0: { cellWidth: 45 },
+        1: { cellWidth: 28 },
         2: { cellWidth: 45 },
         3: { cellWidth: 'auto' }
+      },
+      didParseCell: (data) => {
+        const row = body[data.row.index];
+        if (row && row.isPatrol && data.section === 'body') {
+          data.cell.styles.fillColor = [230, 242, 255] // Highlight pattuglie
+        }
       }
     })
 
-    // Footer
-    const finalY = (doc as any).lastAutoTable.finalY + 20
-    doc.setFontSize(10)
-    doc.text("L'UFFICIALE DI TURNO", pageWidth - 60, finalY, { align: "center" })
-    doc.setDrawColor(200, 200, 200)
-    doc.line(pageWidth - 90, finalY + 10, pageWidth - 30, finalY + 10)
+    // Footer & Firme
+    const finalY = (doc as any).lastAutoTable.finalY + 15
+    doc.setFontSize(9)
+    doc.setTextColor(60, 60, 60)
+    
+    // Linee firme
+    doc.text("L'UFFICIALE DI SERVIZIO", 45, finalY, { align: "center" })
+    doc.line(20, finalY + 12, 70, finalY + 12)
+    
+    doc.text("IL COMANDANTE DEL CORPO", pageWidth - 55, finalY, { align: "center" })
+    doc.line(pageWidth - 85, finalY + 12, pageWidth - 25, finalY + 12)
+
+    // Validazione Digitale (Mock hash for ODS for now, or generate real one)
+    doc.setFontSize(6)
+    doc.setTextColor(150, 150, 150)
+    const mockHash = Math.random().toString(16).slice(2, 10).toUpperCase()
+    doc.text(`Identificativo Digitale: OdS-${currentDate.getFullYear()}-${mockHash}`, 14, doc.internal.pageSize.height - 10)
+    doc.text(`Sentinel Security Suite - Generato il ${new Date().toLocaleString('it-IT')}`, 14, doc.internal.pageSize.height - 7)
 
     doc.save(`OdS_${currentDate.toISOString().split("T")[0]}.pdf`)
   }
@@ -290,8 +322,7 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
     const u = users.find(u => u.id === s.userId)
     if (!u) return null
     const qualifica = u.qualifica || (u.isUfficiale ? "Uff.le" : "Agente")
-    
-    let orario = s.timeRange || (s.type.startsWith("M") ? "08:00-14:00" : s.type.startsWith("P") ? "14:00-20:00" : "00:00-00:00");
+    const orario = s.timeRange || (s.type.startsWith("M") ? "08:00-14:00" : s.type.startsWith("P") ? "14:00-20:00" : "22:00-04:00")
     const serviceName = s.serviceType ? s.serviceType.name : (u.servizio || "Vigilanza")
     const vehicleName = s.vehicle ? ` (${s.vehicle.name})` : ""
 
@@ -387,4 +418,3 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
     </div>
   )
 }
-import React from 'react';

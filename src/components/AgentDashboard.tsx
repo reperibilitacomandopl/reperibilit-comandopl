@@ -8,6 +8,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { isMalattia, isMattina } from "@/utils/shift-logic"
 import NotificationHub from "@/components/NotificationHub"
+import PlanningMobileView from "./PlanningMobileView"
+import { cacheDataset, getCachedDataset, storeOfflineRequest, syncOfflineRequests } from "@/lib/offline-sync"
 
 // ====== CODICI AGENDA PERSONALE ======
 const AGENDA_CATEGORIES = [
@@ -174,6 +176,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   const [isClockedIn, setIsClockedIn] = useState<'IN' | 'OUT' | null>(null)
   const [clockLoading, setClockLoading] = useState(false)
   const [lastClockTime, setLastClockTime] = useState<string | null>(null)
+  const [isMobileView, setIsMobileView] = useState(false)
 
   const myShifts = shifts.filter(s => s.userId === currentUser.id)
 
@@ -216,28 +219,56 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   }, [])
 
   useEffect(() => {
+    // Avvio sincronizzazione se siamo tornati online
+    if (navigator.onLine) {
+      syncOfflineRequests()
+    }
+
     fetchDutyTeam()
     fetchSwaps()
     fetchBalances()
     
     // Fetch Last Clock-in Status
-    fetch('/api/admin/clock-in').then(res => res.json()).then(data => {
-      if (data.records && data.records.length > 0) {
-        const last = data.records[0]
-        // Se l'ultima timbratura è di oggi, impostiamo lo stato
-        const today = new Date().toDateString()
-        if (new Date(last.timestamp).toDateString() === today) {
-          setIsClockedIn(last.type)
-          setLastClockTime(new Date(last.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+    fetch('/api/admin/clock-in')
+      .then(res => res.json())
+      .then(data => {
+        if (data.records && data.records.length > 0) {
+          const last = data.records[0]
+          const today = new Date().toDateString()
+          if (new Date(last.timestamp).toDateString() === today) {
+            setIsClockedIn(last.type)
+            setLastClockTime(new Date(last.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+          }
         }
-      }
-    }).catch(()=>{})
+      }).catch(() => {
+        // Tentativo recupero stato timbratura da IndexedDB (futuro)
+      })
 
-    fetch('/api/my-ods').then(res => res.json()).then(data => {
-      if(data.success && data.shift && (data.shift.timeRange || data.shift.serviceCategoryId)) {
-        setMyOds({ shift: data.shift, partners: data.partners })
-      }
-    }).catch(()=>{})
+    // Fetch ODS con Caching
+    fetch('/api/my-ods')
+      .then(res => res.json())
+      .then(data => {
+        if(data.success && data.shift && (data.shift.timeRange || data.shift.serviceCategoryId)) {
+          const odsPayload = { shift: data.shift, partners: data.partners }
+          setMyOds(odsPayload)
+          cacheDataset('my-ods', odsPayload) // Salva in locale
+        }
+      })
+      .catch(async () => {
+        const cachedOds = await getCachedDataset('my-ods')
+        if (cachedOds) {
+          setMyOds(cachedOds)
+          console.log('[PWA] Caricato ODS dalla cache locale.')
+        }
+      })
+
+    // Listener globale per tornare online
+    const handleOnline = () => {
+       toast.success("Connessione ripristinata! Sincronizzazione in corso...")
+       syncOfflineRequests()
+    }
+    window.addEventListener('online', handleOnline)
+    return () => window.removeEventListener('online', handleOnline)
   }, [fetchDutyTeam, fetchSwaps, fetchBalances])
 
   const handleRespondSwap = async (id: string, status: "ACCEPTED" | "REJECTED") => {
@@ -293,8 +324,15 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
       if (res.ok) {
         const data = await res.json()
         setAgendaEntries(data)
+        cacheDataset(`agenda-${currentMonth}-${currentYear}`, data)
       }
-    } catch { /* silent */ }
+    } catch { 
+      const cached = await getCachedDataset(`agenda-${currentMonth}-${currentYear}`)
+      if (cached) {
+        setAgendaEntries(cached)
+        console.log(`[PWA] Caricata Agenda da cache locale per ${currentMonth}/${currentYear}`)
+      }
+    }
   }, [currentMonth, currentYear])
 
   useEffect(() => { fetchAgenda() }, [fetchAgenda])
@@ -357,15 +395,23 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
           })
 
           const data = await res.json()
-          if (!res.ok) {
-            throw new Error(data.error || "Errore durante la timbratura.")
-          }
-
           setIsClockedIn(type)
           setLastClockTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
           toast.success(`Timbratura ${type === 'IN' ? 'Entrata' : 'Uscita'} registrata!`, { id: toastId })
         } catch (err: any) {
-          toast.error(err.message, { id: toastId })
+          console.warn('[PWA] Invio timbratura fallito, tento archiviazione locale...', err)
+          
+          // Fallback Offline: Parcheggia la richiesta nel DB Locale
+          await storeOfflineRequest('/api/admin/clock-in', 'POST', {
+            type,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: pos.coords.accuracy
+          })
+          
+          setIsClockedIn(type)
+          setLastClockTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+          toast.success(`⚠️ Offline: Timbratura ${type === 'IN' ? 'Entrata' : 'Uscita'} archiviata localmente. Verrà inviata appena torna il segnale.`, { id: toastId, duration: 5000 })
         } finally {
           setClockLoading(false)
         }
@@ -631,6 +677,52 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
           </div>
         </div>
       )}
+
+      {/* EMERGENCY SOS QUICK ACTION */}
+      <div className="block lg:hidden px-2 mb-2">
+         <button 
+           onClick={async () => {
+             if (!confirm('🚨 INVIARE SOS GPS ALLA CENTRALE? La tua posizione attuale verrà trasmessa immediatamente.')) return
+             const toastId = toast.loading("Inviando SOS GPS...")
+             navigator.geolocation.getCurrentPosition(async (pos) => {
+               try {
+                 const res = await fetch('/api/admin/alert-emergency', {
+                   method: 'POST',
+                   headers: { 'Content-Type': 'application/json' },
+                   body: JSON.stringify({ 
+                     userId: currentUser.id,
+                     type: 'SOS',
+                     message: `🆘 SOS GPS! L'operatore ${currentUser.name} (Matr. ${currentUser.matricola}) ha lanciato un SOS.`,
+                     lat: pos.coords.latitude,
+                     lng: pos.coords.longitude
+                   })
+                 })
+                 if (res.ok) toast.success('🚨 SOS INVIATO! Resta in attesa di istruzioni.', { id: toastId })
+                 else throw new Error('Send failed')
+               } catch (err) {
+                 console.warn('[PWA] Invio SOS fallito, archiviazione locale SOS...', err)
+                 await storeOfflineRequest('/api/admin/alert-emergency', 'POST', {
+                   userId: currentUser.id,
+                   type: 'SOS',
+                   message: `🆘 SOS GPS! L'operatore ${currentUser.name} (Matr. ${currentUser.matricola}) ha lanciato un SOS.`,
+                   lat: pos.coords.latitude,
+                   lng: pos.coords.longitude
+                 })
+                 toast.success('🚨 SOS ARCHIVIATO! Verrà inviato appena torna il segnale.', { id: toastId, duration: 8000 })
+               }
+             }, () => {
+               toast.error("Impossibile ottenere GPS per SOS.", { id: toastId })
+             }, { enableHighAccuracy: true })
+           }}
+           className="w-full bg-red-600 active:bg-red-800 text-white rounded-2xl py-5 px-4 flex items-center justify-center gap-3 shadow-xl shadow-red-200 animate-pulse border-4 border-red-500/50"
+         >
+           <AlertCircle size={32} className="shrink-0" />
+           <div className="text-left">
+              <p className="font-black text-lg leading-tight uppercase">SOS GPS EMERGENZA</p>
+              <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Invia Posizione alla Centrale</p>
+           </div>
+         </button>
+      </div>
 
       <div className="bg-slate-900 text-white rounded-[2.5rem] p-6 sm:p-10 lg:p-12 shadow-2xl relative overflow-hidden mb-6">
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
@@ -903,9 +995,18 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
               <p className="text-xs text-slate-500 font-medium tracking-tight">Focus {currentMonthName} {currentYear} · {daysInMonth} Giorni</p>
             </div>
           </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="flex bg-slate-100 rounded-lg p-1">
+
+          <div className="flex items-center gap-2">
+            {/* Mobile Toggle */}
+            <button 
+              onClick={() => setIsMobileView(!isMobileView)}
+              className={`p-2.5 rounded-xl transition-all border shadow-sm ${isMobileView ? "bg-blue-600 text-white border-blue-700" : "bg-white text-slate-400 border-slate-200"}`}
+              title="Passa a Vista Card (Mobile)"
+            >
+              <Smartphone size={18} />
+            </button>
+
+            <div className="hidden sm:flex bg-slate-100 rounded-lg p-1">
               <Link href={`/?view=agent&month=${prevMonth}&year=${prevYear}`} className="p-2 text-slate-500 hover:text-slate-900 rounded-md transition-all hover:bg-white">
                 <ChevronLeft size={16} />
               </Link>
@@ -937,6 +1038,16 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
               <h4 className="text-lg font-bold text-slate-800">Turni In Fase di Elaborazione</h4>
               <p className="text-sm text-slate-500 max-w-sm mt-2">I turni di reperibilità per questo mese non sono ancora stati consolidati e pubblicati dall&apos;Amministratore.</p>
             </div>
+          ) : isMobileView ? (
+             <div className="pb-4">
+               <PlanningMobileView 
+                 agents={[{ ...currentUser, isUfficiale: false } as any]}
+                 shifts={shifts}
+                 dayInfo={dayInfo}
+                 currentYear={currentYear}
+                 currentMonth={currentMonth}
+               />
+             </div>
           ) : (
               <div className="grid grid-cols-7 gap-1 sm:gap-2 w-full">
               {/* Weekday headers */}

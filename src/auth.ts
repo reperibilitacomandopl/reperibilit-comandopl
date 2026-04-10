@@ -57,6 +57,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           tenantId: user.tenantId || undefined,
           tenantName: tenantName,
           tenantSlug: tenantSlug,
+          tenantLogo: tenant.logoUrl,
+          tenantPrimaryColor: tenant.primaryColor,
           isSuperAdmin: user.isSuperAdmin,
           canManageShifts: user.canManageShifts,
           canManageUsers: user.canManageUsers,
@@ -76,6 +78,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.tenantId = (user as any).tenantId as string | undefined
         token.tenantName = (user as any).tenantName as string | undefined
         token.tenantSlug = (user as any).tenantSlug as string | undefined
+        token.tenantLogo = (user as any).tenantLogo as string | undefined
+        token.tenantPrimaryColor = (user as any).tenantPrimaryColor as string | undefined
         token.isSuperAdmin = (user as any).isSuperAdmin as boolean | undefined
         token.canManageShifts = (user as any).canManageShifts as boolean | undefined
         token.canManageUsers = (user as any).canManageUsers as boolean | undefined
@@ -94,6 +98,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.tenantId = token.tenantId as string
         session.user.tenantName = token.tenantName as string
         session.user.tenantSlug = token.tenantSlug as string
+        session.user.tenantLogo = token.tenantLogo as string
+        session.user.tenantPrimaryColor = token.tenantPrimaryColor as string
         session.user.canManageShifts = token.canManageShifts as boolean
         session.user.canManageUsers = token.canManageUsers as boolean
         session.user.canVerifyClockIns = token.canVerifyClockIns as boolean
@@ -114,6 +120,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               })
               session.user.tenantName = tenant?.name || null
               session.user.tenantSlug = tenant?.slug || null
+              session.user.tenantLogo = tenant?.logoUrl || null
+              session.user.tenantPrimaryColor = tenant?.primaryColor || null
             }
           } catch (e) {
             console.error("Error fetching live tenantId for SuperAdmin:", e)
