@@ -644,7 +644,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
             <p className="text-[8px] text-slate-500 font-bold uppercase tracking-tighter mt-1">Comando Polizia Locale</p>
           </div>
         </div>
-        <NotificationHub userRole={userRole} />
       </header>
 
       {/* Gestore Notifiche PWA */}
@@ -889,7 +888,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                   <span className="hidden sm:inline">Area Admin</span>
                 </Link>
               )}
-              <NotificationHub userRole={userRole} />
               <button 
                 onClick={() => setShowSyncModal(true)}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-3 bg-white text-slate-900 px-6 py-4 rounded-2xl font-black text-xs sm:text-sm shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"

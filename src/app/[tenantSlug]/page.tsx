@@ -2,6 +2,7 @@ import { auth, signOut } from "@/auth"
 import { LogOut } from "lucide-react"
 import { redirect } from "next/navigation"
 import DynamicAgentDashboard from "@/components/DynamicAgentDashboard"
+import NotificationHub from "@/components/NotificationHub"
 import { prisma } from "@/lib/prisma"
 
 export default async function Home({ 
@@ -82,18 +83,21 @@ export default async function Home({
               <p className="text-sm font-semibold text-slate-800">{name}</p>
               <p className="text-xs text-slate-500">Matr. {matricola} • {role}</p>
             </div>
-            <form action={async () => {
-              "use server"
-              await signOut()
-            }}>
-              <button 
-                type="submit" 
-                className="p-2 text-slate-500 hover:text-red-600 hover:bg-slate-100 rounded-full transition-colors"
-                title="Esci"
-              >
-                <LogOut size={20} />
-              </button>
-            </form>
+            <div className="flex items-center gap-6">
+              <NotificationHub userRole={role} />
+              <form action={async () => {
+                "use server"
+                await signOut()
+              }}>
+                <button 
+                  type="submit" 
+                  className="p-2 text-slate-500 hover:text-red-600 hover:bg-slate-100 rounded-full transition-colors"
+                  title="Esci"
+                >
+                  <LogOut size={20} />
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       </header>

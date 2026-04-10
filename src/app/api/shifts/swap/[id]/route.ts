@@ -98,38 +98,69 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       // CASO B: L'Amministratore dà il VISTO FINALE
       if (isAdmin && swapRequest.status === "ACCEPTED") {
         const originalShift = swapRequest.shift;
-        const repTypeToTransfer = originalShift.repType;
-
-        if (!repTypeToTransfer) {
-          return NextResponse.json({ error: "Il turno originale non ha una reperibilità da cedere" }, { status: 400 })
-        }
-
+        
+        // Cerchiamo il turno attuale del destinatario per quella data
         const targetUserShift = await prisma.shift.findFirst({
           where: { userId: swapRequest.targetUserId!, date: originalShift.date }
         });
 
-        // Eseguiamo la transazione effettiva di cambio turni
+        // Definiamo i campi da scambiare (Universal Swap)
+        const fieldsToSwapFromA = {
+          type: originalShift.type,
+          repType: originalShift.repType,
+          timeRange: originalShift.timeRange,
+          serviceCategoryId: originalShift.serviceCategoryId,
+          serviceTypeId: originalShift.serviceTypeId,
+          vehicleId: originalShift.vehicleId,
+          serviceDetails: originalShift.serviceDetails,
+          durationHours: originalShift.durationHours,
+          overtimeHours: originalShift.overtimeHours,
+        };
+
+        const fieldsToSwapFromB = targetUserShift ? {
+          type: targetUserShift.type,
+          repType: targetUserShift.repType,
+          timeRange: targetUserShift.timeRange,
+          serviceCategoryId: targetUserShift.serviceCategoryId,
+          serviceTypeId: targetUserShift.serviceTypeId,
+          vehicleId: targetUserShift.vehicleId,
+          serviceDetails: targetUserShift.serviceDetails,
+          durationHours: targetUserShift.durationHours,
+          overtimeHours: targetUserShift.overtimeHours,
+        } : {
+          type: "RIPOSO",
+          repType: null,
+          timeRange: null,
+          serviceCategoryId: null,
+          serviceTypeId: null,
+          vehicleId: null,
+          serviceDetails: null,
+          durationHours: 6.0,
+          overtimeHours: 0.0,
+        };
+
+        // Eseguiamo la transazione effettiva di inversione totale
         await prisma.$transaction([
-          // 1. Rimuovi la reperibilità dall'agente originale
+          // 1. Applica i dati di B ad A
           prisma.shift.update({
             where: { id: originalShift.id },
             data: { 
-              repType: null,
-              serviceDetails: originalShift.serviceDetails 
-                ? `${originalShift.serviceDetails} | Reperibilità ceduta a ${swapRequest.targetUser?.name || 'nuovo agente'} (Visto Admin)`
-                : `Reperibilità ceduta a ${swapRequest.targetUser?.name || 'nuovo agente'} (Visto Admin)`
+              ...fieldsToSwapFromB,
+              serviceDetails: fieldsToSwapFromB.serviceDetails 
+                ? `${fieldsToSwapFromB.serviceDetails} | Scambiato con ${swapRequest.targetUser?.name} (Visto Admin)`
+                : `Turno scambiato con ${swapRequest.targetUser?.name} (Visto Admin)`
             }
           }),
 
-          // 2. Assegna la reperibilità al targetUser
+          // 2. Applica i dati di A a B (aggiorna o crea)
           ...(targetUserShift ? [
             prisma.shift.update({
                where: { id: targetUserShift.id },
                data: {
-                 repType: repTypeToTransfer,
-                 serviceDetails: targetUserShift.serviceDetails
-                   ? `${targetUserShift.serviceDetails} | Reperibilità assunta da ${swapRequest.requester.name} (Visto Admin)`
-                   : `Reperibilità assunta da ${swapRequest.requester.name} (Visto Admin)`
+                 ...fieldsToSwapFromA,
+                 serviceDetails: fieldsToSwapFromA.serviceDetails
+                   ? `${fieldsToSwapFromA.serviceDetails} | Scambiato con ${swapRequest.requester.name} (Visto Admin)`
+                   : `Turno scambiato con ${swapRequest.requester.name} (Visto Admin)`
                }
             })
           ] : [
@@ -137,9 +168,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                data: {
                  userId: swapRequest.targetUserId!,
                  date: originalShift.date,
-                 type: "RIPOSO",
-                 repType: repTypeToTransfer,
-                 serviceDetails: `Reperibilità assunta da ${swapRequest.requester.name} (Visto Admin)`
+                 tenantId: swapRequest.tenantId,
+                 ...fieldsToSwapFromA,
+                 serviceDetails: fieldsToSwapFromA.serviceDetails
+                   ? `${fieldsToSwapFromA.serviceDetails} | Scambiato con ${swapRequest.requester.name} (Visto Admin)`
+                   : `Turno scambiato con ${swapRequest.requester.name} (Visto Admin)`
                }
             })
           ]),
