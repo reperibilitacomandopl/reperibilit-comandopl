@@ -131,7 +131,7 @@ type AgendaItem = {
   note: string | null
 }
 
-export default function AgentDashboard({ currentUser, shifts, allAgents, currentYear, currentMonth, isPublished, currentView, tenantName, tenantSlug, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem, userRole }: { currentUser: { id: string, matricola: string, name: string, telegramChatId?: string | null }, shifts: { userId: string, date: Date | string, type: string, repType: string | null }[], allAgents: any[], currentYear: number, currentMonth: number, isPublished: boolean, currentView?: string, tenantName?: string | null, tenantSlug?: string | null, canManageShifts?: boolean, canManageUsers?: boolean, canVerifyClockIns?: boolean, canConfigureSystem?: boolean, userRole?: string }) {
+export default function AgentDashboard({ currentUser, shifts, allAgents, currentYear, currentMonth, isPublished, currentView, tenantName, tenantSlug, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem, userRole }: { currentUser: { id: string, matricola: string, name: string, telegramChatId?: string | null }, shifts: { userId: string, date: Date | string, type: string, repType: string | null, timeRange?: string | null, serviceCategory?: any, serviceType?: any, vehicle?: any, serviceDetails?: string | null }[], allAgents: any[], currentYear: number, currentMonth: number, isPublished: boolean, currentView?: string, tenantName?: string | null, tenantSlug?: string | null, canManageShifts?: boolean, canManageUsers?: boolean, canVerifyClockIns?: boolean, canConfigureSystem?: boolean, userRole?: string }) {
   const router = useRouter()
   const [showSyncModal, setShowSyncModal] = useState(false)
   const [showAgenda, setShowAgenda] = useState(false)
