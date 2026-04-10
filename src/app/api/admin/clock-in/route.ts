@@ -63,20 +63,29 @@ export async function POST(req: Request) {
     // 1. Fetch Tenant Geofence
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { lat: true, lng: true, clockInRadius: true }
+      select: { name: true, lat: true, lng: true, clockInRadius: true }
     })
+
+    console.log(`[CLOCK-IN] Tentativo da Utente: ${userId} (${session.user.name}) per Comando: ${tenant?.name}`)
+    console.log(`[CLOCK-IN] Coordinate Utente: lat=${lat}, lng=${lng}, precisione=${accuracy}m`)
 
     if (tenant?.lat && tenant?.lng) {
       const distance = getDistance(lat, lng, tenant.lat, tenant.lng)
       const allowed = tenant.clockInRadius || 500
+      
+      console.log(`[CLOCK-IN] Geofencing: Distanza calcolata = ${Math.round(distance)}m (Ammessi: ${allowed}m)`)
 
       if (distance > allowed) {
+        console.warn(`[CLOCK-IN] RIFIUTATO: Fuori area. Distanza: ${Math.round(distance)}m`)
         return NextResponse.json({ 
           error: "Troppo lontano dalla sede!", 
           distance: Math.round(distance),
           allowed: allowed 
         }, { status: 403 })
       }
+      console.log(`[CLOCK-IN] ACCETTATO: Posizione valida.`)
+    } else {
+      console.warn(`[CLOCK-IN] ATTENZIONE: Geofencing saltato - Coordinate sede non configurate per il comando ${tenantId}`)
     }
 
     // 2. Create Record

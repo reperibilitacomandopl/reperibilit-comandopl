@@ -425,6 +425,16 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
+        // Controllo precisione (Accuracy > 500m è inattendibile per Geofencing a 50m)
+        if (pos.coords.accuracy > 500) {
+          setClockLoading(false)
+          return toast.error("Segnale GPS troppo debole! Esci all'aperto o attendi un segnale più preciso.", { id: toastId })
+        }
+        
+        if (pos.coords.accuracy > 100) {
+          toast("Segnale GPS impreciso, la timbratura potrebbe essere rifiutata.", { icon: "⚠️" })
+        }
+
         try {
           const res = await fetch('/api/admin/clock-in', {
             method: 'POST',
