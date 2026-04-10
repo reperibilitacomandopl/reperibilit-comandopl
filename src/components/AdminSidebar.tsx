@@ -159,21 +159,23 @@ export default function AdminSidebar({
         >
           <X size={20} />
         </button>
-      {/* Header / Brand */}
-      <div className="px-5 py-6 border-b border-slate-800/40 flex items-center gap-4 shrink-0 bg-gradient-to-b from-slate-900/50 to-transparent">
-        <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-xs shadow-lg shadow-indigo-500/20 shrink-0 ring-1 ring-white/10">
-          PL
-        </div>
-        {!collapsed && (
-          <div className="overflow-hidden">
-            <h1 className="text-sm font-black text-white tracking-tight leading-tight truncate font-sans">
-              {isImpersonating ? "Supporto Attivo" : "Polizia Locale"}
-            </h1>
-            <p className={`text-[10px] font-bold tracking-wider uppercase leading-tight ${isImpersonating ? "text-indigo-400 animate-pulse" : "text-slate-500"}`}>
-              {isImpersonating ? "Impersonificazione" : "Sistema Gestionale"}
-            </p>
+      <div className="px-5 py-6 border-b border-slate-800/40 flex items-center justify-between gap-4 shrink-0 bg-gradient-to-b from-slate-900/50 to-transparent">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-xs shadow-lg shadow-indigo-500/20 shrink-0 ring-1 ring-white/10">
+            PL
           </div>
-        )}
+          {!collapsed && (
+            <div className="overflow-hidden">
+              <h1 className="text-sm font-black text-white tracking-tight leading-tight truncate font-sans">
+                {isImpersonating ? "Supporto Attivo" : "Polizia Locale"}
+              </h1>
+              <p className={`text-[10px] font-bold tracking-wider uppercase leading-tight ${isImpersonating ? "text-indigo-400 animate-pulse" : "text-slate-500"}`}>
+                {isImpersonating ? "Impersonificazione" : "Sistema Gestionale"}
+              </p>
+            </div>
+          )}
+        </div>
+        {!collapsed && <NotificationHub userRole={userRole || "ADMIN"} />}
       </div>
 
       {/* Super-Admin Back Button (If Impersonating) */}

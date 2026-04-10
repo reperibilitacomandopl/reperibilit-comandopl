@@ -100,6 +100,16 @@ export default function NotificationManager() {
               <ShieldCheck size={20} />
               Notifiche Attive
             </div>
+          ) : permission === "denied" ? (
+            <div className="flex flex-col items-end gap-2">
+              <div className="flex items-center gap-3 bg-red-50 text-red-700 px-5 py-3 rounded-2xl border border-red-100 font-bold text-sm">
+                <BellOff size={20} />
+                Permessi Negati dal Browser
+              </div>
+              <p className="text-[10px] text-red-500 font-bold uppercase tracking-tighter text-right max-w-[200px]">
+                Clicca sull'icona del lucchetto 🔒 nella barra degli indirizzi e attiva "Notifiche".
+              </p>
+            </div>
           ) : (
             <button
               onClick={handleSubscribe}
