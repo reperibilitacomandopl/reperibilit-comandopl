@@ -802,6 +802,41 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
          </button>
       </div>
 
+      {/* SMART CLOCK-OUT REMINDER (Sticky/Banner style) */}
+      {isClockedIn === 'IN' && (
+        <div className="px-2 mb-6 animate-in fade-in slide-in-from-top duration-500">
+          <div className="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-3xl p-5 text-white shadow-xl shadow-emerald-500/20 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:scale-110 transition-transform">
+              <Clock size={80} className="animate-spin-slow" style={{ animationDuration: '10s' }} />
+            </div>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center animate-pulse">
+                  <CheckCircle2 size={24} />
+                </div>
+                <div>
+                  <h3 className="font-black text-lg uppercase leading-none mb-1">Sei in Servizio! 👮‍♂️</h3>
+                  <p className="text-white/80 text-xs font-bold uppercase tracking-wider">
+                    Iniziato alle <span className="text-white underline decoration-emerald-300 decoration-2 underline-offset-2">{lastClockTime}</span>
+                  </p>
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => handleClockAction('OUT')}
+                disabled={clockLoading}
+                className="bg-white text-emerald-700 hover:bg-emerald-50 px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-tighter shadow-lg active:scale-95 transition-all flex items-center gap-2"
+              >
+                {clockLoading ? (
+                  <RefreshCw size={18} className="animate-spin" />
+                ) : <X size={18} />}
+                Termina Turno Ora
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-slate-900 text-white rounded-[2.5rem] p-6 sm:p-10 lg:p-12 shadow-2xl relative overflow-hidden mb-6">
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
