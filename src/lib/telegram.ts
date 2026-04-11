@@ -38,6 +38,41 @@ export async function sendTelegramMessage(chatId: string, text: string, replyMar
 }
 
 /**
+ * Invia una nota vocale a un chatId specifico
+ */
+export async function sendTelegramVoice(chatId: string, audioBase64: string, caption?: string) {
+  if (!BOT_TOKEN) return false;
+
+  try {
+    // Rimuovi header base64 se presente
+    const base64Data = audioBase64.split(",")[1] || audioBase64;
+    const buffer = Buffer.from(base64Data, "base64");
+    
+    const formData = new FormData();
+    formData.append("chat_id", chatId);
+    formData.append("voice", new Blob([buffer], { type: "audio/webm" }), "sos_voice.webm");
+    if (caption) formData.append("caption", caption);
+    formData.append("parse_mode", "HTML");
+
+    const res = await fetch(`${TELEGRAM_API}/sendVoice`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      console.error("❌ Errore invio vocale Telegram:", err);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("❌ Eccezione invio vocale Telegram:", error);
+    return false;
+  }
+}
+
+/**
  * Invia un'allerta di emergenza a tutti gli utenti collegati di un tenant
  */
 export async function broadcastEmergency(tenantId: string, message: string) {

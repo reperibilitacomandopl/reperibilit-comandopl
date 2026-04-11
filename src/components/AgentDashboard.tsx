@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import toast from "react-hot-toast"
-import { CalendarDays, AlertCircle, FileDown, Clock, ShieldCheck, Shield, Plus, ChevronLeft, ChevronRight, ListChecks, X, Smartphone, Monitor, Globe, Trash2, Search, BookOpen, Send, Phone, RefreshCw, ChevronDown, CheckCircle2, Car, MapPin, Users, ArrowRightLeft, Calendar, ArrowRight, Check, AlertTriangle } from "lucide-react"
+import { CalendarDays, AlertCircle, FileDown, Clock, ShieldCheck, Shield, Plus, ChevronLeft, ChevronRight, ListChecks, X, Smartphone, Monitor, Globe, Trash2, Search, BookOpen, Send, Phone, RefreshCw, ChevronDown, CheckCircle2, Car, MapPin, Users, ArrowRightLeft, Calendar, ArrowRight, Check, AlertTriangle, Mic, LogOut } from "lucide-react"
 import { isHoliday } from "@/utils/holidays"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -146,7 +146,25 @@ type AgendaItem = {
   note: string | null
 }
 
-export default function AgentDashboard({ currentUser, shifts, allAgents, currentYear, currentMonth, isPublished, currentView, tenantName, tenantSlug, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem, userRole }: { currentUser: { id: string, matricola: string, name: string, telegramChatId?: string | null }, shifts: DashboardShift[], allAgents: any[], currentYear: number, currentMonth: number, isPublished: boolean, currentView?: string, tenantName?: string | null, tenantSlug?: string | null, canManageShifts?: boolean, canManageUsers?: boolean, canVerifyClockIns?: boolean, canConfigureSystem?: boolean, userRole?: string }) {
+interface AgentDashboardProps {
+  currentUser: { id: string, matricola: string, name: string, telegramChatId?: string | null }
+  shifts: DashboardShift[]
+  allAgents: any[]
+  currentYear: number
+  currentMonth: number
+  isPublished: boolean
+  currentView?: string
+  tenantName?: string | null
+  tenantSlug?: string | null
+  canManageShifts?: boolean
+  canManageUsers?: boolean
+  canVerifyClockIns?: boolean
+  canConfigureSystem?: boolean
+  userRole?: string
+  signOutAction?: () => Promise<void>
+}
+
+export default function AgentDashboard({ currentUser, shifts, allAgents, currentYear, currentMonth, isPublished, currentView, tenantName, tenantSlug, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem, userRole, signOutAction }: AgentDashboardProps) {
   const router = useRouter()
   const [showSyncModal, setShowSyncModal] = useState(false)
   const [showAgenda, setShowAgenda] = useState(false)
@@ -194,6 +212,16 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   const [clockLoading, setClockLoading] = useState(false)
   const [lastClockTime, setLastClockTime] = useState<string | null>(null)
   const [isMobileView, setIsMobileView] = useState(false)
+  
+  // SOS Premium State
+  const [showSosModal, setShowSosModal] = useState(false)
+  const [sosNote, setSosNote] = useState("")
+  const [isRecording, setIsRecording] = useState(false)
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
+  const [recordingDuration, setRecordingDuration] = useState(0)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   const myShifts = shifts.filter(s => s.userId === currentUser.id)
 
@@ -485,7 +513,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
     )
   }
 
-
   const handleDeleteAgenda = async (id: string) => {
     if (!confirm('Eliminare questa voce dall\'agenda?')) return
     try {
@@ -496,6 +523,86 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
       })
       fetchAgenda()
     } catch { /* */ }
+  }
+
+  // === SOS VOICE LOGIC ===
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = recorder
+      chunksRef.current = []
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data)
+      }
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        setAudioBlob(blob)
+        stream.getTracks().forEach(track => track.stop())
+      }
+
+      recorder.start()
+      setIsRecording(true)
+      setRecordingDuration(0)
+      timerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1)
+      }, 1000)
+    } catch (err) {
+      toast.error("Impossibile accedere al microfono.")
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop()
+      setIsRecording(false)
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }
+
+  const handleSendFullSos = async () => {
+    const toastId = toast.loading("Inviando SOS GPS Premium...")
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try {
+        let audioBase64 = ""
+        if (audioBlob) {
+          const reader = new FileReader()
+          audioBase64 = await new Promise((resolve) => {
+            reader.onloadend = () => resolve(reader.result as string)
+            reader.readAsDataURL(audioBlob)
+          })
+        }
+
+        const res = await fetch('/api/admin/alert-emergency', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            userId: currentUser.id,
+            type: 'SOS',
+            message: `🆘 SOS GPS! ${currentUser.name} (Matr. ${currentUser.matricola})`,
+            note: sosNote,
+            audio: audioBase64,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+          })
+        })
+        
+        if (res.ok) {
+          toast.success('🚨 SOS INVIATO CON SUCCESSO!', { id: toastId })
+          setShowSosModal(false)
+          setSosNote("")
+          setAudioBlob(null)
+        } else {
+          throw new Error('Send failed')
+        }
+      } catch (err) {
+        toast.error('Errore invio SOS.', { id: toastId })
+      }
+    }, () => {
+      toast.error("GPS non disponibile.", { id: toastId })
+    }, { enableHighAccuracy: true })
   }
   
   // Dynamic Month Info
@@ -678,6 +785,23 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
             <p className="text-[8px] text-slate-500 font-bold uppercase tracking-tighter mt-1">Comando Polizia Locale</p>
           </div>
         </div>
+        <div className="flex items-center gap-3">
+           <NotificationManager />
+           <NotificationHub userRole={userRole} />
+           {signOutAction && (
+             <button
+               onClick={() => {
+                 if (confirm('Sicuro di voler uscire dal portale?')) {
+                   signOutAction();
+                 }
+               }}
+               className="p-2 text-slate-400 hover:text-rose-400 bg-white/5 border border-white/10 rounded-xl transition-colors"
+               title="Esci dal sistema"
+             >
+                <LogOut size={20} />
+             </button>
+           )}
+        </div>
       </header>
 
       {/* Gestore Notifiche PWA */}
@@ -759,48 +883,105 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
       <div className="block lg:hidden px-2 mb-2">
          <button 
            id="btn-sos-pwa"
-           onClick={async () => {
-             if (!confirm('🚨 INVIARE SOS GPS ALLA CENTRALE? La tua posizione attuale verrà trasmessa immediatamente.')) return
-             const toastId = toast.loading("Inviando SOS GPS...")
-             navigator.geolocation.getCurrentPosition(async (pos) => {
-               try {
-                 const res = await fetch('/api/admin/alert-emergency', {
-                   method: 'POST',
-                   headers: { 'Content-Type': 'application/json' },
-                   body: JSON.stringify({ 
-                     userId: currentUser.id,
-                     type: 'SOS',
-                     message: `🆘 SOS GPS! L'operatore ${currentUser.name} (Matr. ${currentUser.matricola}) ha lanciato un SOS.`,
-                     lat: pos.coords.latitude,
-                     lng: pos.coords.longitude
-                   })
-                 })
-                 if (res.ok) toast.success('🚨 SOS INVIATO! Resta in attesa di istruzioni.', { id: toastId })
-                 else throw new Error('Send failed')
-               } catch (err) {
-                 console.warn('[PWA] Invio SOS fallito, archiviazione locale SOS...', err)
-                 await storeOfflineRequest('/api/admin/alert-emergency', 'POST', {
-                   userId: currentUser.id,
-                   type: 'SOS',
-                   message: `🆘 SOS GPS! L'operatore ${currentUser.name} (Matr. ${currentUser.matricola}) ha lanciato un SOS.`,
-                   lat: pos.coords.latitude,
-                   lng: pos.coords.longitude
-                 })
-                 toast.success('🚨 SOS ARCHIVIATO! Verrà inviato appena torna il segnale.', { id: toastId, duration: 8000 })
-               }
-             }, () => {
-               toast.error("Impossibile ottenere GPS per SOS.", { id: toastId })
-             }, { enableHighAccuracy: true })
-           }}
+           onClick={() => setShowSosModal(true)}
            className="w-full bg-red-600 active:bg-red-800 text-white rounded-2xl py-5 px-4 flex items-center justify-center gap-3 shadow-xl shadow-red-200 animate-pulse border-4 border-red-500/50"
          >
            <AlertCircle size={32} className="shrink-0" />
            <div className="text-left">
               <p className="font-black text-lg leading-tight uppercase">SOS GPS EMERGENZA</p>
-              <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Invia Posizione alla Centrale</p>
+              <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Descrivi Urgenza e Invia</p>
            </div>
          </button>
       </div>
+
+      {/* SOS PREMIUM MODAL */}
+      {showSosModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+           <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl" onClick={() => !isRecording && setShowSosModal(false)}></div>
+           <div className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+              <div className="p-8 bg-red-600 text-white">
+                 <div className="flex justify-between items-center mb-4">
+                    <AlertTriangle size={32} className="animate-pulse" />
+                    <button onClick={() => setShowSosModal(false)} className="p-2 hover:bg-white/10 rounded-full">
+                       <X size={24} />
+                    </button>
+                 </div>
+                 <h3 className="text-2xl font-black uppercase tracking-tight">SOS EMERGENZA</h3>
+                 <p className="text-red-100 text-xs font-bold uppercase tracking-widest opacity-80">Descrivi l'evento per la centrale</p>
+              </div>
+
+              <div className="p-8 space-y-6 flex-1 overflow-y-auto">
+                 <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Nota Sommaria (opzionale)</label>
+                    <textarea 
+                      value={sosNote}
+                      onChange={(e) => setSosNote(e.target.value)}
+                      placeholder="Esempio: Incidente stradale grave, sospetto feriti..."
+                      className="w-full h-32 bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm font-medium focus:ring-4 focus:ring-red-100 focus:border-red-200 transition-all outline-none resize-none"
+                    />
+                 </div>
+
+                 {/* Voice Message Section */}
+                 <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                    <div className="flex items-center justify-between mb-4">
+                       <div className="flex items-center gap-2">
+                          <Mic size={18} className="text-red-500" />
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Messaggio Vocale</span>
+                       </div>
+                       {isRecording && (
+                         <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
+                            <span className="text-xs font-black text-red-500">{Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}</span>
+                         </div>
+                       )}
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                       {!audioBlob && !isRecording ? (
+                         <button 
+                           onClick={startRecording}
+                           className="flex-1 flex items-center justify-center gap-3 bg-white border-2 border-slate-200 text-slate-700 py-4 rounded-xl font-bold text-xs uppercase tracking-widest hover:border-red-200 transition-all"
+                         >
+                            <Mic size={18} /> Avvia Registrazione
+                         </button>
+                       ) : isRecording ? (
+                         <button 
+                           onClick={stopRecording}
+                           className="flex-1 flex items-center justify-center gap-3 bg-red-500 text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest animate-pulse"
+                         >
+                            <Check size={18} /> Ferma e Salva
+                         </button>
+                       ) : (
+                         <div className="flex-1 flex items-center justify-between bg-emerald-50 border border-emerald-100 p-3 rounded-xl">
+                            <div className="flex items-center gap-3">
+                               <div className="p-2 bg-emerald-500 text-white rounded-lg">
+                                  <Mic size={14} />
+                               </div>
+                               <span className="text-[10px] font-black text-emerald-700 uppercase">Vocale Registrato</span>
+                            </div>
+                            <button onClick={() => setAudioBlob(null)} className="text-rose-500 p-2 hover:bg-rose-50 rounded-lg transition-colors">
+                               <Trash2 size={16} />
+                           </button>
+                         </div>
+                       )}
+                    </div>
+                 </div>
+
+                 <div className="pt-4 flex flex-col gap-3">
+                    <button 
+                      onClick={handleSendFullSos}
+                      className="w-full bg-red-600 hover:bg-red-700 text-white py-5 rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-red-200 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3"
+                    >
+                       <Send size={20} /> INVIA SOS ALLA CENTRALE
+                    </button>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase text-center px-6">
+                       L'invio trasmette istantaneamente la tua posizione GPS, la nota e l'audio a tutti gli ufficiali e amministratori.
+                    </p>
+                 </div>
+              </div>
+           </div>
+        </div>
+      )}
 
       {/* SMART CLOCK-OUT REMINDER (Sticky/Banner style) */}
       {isClockedIn === 'IN' && (
@@ -858,12 +1039,12 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                   </p>
                 </div>
               </div>
-
-              <div className="flex gap-2">
+ 
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   disabled={clockLoading || isClockedIn === 'IN'}
                   onClick={() => handleClockAction('IN')}
-                  className={`flex items-center gap-2 px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+                  className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
                     isClockedIn === 'IN'
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'
                       : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl shadow-emerald-500/30 active:scale-95'
@@ -871,14 +1052,14 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                 >
                   {clockLoading && isClockedIn !== 'OUT' ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : <MapPin size={16} />}
+                  ) : <MapPin size={18} />}
                   Entra
                 </button>
-
+ 
                 <button
                   disabled={clockLoading || isClockedIn !== 'IN'}
                   onClick={() => handleClockAction('OUT')}
-                  className={`flex items-center gap-2 px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+                  className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
                     isClockedIn !== 'IN'
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'
                       : 'bg-rose-500 hover:bg-rose-600 text-white shadow-xl shadow-rose-500/30 active:scale-95'
@@ -886,7 +1067,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                 >
                   {clockLoading && isClockedIn === 'IN' ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : <ArrowRightLeft size={16} />}
+                  ) : <ArrowRightLeft size={18} />}
                   Esci
                 </button>
               </div>

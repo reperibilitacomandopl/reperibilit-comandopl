@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { sendTelegramMessage } from "@/lib/telegram";
+import { sendTelegramMessage, sendTelegramVoice } from "@/lib/telegram";
 import { sendPushNotification } from "@/lib/push-notifications";
 
 export async function POST(req: Request) {
@@ -11,7 +11,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { type, message, lat, lng } = await req.json().catch(() => ({}));
+    const { type, message, note, audio, lat, lng } = await req.json().catch(() => ({}));
     const tenantId = session.user.tenantId;
     const userId = session.user.id;
 
@@ -49,21 +49,35 @@ export async function POST(req: Request) {
       };
 
       for (const recipient of alertRecipients) {
-        // Notifica Push (Browsers)
+        // 1. Notifica Push (Browsers)
         await sendPushNotification(recipient.id, pushPayload);
         
-        // Notifica Hub (Database)
+        // 2. Notifica Hub (Database)
         await prisma.notification.create({
           data: {
             tenantId: tenantId || null,
             userId: recipient.id,
             title: pushPayload.title,
-            message: pushPayload.body,
+            message: note ? `Nota: ${note}` : pushPayload.body,
             type: "ALERT",
             link: pushPayload.url,
-            metadata: JSON.stringify({ lat, lng, alertId: alert.id })
+            metadata: JSON.stringify({ lat, lng, alertId: alert.id, note })
           }
         });
+
+        // 3. Telegram (Bot agli Ufficiali/Admin)
+        const recipientUser = await prisma.user.findUnique({ where: { id: recipient.id }, select: { telegramChatId: true } });
+        if (recipientUser?.telegramChatId) {
+          const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+          const telegramText = `🚨 <b>ALLERTA SOS GPS</b> 🚨\n\nOperatore: <b>${session.user.name}</b> (Matr. ${session.user.matricola || 'N/D'})\n\n📝 <b>NOTA:</b> ${note || "Nessuna nota fornita"}\n\n📍 <a href="${mapUrl}">Vedi Posizione su Mappe</a>`;
+          
+          await sendTelegramMessage(recipientUser.telegramChatId, telegramText);
+          
+          // Se c'è un audio, invialo come nota vocale
+          if (audio) {
+            await sendTelegramVoice(recipientUser.telegramChatId, audio, `🎤 Vocale SOS d'emergenza - ${session.user.name}`);
+          }
+        }
       }
 
       return NextResponse.json({ success: true, alertId: alert.id });

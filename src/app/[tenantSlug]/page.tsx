@@ -65,8 +65,8 @@ export default async function Home({
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Navbar */}
-      <header className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-50">
+      {/* Navbar - Desktop Only (Hidden on Mobile as Dashboard provides its own) */}
+      <header className="hidden lg:block bg-white shadow-sm border-b border-slate-200 sticky top-0 z-50">
         <div className={`${containerClass} h-16 flex items-center justify-between`}>
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-blue-900 rounded-md flex items-center justify-center text-white font-bold text-xs">
@@ -119,6 +119,10 @@ export default async function Home({
           canVerifyClockIns={session.user.canVerifyClockIns}
           canConfigureSystem={session.user.canConfigureSystem}
           userRole={session.user.role}
+          signOutAction={async () => {
+            "use server"
+            await signOut()
+          }}
         />
       </main>
 

@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Bell, Check, Info, AlertTriangle, CheckCircle, Clock, X, Map, BellRing, Settings2, RefreshCw, User, Calendar, ArrowRight, ChevronRight } from "lucide-react"
+import { Bell, Check, Info, AlertTriangle, CheckCircle, Clock, X, Map, BellRing, Settings2, RefreshCw, User, Calendar, ArrowRight, ChevronRight, Mic } from "lucide-react"
+import { getLabel, getCategoryColor } from "@/utils/agenda-codes"
 import toast from "react-hot-toast"
 
 type NotificationType = "REQUEST" | "SUCCESS" | "ALERT" | "INFO"
@@ -399,12 +400,12 @@ export default function NotificationHub({ userRole }: { userRole?: string }) {
                           <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
                              <p className="text-[9px] font-black uppercase text-indigo-400 mb-1">Richiedente</p>
                              <p className="text-sm font-black text-white">{detailData.requester.name}</p>
-                             <p className="text-[10px] text-slate-400">{detailData.shift.type}</p>
+                             <p className="text-[10px] text-slate-400">{getLabel(detailData.shift.type)}</p>
                           </div>
                           <div className="p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/20">
                              <p className="text-[9px] font-black uppercase text-indigo-400 mb-1">Ricevente</p>
                              <p className="text-sm font-black text-white">{detailData.targetUser?.name}</p>
-                             <p className="text-[10px] text-indigo-300">{detailData.targetShift?.type || 'RIPOSO'}</p>
+                             <p className="text-[10px] text-indigo-300">{getLabel(detailData.targetShift?.type || 'RIPOSO')}</p>
                           </div>
                        </div>
                     </div>
@@ -422,14 +423,14 @@ export default function NotificationHub({ userRole }: { userRole?: string }) {
                           <div className="flex-1 p-4 bg-white/5 rounded-2xl border border-white/5">
                              <Calendar className="text-indigo-400 mb-2" size={16} />
                              <p className="text-sm font-black text-white">{new Date(detailData.date).toLocaleDateString('it-IT')}</p>
-                             <p className="text-[10px] text-slate-500">Data Richiesta</p>
+                             <p className="text-[10px] text-slate-500">Motivo: {getLabel(detailData.code)}</p>
                           </div>
                        </div>
                     </div>
                   )}
 
-                  {/* Azioni Modale */}
-                  {detailData.status === 'PENDING' && (
+                  {/* Azioni Modale - Gli scambi per gli admin sono in ACCEPTED, le richieste in PENDING */}
+                  {(detailData.status === 'PENDING' || (detailData.type === 'SWAP' && detailData.status === 'ACCEPTED')) && (
                     <div className="flex gap-4 pt-4">
                       <button onClick={() => handleAction(selectedNotification.id, "ACCEPT", selectedNotification.metadata)} className="flex-1 bg-white hover:bg-slate-100 text-slate-900 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl transition-all">APPROVA</button>
                       <button onClick={() => handleAction(selectedNotification.id, "REJECT", selectedNotification.metadata)} className="flex-1 bg-slate-800 hover:bg-rose-600/20 hover:text-rose-500 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest border border-white/5 transition-all">RIFIUTA</button>
