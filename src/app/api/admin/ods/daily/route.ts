@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { sendPushNotification } from "@/lib/push-notifications"
 
 function calculateDurationAndOvertime(timeRange: string | null): { durationHours: number | null, overtimeHours: number | null } {
   if (!timeRange) return { durationHours: null, overtimeHours: null }
@@ -80,7 +81,7 @@ export async function PUT(req: Request) {
         durationUpdate = { durationHours, overtimeHours }
       }
 
-      await prisma.shift.update({
+      const updatedShift = await prisma.shift.update({
         where: { id: update.id },
         data: {
           serviceCategoryId: update.serviceCategoryId !== undefined ? update.serviceCategoryId : undefined,
@@ -90,8 +91,22 @@ export async function PUT(req: Request) {
           patrolGroupId: update.patrolGroupId !== undefined ? update.patrolGroupId : undefined,
           serviceDetails: update.serviceDetails !== undefined ? update.serviceDetails : undefined,
           ...durationUpdate
-        }
+        },
+        include: { user: true, serviceType: true }
       })
+
+      // Invia Notifica Push per il nuovo incarico
+      if (update.serviceCategoryId || update.serviceTypeId) {
+        try {
+          await sendPushNotification(updatedShift.userId, {
+            title: "📋 Nuovo Ordine di Servizio",
+            body: `Sei stato assegnato al servizio: ${updatedShift.serviceType?.name || 'Vedi dettagli'}. Controlla il pannello agenti.`,
+            url: "/dashboard"
+          })
+        } catch (pushErr) {
+          console.error(`[PUSH ERROR] OdS per ${updatedShift.userId}:`, pushErr)
+        }
+      }
     }
 
     return NextResponse.json({ success: true })

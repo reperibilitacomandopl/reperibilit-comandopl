@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { sendPushNotification } from "@/lib/push-notifications"
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -85,6 +86,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
       return updatedRequest
     })
+
+    // Invia Notifica Push fuori dal pacchetto transazionale per evitare ritardi DB
+    try {
+      const statusText = status === "APPROVED" ? "APPROVATA" : "RIFIUTATA"
+      await sendPushNotification(agentRequest.userId, {
+        title: "Esito Richiesta",
+        body: `La tua richiesta per il ${new Date(agentRequest.date).toLocaleDateString("it-IT")} è stata ${statusText}.`,
+        url: "/dashboard"
+      })
+    } catch (pushErr) {
+      console.error("[PUSH ERROR] Impossibile inviare notifica esito richiesta:", pushErr)
+    }
 
     return NextResponse.json({ success: true, request: result })
 

@@ -3,6 +3,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { logAudit } from "@/lib/audit"
 import { sendTelegramMessage } from "@/lib/telegram"
+import { sendPushNotification } from "@/lib/push-notifications"
 
 export async function POST(req: Request) {
   const session = await auth()
@@ -53,6 +54,17 @@ export async function POST(req: Request) {
       for (const agent of allAgents) {
         if (agent.telegramChatId) {
           await sendTelegramMessage(agent.telegramChatId, text)
+        }
+
+        // Notifica Push (Browsers)
+        try {
+          await sendPushNotification(agent.id, {
+            title: "📅 Turni Pubblicati",
+            body: `Il comando ha pubblicato ufficialmente i turni per ${monthName} ${year}.`,
+            url: "/dashboard"
+          })
+        } catch (pushErr) {
+          console.error(`[PUSH ERROR] Impossibile inviare a ${agent.id}:`, pushErr)
         }
 
         // Creazione Notifica Hub (Database)

@@ -29,28 +29,34 @@ export async function POST(req: Request) {
         }
       });
 
-      // 2. Trova tutti gli ADMIN del tenant per inviare notifiche push
-      const admins = await prisma.user.findMany({
-        where: { tenantId: tenantId || null, role: "ADMIN" },
+      // 2. Trova tutti gli ADMIN e gli OFFICER del tenant per inviare notifiche push
+      const alertRecipients = await prisma.user.findMany({
+        where: { 
+          tenantId: tenantId || null, 
+          OR: [
+            { role: "ADMIN" },
+            { role: "OFFICER" }
+          ]
+        },
         select: { id: true, name: true }
       });
 
-      // 3. Invia Push agli Admin e crea Notifica nel DB
+      // 3. Invia Push ai destinatari e crea Notifica nel DB
       const pushPayload = {
         title: "🚨 EMERGENZA SOS!",
         body: `L'agente ${session.user.name} ha lanciato un SOS.`,
         url: `/${session.user.tenantSlug}/admin/timbrature?alertId=${alert.id}`
       };
 
-      for (const admin of admins) {
+      for (const recipient of alertRecipients) {
         // Notifica Push (Browsers)
-        await sendPushNotification(admin.id, pushPayload);
+        await sendPushNotification(recipient.id, pushPayload);
         
         // Notifica Hub (Database)
         await prisma.notification.create({
           data: {
             tenantId: tenantId || null,
-            userId: admin.id,
+            userId: recipient.id,
             title: pushPayload.title,
             message: pushPayload.body,
             type: "ALERT",
