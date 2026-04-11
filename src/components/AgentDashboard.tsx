@@ -454,7 +454,10 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
             setLastClockTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
             toast.success(`Timbratura ${type === 'IN' ? 'Entrata' : 'Uscita'} registrata!`, { id: toastId })
           } else {
-            toast.error(data.error || "Errore durante la timbratura", { id: toastId })
+            const errorMsg = data.distance ? 
+              `Troppo lontano! Sei a ${data.distance}m (Limite: ${data.allowed}m)` : 
+              (data.error || "Errore durante la timbratura")
+            toast.error(errorMsg, { id: toastId, duration: 6000 })
           }
         } catch (err: any) {
           console.warn('[PWA] Invio timbratura fallito, tento archiviazione locale...', err)
