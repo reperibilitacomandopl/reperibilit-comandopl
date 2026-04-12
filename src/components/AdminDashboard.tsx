@@ -1731,9 +1731,18 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                     <span>⚡</span> OPERATIVI VELOCI
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {["REP"].map(code => (
-                      <button key={code} disabled={isSavingCell} onClick={() => { void saveCellEdit(code); }} className="px-4 py-2.5 rounded-xl text-xs font-black text-purple-700 bg-purple-100 hover:bg-purple-200 transition-colors disabled:opacity-50 shadow-sm active:scale-95 border border-purple-200/50">
-                        {code}
+                    {["REP", "BR"].map(code => (
+                      <button 
+                        key={code} 
+                        disabled={isSavingCell} 
+                        onClick={() => { void saveCellEdit(code); }} 
+                        className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all disabled:opacity-50 shadow-sm active:scale-95 border ${
+                          code === 'BR' 
+                            ? 'bg-slate-800 text-white border-slate-900 hover:bg-slate-900' 
+                            : 'text-purple-700 bg-purple-100 hover:bg-purple-200 border-purple-200/50'
+                        }`}
+                      >
+                        {code === 'BR' ? '🛡️ BR' : code}
                       </button>
                     ))}
                   </div>
