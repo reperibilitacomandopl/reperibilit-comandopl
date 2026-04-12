@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     const lastDay = new Date(Date.UTC(year, month, 0, 23, 59, 59))
 
     const [agents, shifts, agendaEntries] = await Promise.all([
-      prisma.user.findMany({ where: { tenantId, isActive: true }, select: { id: true, name: true, matricola: true } }),
+      prisma.user.findMany({ where: { tenantId }, select: { id: true, name: true, matricola: true } }),
       prisma.shift.findMany({ where: { tenantId, date: { gte: firstDay, lte: lastDay } } }),
       prisma.agendaEntry.findMany({ where: { tenantId, date: { gte: firstDay, lte: lastDay } } })
     ])
