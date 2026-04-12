@@ -1,17 +1,25 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, User, Shield, Car, Printer, RefreshCw, GripVertical, Info, Clock, AlertTriangle, Wand2, Radio, Copy, ClipboardPaste, ChevronDown, ChevronUp, CalendarCheck, RotateCcw, PanelLeftClose, PanelLeft, Users, Link2, GraduationCap, Sparkles } from "lucide-react"
+import { 
+  Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, 
+  Shield, Printer, GripVertical, AlertTriangle, 
+  Wand2, Radio, Copy, ClipboardPaste, ChevronDown, ChevronUp, 
+  CalendarCheck, RotateCcw, PanelLeftClose, PanelLeft, 
+  Link2, GraduationCap, Sparkles 
+} from "lucide-react"
 import toast from "react-hot-toast"
 import Link from "next/link"
-import { isAssenza, formatShiftCode } from "../utils/shift-logic"
+import { isAssenza } from "../utils/shift-logic"
 
 interface CopiedAgentData {
-  serviceCategoryId: string | null
-  serviceTypeId: string | null
-  vehicleId: string | null
-  timeRange: string | null
-  serviceDetails: string | null
+  userId?: string
+  type?: string
+  serviceCategoryId: string | null | undefined
+  serviceTypeId: string | null | undefined
+  vehicleId: string | null | undefined
+  timeRange: string | null | undefined
+  serviceDetails: string | null | undefined
 }
 
 export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?: () => void, tenantSlug?: string }) {
@@ -19,12 +27,12 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
   const [loading, setLoading] = useState(true)
   const [isAutoAssigning, setIsAutoAssigning] = useState(false)
   
-  const [users, setUsers] = useState<any[]>([])
-  const [shifts, setShifts] = useState<any[]>([])
-  const [absences, setAbsences] = useState<any[]>([])
-  const [categories, setCategories] = useState<any[]>([])
-  const [vehicles, setVehicles] = useState<any[]>([])
-  const [schools, setSchools] = useState<any[]>([])
+  const [users, setUsers] = useState<{ id: string; name: string; qualifica?: string; isUfficiale?: boolean; servizio?: string }[]>([])
+  const [shifts, setShifts] = useState<{ id: string; userId: string; type: string; serviceCategoryId?: string | null; serviceTypeId?: string | null; vehicleId?: string | null; timeRange?: string | null; serviceDetails?: string | null; patrolGroupId?: string | null }[]>([])
+  const [absences, setAbsences] = useState<{ id: string; userId: string; type: string; date: string }[]>([])
+  const [categories, setCategories] = useState<{ id: string; name: string; types?: { id: string; name: string }[] }[]>([])
+  const [vehicles, setVehicles] = useState<{ id: string; name: string }[]>([])
+  const [schools, setSchools] = useState<{ id: string; name: string; schedules: { dayOfWeek: number; entranceTime?: string; exitTime?: string; afternoonExitTime?: string }[] }[]>([])
 
   // Collapsible state
   const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>({})
@@ -33,7 +41,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   // Copy/Paste: intera giornata
-  const [copiedDay, setCopiedDay] = useState<{ date: string; assignments: any[] } | null>(null)
+  const [copiedDay, setCopiedDay] = useState<{ date: string; assignments: CopiedAgentData[] } | null>(null)
   // Copy/Paste: singolo agente
   const [copiedAgent, setCopiedAgent] = useState<CopiedAgentData | null>(null)
 
@@ -78,7 +86,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
     loadData()
   }
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     const y = currentDate.getFullYear()
     const m = String(currentDate.getMonth() + 1).padStart(2, "0")
@@ -98,9 +106,15 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
       setSchools(schoolsData)
     } catch {}
     setLoading(false)
-  }
+  }, [currentDate])
 
-  useEffect(() => { loadData() }, [currentDate])
+  useEffect(() => { loadData() }, [loadData])
+
+  const changeDate = useCallback((days: number) => {
+    const next = new Date(currentDate)
+    next.setDate(next.getDate() + days)
+    setCurrentDate(next)
+  }, [currentDate])
 
   // Keyboard shortcuts: ← → per navigare i giorni
   useEffect(() => {
@@ -117,13 +131,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
     }
     window.addEventListener("keydown", handler)
     return () => window.removeEventListener("keydown", handler)
-  }, [currentDate])
-
-  const changeDate = (days: number) => {
-    const next = new Date(currentDate)
-    next.setDate(next.getDate() + days)
-    setCurrentDate(next)
-  }
+  }, [changeDate])
 
   const goToToday = () => setCurrentDate(new Date())
 
@@ -414,7 +422,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
   }
 
   // ===== COPY/PASTE SINGOLO AGENTE =====
-  const copyAgentConfig = (shift: any) => {
+  const copyAgentConfig = (shift: { serviceCategoryId?: string | null; serviceTypeId?: string | null; vehicleId?: string | null; timeRange?: string | null; serviceDetails?: string | null }) => {
     setCopiedAgent({
       serviceCategoryId: shift.serviceCategoryId,
       serviceTypeId: shift.serviceTypeId,
@@ -479,7 +487,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                 {/* SEZIONE UFFICIALI DI TURNO */}
                 <div className="bg-blue-900/10 border-2 border-blue-600/20 rounded-2xl overflow-hidden mb-4">
                     <div className="bg-blue-700 text-white px-3 py-1.5 text-[11px] font-black uppercase tracking-widest flex items-center gap-2">
-                        <Shield size={14} /> Ufficiali di Servizio ({ufficialiInServizio.length})
+                        <Shield width={14} height={14} /> Ufficiali di Servizio ({ufficialiInServizio.length})
                     </div>
                     <div className="p-2 space-y-2">
                         {ufficialiInServizio.map(shiftAssegnato => {
@@ -512,7 +520,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                             className={`px-3 py-2 text-xs font-black uppercase tracking-wider flex items-center justify-between cursor-pointer transition-colors group ${isEmpty ? 'bg-red-700 text-white hover:bg-red-600' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
                         >
                             <span className="flex items-center gap-2">
-                                {isEmpty && <AlertTriangle size={14} className="animate-pulse" />}
+                                {isEmpty && <AlertTriangle width={14} height={14} className="animate-pulse" />}
                                 {cat.name}
                                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${isEmpty ? 'bg-red-900/50 text-red-200' : 'bg-slate-700 text-slate-300'}`}>
                                   {agentiInCategoria.length} agenti
@@ -520,7 +528,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                                 <span className="opacity-0 group-hover:opacity-100 text-[8px] bg-blue-600 px-1 inline-block rounded transition-opacity">Rilascia qui</span>
                             </span>
                             <span className="text-slate-400">
-                              {isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                              {isCollapsed ? <ChevronDown width={16} height={16} /> : <ChevronUp width={16} height={16} />}
                             </span>
                         </div>
                         
@@ -535,7 +543,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                                 <div className="border border-red-200 rounded-lg overflow-hidden transition-all bg-red-50">
                                     <div className="bg-red-100 px-3 py-2 text-xs font-black text-red-800 border-b border-red-200 flex justify-between items-center">
                                         <div className="flex items-center gap-2">
-                                            <AlertTriangle size={14} className="text-red-600" />
+                                            <AlertTriangle width={14} height={14} className="text-red-600" />
                                             GENERICO (Assegna Sotto-Servizio)
                                             <span className="text-[10px] font-bold text-red-500">({agentiGen.length})</span>
                                         </div>
@@ -550,7 +558,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                                 </div>
                                 )
                             })()}
-                            {cat.types.map((tipo: any) => {
+                            {cat.types?.map((tipo: { id: string; name: string }) => {
                                 const agentiInQuestoServizio = agentiFase.filter(s => {
                                     const u = users.find(user => user.id === s.userId);
                                     return s.serviceTypeId === tipo.id && !u?.isUfficiale;
@@ -564,7 +572,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                                         className="bg-slate-50 px-3 py-2 text-xs font-black text-slate-800 border-b border-slate-200 flex justify-between items-center"
                                     >
                                         <div className="flex items-center gap-2">
-                                            <Shield size={14} className="text-blue-600" />
+                                            <Shield width={14} height={14} className="text-blue-600" />
                                             {tipo.name}
                                             <span className="text-[10px] font-bold text-slate-500">({agentiInQuestoServizio.length})</span>
                                         </div>
@@ -589,7 +597,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                                                                     <div className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse shadow-[0_0_8px_rgba(96,165,250,0.6)]"></div>
                                                                     <span className="text-[10px] font-black text-blue-100 uppercase tracking-widest">Equipaggio</span>
                                                                 </div>
-                                                                <Shield size={12} className="text-slate-500" />
+                                                                <Shield width={12} height={12} className="text-slate-500" />
                                                             </div>
                                                             <div className="space-y-0.5">
                                                                 {compagni.map(c => {
@@ -625,7 +633,11 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
   }
 
   // Refactoring card agente
-  const renderAgentCard = (agente: any, shiftAssegnato: any, isDark: boolean = false) => {
+  const renderAgentCard = (
+    agente: { id: string; name: string; isUfficiale?: boolean; servizio?: string }, 
+    shiftAssegnato: { id: string; type: string; serviceCategoryId?: string | null; serviceTypeId?: string | null; vehicleId?: string | null; timeRange?: string | null; serviceDetails?: string | null; patrolGroupId?: string | null }, 
+    isDark: boolean = false
+  ) => {
     const timeRangeStr = shiftAssegnato.timeRange || (shiftAssegnato.type==="M7" ? "07:00-13:00" : shiftAssegnato.type==="M8" ? "08:00-14:00" : "14:00-20:00")
 
     return (
@@ -668,14 +680,14 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                             {schools.length > 0 && (
                               <div className="relative group/schools">
                                  <button className={`p-1 rounded ${isDark ? 'text-amber-400 hover:bg-white/10' : 'text-amber-600 hover:bg-amber-50'}`} title="Abbina Scuola Manualmente">
-                                    <GraduationCap size={12} />
+                                    <GraduationCap width={12} height={12} />
                                  </button>
                                  <div className="absolute right-0 top-full mt-1 hidden group-hover/schools:block z-[100] bg-white border border-slate-200 shadow-2xl rounded-xl p-2 w-48 animate-in fade-in zoom-in-95 duration-200">
                                     <p className="text-[9px] font-black text-slate-400 uppercase mb-2 px-1 tracking-widest border-b border-slate-50">Seleziona Plesso</p>
                                     <div className="max-h-40 overflow-y-auto custom-scrollbar space-y-1">
                                        {schools.map(s => {
                                           const day = currentDate.getUTCDay()
-                                          const sched = s.schedules.find((sc: any) => sc.dayOfWeek === day)
+                                          const sched = s.schedules.find((sc: { dayOfWeek: number }) => sc.dayOfWeek === day)
                                           const isM = shiftAssegnato.type.startsWith("M")
                                           const noteText = isM 
                                             ? `${sched?.entranceTime || "07:45-08:30"} ENTRATA / ${sched?.exitTime || "13:00-14:00"} USCITA ${s.name}`
@@ -710,7 +722,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                       className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
                       title="Copia configurazione agente"
                     >
-                      <Copy size={12} />
+                      <Copy width={12} height={12} />
                     </button>
                     {/* Incolla config agente */}
                     {copiedAgent && (
@@ -719,7 +731,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                         className="p-1 text-indigo-400 hover:text-indigo-700 hover:bg-indigo-50 rounded transition-colors animate-pulse"
                         title="Incolla configurazione copiata"
                       >
-                        <ClipboardPaste size={12} />
+                        <ClipboardPaste width={12} height={12} />
                       </button>
                     )}
 
@@ -735,11 +747,11 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                     </select>
 
                     <button 
-                        onClick={() => toggleLink(shiftAssegnato.id, shiftAssegnato.patrolGroupId)}
+                        onClick={() => toggleLink(shiftAssegnato.id, shiftAssegnato.patrolGroupId as any)}
                         className={`p-1.5 rounded-md transition-colors ${shiftAssegnato.patrolGroupId ? 'text-indigo-700 bg-indigo-100 hover:bg-indigo-200' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
                         title={shiftAssegnato.patrolGroupId ? "Separa Pattuglia" : "Abbina ad altro membro (Crea Pattuglia)"}
                     >
-                        <Radio size={14} className={shiftAssegnato.patrolGroupId ? 'rotate-90' : ''} />
+                        <Radio width={14} height={14} className={shiftAssegnato.patrolGroupId ? 'rotate-90' : ''} />
                     </button>
 
                     <button 
@@ -770,7 +782,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
       <div className="bg-[#0f172a] text-slate-200 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between shrink-0 border-b border-slate-800 z-20 shadow-2xl">
         <div className="flex items-center gap-4 mb-3 sm:mb-0">
           <div className="bg-blue-600 p-2 rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.4)]">
-             <CalendarIcon className="text-white" size={24} />
+             <CalendarIcon className="text-white" width={24} height={24} />
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-black tracking-wider text-white">SALA OPERATIVA</h1>
@@ -782,11 +794,11 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
         
         <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center bg-slate-800 border border-slate-700 rounded-xl p-1 shadow-inner">
-                <button onClick={() => changeDate(-1)} className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-300 hover:text-white" title="← Giorno precedente"><ChevronLeft size={20}/></button>
+                <button onClick={() => changeDate(-1)} className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-300 hover:text-white" title="← Giorno precedente"><ChevronLeft width={20} height={20}/></button>
                 <div className="px-4 font-black tracking-widest uppercase text-white text-sm">
                     {currentDate.toLocaleDateString("it-IT", { weekday: "short", day: "2-digit", month: "short" })}
                 </div>
-                <button onClick={() => changeDate(1)} className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-300 hover:text-white" title="→ Giorno successivo"><ChevronRight size={20}/></button>
+                <button onClick={() => changeDate(1)} className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-300 hover:text-white" title="→ Giorno successivo"><ChevronRight width={20} height={20}/></button>
             </div>
 
             {/* VAI A OGGI */}
@@ -796,7 +808,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                 className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-lg shadow-emerald-500/20"
                 title="Torna alla data odierna"
               >
-                <CalendarCheck size={14} /> Oggi
+                <CalendarCheck width={14} height={14} /> Oggi
               </button>
             )}
 
@@ -806,7 +818,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                 className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all"
                 title="Copia tutte le assegnazioni del giorno"
             >
-                <Copy size={14}/> Copia OdS
+                <Copy width={14} height={14}/> Copia OdS
             </button>
 
             {/* INCOLLA ODS */}
@@ -816,7 +828,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                   className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all animate-pulse shadow-lg shadow-indigo-500/20"
                   title={`Incolla OdS da ${copiedDay.date}`}
               >
-                  <ClipboardPaste size={14}/> Incolla OdS
+                  <ClipboardPaste width={14} height={14}/> Incolla OdS
               </button>
             )}
 
@@ -826,7 +838,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                 className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white font-black px-4 py-2.5 rounded-xl hover:shadow-lg hover:shadow-amber-500/30 transition-all active:scale-95 disabled:opacity-50 text-xs tracking-wider"
                 title="Assegna automaticamente le scuole caricate in anagrafica"
             >
-                <GraduationCap size={16}/> {isAutoAssigning ? "..." : "AUTO-SCUOLE"}
+                <GraduationCap width={16} height={16}/> {isAutoAssigning ? "..." : "AUTO-SCUOLE"}
             </button>
 
             <button 
@@ -835,7 +847,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                 className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-black px-4 py-2.5 rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all active:scale-95 disabled:opacity-50 text-xs tracking-wider"
                 title="Autocompila Ordine di Servizio basato sui Template"
             >
-                <Wand2 size={16}/> {loading ? "..." : "AUTOCONFIGURA"}
+                <Wand2 width={16} height={16}/> {loading ? "..." : "AUTOCONFIGURA"}
             </button>
 
             <button 
@@ -844,7 +856,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                 className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black px-4 py-2.5 rounded-xl hover:shadow-lg hover:shadow-emerald-500/30 transition-all active:scale-95 disabled:opacity-50 text-xs tracking-wider"
                 title="Assistente AI per coprire i buchi nelle reperibilità del mese"
             >
-                <Sparkles size={16} className={loading ? "" : "animate-pulse"}/> {loading ? "..." : "RISOLVI BUCHI AI"}
+                <Sparkles width={16} height={16} className={loading ? "" : "animate-pulse"}/> {loading ? "..." : "RISOLVI BUCHI AI"}
             </button>
 
             {/* RIPRISTINA ODS */}
@@ -854,7 +866,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                 className="flex items-center gap-1.5 bg-rose-700 hover:bg-rose-600 text-white border border-rose-600 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all disabled:opacity-50"
                 title="Rimuovi tutte le assegnazioni servizio per oggi"
             >
-                <RotateCcw size={14}/> Ripristina
+                <RotateCcw width={14} height={14}/> Ripristina
             </button>
 
             {patrolSelection.size >= 2 && (
@@ -862,12 +874,12 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                 onClick={createPatrolFromSelection}
                 className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all animate-pulse shadow-lg shadow-indigo-500/20"
               >
-                <Link2 size={14}/> Pattuglia ({patrolSelection.size})
+                <Link2 width={14} height={14}/> Pattuglia ({patrolSelection.size})
               </button>
             )}
 
             <Link href={`/${tenantSlug || 'admin'}/admin/stampa-ods`} className="hidden sm:flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm">
-               <Printer size={14}/> Stampa
+               <Printer width={14} height={14}/> Stampa
             </Link>
 
             {onClose && (
@@ -881,7 +893,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
       {loading ? (
         <div className="flex-1 flex flex-col items-center justify-center bg-slate-900 relative">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-slate-900 to-slate-900"></div>
-            <Loader2 size={48} className="animate-spin text-blue-500 mb-4 relative z-10" />
+            <Loader2 width={48} height={48} className="animate-spin text-blue-500 mb-4 relative z-10" />
             <p className="text-slate-300 font-black uppercase tracking-widest text-xs relative z-10 animate-pulse">Sincronizzazione Database...</p>
         </div>
       ) : (
@@ -895,7 +907,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
           >
              <div className="p-2 border-b border-slate-800 bg-slate-900/50 flex items-center gap-2">
                  <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)} className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-white shrink-0" title={sidebarCollapsed ? 'Espandi sidebar' : 'Riduci sidebar'}>
-                   {sidebarCollapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
+                   {sidebarCollapsed ? <PanelLeft width={18} height={18} /> : <PanelLeftClose width={18} height={18} />}
                  </button>
                  {!sidebarCollapsed && (
                    <div className="overflow-hidden">
@@ -918,12 +930,12 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                      >
                          <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
                          <span className="text-[10px] text-slate-300 font-black uppercase tracking-wider flex-1 text-left">Fuori Servizio ({indisponibili.length})</span>
-                         {collapsedFuoriServizio ? <ChevronDown size={12} className="text-slate-500" /> : <ChevronUp size={12} className="text-slate-500" />}
+                         {collapsedFuoriServizio ? <ChevronDown width={12} height={12} className="text-slate-500" /> : <ChevronUp width={12} height={12} className="text-slate-500" />}
                      </button>
                      {!collapsedFuoriServizio && (
                      <div className="space-y-1">
                          {indisponibili.map(u => {
-                            const motive = absences.find(a => a.userId === u.id)?.code || shifts.find(s => s.userId === u.id)?.type || "NON DISP."
+                            const motive = (absences.find(a => a.userId === u.id) as any)?.code || shifts.find(s => s.userId === u.id)?.type || "NON DISP."
                             return (
                                 <div key={u.id} className="bg-slate-800/40 border border-slate-700/50 rounded-lg p-2 flex justify-between items-center opacity-80">
                                     <div className="flex flex-col">
@@ -946,7 +958,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                      >
                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]"></div>
                          <span className="text-[11px] text-white font-black uppercase tracking-wider flex-1 text-left">A Disposizione ({disponibiliNonAssegnati.length})</span>
-                         {collapsedADisposizione ? <ChevronDown size={12} className="text-slate-500" /> : <ChevronUp size={12} className="text-slate-500" />}
+                         {collapsedADisposizione ? <ChevronDown width={12} height={12} className="text-slate-500" /> : <ChevronUp width={12} height={12} className="text-slate-500" />}
                      </button>
                      {!collapsedADisposizione && (
                      <div className="space-y-1.5">
@@ -960,7 +972,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                                     className="bg-slate-800 border border-slate-700 rounded-lg p-2.5 flex justify-between items-center cursor-grab active:cursor-grabbing hover:border-blue-500 transition-colors hover:shadow-[0_0_10px_rgba(59,130,246,0.2)] group"
                                 >
                                     <div className="flex items-center gap-2">
-                                        <GripVertical size={14} className="text-slate-600 group-hover:text-blue-400"/>
+                                        <GripVertical width={14} height={14} className="text-slate-600 group-hover:text-blue-400"/>
                                         <div className="flex flex-col">
                                           <span className="text-xs font-black text-white uppercase">{u.name}</span>
                                           {u.servizio && <span className="text-[9px] font-bold text-blue-300 uppercase">{u.servizio}</span>}
@@ -977,7 +989,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                                           className="p-1 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/20 rounded transition-colors"
                                           title="Incolla configurazione"
                                         >
-                                          <ClipboardPaste size={12} />
+                                          <ClipboardPaste width={12} height={12} />
                                         </button>
                                       )}
                                       <span className={`text-[10px] font-black px-1.5 rounded ${baseShift.startsWith("M") ? 'bg-blue-900/50 text-blue-200 border border-blue-800' : baseShift.startsWith("P") ? 'bg-yellow-900/50 text-yellow-200 border border-yellow-800' : 'bg-slate-700 text-slate-300 border border-slate-600'}`}>
@@ -989,7 +1001,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                          })}
                          {disponibiliNonAssegnati.length === 0 && (
                              <div className="text-center p-4 bg-emerald-900/20 border border-emerald-900/30 rounded-lg">
-                                 <CheckCircle size={24} className="text-emerald-400 mx-auto mb-2 opacity-60"/>
+                                 <CheckCircle width={24} height={24} className="text-emerald-400 mx-auto mb-2 opacity-60"/>
                                  <p className="text-[11px] text-emerald-300 font-black tracking-widest uppercase">Tutti operativi</p>
                              </div>
                          )}
@@ -1017,7 +1029,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
   )
 }
 
-function CheckCircle(props: any) {
+function CheckCircle(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>

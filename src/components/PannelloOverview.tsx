@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { ChevronDown, ChevronUp } from "lucide-react"
 import {
-  Users,
   Shield,
   AlertTriangle,
   CalendarDays,
@@ -16,6 +15,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { isAssenza, isMalattia } from "@/utils/shift-logic"
+import OnboardingWizard from "./OnboardingWizard"
 
 interface PannelloOverviewProps {
   totalAgents: number
@@ -36,14 +36,17 @@ interface PannelloOverviewProps {
   currentMonth: number
   currentYear: number
   settings: { massimaleAgente: number; massimaleUfficiale: number; minUfficiali: number } | null
+  tenantSlug: string
+  tenantName: string
 }
 
 const MESI = ["", "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
 
-export default function PannelloOverview({ totalAgents, todayShifts, isPublished, currentMonth, currentYear, settings, totalVehicles, pendingSwaps }: PannelloOverviewProps) {
+export default function PannelloOverview({ totalAgents, todayShifts, isPublished, currentMonth, currentYear, settings, totalVehicles, pendingSwaps, tenantSlug, tenantName }: PannelloOverviewProps) {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [collapsedPattuglie, setCollapsedPattuglie] = useState(false)
   const [collapsedEccezioni, setCollapsedEccezioni] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(totalAgents === 0)
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 30000) // aggiorna ogni 30 sec
@@ -60,6 +63,8 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
   const targetUfficiali = settings?.minUfficiali ?? 1
   const ufficialiStatusOk = ufficialiOggi >= targetUfficiali
 
+  const coperturaPercent = totalAgents > 0 ? Math.round((operativiOggi / totalAgents) * 100) : 0
+  
   const cards = [
     {
       label: "Forze sul Campo",
@@ -97,6 +102,15 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
 
   return (
     <div className="space-y-8">
+      {/* Onboarding Wizard for empty tenants */}
+      {showOnboarding && (
+        <OnboardingWizard
+          tenantSlug={tenantSlug}
+          tenantName={tenantName}
+          onComplete={() => { setShowOnboarding(false); window.location.reload() }}
+        />
+      )}
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
@@ -170,6 +184,48 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
               </Link>
             )
           })}
+        </div>
+      </div>
+
+      {/* KPI Strategici Comandante */}
+      <div>
+        <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+          <Activity size={20} className="text-indigo-500" />
+          Scanner Strategico
+        </h2>
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row items-center gap-8">
+           
+           <div className="flex-1 w-full relative">
+              <div className="flex justify-between items-end mb-2">
+                 <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tasso di Copertura Effettivo</p>
+                    <h3 className="text-3xl font-black text-slate-800 tracking-tight">{coperturaPercent}%</h3>
+                 </div>
+                 <span className={`text-xs font-bold px-2.5 py-1 rounded-xl ${coperturaPercent >= 80 ? 'bg-emerald-100 text-emerald-700' : coperturaPercent >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'}`}>
+                    {coperturaPercent >= 80 ? 'Ottimale' : coperturaPercent >= 50 ? 'Accettabile' : 'Critico'}
+                 </span>
+              </div>
+              <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                 <div className={`h-full rounded-full transition-all duration-1000 ${coperturaPercent >= 80 ? 'bg-emerald-500' : coperturaPercent >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${coperturaPercent}%` }}></div>
+              </div>
+           </div>
+
+           <div className="hidden md:block w-px h-16 bg-slate-200"></div>
+
+           <div className="flex-1 w-full grid grid-cols-2 gap-4">
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Squadre Formate</p>
+                 <p className="text-2xl font-black text-indigo-600">
+                    {new Set(todayShifts.filter(s => s.patrolGroupId).map(s => s.patrolGroupId)).size}
+                 </p>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status Ufficiali</p>
+                 <p className={`text-xl font-black ${ufficialiStatusOk ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {ufficialiOggi} / {targetUfficiali}
+                 </p>
+              </div>
+           </div>
         </div>
       </div>
 

@@ -107,7 +107,7 @@ export default function NotificationManager() {
                 Permessi Negati dal Browser
               </div>
               <p className="text-[10px] text-red-500 font-bold uppercase tracking-tighter text-right max-w-[200px]">
-                Clicca sull'icona del lucchetto 🔒 nella barra degli indirizzi e attiva "Notifiche".
+                Clicca sull&apos;icona del lucchetto 🔒 nella barra degli indirizzi e attiva &quot;Notifiche&quot;.
               </p>
             </div>
           ) : (

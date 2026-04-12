@@ -1,15 +1,38 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Calendar, Wand2, Save, Loader2, Users, ShieldAlert, Car, MapPin, Printer } from "lucide-react"
 import toast from "react-hot-toast"
 import { cacheDataset, getCachedDataset, storeOfflineRequest, syncOfflineRequests } from "@/lib/offline-sync"
 
+interface OdsShift {
+  id: string;
+  type: string;
+  serviceCategoryId?: string | null;
+  serviceTypeId?: string | null;
+  vehicleId?: string | null;
+  timeRange?: string | null;
+  patrolGroupId?: string | null;
+  serviceDetails?: string | null;
+  user: { id: string; name: string; matricola: string; servizio?: string };
+}
+
+interface OdsCategory {
+  id: string;
+  name: string;
+  types: { id: string; name: string }[];
+}
+
+interface OdsVehicle {
+  id: string;
+  name: string;
+}
+
 export default function OdsDailyEditor() {
   const [date, setDate] = useState(new Date().toISOString().split("T")[0])
-  const [shifts, setShifts] = useState<any[]>([])
-  const [categories, setCategories] = useState<any[]>([])
-  const [vehicles, setVehicles] = useState<any[]>([])
+  const [shifts, setShifts] = useState<OdsShift[]>([])
+  const [categories, setCategories] = useState<OdsCategory[]>([])
+  const [vehicles, setVehicles] = useState<OdsVehicle[]>([])
   
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -17,7 +40,7 @@ export default function OdsDailyEditor() {
   // State for grouping singles into a patrol
   const [selectedForPatrol, setSelectedForPatrol] = useState<Set<string>>(new Set())
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     try {
       if (navigator.onLine) {
@@ -59,9 +82,12 @@ export default function OdsDailyEditor() {
       toast.error("Offline: Caricamento dati dalla cache locale")
     }
     setLoading(false)
-  }
+  }, [date])
 
-  useEffect(() => { loadData() }, [date])
+  useEffect(() => { 
+    const t = setTimeout(() => loadData(), 0);
+    return () => clearTimeout(t);
+  }, [loadData])
 
   const autoGenerate = async () => {
     if (!confirm("Verranno applicate le automazioni e sovrascritte le assegnazioni non salvate per questa data. Procedere?")) return
@@ -112,7 +138,7 @@ export default function OdsDailyEditor() {
         const d = await res.json()
         throw new Error(d.error || "Errore salvataggio")
       }
-    } catch (err: any) {
+    } catch (err) {
       console.warn('[PWA] Fallimento salvataggio OdS, tento parcheggio offline...', err)
       await storeOfflineRequest("/api/admin/ods/daily", "PUT", { updates })
       toast.success("⚠️ Offline: Modifiche OdS archiviate localmente. Verranno inviate appena torna il segnale.", { duration: 6000 })
@@ -122,7 +148,7 @@ export default function OdsDailyEditor() {
     }
   }
 
-  const updateShift = (id: string, field: string, value: any) => {
+  const updateShift = (id: string, field: string, value: string | number | boolean | null) => {
     setShifts(prev => prev.map(s => s.id === id ? { ...s, [field]: value === "" ? null : value } : s))
   }
 
@@ -144,9 +170,9 @@ export default function OdsDailyEditor() {
   }
 
   const groups = useMemo(() => {
-    const map = new Map<string, any[]>()
-    const singles: any[] = []
-    const unavailable: any[] = []
+    const map = new Map<string, OdsShift[]>()
+    const singles: OdsShift[] = []
+    const unavailable: OdsShift[] = []
 
     shifts.forEach(s => {
       const t = (s.type || "").toUpperCase().replace(/[()]/g, "").trim()
@@ -178,7 +204,7 @@ export default function OdsDailyEditor() {
             Ordine di Servizio
           </h1>
           <p className="text-slate-500 font-medium ml-16 mt-1">
-            Imposta l'allocazione giornaliera per il personale in servizio
+            Imposta l&apos;allocazione giornaliera per il personale in servizio
           </p>
         </div>
         
@@ -233,7 +259,7 @@ export default function OdsDailyEditor() {
                     <div key={idx} className="bg-white border-2 border-indigo-100 rounded-[2rem] p-5 shadow-sm">
                       <div className="flex justify-between items-start mb-4 pb-4 border-b border-indigo-50">
                         <div className="space-y-2">
-                          {patrol.map((member:any) => (
+                          {patrol.map(member => (
                             <div key={member.id} className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-xs shrink-0">
                                 {member.user.matricola}
@@ -338,7 +364,7 @@ export default function OdsDailyEditor() {
                             {s.serviceCategoryId && (
                                 <select value={s.serviceTypeId || ""} onChange={e => updateShift(s.id, 'serviceTypeId', e.target.value)} className="w-full text-[10px] font-bold text-indigo-700 bg-white border border-slate-300 rounded-lg px-2 py-1.5 outline-none focus:border-blue-500">
                                   <option value="">Generico</option>
-                                  {categories.find((c:any) => c.id === s.serviceCategoryId)?.types.map((t:any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                  {categories.find(c => c.id === s.serviceCategoryId)?.types.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                 </select>
                             )}
                           </div>

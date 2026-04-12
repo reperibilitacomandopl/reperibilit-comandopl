@@ -6,7 +6,7 @@ const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 /**
  * Invia un messaggio a un chatId specifico
  */
-export async function sendTelegramMessage(chatId: string, text: string, replyMarkup?: any) {
+export async function sendTelegramMessage(chatId: string, text: string, replyMarkup?: Record<string, unknown>) {
   if (!BOT_TOKEN) {
     console.error("❌ Telegram Bot Token non configurato.");
     return false;
@@ -37,11 +37,19 @@ export async function sendTelegramMessage(chatId: string, text: string, replyMar
   }
 }
 
+interface TelegramVoice {
+  file_id: string;
+}
+
+interface TelegramVoiceMessage {
+  voice?: TelegramVoice;
+}
+
 /**
  * Invia una nota vocale a un chatId specifico
  * Restituisce l'oggetto messaggio di Telegram se l'invio ha successo, altrimenti null
  */
-export async function sendTelegramVoice(chatId: string, audioSource: string, caption?: string) {
+export async function sendTelegramVoice(chatId: string, audioSource: string, caption?: string): Promise<TelegramVoiceMessage | null> {
   if (!BOT_TOKEN) return null;
 
   try {

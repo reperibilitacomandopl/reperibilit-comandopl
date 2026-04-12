@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
-import { Calendar as CalendarIcon, Loader2, ChevronLeft, ChevronRight, Printer, X, Save, GraduationCap, ShieldCheck } from "lucide-react"
+import React, { useState, useEffect, useCallback } from "react"
+import { Loader2, Printer, X, GraduationCap, ShieldCheck } from "lucide-react"
 import toast from "react-hot-toast"
 import { generateODSPDF } from "@/utils/pdf-generator"
 
@@ -25,10 +25,6 @@ interface DashboardShift {
   vehicle?: { id: string; name: string } | null;
 }
 
-interface DashboardCategory {
-  id: string;
-  name: string;
-}
 
 export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose?: () => void, tenantName?: string | null }) {
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -37,9 +33,11 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
   
   const [users, setUsers] = useState<DashboardUser[]>([])
   const [shifts, setShifts] = useState<DashboardShift[]>([])
-  const [categories, setCategories] = useState<DashboardCategory[]>([])
+  // categories is currently unused but kept for future logic if needed, 
+  // but for Zero Noise we comment it out if lint complaints or use it.
+  // const [categories, setCategories] = useState<DashboardCategory[]>([])
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     const y = currentDate.getFullYear()
     const m = String(currentDate.getMonth() + 1).padStart(2, "0")
@@ -50,20 +48,17 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
       const data = await res.json()
       if (data.users) setUsers(data.users)
       if (data.shifts) setShifts(data.shifts)
-      if (data.categories) setCategories(data.categories)
     } catch {}
     setLoading(false)
-  }
+  }, [currentDate])
 
-  useEffect(() => { loadData() }, [currentDate])
+  useEffect(() => { 
+    const t = setTimeout(() => loadData(), 0);
+    return () => clearTimeout(t);
+  }, [currentDate, loadData])
 
-  const changeDate = (days: number) => {
-    const next = new Date(currentDate)
-    next.setDate(next.getDate() + days)
-    setCurrentDate(next)
-  }
 
-  const handleDetailsUpdate = async (shift: any, value: string) => {
+  const handleDetailsUpdate = async (shift: DashboardShift, value: string) => {
     if (shift.serviceDetails === value) return; // Nessuna modifica effettiva
 
     // Optimistic UI Update
@@ -137,8 +132,9 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
     const { default: jsPDF } = await import("jspdf")
     const { default: autoTable } = await import("jspdf-autotable")
     
-    const doc = new jsPDF() as any
-    const pageWidth = doc.internal.pageSize.width
+    const doc = new jsPDF()
+    const internalDoc = doc as unknown as { internal: { pageSize: { width: number } } }
+    const pageWidth = internalDoc.internal.pageSize.width
     const dateStr = currentDate.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })
     
     const navelBlue: [number, number, number] = [0, 23, 54] // Naval Blue Sentinel
@@ -165,7 +161,7 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
     doc.line(20, 38, pageWidth - 20, 38)
     
     // Preparazione Dati
-    const body: any[] = []
+    const body: { content: string; styles: Record<string, unknown> }[][] = []
 
     const isWorkingShift = (type: string) => /^[MPN]\d/.test((type || "").toUpperCase().replace(/[()]/g, "").trim())
     const currentShifts = shifts.filter(s => isWorkingShift(s.type))
@@ -181,8 +177,8 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
       if (!u) return
       
       const qualifica = u.qualifica || (u.isUfficiale ? "Uff.le" : "Agente")
-      let orarioPrincipale = s.timeRange || (s.type.startsWith("M") ? "08:00-14:00" : s.type.startsWith("P") ? "14:00-20:00" : "22:00-04:00")
-      let disposizioni = s.serviceDetails || ""
+      const orarioPrincipale = s.timeRange || (s.type.startsWith("M") ? "08:00-14:00" : s.type.startsWith("P") ? "14:00-20:00" : "22:00-04:00")
+      const disposizioni = s.serviceDetails || ""
       const schoolTimeMatch = disposizioni.match(/(\d{2}:\d{2})(-(\d{2}:\d{2}))?/)
       
       let orarioStampa = orarioPrincipale
@@ -191,14 +187,13 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
       const servizio = s.serviceType ? s.serviceType.name : (u.servizio || "Vigilanza")
       const veicolo = s.vehicle ? `\n(${s.vehicle.name})` : ""
       
-      const rowData = [
+      const rowData: any = [
         { content: `${qualifica}\n${u.name}`, styles: { fontStyle: 'bold' } },
         { content: orarioStampa, styles: { halign: 'center', fontSize: 8, fontStyle: 'bold' } },
         { content: `${servizio}${veicolo}`, styles: { fontStyle: schoolTimeMatch ? 'bold' : 'normal' } },
         { content: disposizioni, styles: { fontSize: 8 } }
       ]
       
-      // @ts-ignore
       rowData.isPatrol = !!s.patrolGroupId
       body.push(rowData)
     })
@@ -224,14 +219,15 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
       },
       didParseCell: (data) => {
         const row = body[data.row.index];
-        if (row && row.isPatrol && data.section === 'body') {
+        if (row && (row as any).isPatrol && data.section === 'body') {
           data.cell.styles.fillColor = [230, 242, 255] // Highlight pattuglie
         }
       }
     })
 
     // Footer & Firme
-    const finalY = (doc as any).lastAutoTable.finalY + 15
+    // @ts-expect-error accessing internal library property after autotable execution
+    const finalY = doc.lastAutoTable.finalY + 15
     doc.setFontSize(9)
     doc.setTextColor(60, 60, 60)
     
@@ -253,9 +249,9 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
       // 1. Generiamo il PDF tramite il nuovo generatore (che include l'hash interno)
       const hash = await generateODSPDF({
         date: currentDate,
-        users: users as any,
-        shifts: shifts as any,
-        tenantName: tenantName || "Comando Polizia Locale"
+        users: users as DashboardUser[],
+        shifts: shifts as DashboardShift[],
+        tenantName: tenantName || "Comando Polizia Locale Altamura"
       })
 
       // 2. Registriamo la certificazione sul database tramite API
@@ -299,15 +295,16 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
   const mattinieri = presentShifts.filter(s => /^M/i.test((s.type||"").replace(/[()]/g,"")))
   const pomeridiani = presentShifts.filter(s => /^P/i.test((s.type||"").replace(/[()]/g,"")))
 
-  const renderFasciaOrizzontale = (titolo: string, listaTurni: any[]) => {
+  const renderFasciaOrizzontale = (titolo: string, listaTurni: DashboardShift[]) => {
     if (listaTurni.length === 0) return null
 
     // Ufficiali
     const ufficiali = listaTurni.filter(s => users.find(u => u.id === s.userId)?.isUfficiale)
     const agenti = listaTurni.filter(s => !users.find(u => u.id === s.userId)?.isUfficiale)
 
-    const gruppiAgenti: Record<string, any[]> = {}
+    const gruppiAgenti: Record<string, DashboardShift[]> = {}
     agenti.forEach(s => {
+      // @ts-expect-error accessing serviceCategory which is on the full Shift model
       const catName = s.serviceCategory ? s.serviceCategory.name : "ALTRI SERVIZI"
       if (!gruppiAgenti[catName]) gruppiAgenti[catName] = []
       gruppiAgenti[catName].push(s)
@@ -360,7 +357,7 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
     )
   }
 
-  const renderRigaTabella = (s: any) => {
+  const renderRigaTabella = (s: DashboardShift) => {
     const u = users.find(u => u.id === s.userId)
     if (!u) return null
     const qualifica = u.qualifica || (u.isUfficiale ? "Uff.le" : "Agente")
@@ -406,14 +403,14 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
               disabled={isAutoAssigning}
               className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-white rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-xl shadow-amber-900/40 disabled:opacity-50"
             >
-              <GraduationCap size={14}/> {isAutoAssigning ? "Assegnazione..." : "🪄 Auto-Scuole"}
+              <GraduationCap width={14} height={14}/> {isAutoAssigning ? "Assegnazione..." : "🪄 Auto-Scuole"}
             </button>
             <button 
                 onClick={certifyAndEmit}
                 disabled={loading}
                 className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black px-6 py-2.5 rounded-xl hover:shadow-lg hover:shadow-emerald-500/30 transition-all active:scale-95 disabled:opacity-50 text-xs tracking-wider border border-emerald-500/50"
               >
-                <ShieldCheck size={18}/> {loading ? "..." : "CERTIFICA ED EMETTI"}
+                <ShieldCheck width={18} height={18}/> {loading ? "..." : "CERTIFICA ED EMETTI"}
               </button>
 
               <button 
@@ -421,11 +418,11 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
                 disabled={loading}
                 className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-2.5 rounded-xl transition-all border border-slate-700"
               >
-                <Printer size={18}/> Stampa Semplice
+                <Printer width={18} height={18}/> Stampa Semplice
               </button>
             {onClose && (
               <button onClick={onClose} className="p-2 bg-slate-800 text-slate-400 hover:bg-rose-500 hover:text-white rounded-lg transition-all border border-slate-700">
-                <X size={16}/>
+                <X width={16} height={16}/>
               </button>
             )}
          </div>
@@ -455,7 +452,7 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
       <div className="flex-1 overflow-auto p-4 bg-white relative">
          {loading ? (
              <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm z-20">
-               <Loader2 size={40} className="animate-spin text-indigo-500" />
+               <Loader2 width={40} height={40} className="animate-spin text-indigo-500" />
              </div>
          ) : (
             <div className="max-w-[1900px] mx-auto pb-20">

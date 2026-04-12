@@ -1,11 +1,13 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
+import LandingPage from "@/components/LandingPage"
 
 export default async function RootPage() {
   const session = await auth()
   
   if (!session?.user) {
-    redirect("/login")
+    // Visitatore non autenticato → mostra la landing page commerciale
+    return <LandingPage />
   }
 
   const { tenantSlug, role } = session.user

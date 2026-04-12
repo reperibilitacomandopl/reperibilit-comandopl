@@ -2,9 +2,9 @@ import { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Portale Caserma - Altamura',
-    short_name: 'Comando P.L.',
-    description: 'Gestione Operativa e Turnazioni Polizia Locale',
+    name: 'Sentinel Security Suite',
+    short_name: 'Sentinel',
+    description: 'La Sala Operativa Digitale per la Polizia Locale',
     start_url: '/',
     display: 'standalone',
     background_color: '#0f172a',

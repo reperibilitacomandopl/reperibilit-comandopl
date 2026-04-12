@@ -47,9 +47,10 @@ export async function sendPushNotification(userId: string, payload: { title: str
           pushSubscription,
           JSON.stringify(payload)
         )
-      } catch (error: any) {
+      } catch (error) {
+        const err = error as { statusCode?: number };
         // Se il token è scaduto o non più valido, lo rimuoviamo dal database
-        if (error.statusCode === 410 || error.statusCode === 404) {
+        if (err.statusCode === 410 || err.statusCode === 404) {
           console.warn(`[PUSH-SERVICE] Token scaduto per l'utente ${userId}, rimozione...`)
           await prisma.pushSubscription.delete({ where: { endpoint: sub.endpoint } })
         } else {

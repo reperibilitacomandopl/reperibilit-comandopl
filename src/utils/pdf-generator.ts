@@ -44,7 +44,12 @@ interface jsPDFWithAutoTable extends jsPDF {
   autoTable: (options: import("jspdf-autotable").UserOptions) => jsPDF;
   lastAutoTable: { finalY: number };
   internal: any; 
-  addImage: any; // Using any for addImage to avoid complex overloading mismatch
+  addImage: any;
+}
+
+interface jsPDFCellConfig {
+  content: string;
+  styles?: Record<string, unknown>;
 }
 
 /**
@@ -460,7 +465,9 @@ export async function generateODSPDF({
       return (a.patrolGroupId ? -1 : 1);
     });
 
-    const body: any[] = sortedShifts.map(s => {
+    type ODSBodyRow = jsPDFCellConfig[] & { isPatrol?: boolean };
+    
+    const body: ODSBodyRow[] = sortedShifts.map(s => {
       const u = users.find(u => u.id === s.userId);
       if (!u) return null;
       
@@ -475,17 +482,17 @@ export async function generateODSPDF({
       const servizio = s.serviceType ? s.serviceType.name : (u.servizio || "Vigilanza");
       const veicolo = s.vehicle ? `\n(${s.vehicle.name})` : "";
       
-      const rowData = [
+      const rowData: jsPDFCellConfig[] = [
         { content: `${qualifica}\n${u.name}`, styles: { fontStyle: 'bold' } },
         { content: orarioStampa, styles: { halign: 'center', fontSize: 8, fontStyle: 'bold' } },
         { content: `${servizio}${veicolo}`, styles: { fontStyle: schoolTimeMatch ? 'bold' : 'normal' } },
         { content: disposizioni, styles: { fontSize: 8 } }
       ];
       
-      // @ts-ignore
-      rowData.isPatrol = !!s.patrolGroupId;
-      return rowData;
-    }).filter(row => row !== null);
+      const extendedRow = rowData as ODSBodyRow;
+      extendedRow.isPatrol = !!s.patrolGroupId;
+      return extendedRow;
+    }).filter((row): row is ODSBodyRow => row !== null);
 
     // 3. Generazione Tabella
     autoTable(doc, {
@@ -511,7 +518,7 @@ export async function generateODSPDF({
     });
 
     // 4. Sezione Firme
-    const finalY = (doc as any).lastAutoTable.finalY + 15;
+    const finalY = (doc as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
     doc.setFontSize(9);
     doc.setTextColor(60, 60, 60);
     doc.text("L'UFFICIALE DI SERVIZIO", 45, finalY, { align: "center" });

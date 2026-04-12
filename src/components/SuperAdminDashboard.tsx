@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Building2, Users, Calendar, Truck, Plus, Power, PowerOff, RefreshCw, Shield, X, ChevronRight, Globe, Zap, Clock, Settings } from "lucide-react"
+import { Building2, Users, Calendar, Plus, Power, PowerOff, RefreshCw, Shield, X, Globe, Zap, Settings } from "lucide-react"
 import toast from "react-hot-toast"
+import Link from "next/link"
 
 type TenantData = {
   id: string
@@ -152,8 +153,9 @@ export default function SuperAdminDashboard({ tenants, currentUser }: { tenants:
       setFormName(""); setFormSlug(""); setFormAddress(""); setFormPiva("")
       setFormAdminName(""); setFormAdminMatricola(""); setFormAdminPassword("")
       window.location.reload()
-    } catch (err: any) {
-      toast.error(err.message)
+    } catch (err: unknown) {
+      if (err instanceof Error) toast.error(err.message)
+      else toast.error("Errore sconosciuto")
     } finally {
       setIsCreating(false)
     }
@@ -199,9 +201,9 @@ export default function SuperAdminDashboard({ tenants, currentUser }: { tenants:
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-slate-400 font-medium">{currentUser.name}</span>
-            <a href="/" className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg font-bold transition-all">
+            <Link href="/" className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg font-bold transition-all">
               ← Torna al Pannello
-            </a>
+            </Link>
           </div>
         </div>
       </header>

@@ -72,7 +72,7 @@ self.addEventListener('push', (event: PushEvent) => {
         actions: [
           { action: 'open', title: isSos ? 'RISPONDI ORA' : 'Vedi Dettagli' }
         ]
-      } as any)
+      } as NotificationOptions)
     );
   } catch (e) {
     console.error('[PWA-PUSH] Errore parsing push:', e);

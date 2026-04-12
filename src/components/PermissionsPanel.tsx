@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import toast from "react-hot-toast"
-import { Shield, Key, Check, X, RefreshCw, UserCheck, Search } from "lucide-react"
+import { Shield, Key, RefreshCw, Search } from "lucide-react"
 
 interface UserPermission {
   id: string
@@ -126,7 +126,7 @@ export default function PermissionsPanel({ users: initialUsers }: PermissionsPan
                   ].map((perm) => (
                     <td key={perm.key} className="px-6 py-4 text-center">
                       <button
-                        onClick={() => togglePermission(user.id, perm.key as any)}
+                        onClick={() => togglePermission(user.id, perm.key as keyof UserPermission)}
                         disabled={loadingStates[`${user.id}-${perm.key}`] || (user.role === 'ADMIN')}
                         className={`relative inline-flex h-7 w-12 items-center rounded-full transition-all duration-300 focus:outline-none ${
                           user[perm.key as keyof UserPermission] ? 'bg-indigo-600 shadow-lg shadow-indigo-600/30' : 'bg-slate-200'

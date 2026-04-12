@@ -6,11 +6,12 @@ import { CalendarDays, AlertCircle, FileDown, Clock, ShieldCheck, Shield, Plus, 
 import { isHoliday } from "@/utils/holidays"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { isMalattia, isMattina } from "@/utils/shift-logic"
+import { isMalattia } from "@/utils/shift-logic"
 import NotificationHub from "@/components/NotificationHub"
 import PlanningMobileView from "./PlanningMobileView"
 import NotificationManager from "./NotificationManager"
 import { cacheDataset, getCachedDataset, storeOfflineRequest, syncOfflineRequests } from "@/lib/offline-sync"
+import BachecaPanel from "@/components/BachecaPanel"
 
 export interface DashboardShift {
   id: string
@@ -19,9 +20,9 @@ export interface DashboardShift {
   type: string
   repType: string | null
   timeRange?: string | null
-  serviceCategory?: any
-  serviceType?: any
-  vehicle?: any
+  serviceCategory?: { id: string, name: string } | null
+  serviceType?: { id: string, name: string } | null
+  vehicle?: { id: string, name: string, plate?: string } | null
   serviceDetails?: string | null
   durationHours?: number
   overtimeHours?: number
@@ -137,6 +138,63 @@ function paramsToColor(color: string) {
   return CAT_COLORS[color]?.bar || 'bg-indigo-500'
 }
 
+interface BalanceDetail {
+  code: string
+  label: string
+  used: number
+  initialValue: number
+  residue: number
+  unit: 'HOURS' | 'DAYS'
+}
+
+interface BalanceData {
+  user?: {
+    qualifica?: string
+    ruoloInSquadra?: string
+    telegramChatId?: string | null
+  }
+  details?: BalanceDetail[]
+  ferieResidue?: number
+  ferieTotali?: number
+  permessi104Residui?: number
+  permessi104Totali?: number
+  festivitaResidue?: number
+  festivitaTotali?: number
+  [key: string]: unknown
+}
+
+interface DutyMember {
+  id: string
+  name: string
+  matricola: string
+  phone?: string | null
+  telegramChatId?: string | null
+  repType: string
+}
+
+interface SwapRequest {
+  id: string
+  requester: { id: string, name: string }
+  targetUser: { id: string, name: string }
+  shift: { id: string, date: string, repType: string }
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'APPROVED'
+  targetUserId: string
+}
+
+interface OdsPartner {
+  id: string
+  user: {
+    id: string
+    name: string
+    matricola: string
+  }
+}
+
+interface OdsData {
+  shift: DashboardShift
+  partners: OdsPartner[]
+}
+
 type AgendaItem = {
   id: string
   date: string
@@ -147,14 +205,13 @@ type AgendaItem = {
 }
 
 interface AgentDashboardProps {
-  currentUser: { id: string, matricola: string, name: string, telegramChatId?: string | null }
+  currentUser: { id: string, matricola: string, name: string, isUfficiale?: boolean, telegramChatId?: string | null }
   shifts: DashboardShift[]
-  allAgents: any[]
+  allAgents: { id: string; name: string; matricola: string }[]
   currentYear: number
   currentMonth: number
   isPublished: boolean
   currentView?: string
-  tenantName?: string | null
   tenantSlug?: string | null
   canManageShifts?: boolean
   canManageUsers?: boolean
@@ -164,7 +221,7 @@ interface AgentDashboardProps {
   signOutAction?: () => Promise<void>
 }
 
-export default function AgentDashboard({ currentUser, shifts, allAgents, currentYear, currentMonth, isPublished, currentView, tenantName, tenantSlug, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem, userRole, signOutAction }: AgentDashboardProps) {
+export default function AgentDashboard({ currentUser, shifts, allAgents, currentYear, currentMonth, isPublished, currentView: _currentView, tenantSlug: _tenantSlug, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem, userRole, signOutAction }: AgentDashboardProps) {
   const router = useRouter()
   const [showSyncModal, setShowSyncModal] = useState(false)
   const [showAgenda, setShowAgenda] = useState(false)
@@ -179,13 +236,13 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   const [telegramLoading, setTelegramLoading] = useState(false)
   
   // Duty Officer State
-  const [dutyTeam, setDutyTeam] = useState<any[]>([])
+  const [dutyTeam, setDutyTeam] = useState<DutyMember[]>([])
   const [isOfficerOnDuty, setIsOfficerOnDuty] = useState(false)
-  const [loadingDutyTeam, setLoadingDutyTeam] = useState(false)
+  const [_loadingDutyTeam, setLoadingDutyTeam] = useState(false)
   const [reqLoading, setReqLoading] = useState(false)
 
   // Shift Swap State
-  const [swapRequests, setSwapRequests] = useState<any[]>([])
+  const [swapRequests, setSwapRequests] = useState<SwapRequest[]>([])
   const [showSwapModal, setShowSwapModal] = useState(false)
   const [showAbsenceModal, setShowAbsenceModal] = useState(false)
   const [reqDate, setReqDate] = useState('')
@@ -196,16 +253,16 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   const [reqEndTime, setReqEndTime] = useState('')
   const [reqHours, setReqHours] = useState('')
   const [isHourlyRequest, setIsHourlyRequest] = useState(false)
-  const [selectedShiftForSwap, setSelectedShiftForSwap] = useState<any>(null)
+  const [selectedShiftForSwap, setSelectedShiftForSwap] = useState<DashboardShift | null>(null)
   const [swapDate, setSwapDate] = useState<string>(new Date().toISOString().split('T')[0])
   const [targetColleagueId, setTargetColleagueId] = useState('')
   const [swapLoading, setSwapLoading] = useState(false)
   
   // Daily OdS State
-  const [myOds, setMyOds] = useState<any>(null)
+  const [myOds, setMyOds] = useState<OdsData | null>(null)
   
   // Balances
-  const [balances, setBalances] = useState<any>(null)
+  const [balances, setBalances] = useState<BalanceData | null>(null)
   
   // Clock-in / GPS State
   const [isClockedIn, setIsClockedIn] = useState<'IN' | 'OUT' | null>(null)
@@ -230,7 +287,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
       const res = await fetch(`/api/user/balances?year=${currentYear}`)
       if (res.ok) {
         const data = await res.json()
-        setBalances(data) // Now stores { year, user { qualifica, ... }, details: [...] }
+        setBalances(data) 
       }
     } catch { /* silent */ }
   }, [currentYear])
@@ -245,8 +302,8 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
         setDutyTeam(data.team || [])
         setIsOfficerOnDuty(true)
       }
-    } catch (err) {
-      console.error("Error fetching duty team:", err)
+    } catch (error) {
+      console.error("Error fetching duty team:", error)
     } finally {
       setLoadingDutyTeam(false)
     }
@@ -286,7 +343,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
           }
         }
       }).catch(() => {
-        // Tentativo recupero stato timbratura da IndexedDB (futuro)
       })
 
     // Fetch ODS con Caching
@@ -296,7 +352,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
         if(data.success && data.shift && (data.shift.timeRange || data.shift.serviceCategoryId)) {
           const odsPayload = { shift: data.shift, partners: data.partners }
           setMyOds(odsPayload)
-          cacheDataset('my-ods', odsPayload) // Salva in locale
+          cacheDataset('my-ods', odsPayload) 
         }
       })
       .catch(async () => {
@@ -321,7 +377,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
       if (action === 'sos') {
         const confirmSos = window.confirm("🚨 INVIARE SOS GPS ALLA CENTRALE? La tua posizione attuale verrà trasmessa immediatamente.")
         if (confirmSos) {
-          // Trigger manuale SOS (uso timeout per garantire che il componente sia pronto)
           setTimeout(() => {
              const sosBtn = document.getElementById('btn-sos-pwa')
              if (sosBtn) (sosBtn as HTMLElement).click()
@@ -335,7 +390,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
         toast("Visualizzazione turni mensili", { icon: "📅" })
       }
       
-      // Pulisci URL per evitare loop
       window.history.replaceState({}, '', window.location.pathname)
     }
 
@@ -436,8 +490,8 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
         console.error('Save failed:', errData)
         toast.error('Errore durante il salvataggio: ' + (errData.error || 'Server error'))
       }
-    } catch (err) {
-      console.error('Save exception:', err)
+    } catch (error) {
+      console.error('Save exception:', error)
       toast.error('Errore di connessione o del server.')
     }
     setAgendaSaving(false)
@@ -453,7 +507,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        // Controllo precisione (Accuracy > 500m è inattendibile per Geofencing a 50m)
         if (pos.coords.accuracy > 500) {
           setClockLoading(false)
           return toast.error("Segnale GPS troppo debole! Esci all'aperto o attendi un segnale più preciso.", { id: toastId })
@@ -487,10 +540,9 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
               (data.error || "Errore durante la timbratura")
             toast.error(errorMsg, { id: toastId, duration: 6000 })
           }
-        } catch (err: any) {
-          console.warn('[PWA] Invio timbratura fallito, tento archiviazione locale...', err)
+        } catch (error) {
+          console.warn('[PWA] Invio timbratura fallito, tento archiviazione locale...', error)
           
-          // Fallback Offline: Parcheggia la richiesta nel DB Locale
           await storeOfflineRequest('/api/admin/clock-in', 'POST', {
             type,
             lat: pos.coords.latitude,
@@ -505,7 +557,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
           setClockLoading(false)
         }
       },
-      (err) => {
+      () => {
         setClockLoading(false)
         toast.error("Impossibile ottenere la posizione. Verifica i permessi GPS.", { id: toastId })
       },
@@ -549,7 +601,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
       timerRef.current = setInterval(() => {
         setRecordingDuration(prev => prev + 1)
       }, 1000)
-    } catch (err) {
+    } catch {
       toast.error("Impossibile accedere al microfono.")
     }
   }
@@ -597,7 +649,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
         } else {
           throw new Error('Send failed')
         }
-      } catch (err) {
+      } catch {
         toast.error('Errore invio SOS.', { id: toastId })
       }
     }, () => {
@@ -633,7 +685,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
   })
 
   // Collect REP days for this agent
-  const repDays: { day: number; dayName: string; repType: string; baseType: string; shiftObj: any }[] = []
+  const repDays: { day: number; dayName: string; repType: string; baseType: string; shiftObj: DashboardShift }[] = []
   dayInfo.forEach(di => {
     if (di.isNextMonth) return
     const targetDate = new Date(Date.UTC(currentYear, currentMonth - 1, di.day)).toISOString()
@@ -664,7 +716,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
     
     doc.setFontSize(10)
     doc.setTextColor(100, 116, 139) // slate-500
-    doc.text(`Polizia Locale ${tenantName ? `di ${tenantName}` : "Nazionale"}`, 14, 30)
+    doc.text(`Polizia Locale di Altamura`, 14, 30)
     doc.text(`Generato il: ${new Date().toLocaleDateString('it-IT')} alle ${new Date().toLocaleTimeString('it-IT')}`, 14, 35)
     
     // Personal Info
@@ -698,7 +750,8 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
 
     // Details Table
     doc.setFontSize(14)
-    doc.text('Dettaglio Agenda Personale', 14, (doc as any).lastAutoTable.finalY + 15)
+    const tableStartY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
+    doc.text('Dettaglio Agenda Personale', 14, tableStartY)
     
     const tableData = agendaEntries.map(e => [
       new Date(e.date).toLocaleDateString('it-IT'),
@@ -709,7 +762,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
     ])
 
     autoTable(doc, {
-      startY: (doc as any).lastAutoTable.finalY + 20,
+      startY: tableStartY + 5,
       head: [['Data', 'Cod.', 'Descrizione', 'Ore', 'Note']],
       body: tableData,
       theme: 'grid',
@@ -745,7 +798,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
 
         <div className="flex gap-4">
           <Link 
-            href={`/${tenantSlug}?month=${prevMonth}&year=${prevYear}${currentView ? `&view=${currentView}` : ''}`}
+            href={`/?view=agent&month=${prevMonth}&year=${prevYear}`}
             className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all shadow-sm"
           >
             <ChevronLeft size={18} />
@@ -754,7 +807,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
           
           <select 
             value={currentMonth}
-            onChange={(e) => router.push(`/${tenantSlug}?month=${e.target.value}&year=${currentYear}${currentView ? `&view=${currentView}` : ''}`)}
+            onChange={(e) => router.push(`/?view=agent&month=${e.target.value}&year=${currentYear}`)}
             className="px-6 py-3 bg-white border border-slate-200 text-slate-800 rounded-xl font-bold text-sm focus:ring-2 focus:ring-blue-500 cursor-pointer"
           >
             {monthNames.map((name, i) => <option key={name} value={i + 1}>{name}</option>)}
@@ -774,7 +827,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
 
   return (
     <div className="space-y-8 pb-10 relative">
-      {/* GLOBAL MOBILE HEADER (Fixed at top for Operators) */}
       <header className="lg:hidden sticky top-0 z-[100] bg-slate-900/95 backdrop-blur-xl border-b border-white/5 p-4 flex items-center justify-between shadow-lg -mx-4 -mt-4 sm:-mx-8 sm:-mt-8 mb-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-indigo-500/20 rounded-xl">
@@ -804,10 +856,8 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
         </div>
       </header>
 
-      {/* Gestore Notifiche PWA */}
       <NotificationManager />
 
-      {/* Duty Officer Dashboard Section (Solo se in servizio oggi) */}
       {isOfficerOnDuty && dutyTeam.length > 0 && (
         <div className="bg-white rounded-[2rem] border-4 border-blue-600 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-4 duration-700">
           <div className="bg-blue-600 p-6 text-white flex justify-between items-center">
@@ -860,14 +910,14 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
             
             <div className="mt-6 pt-6 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest max-w-sm text-center sm:text-left">
-                ℹ️ Questa rubrica è visibile esclusivamente all'Ufficiale incaricato per la giornata odierna.
+                ℹ️ Questa rubrica è visibile esclusivamente all&apos;Ufficiale incaricato per la giornata odierna.
               </p>
               <button 
                 onClick={async () => {
                   if (!confirm('🚨 Inviare allerta emergenza via Telegram a tutto il team?')) return
                   const res = await fetch('/api/admin/alert-emergency', { method: 'POST' })
                   if (res.ok) toast.success('🚨 Allerta inviata con successo!')
-                  else toast.error('Impossibile inviare l\'allerta.')
+                  else toast.error('Impossibile inviare l&apos;allerta.')
                 }}
                 className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-black text-sm shadow-xl shadow-red-200 transition-all hover:scale-[1.03] active:scale-[0.97]"
               >
@@ -879,7 +929,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
         </div>
       )}
 
-      {/* EMERGENCY SOS QUICK ACTION */}
       <div className="block lg:hidden px-2 mb-2">
          <button 
            id="btn-sos-pwa"
@@ -894,7 +943,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
          </button>
       </div>
 
-      {/* SOS PREMIUM MODAL */}
       {showSosModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
            <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl" onClick={() => !isRecording && setShowSosModal(false)}></div>
@@ -907,7 +955,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                     </button>
                  </div>
                  <h3 className="text-2xl font-black uppercase tracking-tight">SOS EMERGENZA</h3>
-                 <p className="text-red-100 text-xs font-bold uppercase tracking-widest opacity-80">Descrivi l'evento per la centrale</p>
+                 <p className="text-red-100 text-xs font-bold uppercase tracking-widest opacity-80">Descrivi l&apos;evento per la centrale</p>
               </div>
 
               <div className="p-8 space-y-6 flex-1 overflow-y-auto">
@@ -921,7 +969,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                     />
                  </div>
 
-                 {/* Voice Message Section */}
                  <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
                     <div className="flex items-center justify-between mb-4">
                        <div className="flex items-center gap-2">
@@ -956,7 +1003,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                             <div className="flex items-center gap-3">
                                <div className="p-2 bg-emerald-500 text-white rounded-lg">
                                   <Mic size={14} />
-                               </div>
+                                </div>
                                <span className="text-[10px] font-black text-emerald-700 uppercase">Vocale Registrato</span>
                             </div>
                             <button onClick={() => setAudioBlob(null)} className="text-rose-500 p-2 hover:bg-rose-50 rounded-lg transition-colors">
@@ -975,7 +1022,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                        <Send size={20} /> INVIA SOS ALLA CENTRALE
                     </button>
                     <p className="text-[9px] text-slate-400 font-bold uppercase text-center px-6">
-                       L'invio trasmette istantaneamente la tua posizione GPS, la nota e l'audio a tutti gli ufficiali e amministratori.
+                       L&apos;invio trasmette istantaneamente la tua posizione GPS, la nota e l&apos;audio a tutti gli ufficiali e amministratori.
                     </p>
                  </div>
               </div>
@@ -983,7 +1030,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
         </div>
       )}
 
-      {/* SMART CLOCK-OUT REMINDER (Sticky/Banner style) */}
       {isClockedIn === 'IN' && (
         <div className="px-2 mb-6 animate-in fade-in slide-in-from-top duration-500">
           <div className="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-3xl p-5 text-white shadow-xl shadow-emerald-500/20 relative overflow-hidden group">
@@ -1026,7 +1072,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
               Ciao, {currentUser.name.split(" ")[0]}! 👋
             </h2>
             
-            {/* Widget Timbratura GPS */}
             <div className="mt-6 flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-3 bg-white/10 backdrop-blur-xl border border-white/20 p-4 rounded-3xl shadow-xl">
                 <div className={`p-3 rounded-2xl ${isClockedIn === 'IN' ? 'bg-emerald-500 shadow-lg shadow-emerald-500/40' : 'bg-slate-800'}`}>
@@ -1039,7 +1084,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                   </p>
                 </div>
               </div>
- 
+  
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   disabled={clockLoading || isClockedIn === 'IN'}
@@ -1055,7 +1100,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                   ) : <MapPin size={18} />}
                   Entra
                 </button>
- 
+  
                 <button
                   disabled={clockLoading || isClockedIn !== 'IN'}
                   onClick={() => handleClockAction('OUT')}
@@ -1076,7 +1121,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
             <div className="flex items-center gap-2 mt-8">
               <div className="flex items-center bg-white/10 backdrop-blur-md rounded-2xl p-1 border border-white/10">
                 <Link 
-                  href={`/${tenantSlug}?month=${prevMonth}&year=${prevYear}${currentView ? `&view=${currentView}` : ''}`} 
+                  href={`/?view=agent&month=${prevMonth}&year=${prevYear}`} 
                   className="p-2 hover:bg-white/20 rounded-xl transition-all"
                   title="Mese precedente"
                 >
@@ -1086,7 +1131,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                 <div className="flex items-center gap-1">
                   <select 
                     value={currentMonth}
-                    onChange={(e) => router.push(`/${tenantSlug}?month=${e.target.value}&year=${currentYear}${currentView ? `&view=${currentView}` : ''}`)}
+                    onChange={(e) => router.push(`/?view=agent&month=${e.target.value}&year=${currentYear}`)}
                     className="bg-transparent border-none text-xs font-black uppercase tracking-widest text-center focus:ring-0 cursor-pointer py-2 pl-2 pr-6 appearance-none"
                     style={{ backgroundPosition: 'right 0.2rem center' }}
                   >
@@ -1096,7 +1141,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                   </select>
                   <select 
                     value={currentYear}
-                    onChange={(e) => router.push(`/${tenantSlug}?month=${currentMonth}&year=${e.target.value}${currentView ? `&view=${currentView}` : ''}`)}
+                    onChange={(e) => router.push(`/?view=agent&month=${currentMonth}&year=${e.target.value}`)}
                     className="bg-transparent border-none text-xs font-black text-white/40 focus:ring-0 cursor-pointer py-2 pl-1 pr-6 appearance-none"
                     style={{ backgroundPosition: 'right 0.2rem center' }}
                   >
@@ -1107,7 +1152,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                 </div>
  
                 <Link 
-                  href={`/${tenantSlug}?month=${nextMonth}&year=${nextYear}${currentView ? `&view=${currentView}` : ''}`} 
+                  href={`/?view=agent&month=${nextMonth}&year=${nextYear}`} 
                   className="p-2 hover:bg-white/10 rounded-xl transition-all"
                   title="Mese successivo"
                 >
@@ -1131,7 +1176,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
             <div className="flex items-center justify-between sm:justify-start gap-4">
               {(canManageShifts || canManageUsers || canVerifyClockIns || canConfigureSystem || userRole === "ADMIN") && (
                 <Link
-                  href={`/${tenantSlug}/admin/pannello`}
+                  href={`/admin/pannello`}
                   className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <ShieldCheck size={18} />
@@ -1160,9 +1205,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
         </div>
       </div>
 
-      {/* TOP INFO CARDS: ANAGRAFICA & TURNO OGGI */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 -mt-4">
-        {/* Scheda Anagrafica Premium */}
         <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-xl overflow-hidden group hover:border-blue-400 transition-all duration-300 relative">
           <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 opacity-40 rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:scale-150"></div>
           <div className="p-8 flex items-center gap-6 relative z-10">
@@ -1194,7 +1237,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
           </div>
         </div>
 
-        {/* Scheda Turno Oggi Premium */}
         <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-xl overflow-hidden group hover:border-emerald-400 transition-all duration-300 relative">
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 opacity-40 rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:scale-150"></div>
           <div className="p-8 flex items-center gap-6 relative z-10">
@@ -1235,21 +1277,20 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
               ) : (
                 <div>
                   <h3 className="text-2xl font-black text-slate-400 leading-tight italic tracking-tight">Servizio non assegnato</h3>
-                  <p className="text-[10px] text-slate-400 font-bold mt-2 uppercase tracking-widest">Consulta l'agenda per dettagli</p>
+                  <p className="text-[10px] text-slate-400 font-bold mt-2 uppercase tracking-widest">Consulta l&apos;agenda per dettagli</p>
                 </div>
               )}
             </div>
-            {myOds?.shift?.vehicle && (
+            {myOds?.shift && myOds.shift.vehicle && (
               <div className="bg-slate-900 text-white px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase flex items-center gap-2.5 shadow-lg border border-white/10 group-hover:scale-105 transition-transform">
                 <Car size={16} className="text-emerald-400" />
-                {myOds.shift.vehicle.name}
+                {myOds.shift.vehicle.name as string}
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* DAILY ODS WIDGET (Il mio servizio per oggi) */}
       {myOds && (
         <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl shadow-blue-100/30 overflow-hidden animate-in zoom-in-95 duration-500">
            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
@@ -1262,12 +1303,11 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
               </div>
            </div>
            <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-              
               <div className="flex flex-col gap-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                  <div className="flex items-center gap-2 text-slate-400 font-bold uppercase text-[10px] tracking-widest mb-1"><MapPin size={14}/> Servizio / Zona</div>
                  <h4 className="font-black text-slate-800 text-lg leading-tight">
-                    {myOds.shift.serviceCategory?.name || "Non specificato"}
-                    {myOds.shift.serviceType && <span className="block text-blue-600 text-sm mt-1">{myOds.shift.serviceType.name}</span>}
+                    {myOds.shift.serviceCategory?.name as string || "Non specificato"}
+                    {myOds.shift.serviceType && <span className="block text-blue-600 text-sm mt-1">{myOds.shift.serviceType.name as string}</span>}
                  </h4>
                  {myOds.shift.serviceDetails && <p className="text-sm font-medium text-slate-600 italic bg-white p-2 rounded-xl mt-2 border border-slate-200">{myOds.shift.serviceDetails}</p>}
               </div>
@@ -1275,17 +1315,17 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
               <div className="flex flex-col gap-2 p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
                  <div className="flex items-center gap-2 text-emerald-600 font-bold uppercase text-[10px] tracking-widest mb-1"><Car size={14}/> Auto Assegnata</div>
                  {myOds.shift.vehicle ? (
-                   <h4 className="font-black text-emerald-800 text-lg leading-tight">{myOds.shift.vehicle.name}</h4>
+                   <h4 className="font-black text-emerald-800 text-lg leading-tight">{myOds.shift.vehicle.name as string}</h4>
                  ) : (
-                   <span className="font-bold text-emerald-700/60 text-sm">Nessun veicolo (A piedi o Centrale)</span>
+                    <span className="font-bold text-emerald-700/60 text-sm">Nessun veicolo (A piedi o Centrale)</span>
                  )}
               </div>
 
               <div className="flex flex-col gap-2 p-4 bg-amber-50 rounded-2xl border border-amber-100">
                  <div className="flex items-center gap-2 text-amber-600 font-bold uppercase text-[10px] tracking-widest mb-1"><Users size={14}/> Colleghi di Pattuglia</div>
-                 {myOds.partners?.length > 0 ? (
+                 {(myOds.partners)?.length > 0 ? (
                    <div className="space-y-2">
-                     {myOds.partners.map((p:any) => (
+                     {(myOds.partners).map((p) => (
                        <div key={p.id} className="font-black text-amber-900 bg-white px-3 py-2 border border-amber-200 rounded-xl flex items-center justify-between">
                          {p.user.name} <span className="text-[10px] font-bold text-amber-600">Matr. {p.user.matricola}</span>
                        </div>
@@ -1295,12 +1335,15 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                    <span className="font-bold text-amber-700/60 text-sm mt-1">Lavori in autonomia</span>
                  )}
               </div>
-
            </div>
         </div>
       )}
 
-      {/* Calendar Section */}
+      {/* Bacheca Comunicazioni */}
+      <div className="h-[400px]">
+        <BachecaPanel />
+      </div>
+
       <div className="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden">
         <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center gap-4">
@@ -1314,7 +1357,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Mobile Toggle */}
             <button 
               onClick={() => setIsMobileView(!isMobileView)}
               className={`p-2.5 rounded-xl transition-all border shadow-sm ${isMobileView ? "bg-blue-600 text-white border-blue-700" : "bg-white text-slate-400 border-slate-200"}`}
@@ -1335,7 +1377,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
               </Link>
             </div>
 
-            {/* Legenda compatta */}
             <div className="hidden md:flex items-center gap-2 text-[10px] font-bold text-slate-700 uppercase tracking-wider">
               <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></span> Rep
               <span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm ml-2"></span> Turno
@@ -1355,7 +1396,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
               <h4 className="text-lg font-bold text-slate-800">Turni In Fase di Elaborazione</h4>
               <p className="text-sm text-slate-500 max-w-sm mt-2">I turni di reperibilità per questo mese non sono ancora stati consolidati e pubblicati dall&apos;Amministratore.</p>
               <PlanningMobileView 
-                 agents={[{ ...currentUser, isUfficiale: false } as any]}
+                 agents={currentUser ? [{ ...currentUser, isUfficiale: currentUser.isUfficiale || false }] : []}
                  shifts={shifts}
                  dayInfo={dayInfo}
                  currentYear={currentYear}
@@ -1366,7 +1407,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
           ) : isMobileView ? (
              <div className="pb-4">
                <PlanningMobileView 
-                 agents={[{ ...currentUser, isUfficiale: false } as any]}
+                 agents={currentUser ? [{ ...currentUser, isUfficiale: currentUser.isUfficiale || false }] : []}
                  shifts={shifts}
                  dayInfo={dayInfo}
                  currentYear={currentYear}
@@ -1375,842 +1416,811 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                />
              </div>
           ) : (
-              <div className="grid grid-cols-7 gap-1 sm:gap-2 w-full">
-              {/* Weekday headers */}
-              {["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"].map(dn => (
-                <div key={dn} className={`text-center text-[9px] sm:text-[10px] font-black uppercase tracking-widest py-2 ${dn === "Sab" || dn === "Dom" ? "text-red-400" : "text-slate-400"}`}>
-                  <span className="sm:hidden">{dn.charAt(0)}</span>
-                  <span className="hidden sm:inline">{dn}</span>
-                </div>
-              ))}
+               <div className="grid grid-cols-7 gap-1 sm:gap-2 w-full">
+               {["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"].map(dn => (
+                 <div key={dn} className={`text-center text-[9px] sm:text-[10px] font-black uppercase tracking-widest py-2 ${dn === "Sab" || dn === "Dom" ? "text-red-400" : "text-slate-400"}`}>
+                   <span className="sm:hidden">{dn.charAt(0)}</span>
+                   <span className="hidden sm:inline">{dn}</span>
+                 </div>
+               ))}
 
-              {/* Empty cells for offset */}
-              {(() => {
-                const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay()
-                // Convert Sun=0 to Mon-based: Mon=0, Tue=1, ... Sun=6
-                const offset = firstDay === 0 ? 6 : firstDay - 1
-                return Array.from({ length: offset }, (_, i) => (
-                  <div key={`empty-${i}`} className="h-16 sm:h-20"></div>
-                ))
-              })()}
+               {(() => {
+                 const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay()
+                 const offset = firstDay === 0 ? 6 : firstDay - 1
+                 return Array.from({ length: offset }, (_, i) => (
+                   <div key={`empty-${i}`} className="h-16 sm:h-20"></div>
+                 ))
+               })()}
 
-              {/* Day cells */}
-              {dayInfo.map(di => {
-                const targetDate = new Date(Date.UTC(currentYear, di.isNextMonth ? currentMonth : currentMonth - 1, di.day)).toISOString()
-                const sObj = myShifts.find(s => new Date(s.date).toISOString() === targetDate)
-                const sType = (sObj?.type || "").toUpperCase()
-                const rType = (sObj?.repType || "").toUpperCase()
-                const dayAgendaItems = di.isNextMonth ? [] : agendaEntries.filter(e => new Date(e.date).getUTCDate() === di.day)
+               {dayInfo.map(di => {
+                 const targetDate = new Date(Date.UTC(currentYear, di.isNextMonth ? currentMonth : currentMonth - 1, di.day)).toISOString()
+                 const sObj = myShifts.find(s => new Date(s.date).toISOString() === targetDate)
+                 const sType = (sObj?.type || "").toUpperCase()
+                 const rType = (sObj?.repType || "").toUpperCase()
+                 const dayAgendaItems = di.isNextMonth ? [] : agendaEntries.filter(e => new Date(e.date).getUTCDate() === di.day)
 
-                const isRep = rType.includes("REP")
-                const FERIE_ALL = ["F", "FERIE", "FERIE_AP", "FEST_SOP", "104", "MOT_PERS", "ELETT", "CONG_PAT", "CONG_PAR"]
-                const isFerie = FERIE_ALL.includes(sType) || sType.startsWith("F")
-                const _isMalattia = isMalattia(sType)
-                const isToday = !di.isNextMonth && new Date().getDate() === di.day && new Date().getMonth() === currentMonth - 1 && new Date().getFullYear() === currentYear
+                 const isRep = rType.includes("REP")
+                 const FERIE_ALL = ["F", "FERIE", "FERIE_AP", "FEST_SOP", "104", "MOT_PERS", "ELETT", "CONG_PAT", "CONG_PAR"]
+                 const isFerie = FERIE_ALL.includes(sType) || sType.startsWith("F")
+                 const _isMalattia = isMalattia(sType)
+                 const isToday = !di.isNextMonth && new Date().getDate() === di.day && new Date().getMonth() === currentMonth - 1 && new Date().getFullYear() === currentYear
 
-                let cellBg = "bg-white hover:bg-slate-50"
-                let borderStyle = "border border-slate-100"
-                let dayNumClass = "text-slate-800"
-                let badgeEl = null
+                 let cellBg = "bg-white hover:bg-slate-50"
+                 let borderStyle = "border border-slate-100"
+                 let dayNumClass = "text-slate-800"
+                 let badgeEl = null
 
-                if (isRep) {
-                  cellBg = "bg-emerald-50 hover:bg-emerald-100"
-                  borderStyle = "border-2 border-emerald-400"
-                  badgeEl = <span className="inline-block mt-0.5 sm:mt-1 px-1 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-black tracking-widest bg-emerald-600 text-white rounded shadow-sm">REP</span>
-                } else if (isFerie) {
-                  cellBg = "bg-amber-50 hover:bg-amber-100"
-                  borderStyle = "border border-amber-200"
-                  badgeEl = <span className="inline-block mt-0.5 sm:mt-1 px-1 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-bold bg-amber-500 text-white rounded truncate max-w-[90%]">{sType}</span>
-                } else if (_isMalattia) {
-                  cellBg = "bg-blue-50 hover:bg-blue-100"
-                  borderStyle = "border border-blue-200"
-                  badgeEl = <span className="inline-block mt-0.5 sm:mt-1 px-1 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-bold bg-blue-500 text-white rounded truncate max-w-[90%]">{sType}</span>
-                } else if (sType) {
-                  badgeEl = <span className="inline-block mt-0.5 sm:mt-1 px-1 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-bold bg-slate-200 text-slate-600 rounded truncate max-w-[90%]">{sType}</span>
-                }
+                 if (isRep) {
+                   cellBg = "bg-emerald-50 hover:bg-emerald-100"
+                   borderStyle = "border-2 border-emerald-400"
+                   badgeEl = <span className="inline-block mt-0.5 sm:mt-1 px-1 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-black tracking-widest bg-emerald-600 text-white rounded shadow-sm">REP</span>
+                 } else if (isFerie) {
+                   cellBg = "bg-amber-50 hover:bg-amber-100"
+                   borderStyle = "border border-amber-200"
+                   badgeEl = <span className="inline-block mt-0.5 sm:mt-1 px-1 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-bold bg-amber-500 text-white rounded truncate max-w-[90%]">{sType}</span>
+                 } else if (_isMalattia) {
+                   cellBg = "bg-blue-50 hover:bg-blue-100"
+                   borderStyle = "border border-blue-200"
+                   badgeEl = <span className="inline-block mt-0.5 sm:mt-1 px-1 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-bold bg-blue-500 text-white rounded truncate max-w-[90%]">{sType}</span>
+                 } else if (sType) {
+                   badgeEl = <span className="inline-block mt-0.5 sm:mt-1 px-1 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-bold bg-slate-200 text-slate-600 rounded truncate max-w-[90%]">{sType}</span>
+                 }
 
-                if (di.isWeekend && !isRep) {
-                  cellBg = "bg-red-50/40 hover:bg-red-50"
-                  dayNumClass = "text-red-500"
-                }
+                 if (di.isWeekend && !isRep) {
+                   cellBg = "bg-red-50/40 hover:bg-red-50"
+                   dayNumClass = "text-red-500"
+                 }
 
-                if (isToday) {
-                  borderStyle = isRep ? borderStyle : "border-2 border-blue-500"
-                }
+                 if (isToday) {
+                   borderStyle = isRep ? borderStyle : "border-2 border-blue-500"
+                 }
 
-                return (
-                  <div 
-                    key={di.isNextMonth ? 'next-1' : di.day} 
-                    className={`relative rounded-lg sm:rounded-xl p-1 sm:p-2 h-16 sm:h-20 flex flex-col items-center justify-start transition-all overflow-hidden group ${di.isNextMonth ? "bg-slate-100 opacity-40 grayscale cursor-not-allowed" : `cursor-pointer ${cellBg} ${borderStyle}`}`}
-                    onClick={() => { 
-                      if (di.isNextMonth) return
-                      setAgendaDate(String(di.day))
-                      setShowAgenda(true) 
-                    }}
-                  >
-                    {isToday && !di.isNextMonth && (
-                      <div className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                    )}
-                    {dayAgendaItems.length > 0 && !di.isNextMonth && (
-                      <div className="absolute top-1 left-1 w-2 h-2 bg-purple-500 rounded-full" title={`${dayAgendaItems.length} voce/i agenda`}></div>
-                    )}
-                    <span className={`text-sm font-black ${di.isNextMonth ? "text-slate-300" : dayNumClass}`}>{di.day}{di.isNextMonth ? '*' : ''}</span>
-                    <span className={`text-[8px] uppercase font-bold tracking-widest ${di.isNextMonth ? "text-slate-300" : (di.isWeekend ? "text-red-400" : "text-slate-400")}`}>{di.name}</span>
-                    {badgeEl}
-                    {isRep && sType && !di.isNextMonth && (
-                      <span className="text-[7px] font-bold text-emerald-700 mt-0.5">base: {sType}</span>
-                    )}
-                    {/* Pulsante Scambio Rapido in Agenda */}
-                    {sObj && sType !== "RIPOSO" && !di.isNextMonth && isPublished && (
-                      <div 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedShiftForSwap(sObj);
-                          setShowSwapModal(true);
-                        }}
-                        className="absolute bottom-1 right-1 p-1 bg-white/60 hover:bg-white text-slate-600 rounded-md opacity-0 group-hover:opacity-100 transition-all shadow-sm border border-slate-200"
-                        title="Proponi Scambio per questa data"
-                      >
-                        <RefreshCw size={12} />
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* === IL MIO BILANCIO (PREMIUM REDESIGN) === */}
-      <div className="space-y-8 relative">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-4">
-            <div className="p-2.5 bg-blue-600 rounded-2xl shadow-xl shadow-blue-200">
-               <BookOpen className="text-white" size={24} />
-            </div> 
-            Il Mio Bilancio
-          </h2>
-          <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-xl text-[10px] font-black text-slate-500 uppercase tracking-widest border border-slate-200">
-             Anno {currentYear} · Contatori Attivi
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 gap-12">
-          {AGENDA_CATEGORIES.map((cat: any) => {
-            const catDetails = (balances?.details || []).filter((d: any) => 
-              cat.items.some((i: any) => i.code === d.code) && d.initialValue > 0
-            );
-
-            if (catDetails.length === 0) return null;
-
-            const colors = CAT_COLORS[cat.color] || CAT_COLORS.blue;
-
-            return (
-              <div key={cat.group} className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                <div className="flex items-center gap-4 group">
-                   <div className={`p-3 rounded-2xl ${colors.bg} ${colors.text} shadow-sm group-hover:scale-110 transition-transform duration-300 border ${colors.border}`}>
-                      <span className="text-2xl">{cat.emoji}</span>
+                 return (
+                   <div 
+                     key={di.isNextMonth ? 'next-1' : di.day} 
+                     className={`relative rounded-lg sm:rounded-xl p-1 sm:p-2 h-16 sm:h-20 flex flex-col items-center justify-start transition-all overflow-hidden group ${di.isNextMonth ? "bg-slate-100 opacity-40 grayscale cursor-not-allowed" : `cursor-pointer ${cellBg} ${borderStyle}`}`}
+                     onClick={() => { 
+                       if (di.isNextMonth) return
+                       setAgendaDate(String(di.day))
+                       setShowAgenda(true) 
+                     }}
+                   >
+                     {isToday && !di.isNextMonth && (
+                       <div className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                     )}
+                     {dayAgendaItems.length > 0 && !di.isNextMonth && (
+                       <div className="absolute top-1 left-1 w-2 h-2 bg-purple-500 rounded-full" title={`${dayAgendaItems.length} voce/i agenda`}></div>
+                     )}
+                     <span className={`text-sm font-black ${di.isNextMonth ? "text-slate-300" : dayNumClass}`}>{di.day}{di.isNextMonth ? '*' : ''}</span>
+                     <span className={`text-[8px] uppercase font-bold tracking-widest ${di.isNextMonth ? "text-slate-300" : (di.isWeekend ? "text-red-400" : "text-slate-400")}`}>{di.name}</span>
+                     {badgeEl}
+                     {isRep && sType && !di.isNextMonth && (
+                       <span className="text-[7px] font-bold text-emerald-700 mt-0.5">base: {sType}</span>
+                     )}
+                     {sObj && sType !== "RIPOSO" && !di.isNextMonth && isPublished && (
+                       <div 
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           setSelectedShiftForSwap(sObj);
+                           setShowSwapModal(true);
+                         }}
+                         className="absolute bottom-1 right-1 p-1 bg-white/60 hover:bg-white text-slate-600 rounded-md opacity-0 group-hover:opacity-100 transition-all shadow-sm border border-slate-200"
+                         title="Proponi Scambio per questa data"
+                       >
+                         <RefreshCw size={12} />
+                       </div>
+                     )}
                    </div>
-                   <div>
-                      <h3 className={`text-base font-black uppercase tracking-wider ${colors.text}`}>{cat.group}</h3>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{catDetails.length} {catDetails.length === 1 ? 'voce attiva' : 'voci attive'}</p>
-                   </div>
-                   <div className="h-px flex-1 bg-slate-200 group-hover:bg-slate-300 transition-colors"></div>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {catDetails.map((d: any) => {
-                    const pct = Math.min(100, (d.used / d.initialValue) * 100);
-                    const unitLabel = d.unit === "HOURS" ? "Ore" : "Giorni";
-                    const unitShort = d.unit === "HOURS" ? "H" : "G";
-                    
-                    return (
-                      <div 
-                        key={d.code} 
-                        className="group relative bg-white rounded-[2rem] border border-slate-200 p-6 pt-7 shadow-sm hover:shadow-2xl transition-all duration-300 hover:border-indigo-400 hover:-translate-y-1 overflow-hidden"
-                      >
-                        {/* Decorative background blob */}
-                        <div className={`absolute top-0 right-0 w-24 h-24 ${colors.bg} opacity-30 rounded-full blur-3xl -mr-12 -mt-12 transition-all group-hover:scale-150`}></div>
-                        
-                        <div className="flex justify-between items-start mb-6 relative z-10">
-                          <div className="flex-1 min-w-0 pr-4">
-                             <div className="flex items-center gap-2 mb-1.5 ">
-                                <span className="text-[10px] font-black text-slate-400 tracking-wider font-mono">{d.code}</span>
-                                <div className={`w-1 h-1 rounded-full ${colors.dot}`}></div>
-                                <span className={`px-2 py-0.5 ${colors.bg} ${colors.text} text-[8px] font-black rounded-md border ${colors.border} uppercase`}>
-                                   {unitShort}
-                                </span>
-                             </div>
-                             <h4 className="font-extrabold text-slate-800 text-sm leading-[1.3] group-hover:text-indigo-900 transition-colors h-10 line-clamp-2">{d.label}</h4>
-                          </div>
-                        </div>
-
-                        <div className="mt-auto relative z-10">
-                          <div className="flex justify-between items-end mb-2">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[.15em]">Utilizzo</span>
-                            <span className="text-sm font-black text-slate-800">
-                              {d.used} <span className="text-[10px] text-slate-300 font-bold">/ {d.initialValue}</span>
-                            </span>
-                          </div>
-                          
-                          {/* Modern Slim Progress Bar */}
-                          <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-50">
-                            <div 
-                              className={`h-full rounded-full ${paramsToColor(cat.color)} transition-all duration-1000 ease-out shadow-sm`}
-                              style={{ width: `${pct}%` }}
-                            ></div>
-                          </div>
-                          <p className="text-[9px] text-right mt-1.5 font-bold text-slate-400 uppercase tracking-widest">{Math.round(pct)}% Consumato</p>
-                        </div>
-
-                        <div className="mt-6 pt-5 border-t border-slate-100 flex justify-between items-center relative z-10">
-                          <div className="flex flex-col">
-                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Residuo Netto</span>
-                          </div>
-                          <div className={`flex items-baseline gap-1 ${d.residue > 0 ? (pct > 90 ? 'text-rose-600' : colors.text) : 'text-slate-300'}`}>
-                            <span className="text-2xl font-black tracking-tight">{d.residue}</span>
-                            <span className="text-[10px] font-black uppercase opacity-60">{unitLabel}</span>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Riepilogo Reperibilità Mensile + Richiesta Assenze */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-
-        {/* Riepilogo REP del mese */}
-        <div className="lg:col-span-3 bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden">
-          <div className="p-6 border-b border-slate-100 bg-emerald-50/50 flex items-center gap-4">
-            <div className="p-3 bg-emerald-100 rounded-2xl">
-              <ListChecks size={24} className="text-emerald-600" />
-            </div>
-            <div>
-              <h3 className="font-black text-lg text-slate-900">Riepilogo Reperibilità</h3>
-              <p className="text-xs text-slate-500 font-medium">{currentMonthName} {currentYear} — {repCount} {repCount === 1 ? 'turno' : 'turni'} assegnati</p>
-            </div>
-          </div>
-
-          <div className="p-6">
-            {!isPublished ? (
-              <p className="text-sm text-slate-400 italic text-center py-6">I turni non sono ancora stati pubblicati.</p>
-            ) : repDays.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                  <ShieldCheck size={28} className="text-slate-300" />
-                </div>
-                <p className="text-sm font-semibold text-slate-500">Nessuna reperibilità assegnata per questo mese.</p>
-                <p className="text-xs text-slate-400 mt-1">Controlla i mesi successivi per le prossime assegnazioni.</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {repDays.map((rd, idx) => (
-                  <div key={idx} className="flex items-center gap-4 bg-emerald-50/60 hover:bg-emerald-50 border border-emerald-100 rounded-xl px-5 py-3 transition-colors">
-                    <div className="w-12 h-12 bg-emerald-600 text-white rounded-xl flex flex-col items-center justify-center shrink-0 shadow-sm">
-                      <span className="text-sm font-black leading-none">{rd.day}</span>
-                      <span className="text-[8px] uppercase font-bold tracking-widest opacity-80">{rd.dayName}</span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-slate-800">
-                        Reperibilità <span className="text-emerald-600">{rd.repType}</span>
-                      </p>
-                      {rd.baseType && (
-                        <p className="text-[11px] text-slate-500">Turno Base: <span className="font-semibold">{rd.baseType}</span></p>
-                      )}
-                    </div>
-                    <div className="shrink-0 flex items-center gap-2">
-                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedShiftForSwap(rd.shiftObj);
-                          setShowSwapModal(true);
-                        }}
-                        className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-wider rounded-lg shadow-md transition-all active:scale-95 flex items-center gap-1.5 group"
-                      >
-                        <RefreshCw size={12} className="group-hover:rotate-180 transition-transform duration-500" />
-                        Scambia
-                      </button>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Totale */}
-                <div className="flex items-center justify-between pt-4 mt-2 border-t border-slate-100">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Totale Reperibilità Mese</span>
-                  <span className="text-lg font-black text-emerald-700">{repCount}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right column: Modulo Richieste + Prossimo Turno */}
-        <div className="lg:col-span-2 flex flex-col gap-6">
-
-          {/* PULSANTE RAPIDO RICHIESTE SEGRETERIA */}
-          <button 
-             onClick={() => setShowAbsenceModal(true)}
-             className="relative bg-gradient-to-r from-amber-500 to-orange-500 rounded-[2rem] p-8 overflow-hidden shadow-xl shadow-amber-200 hover:shadow-2xl hover:-translate-y-1 transition-all group text-left w-full border-none"
-          >
-             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl group-hover:bg-white/20 transition-all"></div>
-             <div className="relative z-10 flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-black text-white mb-1 drop-shadow-md">Richiesta Congedi/Assenze</h3>
-                  <p className="text-sm font-bold text-amber-50 drop-shadow-sm opacity-90 tracking-wide">Ferie, Permessi 104, Malattia e Recuperi</p>
-                </div>
-                <div className="p-3 bg-white/20 backdrop-blur-md rounded-2xl group-hover:scale-110 transition-transform">
-                  <CalendarDays size={28} className="text-white drop-shadow-md" />
-                </div>
+                 )
+               })}
              </div>
-          </button>
+           )}
+         </div>
+       </div>
 
-          {/* PROSSIMO TURNO REP (dinamico!) */}
-          {(() => {
-            const today = new Date()
-            today.setHours(0,0,0,0)
-            let nextRepDate: Date | null = null
-            let nextRepType = ""
-
-            // Cerca la prossima REP tra TUTTE le shifts dell'utente
-            const allMyReps = shifts
-              .filter(s => s.userId === currentUser.id && s.repType?.toUpperCase().includes("REP"))
-              .map(s => ({ date: new Date(s.date), repType: s.repType || "REP" }))
-              .sort((a, b) => a.date.getTime() - b.date.getTime())
-
-            for (const r of allMyReps) {
-              const rd = new Date(r.date)
-              rd.setHours(0,0,0,0)
-              if (rd >= today) {
-                nextRepDate = rd
-                nextRepType = r.repType
-                break
-              }
-            }
-
-            if (nextRepDate) {
-              const diffMs = nextRepDate.getTime() - today.getTime()
-              const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
-              const nDay = nextRepDate.getDate()
-              const nMonthName = monthNames[nextRepDate.getMonth()]
-
-              return (
-                <div className="bg-white rounded-[2rem] border border-slate-200 p-8 flex flex-col items-center text-center shadow-lg">
-                  <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mb-4">
-                    <Clock className="text-emerald-600" size={28} />
-                  </div>
-                  <h4 className="font-black text-lg text-slate-900 mb-1">Prossima Reperibilità</h4>
-                  <p className="text-slate-400 text-xs font-medium mb-4">{nextRepType}</p>
-                  <div className="text-4xl font-black text-emerald-700">{nDay} {nMonthName}</div>
-                  <p className="text-sm font-bold text-slate-500 mt-2">
-                    {diffDays === 0 ? (
-                      <span className="text-red-600 animate-pulse">🔴 OGGI!</span>
-                    ) : diffDays === 1 ? (
-                      <span className="text-amber-600">⚠️ Domani</span>
-                    ) : (
-                      <>tra <span className="text-emerald-600">{diffDays}</span> giorni</>
-                    )}
-                  </p>
-                  <div className="mt-4 pt-4 border-t border-slate-100 w-full text-[10px] font-bold text-slate-400 uppercase tracking-widest">Orario: 22:00 – 07:00</div>
-                </div>
-              )
-            } else {
-              return (
-                <div className="bg-white rounded-[2rem] border border-slate-200 p-8 flex flex-col items-center text-center shadow-lg">
-                  <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-4">
-                    <Clock className="text-blue-600" size={28} />
-                  </div>
-                  <h4 className="font-black text-lg text-slate-900 mb-1">Prossima Reperibilità</h4>
-                  <p className="text-sm text-slate-400 font-medium mt-2">Nessuna reperibilità futura programmata.</p>
-                </div>
-              )
-            }
-          })()}
-
-          {/* Agenda Personale — Premium Card */}
-          <div className="bg-gradient-to-br from-slate-900 via-purple-900/90 to-slate-900 rounded-[2rem] p-8 text-white relative overflow-hidden shadow-xl">
-            {/* Decorative blobs */}
-            <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/15 rounded-full -mr-20 -mt-20 blur-3xl"></div>
-            <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/10 rounded-full -ml-12 -mb-12 blur-2xl"></div>
-            
-            <div className="relative z-10">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="p-3 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/10">
-                  <BookOpen size={24} className="text-purple-300" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-black">Agenda Personale</h3>
-                  <p className="text-purple-300/80 text-[10px] font-bold uppercase tracking-widest">{currentMonthName} {currentYear}</p>
-                </div>
-              </div>
-
-              {/* Live Mini Stats */}
-              <div className="grid grid-cols-3 gap-2 mb-5">
-                <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 text-center border border-white/5">
-                  <span className="text-2xl font-black block">{agendaEntries.length}</span>
-                  <span className="text-[8px] uppercase tracking-widest text-purple-300/70 font-bold">Voci</span>
-                </div>
-                <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 text-center border border-white/5">
-                  <span className="text-2xl font-black block">{agendaEntries.filter(e => e.hours).reduce((a, e) => a + (e.hours || 0), 0)}</span>
-                  <span className="text-[8px] uppercase tracking-widest text-purple-300/70 font-bold">Ore</span>
-                </div>
-                <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 text-center border border-white/5">
-                  <span className="text-2xl font-black block">{new Set(agendaEntries.map(e => new Date(e.date).getUTCDate())).size}</span>
-                  <span className="text-[8px] uppercase tracking-widest text-purple-300/70 font-bold">Giorni</span>
-                </div>
-              </div>
-              
-              {/* Category mini-legend */}
-              <div className="flex flex-wrap gap-1.5 mb-5">
-                {AGENDA_CATEGORIES.map(cat => {
-                  const count = agendaEntries.filter(e => cat.items.some(i => i.code === e.code)).length
-                  if (count === 0) return null
-                  return (
-                    <span key={cat.group} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/10 text-[9px] font-bold text-white/80">
-                      <span>{cat.emoji}</span> {count}
-                    </span>
-                  )
-                })}
-              </div>
-
+               <div className="space-y-8 relative">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-4">
+              <div className="p-2.5 bg-blue-600 rounded-2xl shadow-xl shadow-blue-200">
+                 <BookOpen className="text-white" size={24} />
+              </div> 
+              Il Mio Bilancio
+            </h2>
+            <div className="flex items-center gap-2">
               <button 
-                onClick={() => setShowAgenda(true)}
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-6 py-3.5 rounded-xl font-black text-sm transition-all shadow-lg shadow-purple-900/50 active:scale-[0.97]"
+                onClick={handleExportPDF}
+                className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all"
               >
-                <Plus size={18} />
-                Gestisci Agenda
+                <FileDown size={14} />
+                Esporta PDF
               </button>
+              <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-xl text-[10px] font-black text-slate-500 uppercase tracking-widest border border-slate-200">
+                 Anno {currentYear} · Contatori Attivi
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Bacheca Scambio Turni */}
-      <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden">
-        <div className="bg-slate-900 p-6 text-white flex items-center gap-4">
-          <div className="p-3 bg-indigo-500/20 rounded-2xl border border-indigo-400/30">
-            <RefreshCw size={24} className="text-indigo-300" />
-          </div>
-          <div>
-            <h3 className="text-lg font-black uppercase tracking-tighter">Bacheca Scambi</h3>
-            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Gestisci le tue proposte di scambio</p>
-          </div>
-        </div>
+          <div className="grid grid-cols-1 gap-12">
+           {AGENDA_CATEGORIES.map((cat) => {
+             const catDetails = (balances?.details || []).filter((d) => 
+               cat.items.some((i) => i.code === d.code) && d.initialValue > 0
+             );
 
-        <div className="p-6">
-          {swapRequests.length === 0 ? (
-            <div className="text-center py-10 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-              <p className="text-slate-400 text-sm font-medium italic">Nessuna proposta di scambio attiva.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {swapRequests.map((req) => {
-                const isIncoming = req.targetUserId === currentUser.id
-                const dateStr = new Date(req.shift.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })
-                
-                return (
-                  <div key={req.id} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border-2 transition-all ${isIncoming ? 'bg-indigo-50 border-indigo-100 hover:border-indigo-200' : 'bg-slate-50 border-slate-200 hover:border-slate-300'}`}>
-                    <div className="flex items-center gap-4">
-                      <div className={`p-3 rounded-xl ${isIncoming ? 'bg-indigo-500/10 text-indigo-600' : 'bg-slate-500/10 text-slate-600'}`}>
-                        {isIncoming ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${isIncoming ? 'bg-indigo-600 text-white' : 'bg-slate-600 text-white'}`}>
-                            {isIncoming ? 'Ricevuta' : 'Inviata'}
-                          </span>
-                          <span className="text-[10px] font-bold text-slate-500 uppercase">{dateStr}</span>
-                        </div>
-                        <h4 className="font-black text-slate-900">
-                          {isIncoming ? `Scambio da ${req.requester.name}` : `Proposta a ${req.targetUser.name}`}
-                        </h4>
-                        <p className="text-xs text-slate-500 font-medium">Turno: <span className="font-bold text-blue-600">{req.shift.repType}</span></p>
-                      </div>
+             if (catDetails.length === 0) return null;
+
+             const colors = CAT_COLORS[cat.color] || CAT_COLORS.blue;
+
+             return (
+               <div key={cat.group} className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                 <div className="flex items-center gap-4 group">
+                    <div className={`p-3 rounded-2xl ${colors.bg} ${colors.text} shadow-sm group-hover:scale-110 transition-transform duration-300 border ${colors.border}`}>
+                       <span className="text-2xl">{cat.emoji}</span>
                     </div>
+                    <div>
+                       <h3 className={`text-base font-black uppercase tracking-wider ${colors.text}`}>{cat.group}</h3>
+                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{catDetails.length} {catDetails.length === 1 ? 'voce attiva' : 'voci attive'}</p>
+                    </div>
+                    <div className="h-px flex-1 bg-slate-200 group-hover:bg-slate-300 transition-colors"></div>
+                 </div>
+                 
+                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                   {catDetails.map((d) => {
+                     const pct = Math.min(100, (d.used / d.initialValue) * 100);
+                     const unitLabel = d.unit === "HOURS" ? "Ore" : "Giorni";
+                     const unitShort = d.unit === "HOURS" ? "H" : "G";
+                     
+                     return (
+                       <div 
+                         key={d.code} 
+                         className="group relative bg-white rounded-[2rem] border border-slate-200 p-6 pt-7 shadow-sm hover:shadow-2xl transition-all duration-300 hover:border-indigo-400 hover:-translate-y-1 overflow-hidden"
+                       >
+                         <div className={`absolute top-0 right-0 w-24 h-24 ${colors.bg} opacity-30 rounded-full blur-3xl -mr-12 -mt-12 transition-all group-hover:scale-150`}></div>
+                         
+                         <div className="flex justify-between items-start mb-6 relative z-10">
+                           <div className="flex-1 min-w-0 pr-4">
+                              <div className="flex items-center gap-2 mb-1.5 ">
+                                 <span className="text-[10px] font-black text-slate-400 tracking-wider font-mono">{d.code}</span>
+                                 <div className={`w-1 h-1 rounded-full ${colors.dot}`}></div>
+                                 <span className={`px-2 py-0.5 ${colors.bg} ${colors.text} text-[8px] font-black rounded-md border ${colors.border} uppercase`}>
+                                    {unitShort}
+                                 </span>
+                              </div>
+                              <h4 className="font-extrabold text-slate-800 text-sm leading-[1.3] group-hover:text-indigo-900 transition-colors h-10 line-clamp-2">{d.label}</h4>
+                           </div>
+                         </div>
 
-                    <div className="flex items-center gap-2">
-                      {req.status === 'PENDING' ? (
-                        isIncoming ? (
-                          <>
-                            <button 
-                              disabled={swapLoading}
-                              onClick={() => handleRespondSwap(req.id, "REJECTED")}
-                              className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              Rifiuta
-                            </button>
-                            <button 
-                              disabled={swapLoading}
-                              onClick={() => handleRespondSwap(req.id, "ACCEPTED")}
-                              className="px-5 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white text-xs font-black rounded-xl hover:from-indigo-600 hover:to-indigo-700 shadow-lg shadow-indigo-100 transition-all hover:scale-[1.05] disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed flex items-center gap-1.5"
-                            >
-                              {swapLoading ? <RefreshCw size={14} className="animate-spin" /> : null}
-                              Accetta
-                            </button>
-                          </>
-                        ) : (
-                          <span className="px-4 py-2 bg-amber-100 text-amber-700 text-[10px] font-black uppercase rounded-xl">In attesa...</span>
+                         <div className="mt-auto relative z-10">
+                           <div className="flex justify-between items-end mb-2">
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-[.15em]">Utilizzo</span>
+                             <span className="text-sm font-black text-slate-800">
+                               {d.used} <span className="text-[10px] text-slate-300 font-bold">/ {d.initialValue}</span>
+                             </span>
+                           </div>
+                           
+                           <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-50">
+                             <div 
+                               className={`h-full rounded-full ${paramsToColor(cat.color)} transition-all duration-1000 ease-out shadow-sm`}
+                               style={{ width: `${pct}%` }}
+                             ></div>
+                           </div>
+                           <p className="text-[9px] text-right mt-1.5 font-bold text-slate-400 uppercase tracking-widest">{Math.round(pct)}% Consumato</p>
+                         </div>
+
+                         <div className="mt-6 pt-5 border-t border-slate-100 flex justify-between items-center relative z-10">
+                           <div className="flex flex-col">
+                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Residuo Netto</span>
+                           </div>
+                           <div className={`flex items-baseline gap-1 ${d.residue > 0 ? (pct > 90 ? 'text-rose-600' : colors.text) : 'text-slate-300'}`}>
+                             <span className="text-2xl font-black tracking-tight">{d.residue}</span>
+                             <span className="text-[10px] font-black uppercase opacity-60">{unitLabel}</span>
+                           </div>
+                         </div>
+                       </div>
+                     )
+                   })}
+                 </div>
+               </div>
+             );
+           })}
+         </div>
+       </div>
+
+       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+         <div className="lg:col-span-3 bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden">
+           <div className="p-6 border-b border-slate-100 bg-emerald-50/50 flex items-center gap-4">
+             <div className="p-3 bg-emerald-100 rounded-2xl">
+               <ListChecks size={24} className="text-emerald-600" />
+             </div>
+             <div>
+               <h3 className="font-black text-lg text-slate-900">Riepilogo Reperibilità</h3>
+               <p className="text-xs text-slate-500 font-medium">{currentMonthName} {currentYear} — {repCount} {repCount === 1 ? 'turno' : 'turni'} assegnati</p>
+             </div>
+           </div>
+
+           <div className="p-6">
+             {!isPublished ? (
+               <p className="text-sm text-slate-400 italic text-center py-6">I turni non sono ancora stati pubblicati.</p>
+             ) : repDays.length === 0 ? (
+               <div className="text-center py-8">
+                 <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                   <ShieldCheck size={28} className="text-slate-300" />
+                 </div>
+                 <p className="text-sm font-semibold text-slate-500">Nessuna reperibilità assegnata per questo mese.</p>
+                 <p className="text-xs text-slate-400 mt-1">Controlla i mesi successivi per le prossime assegnazioni.</p>
+               </div>
+             ) : (
+               <div className="space-y-2">
+                 {repDays.map((rd, idx) => (
+                   <div key={idx} className="flex items-center gap-4 bg-emerald-50/60 hover:bg-emerald-50 border border-emerald-100 rounded-xl px-5 py-3 transition-colors">
+                     <div className="w-12 h-12 bg-emerald-600 text-white rounded-xl flex flex-col items-center justify-center shrink-0 shadow-sm">
+                       <span className="text-sm font-black leading-none">{rd.day}</span>
+                       <span className="text-[8px] uppercase font-bold tracking-widest opacity-80">{rd.dayName}</span>
+                     </div>
+                     <div className="flex-1">
+                       <p className="text-sm font-bold text-slate-800">
+                         Reperibilità <span className="text-emerald-600">{rd.repType}</span>
+                       </p>
+                       {rd.baseType && (
+                         <p className="text-[11px] text-slate-500">Turno Base: <span className="font-semibold">{rd.baseType}</span></p>
+                       )}
+                     </div>
+                     <div className="shrink-0 flex items-center gap-2">
+                        <button
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           setSelectedShiftForSwap(rd.shiftObj);
+                           setShowSwapModal(true);
+                         }}
+                         className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase tracking-wider rounded-lg shadow-md transition-all active:scale-95 flex items-center gap-1.5 group"
+                       >
+                         <RefreshCw size={12} className="group-hover:rotate-180 transition-transform duration-500" />
+                         Scambia
+                       </button>
+                     </div>
+                   </div>
+                 ))}
+
+                 <div className="flex items-center justify-between pt-4 mt-2 border-t border-slate-100">
+                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Totale Reperibilità Mese</span>
+                   <span className="text-lg font-black text-emerald-700">{repCount}</span>
+                 </div>
+               </div>
+             )}
+           </div>
+         </div>
+
+         <div className="lg:col-span-2 flex flex-col gap-6">
+           <button 
+              onClick={() => setShowAbsenceModal(true)}
+              className="relative bg-gradient-to-r from-amber-500 to-orange-500 rounded-[2rem] p-8 overflow-hidden shadow-xl shadow-amber-200 hover:shadow-2xl hover:-translate-y-1 transition-all group text-left w-full border-none"
+           >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl group-hover:bg-white/20 transition-all"></div>
+              <div className="relative z-10 flex items-center justify-between">
+                 <div>
+                   <h3 className="text-xl font-black text-white mb-1 drop-shadow-md">Richiesta Congedi/Assenze</h3>
+                   <p className="text-sm font-bold text-amber-50 drop-shadow-sm opacity-90 tracking-wide">Ferie, Permessi 104, Malattia e Recuperi</p>
+                 </div>
+                 <div className="p-3 bg-white/20 backdrop-blur-md rounded-2xl group-hover:scale-110 transition-transform">
+                   <CalendarDays size={28} className="text-white drop-shadow-md" />
+                 </div>
+              </div>
+           </button>
+
+           {(() => {
+             const today = new Date()
+             today.setHours(0,0,0,0)
+             let nextRepDate: Date | null = null
+             let nextRepType = ""
+
+             const allMyReps = shifts
+               .filter(s => s.userId === currentUser.id && s.repType?.toUpperCase().includes("REP"))
+               .map(s => ({ date: new Date(s.date), repType: s.repType || "REP" }))
+               .sort((a, b) => a.date.getTime() - b.date.getTime())
+
+             for (const r of allMyReps) {
+               const rd = new Date(r.date)
+               rd.setHours(0,0,0,0)
+               if (rd >= today) {
+                 nextRepDate = rd
+                 nextRepType = r.repType
+                 break
+               }
+             }
+
+             if (nextRepDate) {
+               const diffMs = nextRepDate.getTime() - today.getTime()
+               const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+               const nDay = nextRepDate.getDate()
+               const nMonthName = monthNames[nextRepDate.getMonth()]
+
+               return (
+                 <div className="bg-white rounded-[2rem] border border-slate-200 p-8 flex flex-col items-center text-center shadow-lg">
+                   <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mb-4">
+                     <Clock className="text-emerald-600" size={28} />
+                   </div>
+                   <h4 className="font-black text-lg text-slate-900 mb-1">Prossima Reperibilità</h4>
+                   <p className="text-slate-400 text-xs font-medium mb-4">{nextRepType}</p>
+                   <div className="text-4xl font-black text-emerald-700">{nDay} {nMonthName}</div>
+                   <p className="text-sm font-bold text-slate-500 mt-2">
+                     {diffDays === 0 ? (
+                       <span className="text-red-600 animate-pulse">🔴 OGGI!</span>
+                     ) : diffDays === 1 ? (
+                       <span className="text-amber-600">⚠️ Domani</span>
+                     ) : (
+                       <>tra <span className="text-emerald-600">{diffDays}</span> giorni</>
+                     )}
+                   </p>
+                   <div className="mt-4 pt-4 border-t border-slate-100 w-full text-[10px] font-bold text-slate-400 uppercase tracking-widest">Orario: 22:00 – 07:00</div>
+                 </div>
+               )
+             } else {
+               return (
+                 <div className="bg-white rounded-[2rem] border border-slate-200 p-8 flex flex-col items-center text-center shadow-lg">
+                   <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-4">
+                     <Clock className="text-blue-600" size={28} />
+                   </div>
+                   <h4 className="font-black text-lg text-slate-900 mb-1">Prossima Reperibilità</h4>
+                   <p className="text-sm text-slate-400 font-medium mt-2">Nessuna reperibilità futura programmata.</p>
+                 </div>
+               )
+             }
+           })()}
+
+           <div className="bg-gradient-to-br from-slate-900 via-purple-900/90 to-slate-900 rounded-[2rem] p-8 text-white relative overflow-hidden shadow-xl">
+             <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/15 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+             <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/10 rounded-full -ml-12 -mb-12 blur-2xl"></div>
+             
+             <div className="relative z-10">
+               <div className="flex items-center gap-3 mb-5">
+                 <div className="p-3 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/10">
+                   <BookOpen size={24} className="text-purple-300" />
+                 </div>
+                 <div>
+                   <h3 className="text-lg font-black">Agenda Personale</h3>
+                   <p className="text-purple-300/80 text-[10px] font-bold uppercase tracking-widest">{currentMonthName} {currentYear}</p>
+                 </div>
+               </div>
+
+               <div className="grid grid-cols-3 gap-2 mb-5">
+                 <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 text-center border border-white/5">
+                   <span className="text-2xl font-black block">{agendaEntries.length}</span>
+                   <span className="text-[8px] uppercase tracking-widest text-purple-300/70 font-bold">Voci</span>
+                 </div>
+                 <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 text-center border border-white/5">
+                   <span className="text-2xl font-black block">{agendaEntries.filter(e => e.hours).reduce((a, e) => a + (e.hours || 0), 0)}</span>
+                   <span className="text-[8px] uppercase tracking-widest text-purple-300/70 font-bold">Ore</span>
+                 </div>
+                 <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 text-center border border-white/5">
+                   <span className="text-2xl font-black block">{new Set(agendaEntries.map(e => new Date(e.date).getUTCDate())).size}</span>
+                   <span className="text-[8px] uppercase tracking-widest text-purple-300/70 font-bold">Giorni</span>
+                 </div>
+               </div>
+               
+               <div className="flex flex-wrap gap-1.5 mb-5">
+                 {AGENDA_CATEGORIES.map(cat => {
+                   const count = agendaEntries.filter(e => cat.items.some(i => i.code === e.code)).length
+                   if (count === 0) return null
+                   return (
+                     <span key={cat.group} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/10 text-[9px] font-bold text-white/80">
+                       <span>{cat.emoji}</span> {count}
+                     </span>
+                   )
+                 })}
+               </div>
+
+               <button 
+                 onClick={() => setShowAgenda(true)}
+                 className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-6 py-3.5 rounded-xl font-black text-sm transition-all shadow-lg shadow-purple-900/50 active:scale-[0.97]"
+               >
+                 <Plus size={18} />
+                 Gestisci Agenda
+               </button>
+             </div>
+           </div>
+         </div>
+       </div>
+
+       <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden">
+         <div className="bg-slate-900 p-6 text-white flex items-center gap-4">
+           <div className="p-3 bg-indigo-500/20 rounded-2xl border border-indigo-400/30">
+             <RefreshCw size={24} className="text-indigo-300" />
+           </div>
+           <div>
+             <h3 className="text-lg font-black uppercase tracking-tighter">Bacheca Scambi</h3>
+             <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Gestisci le tue proposte di scambio</p>
+           </div>
+         </div>
+
+         <div className="p-6">
+           {swapRequests.length === 0 ? (
+             <div className="text-center py-10 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+               <p className="text-slate-400 text-sm font-medium italic">Nessuna proposta di scambio attiva.</p>
+             </div>
+           ) : (
+             <div className="space-y-4">
+               {swapRequests.map((req) => {
+                 const isIncoming = req.targetUserId === currentUser.id
+                 const dateStr = new Date(req.shift.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })
+                 
+                 return (
+                   <div key={req.id} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border-2 transition-all ${isIncoming ? 'bg-indigo-50 border-indigo-100 hover:border-indigo-200' : 'bg-slate-50 border-slate-200 hover:border-slate-300'}`}>
+                     <div className="flex items-center gap-4">
+                       <div className={`p-3 rounded-xl ${isIncoming ? 'bg-indigo-500/10 text-indigo-600' : 'bg-slate-500/10 text-slate-600'}`}>
+                         {isIncoming ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+                       </div>
+                       <div>
+                         <div className="flex items-center gap-2">
+                           <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${isIncoming ? 'bg-indigo-600 text-white' : 'bg-slate-600 text-white'}`}>
+                             {isIncoming ? 'Ricevuta' : 'Inviata'}
+                           </span>
+                           <span className="text-[10px] font-bold text-slate-500 uppercase">{dateStr}</span>
+                         </div>
+                         <h4 className="font-black text-slate-900">
+                           {isIncoming ? `Scambio da ${req.requester.name}` : `Proposta a ${req.targetUser.name}`}
+                         </h4>
+                         <p className="text-xs text-slate-500 font-medium">Turno: <span className="font-bold text-blue-600">{req.shift.repType}</span></p>
+                       </div>
+                     </div>
+
+                     <div className="flex items-center gap-2">
+                       {req.status === 'PENDING' ? (
+                         isIncoming ? (
+                           <>
+                             <button 
+                               disabled={swapLoading}
+                               onClick={() => handleRespondSwap(req.id, "REJECTED")}
+                               className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                             >
+                               Rifiuta
+                             </button>
+                             <button 
+                               disabled={swapLoading}
+                               onClick={() => handleRespondSwap(req.id, "ACCEPTED")}
+                               className="px-5 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white text-xs font-black rounded-xl hover:from-indigo-600 hover:to-indigo-700 shadow-lg shadow-indigo-100 transition-all hover:scale-[1.05] disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed flex items-center gap-1.5"
+                             >
+                               {swapLoading ? <RefreshCw size={14} className="animate-spin" /> : null}
+                               Accetta
+                             </button>
+                           </>
+                         ) : (
+                           <span className="px-4 py-2 bg-amber-100 text-amber-700 text-[10px] font-black uppercase rounded-xl">In attesa...</span>
+                         )
+                       ) : (
+                         <span className={`px-4 py-2 text-[10px] font-black uppercase rounded-xl ${
+                           req.status === 'ACCEPTED' ? 'bg-emerald-100 text-emerald-700' :
+                           req.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                           'bg-blue-100 text-blue-700'
+                         }`}>
+                           {req.status === 'ACCEPTED' ? 'Accettata (In attesa Admin)' : 
+                            req.status === 'REJECTED' ? 'Rifiutata' : 
+                            'Approvata Admin'}
+                         </span>
+                       )}
+                     </div>
+                   </div>
+                 )
+               })}
+             </div>
+           )}
+         </div>
+       </div>
+
+       {showSwapModal && (
+         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowSwapModal(false)}></div>
+           <div className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+             <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 p-8 text-white relative">
+               <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-xl"></div>
+               <div className="flex justify-between items-start mb-4 relative z-10">
+                 <div className="p-3 bg-white/20 rounded-2xl border border-white/20">
+                   <RefreshCw size={24} />
+                 </div>
+                 <button onClick={() => setShowSwapModal(false)} className="text-white/60 hover:text-white transition-colors">
+                   <X size={24} />
+                 </button>
+               </div>
+               <h3 className="text-2xl font-black tracking-tight relative z-10">Proposta Scambio Turno</h3>
+               <p className="text-blue-100 text-sm mt-2 opacity-80 relative z-10 font-medium">Inverti il tuo incarico con un collega per una data specifica.</p>
+             </div>
+
+             <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+               <div>
+                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                   <Calendar size={14} className="text-blue-500" /> DATA DELLO SCAMBIO
+                 </label>
+                 <input 
+                   type="date"
+                   value={selectedShiftForSwap ? new Date(selectedShiftForSwap.date).toISOString().split('T')[0] : swapDate}
+                   onChange={(e) => {
+                     setSwapDate(e.target.value)
+                     if (selectedShiftForSwap) setSelectedShiftForSwap(null) 
+                   }}
+                   className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl px-4 py-4 text-sm font-bold text-slate-800 focus:border-blue-500 focus:outline-none transition-all"
+                 />
+               </div>
+
+               <div>
+                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                   <Users size={14} className="text-blue-500" /> SELEZIONA IL COLLEGA
+                 </label>
+                 <div className="relative">
+                   <select 
+                     value={targetColleagueId}
+                     onChange={(e) => setTargetColleagueId(e.target.value)}
+                     className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl px-4 py-4 text-sm font-bold text-slate-800 focus:border-blue-500 focus:outline-none appearance-none cursor-pointer"
+                   >
+                     <option value="">Scegli un collega...</option>
+                     {allAgents.filter(a => a.id !== currentUser.id).map(agent => (
+                       <option key={agent.id} value={agent.id}>{agent.name} (Matr. {agent.matricola})</option>
+                     ))}
+                   </select>
+                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                     <ChevronDown size={18} />
+                   </div>
+                 </div>
+               </div>
+
+               {(swapDate || selectedShiftForSwap) && targetColleagueId && (
+                 <div className="bg-slate-50 rounded-[2rem] border border-slate-200 p-6 space-y-4">
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center border-b border-slate-200 pb-3 mb-2">
+                     Anteprima Inversione Turni
+                   </p>
+                   
+                   {(() => {
+                     const dateToCheck = selectedShiftForSwap ? new Date(selectedShiftForSwap.date).toISOString().split('T')[0] : swapDate
+                     const myShiftFromList = myShifts.find(s => new Date(s.date).toISOString().split('T')[0] === dateToCheck)
+                     const targetShift = shifts.find(s => s.userId === targetColleagueId && new Date(s.date).toISOString().split('T')[0] === dateToCheck)
+                     const colName = allAgents.find(a => a.id === targetColleagueId)?.name || "Collega"
+
+                     if (!myShiftFromList || !targetShift) {
+                        return (
+                          <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-100 rounded-2xl text-amber-600">
+                            <AlertCircle size={20} className="shrink-0" />
+                            <p className="text-xs font-bold leading-tight uppercase tracking-tighter italic">
+                              Seleziona un collega e una data valida per vedere l&apos;anteprima.
+                            </p>
+                          </div>
                         )
-                      ) : (
-                        <span className={`px-4 py-2 text-[10px] font-black uppercase rounded-xl ${
-                          req.status === 'ACCEPTED' ? 'bg-emerald-100 text-emerald-700' :
-                          req.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                          'bg-blue-100 text-blue-700'
-                        }`}>
-                          {req.status === 'ACCEPTED' ? 'Accettata (In attesa Admin)' : 
-                           req.status === 'REJECTED' ? 'Rifiutata' : 
-                           'Approvata Admin'}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      </div>
+                     }
 
-      {showSwapModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowSwapModal(false)}></div>
-          <div className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 p-8 text-white relative">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-xl"></div>
-              <div className="flex justify-between items-start mb-4 relative z-10">
-                <div className="p-3 bg-white/20 rounded-2xl border border-white/20">
-                  <RefreshCw size={24} />
-                </div>
-                <button onClick={() => setShowSwapModal(false)} className="text-white/60 hover:text-white transition-colors">
-                  <X size={24} />
-                </button>
-              </div>
-              <h3 className="text-2xl font-black tracking-tight relative z-10">Proposta Scambio Turno</h3>
-              <p className="text-blue-100 text-sm mt-2 opacity-80 relative z-10 font-medium">Inverti il tuo incarico con un collega per una data specifica.</p>
-            </div>
+                     const isForbidden = (myShiftFromList.type === "RIPOSO") || (targetShift.type === "RIPOSO")
 
-            <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
-              {/* Selezione Data */}
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                  <Calendar size={14} className="text-blue-500" /> DATA DELLO SCAMBIO
-                </label>
-                <input 
-                  type="date"
-                  value={selectedShiftForSwap ? new Date(selectedShiftForSwap.date).toISOString().split('T')[0] : swapDate}
-                  onChange={(e) => {
-                    setSwapDate(e.target.value)
-                    if (selectedShiftForSwap) setSelectedShiftForSwap(null) // Passiamo a modalità manuale
-                  }}
-                  className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl px-4 py-4 text-sm font-bold text-slate-800 focus:border-blue-500 focus:outline-none transition-all"
-                />
-              </div>
+                     if (isForbidden) {
+                        return (
+                          <div className="flex items-center gap-3 p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600">
+                            <AlertTriangle size={20} className="shrink-0" />
+                            <p className="text-xs font-bold leading-tight uppercase tracking-tighter italic">
+                              SCAMBIO NON POSSIBILE: Uno dei due operatori è a RIPOSO in questa data.
+                            </p>
+                          </div>
+                        )
+                     }
 
-              {/* Selezione Collega */}
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                  <Users size={14} className="text-blue-500" /> SELEZIONA IL COLLEGA
-                </label>
-                <div className="relative">
-                  <select 
-                    value={targetColleagueId}
-                    onChange={(e) => setTargetColleagueId(e.target.value)}
-                    className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl px-4 py-4 text-sm font-bold text-slate-800 focus:border-blue-500 focus:outline-none appearance-none cursor-pointer"
-                  >
-                    <option value="">Scegli un collega...</option>
-                    {allAgents.filter(a => a.id !== currentUser.id).map(agent => (
-                      <option key={agent.id} value={agent.id}>{agent.name} (Matr. {agent.matricola})</option>
-                    ))}
-                  </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                    <ChevronDown size={18} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Anteprima Riepilogo Turni (M8 <-> P16) */}
-              {(swapDate || selectedShiftForSwap) && targetColleagueId && (
-                <div className="bg-slate-50 rounded-[2rem] border border-slate-200 p-6 space-y-4">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center border-b border-slate-200 pb-3 mb-2">
-                    Anteprima Inversione Turni
-                  </p>
-                  
-                  {(() => {
-                    const dateToCheck = selectedShiftForSwap ? new Date(selectedShiftForSwap.date).toISOString().split('T')[0] : swapDate
-                    const myShift = myShifts.find(s => new Date(s.date).toISOString().split('T')[0] === dateToCheck)
-                    const targetShift = shifts.find(s => s.userId === targetColleagueId && new Date(s.date).toISOString().split('T')[0] === dateToCheck)
-                    const colName = allAgents.find(a => a.id === targetColleagueId)?.name || "Collega"
-
-                    // Controlli di sicurezza per TypeScript
-                    if (!myShift || !targetShift) {
-                       return (
-                         <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-100 rounded-2xl text-amber-600">
-                           <AlertCircle size={20} className="shrink-0" />
-                           <p className="text-xs font-bold leading-tight uppercase tracking-tighter italic">
-                             Seleziona un collega e una data valida per vedere l'anteprima.
-                           </p>
+                     return (
+                       <div className="grid grid-cols-1 gap-4">
+                         <div className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                            <div className="flex items-center gap-3">
+                               <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-black text-xs">TU</div>
+                               <div>
+                                  <p className="text-[10px] text-slate-400 font-bold uppercase">Cedi il turno</p>
+                                  <p className="text-sm font-black text-slate-800">{myShiftFromList.type} <span className="text-slate-400 font-medium ml-1">({myShiftFromList.timeRange})</span></p>
+                               </div>
+                            </div>
+                            <ArrowRight size={20} className="text-slate-300" />
                          </div>
-                       )
-                    }
 
-                    const isForbidden = (myShift.type === "RIPOSO") || (targetShift.type === "RIPOSO")
-
-                    if (isForbidden) {
-                       return (
-                         <div className="flex items-center gap-3 p-4 bg-rose-50 border border-rose-100 rounded-2xl text-rose-600">
-                           <AlertTriangle size={20} className="shrink-0" />
-                           <p className="text-xs font-bold leading-tight uppercase tracking-tighter italic">
-                             SCAMBIO NON POSSIBILE: Uno dei due operatori è a RIPOSO in questa data.
-                           </p>
+                         <div className="flex items-center justify-between p-4 bg-indigo-600 text-white rounded-2xl shadow-md">
+                            <div className="flex items-center gap-3">
+                               <div className="w-8 h-8 bg-white/20 text-white rounded-lg flex items-center justify-center font-black text-xs uppercase">RICEVI</div>
+                               <div>
+                                  <p className="text-[10px] text-white/60 font-bold uppercase tracking-widest">Dal collega {colName.split(' ')[0]}</p>
+                                  <p className="text-sm font-black">{targetShift.type} <span className="text-indigo-200 font-medium ml-1">({targetShift.timeRange})</span></p>
+                               </div>
+                            </div>
+                            <Check size={20} className="text-indigo-300" />
                          </div>
-                       )
-                    }
+                       </div>
+                     )
+                   })()}
+                 </div>
+               )}
 
-                    return (
-                      <div className="grid grid-cols-1 gap-4">
-                        {/* Tuo Turno */}
-                        <div className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
-                           <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-black text-xs">TU</div>
-                              <div>
-                                 <p className="text-[10px] text-slate-400 font-bold uppercase">Cedi il turno</p>
-                                 <p className="text-sm font-black text-slate-800">{myShift.type} <span className="text-slate-400 font-medium ml-1">({myShift.timeRange})</span></p>
-                              </div>
-                           </div>
-                           <ArrowRight size={20} className="text-slate-300" />
-                        </div>
+               <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
+                 <p className="text-[9px] text-amber-700 font-black uppercase tracking-widest text-center leading-relaxed italic">
+                   ⚠️ Premendo &quot;Invia Proposta&quot;, il sistema chiederà prima l&apos;accordo al collega e poi il visto finale dell&apos;Admin o della Segreteria.
+                 </p>
+               </div>
 
-                        {/* Turno Collega */}
-                        <div className="flex items-center justify-between p-4 bg-indigo-600 text-white rounded-2xl shadow-md">
-                           <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 bg-white/20 text-white rounded-lg flex items-center justify-center font-black text-xs uppercase">RICEVI</div>
-                              <div>
-                                 <p className="text-[10px] text-white/60 font-bold uppercase tracking-widest">Dal collega {colName.split(' ')[0]}</p>
-                                 <p className="text-sm font-black">{targetShift.type} <span className="text-indigo-200 font-medium ml-1">({targetShift.timeRange})</span></p>
-                              </div>
-                           </div>
-                           <Check size={20} className="text-indigo-300" />
-                        </div>
-                      </div>
-                    )
-                  })()}
-                </div>
-              )}
+               <button 
+                 disabled={!targetColleagueId || swapLoading || !(() => {
+                   const dateToCheck = selectedShiftForSwap ? new Date(selectedShiftForSwap.date).toISOString().split('T')[0] : swapDate
+                   const myShiftFromList = myShifts.find(s => new Date(s.date).toISOString().split('T')[0] === dateToCheck)
+                   const targetShift = shifts.find(s => s.userId === targetColleagueId && new Date(s.date).toISOString().split('T')[0] === dateToCheck)
+                   return myShiftFromList && myShiftFromList.type !== "RIPOSO" && targetShift && targetShift.type !== "RIPOSO"
+                 })()}
+                 onClick={async () => {
+                   if (selectedShiftForSwap) {
+                     handleRequestSwap();
+                   } else {
+                     const dateToCheck = swapDate;
+                     const myShiftFromList = myShifts.find(s => new Date(s.date).toISOString().split('T')[0] === dateToCheck);
+                     if (myShiftFromList) {
+                       setSwapLoading(true);
+                       try {
+                         const res = await fetch('/api/swaps', {
+                           method: 'POST',
+                           headers: { 'Content-Type': 'application/json' },
+                           body: JSON.stringify({ targetUserId: targetColleagueId, shiftId: myShiftFromList.id })
+                         });
+                         if (res.ok) {
+                           toast.success('Proposta di scambio inviata con successo!');
+                           setShowSwapModal(false);
+                           setTargetColleagueId('');
+                         } else {
+                           const data = await res.json();
+                           toast.error(data.error || 'Impossibile inviare la proposta.');
+                         }
+                       } finally {
+                         setSwapLoading(false);
+                       }
+                     }
+                   }
+                 }}
+                 className="w-full bg-slate-900 hover:bg-black text-white py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] transition-all hover:scale-[1.02] active:scale-[0.98] shadow-2xl disabled:opacity-50 disabled:scale-100 disabled:pointer-events-none flex items-center justify-center gap-3"
+               >
+                 {swapLoading ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
+                 Invia Proposta Scambio
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
 
-              <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
-                <p className="text-[9px] text-amber-700 font-black uppercase tracking-widest text-center leading-relaxed italic">
-                  ⚠️ Premendo "Invia Proposta", il sistema chiederà prima l'accordo al collega e poi il visto finale dell'Admin o della Segreteria.
-                </p>
-              </div>
+       <div className="bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 rounded-[2rem] p-8 text-white relative overflow-hidden shadow-xl mb-8">
+         <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+         <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-6">
+           <div className="flex items-center gap-4 flex-1">
+             <div className="p-4 bg-white/15 backdrop-blur-sm rounded-2xl border border-white/20">
+               <Send size={28} className="text-white" />
+             </div>
+             <div>
+               <h3 className="text-xl font-black">Notifiche Telegram Hub</h3>
+               <p className="text-blue-100/80 text-sm font-medium mt-1">
+                 {balances?.user && balances.user.telegramChatId 
+                   ? "✅ Il tuo account è collegato correttamente. Riceverai qui le allerte del Comando."
+                   : "Collega il tuo account Telegram per ricevere le allerte di emergenza dal Comando direttamente sul tuo telefono."
+                 }
+               </p>
+             </div>
+           </div>
 
-              <button 
-                disabled={!targetColleagueId || swapLoading || !(() => {
-                  const dateToCheck = selectedShiftForSwap ? new Date(selectedShiftForSwap.date).toISOString().split('T')[0] : swapDate
-                  const myShift = myShifts.find(s => new Date(s.date).toISOString().split('T')[0] === dateToCheck)
-                  const targetShift = shifts.find(s => s.userId === targetColleagueId && new Date(s.date).toISOString().split('T')[0] === dateToCheck)
-                  return myShift && myShift.type !== "RIPOSO" && targetShift && targetShift.type !== "RIPOSO"
-                })()}
-                onClick={async () => {
-                  if (selectedShiftForSwap) {
-                    handleRequestSwap();
-                  } else {
-                    // Se modalità manuale, cerchiamo lo shift prima di mandare
-                    const dateToCheck = swapDate;
-                    const myShift = myShifts.find(s => new Date(s.date).toISOString().split('T')[0] === dateToCheck);
-                    if (myShift) {
-                      setSwapLoading(true);
-                      try {
-                        const res = await fetch('/api/swaps', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ targetUserId: targetColleagueId, shiftId: myShift.id })
-                        });
-                        if (res.ok) {
-                          toast.success('Proposta di scambio inviata con successo!');
-                          setShowSwapModal(false);
-                          setTargetColleagueId('');
-                        } else {
-                          const data = await res.json();
-                          toast.error(data.error || 'Impossibile inviare la proposta.');
-                        }
-                      } finally {
-                        setSwapLoading(false);
-                      }
-                    }
-                  }
-                }}
-                className="w-full bg-slate-900 hover:bg-black text-white py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] transition-all hover:scale-[1.02] active:scale-[0.98] shadow-2xl disabled:opacity-50 disabled:scale-100 disabled:pointer-events-none flex items-center justify-center gap-3"
-              >
-                {swapLoading ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
-                Invia Proposta Scambio
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+           <div className="flex flex-col items-center gap-3 min-w-[260px]">
+             {balances?.user && balances.user.telegramChatId ? (
+               <div className="bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 rounded-2xl px-6 py-4 flex items-center gap-3 text-emerald-100 font-black text-sm">
+                 <CheckCircle2 size={20} className="text-emerald-400" />
+                 CONNESSO
+               </div>
+             ) : telegramCode ? (
+               <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 text-center w-full shadow-2xl">
+                 <p className="text-[10px] font-bold uppercase tracking-widest text-blue-200/70 mb-2">Codice (Scade tra 15 min)</p>
+                 <p className="text-3xl font-black tracking-[.3em] text-white my-1">{telegramCode}</p>
+                 <div className="mt-4 flex flex-col gap-2">
+                    <a
+                     href="https://t.me/Reperibilita_Altamura_bot"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     className="w-full inline-flex items-center justify-center gap-2 bg-white text-blue-700 px-6 py-3 rounded-xl font-black text-sm shadow-lg hover:scale-[1.03] active:scale-[0.97] transition-transform"
+                   >
+                     🚀 Vai al Bot
+                   </a>
+                   <p className="text-[10px] text-blue-200/60 font-bold uppercase">Invia il comando: <code>/link {telegramCode}</code></p>
+                 </div>
+               </div>
+             ) : (
+               <button
+                 disabled={telegramLoading}
+                 onClick={async () => {
+                   setTelegramLoading(true)
+                   try {
+                     const res = await fetch('/api/telegram/link-code', { method: 'POST' })
+                     const data = await res.json()
+                     if (!res.ok) throw new Error(data.error)
+                     setTelegramCode(data.code)
+                     toast.success('Codice generato! Invia /link seguito dal codice al Bot.')
+                   } catch (error) {
+                     const message = error instanceof Error ? error.message : 'Errore nella generazione del codice.'
+                     toast.error(message)
+                   } finally {
+                     setTelegramLoading(false)
+                   }
+                 }}
+                 className="w-full flex items-center justify-center gap-3 bg-white text-blue-700 px-6 py-4 rounded-xl font-black text-sm shadow-xl hover:scale-[1.03] active:scale-[0.97] transition-all disabled:opacity-50"
+               >
+                 <Smartphone size={20} />
+                 {telegramLoading ? 'Generazione...' : 'Inizia Sincronizzazione'}
+               </button>
+             )}
+           </div>
+         </div>
+       </div>
 
-      {/* Telegram Link Widget */}
-      <div className="bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 rounded-[2rem] p-8 text-white relative overflow-hidden shadow-xl mb-8">
-        <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-6">
-          <div className="flex items-center gap-4 flex-1">
-            <div className="p-4 bg-white/15 backdrop-blur-sm rounded-2xl border border-white/20">
-              <Send size={28} className="text-white" />
-            </div>
-            <div>
-              <h3 className="text-xl font-black">Notifiche Telegram Hub</h3>
-              <p className="text-blue-100/80 text-sm font-medium mt-1">
-                {balances?.user?.telegramChatId 
-                  ? "✅ Il tuo account è collegato correttamente. Riceverai qui le allerte del Comando."
-                  : "Collega il tuo account Telegram per ricevere le allerte di emergenza dal Comando direttamente sul tuo telefono."
-                }
-              </p>
-            </div>
-          </div>
+       <footer className="text-center py-6 border-t border-slate-100 mt-4">
+         <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">
+           Comando di Polizia Locale di Altamura · Sistema Reperibilità v1.0
+         </p>
+       </footer>
 
-          <div className="flex flex-col items-center gap-3 min-w-[260px]">
-            {balances?.user?.telegramChatId ? (
-              <div className="bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 rounded-2xl px-6 py-4 flex items-center gap-3 text-emerald-100 font-black text-sm">
-                <CheckCircle2 size={20} className="text-emerald-400" />
-                CONNESSO
-              </div>
-            ) : telegramCode ? (
-              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 text-center w-full shadow-2xl">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-blue-200/70 mb-2">Codice (Scade tra 15 min)</p>
-                <p className="text-3xl font-black tracking-[.3em] text-white my-1">{telegramCode}</p>
-                <div className="mt-4 flex flex-col gap-2">
-                   <a
-                    href="https://t.me/Reperibilita_Altamura_bot"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full inline-flex items-center justify-center gap-2 bg-white text-blue-700 px-6 py-3 rounded-xl font-black text-sm shadow-lg hover:scale-[1.03] active:scale-[0.97] transition-transform"
-                  >
-                    🚀 Vai al Bot
-                  </a>
-                  <p className="text-[10px] text-blue-200/60 font-bold uppercase">Invia il comando: <code>/link {telegramCode}</code></p>
-                </div>
-              </div>
-            ) : (
-              <button
-                disabled={telegramLoading}
-                onClick={async () => {
-                  setTelegramLoading(true)
-                  try {
-                    const res = await fetch('/api/telegram/link-code', { method: 'POST' })
-                    const data = await res.json()
-                    if (!res.ok) throw new Error(data.error)
-                    setTelegramCode(data.code)
-                    toast.success('Codice generato! Invia /link seguito dal codice al Bot.')
-                  } catch (err: any) {
-                    toast.error(err.message || 'Errore nella generazione del codice.')
-                  } finally {
-                    setTelegramLoading(false)
-                  }
-                }}
-                className="w-full flex items-center justify-center gap-3 bg-white text-blue-700 px-6 py-4 rounded-xl font-black text-sm shadow-xl hover:scale-[1.03] active:scale-[0.97] transition-all disabled:opacity-50"
-              >
-                <Smartphone size={20} />
-                {telegramLoading ? 'Generazione...' : 'Inizia Sincronizzazione'}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+       {showSyncModal && (
+         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowSyncModal(false)}>
+           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
+             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-5 text-white flex justify-between items-center">
+               <div>
+                 <h3 className="text-lg font-black">Sincronizza Calendario</h3>
+                 <p className="text-blue-200 text-xs mt-0.5">Scegli il tuo dispositivo per importare tutte le reperibilità</p>
+               </div>
+               <button onClick={() => setShowSyncModal(false)} className="text-white/70 hover:text-white p-1"><X size={20} /></button>
+             </div>
+             <div className="p-5 space-y-3">
+               <button
+                 onClick={() => {
+                   window.location.href = `webcal://${window.location.host}/api/calendar/${currentUser.id}`
+                 }}
+                 className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-slate-100 hover:border-blue-400 hover:bg-blue-50/50 transition-all text-left"
+               >
+                 <div className="p-3 bg-slate-100 rounded-xl shrink-0"><Smartphone size={24} className="text-slate-700" /></div>
+                 <div>
+                   <p className="font-bold text-sm text-slate-800">iPhone / iPad / Mac</p>
+                   <p className="text-xs text-slate-500">Abbonamento automatico. Le reperibilità appariranno nel tuo Calendario Apple e si aggiorneranno in automatico.</p>
+                 </div>
+               </button>
 
-      {/* Footer */}
-      <footer className="text-center py-6 border-t border-slate-100 mt-4">
-        <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">
-          Comando di Polizia Locale di Altamura · Sistema Reperibilità v1.0
-        </p>
-      </footer>
+               <button
+                 onClick={() => {
+                   window.location.href = `webcal://${window.location.host}/api/calendar/${currentUser.id}`
+                 }}
+                 className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-slate-100 hover:border-indigo-400 hover:bg-indigo-50/50 transition-all text-left"
+               >
+                 <div className="p-3 bg-slate-100 rounded-xl shrink-0"><Monitor size={24} className="text-slate-700" /></div>
+                 <div>
+                   <p className="font-bold text-sm text-slate-800">Windows / Outlook</p>
+                   <p className="text-xs text-slate-500">Abbonamento a calendario Internet. Outlook importerà tutti gli eventi e li terrà aggiornati.</p>
+                 </div>
+               </button>
 
-      {/* === MODALE SINCRONIZZAZIONE CALENDARIO === */}
-      {showSyncModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowSyncModal(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-5 text-white flex justify-between items-center">
-              <div>
-                <h3 className="text-lg font-black">Sincronizza Calendario</h3>
-                <p className="text-blue-200 text-xs mt-0.5">Scegli il tuo dispositivo per importare tutte le reperibilità</p>
-              </div>
-              <button onClick={() => setShowSyncModal(false)} className="text-white/70 hover:text-white p-1"><X size={20} /></button>
-            </div>
-            <div className="p-5 space-y-3">
+               <button
+                 onClick={() => {
+                   const calUrl = `${window.location.protocol}//${window.location.host}/api/calendar/${currentUser.id}`
+                   const gcalUrl = `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(calUrl)}`
+                   window.open(gcalUrl, '_blank')
+                 }}
+                 className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-slate-100 hover:border-emerald-400 hover:bg-emerald-50/50 transition-all text-left"
+               >
+                 <div className="p-3 bg-slate-100 rounded-xl shrink-0"><Globe size={24} className="text-slate-700" /></div>
+                 <div>
+                   <p className="font-bold text-sm text-slate-800">Google Calendar</p>
+                   <p className="text-xs text-slate-500">Apre Google Calendar e aggiunge l&apos;abbonamento. Tutti gli eventi REP appariranno automaticamente.</p>
+                 </div>
+               </button>
 
-              {/* iPhone / iPad */}
-              <button
-                onClick={() => {
-                  window.location.href = `webcal://${window.location.host}/api/calendar/${currentUser.id}`
-                }}
-                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-slate-100 hover:border-blue-400 hover:bg-blue-50/50 transition-all text-left"
-              >
-                <div className="p-3 bg-slate-100 rounded-xl shrink-0"><Smartphone size={24} className="text-slate-700" /></div>
-                <div>
-                  <p className="font-bold text-sm text-slate-800">iPhone / iPad / Mac</p>
-                  <p className="text-xs text-slate-500">Abbonamento automatico. Le reperibilità appariranno nel tuo Calendario Apple e si aggiorneranno in automatico.</p>
-                </div>
-              </button>
-
-              {/* Windows / Outlook */}
-              <button
-                onClick={() => {
-                  window.location.href = `webcal://${window.location.host}/api/calendar/${currentUser.id}`
-                }}
-                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-slate-100 hover:border-indigo-400 hover:bg-indigo-50/50 transition-all text-left"
-              >
-                <div className="p-3 bg-slate-100 rounded-xl shrink-0"><Monitor size={24} className="text-slate-700" /></div>
-                <div>
-                  <p className="font-bold text-sm text-slate-800">Windows / Outlook</p>
-                  <p className="text-xs text-slate-500">Abbonamento a calendario Internet. Outlook importerà tutti gli eventi e li terrà aggiornati.</p>
-                </div>
-              </button>
-
-              {/* Google Calendar */}
-              <button
-                onClick={() => {
-                  const calUrl = `${window.location.protocol}//${window.location.host}/api/calendar/${currentUser.id}`
-                  const gcalUrl = `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(calUrl)}`
-                  window.open(gcalUrl, '_blank')
-                }}
-                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-slate-100 hover:border-emerald-400 hover:bg-emerald-50/50 transition-all text-left"
-              >
-                <div className="p-3 bg-slate-100 rounded-xl shrink-0"><Globe size={24} className="text-slate-700" /></div>
-                <div>
-                  <p className="font-bold text-sm text-slate-800">Google Calendar</p>
-                  <p className="text-xs text-slate-500">Apre Google Calendar e aggiunge l&apos;abbonamento. Tutti gli eventi REP appariranno automaticamente.</p>
-                </div>
-              </button>
-
-              {/* Scarica File */}
-              <div className="pt-3 border-t border-slate-100">
-                <button
-                  onClick={() => {
-                    window.location.href = `/api/calendar/${currentUser.id}`
-                    setShowSyncModal(false)
-                  }}
-                  className="w-full flex items-center justify-center gap-2 text-xs font-bold text-slate-500 hover:text-blue-600 py-2 transition-colors"
-                >
-                  <FileDown size={14} />
-                  Scarica file .ics manualmente
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* === MODALE AGENDA PERSONALE — PREMIUM === */}
+               <div className="pt-3 border-t border-slate-100">
+                 <button
+                   onClick={() => {
+                     window.location.href = `/api/calendar/${currentUser.id}`
+                     setShowSyncModal(false)
+                   }}
+                   className="w-full flex items-center justify-center gap-2 text-xs font-bold text-slate-500 hover:text-blue-600 py-2 transition-colors"
+                 >
+                   <FileDown size={14} />
+                   Scarica file .ics manualmente
+                 </button>
+               </div>
+             </div>
+           </div>
+         </div>
+       )}
       {showAgenda && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={() => setShowAgenda(false)}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}
-            style={{ animation: 'fadeInUp 0.3s ease-out' }}
-          >
-            {/* Header Gradient */}
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="bg-gradient-to-r from-purple-700 via-indigo-600 to-blue-600 p-6 text-white relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent"></div>
               <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32"></div>
@@ -2225,7 +2235,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  {/* Quick Stats in header */}
                   <div className="hidden md:flex items-center gap-4 mr-4">
                     <div className="text-center">
                       <span className="text-2xl font-black block leading-none">{agendaEntries.length}</span>
@@ -2244,15 +2253,11 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
               </div>
             </div>
 
-            {/* Body — two columns */}
             <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-              
-              {/* Left: Form */}
               <div className="w-full md:w-[380px] bg-slate-50 border-r border-slate-100 p-5 overflow-y-auto custom-scrollbar flex-shrink-0">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">✏️ Nuovo Appunto</p>
 
                 <div className="space-y-3">
-                  {/* Date Selector */}
                   <div>
                     <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-1 ml-0.5">📅 Giorno</label>
                     <select 
@@ -2267,7 +2272,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                     </select>
                   </div>
 
-                  {/* Search */}
                   <div>
                     <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-1 ml-0.5">🔍 Cerca Tipo</label>
                     <div className="relative">
@@ -2282,7 +2286,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                     </div>
                   </div>
 
-                  {/* Category List — compact and colorful */}
                   <div className="max-h-52 overflow-y-auto pr-1 space-y-2.5 custom-scrollbar border-2 border-slate-100 rounded-xl p-3 bg-white">
                     {AGENDA_CATEGORIES.map(cat => {
                       const filteredItems = cat.items.filter(i => 
@@ -2318,7 +2321,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                     })}
                   </div>
 
-                  {/* Hours + Note row */}
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-1 ml-0.5">⏱ Ore</label>
@@ -2339,7 +2341,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                     </div>
                   </div>
 
-                  {/* Save Button */}
                   <button
                     onClick={handleSaveAgenda}
                     disabled={!agendaDate || !agendaCode || agendaSaving}
@@ -2351,14 +2352,12 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                 </div>
               </div>
 
-              {/* Right: Entries List */}
               <div className="flex-1 p-5 flex flex-col bg-white overflow-hidden">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="text-lg font-black text-slate-900">I Tuoi Appunti</h3>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{agendaEntries.length} {agendaEntries.length === 1 ? 'voce' : 'voci'} registrate</p>
                   </div>
-                  {/* Category filter chips */}
                   <div className="hidden lg:flex flex-wrap gap-1">
                     {AGENDA_CATEGORIES.map(cat => {
                       const count = agendaEntries.filter(e => cat.items.some(i => i.code === e.code)).length
@@ -2386,12 +2385,10 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                       const emoji = cat?.emoji || '📌'
                       return (
                         <div key={entry.id} className={`flex items-center gap-3 p-3.5 rounded-2xl border-2 ${colors.border} ${colors.bg} transition-all hover:shadow-md group`}>
-                          {/* Day badge */}
                           <div className="w-11 h-11 bg-white rounded-xl flex flex-col items-center justify-center shrink-0 shadow-sm border border-slate-100">
                             <span className="text-base font-black text-slate-800 leading-none">{new Date(entry.date).getUTCDate()}</span>
                             <span className="text-[7px] font-bold text-slate-400 uppercase">{['Dom','Lun','Mar','Mer','Gio','Ven','Sab'][new Date(entry.date).getUTCDay()]}</span>
                           </div>
-                          {/* Content */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="text-sm">{emoji}</span>
@@ -2402,7 +2399,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                             </div>
                             {entry.note && <p className="text-[11px] text-slate-500 mt-0.5 truncate italic">&ldquo;{entry.note}&rdquo;</p>}
                           </div>
-                          {/* Delete */}
                           <button 
                             onClick={() => handleDeleteAgenda(entry.id)}
                             className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all shrink-0"
@@ -2416,7 +2412,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                   )}
                 </div>
                 
-                {/* Bottom stats */}
                 {agendaEntries.length > 0 && (
                   <div className="mt-3 p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl border border-purple-100 flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -2450,7 +2445,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
         </div>
       )}
 
-      {/* Modal Richiesta Assenze */}
       {showAbsenceModal && (
         <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowAbsenceModal(false)}></div>
@@ -2467,7 +2461,7 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
               </div>
               <h3 className="text-2xl font-black tracking-tight mt-4 relative z-10">Inoltra Richiesta</h3>
               <p className="text-amber-50 text-sm mt-1 opacity-90 relative z-10 font-medium">
-                Le richieste inserite qui verranno notificate al Comando Centrale per l'approvazione automatica.
+                Le richieste inserite qui verranno notificate al Comando Centrale per l&apos;approvazione automatica.
               </p>
             </div>
 
@@ -2517,7 +2511,6 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                     </div>
                   </div>
 
-                  {/* Toggle Richiesta Oraria */}
                   <div className="flex items-center gap-2 px-1">
                     <input 
                       type="checkbox" 
@@ -2583,8 +2576,9 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
                            setShowAbsenceModal(false);
                            setReqDate(''); setReqEndDate(''); setReqCode(''); setReqNotes('');
                            setReqStartTime(''); setReqEndTime(''); setReqHours(''); setIsHourlyRequest(false);
-                        } catch (err: any) {
-                           toast.error(err.message)
+                        } catch (error) {
+                           const message = error instanceof Error ? error.message : "Errore"
+                           toast.error(message)
                         } finally {
                            setReqLoading(false);
                         }
@@ -2603,4 +2597,3 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
     </div>
   )
 }
-

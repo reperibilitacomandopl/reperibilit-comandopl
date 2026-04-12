@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import toast from "react-hot-toast"
 import { Settings, RefreshCw, FileDown, ClipboardList, Play, Shield, ArrowRight, Terminal, GraduationCap } from "lucide-react"
@@ -13,15 +13,27 @@ export default function ImpostazioniPanel({ tenantSlug }: { tenantSlug?: string 
   const [activeTab, setActiveTab] = useState<"settings" | "audit" | "verbatel" | "schools">("settings")
   const searchParams = useSearchParams()
 
+  interface AuditLog {
+    id: string
+    action: string
+    details: string
+    adminName: string | null
+    targetName: string | null
+    createdAt: string
+  }
+
   useEffect(() => {
-    const tab = searchParams.get("tab")
-    if (tab === "schools") setActiveTab("schools")
-    if (tab === "audit") setActiveTab("audit")
-    if (tab === "verbatel") setActiveTab("verbatel")
+    const t = setTimeout(() => {
+      const tab = searchParams.get("tab")
+      if (tab === "schools") setActiveTab("schools")
+      if (tab === "audit") setActiveTab("audit")
+      if (tab === "verbatel") setActiveTab("verbatel")
+    }, 0);
+    return () => clearTimeout(t);
   }, [searchParams])
 
   // Audit state
-  const [auditLogs, setAuditLogs] = useState<any[]>([])
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [isLoadingAudit, setIsLoadingAudit] = useState(false)
 
   // Verbatel state
@@ -29,7 +41,7 @@ export default function ImpostazioniPanel({ tenantSlug }: { tenantSlug?: string 
   const [verbatelScript, setVerbatelScript] = useState("")
   const [isLoadingVerbatel, setIsLoadingVerbatel] = useState(false)
 
-  const loadAuditLogs = async () => {
+  const loadAuditLogs = useCallback(async () => {
     setIsLoadingAudit(true)
     try {
       const res = await fetch("/api/admin/audit")
@@ -37,7 +49,7 @@ export default function ImpostazioniPanel({ tenantSlug }: { tenantSlug?: string 
       setAuditLogs(data.logs || [])
     } catch { }
     setIsLoadingAudit(false)
-  }
+  }, [])
 
   const generateVerbatelScript = async () => {
     setIsLoadingVerbatel(true)
@@ -53,8 +65,11 @@ export default function ImpostazioniPanel({ tenantSlug }: { tenantSlug?: string 
   }
 
   useEffect(() => {
-    if (activeTab === "audit") loadAuditLogs()
-  }, [activeTab])
+    if (activeTab === "audit") {
+      const t = setTimeout(() => loadAuditLogs(), 0);
+      return () => clearTimeout(t);
+    }
+  }, [activeTab, loadAuditLogs])
 
   const tabs = [
     { id: "settings" as const, label: "Configurazione", icon: Settings, accent: "indigo" },

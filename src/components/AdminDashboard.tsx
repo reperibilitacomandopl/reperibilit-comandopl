@@ -2,20 +2,16 @@
 
 import toast from "react-hot-toast"
 import { useState, useRef, useMemo } from "react"
-import { Calendar as CalendarIcon, UploadCloud, Users, Smartphone, ChevronLeft, ChevronRight, Settings, FileDown, LogOut, CheckCircle2, RefreshCw, X, FileEdit, Trash2, Shield, AlertCircle, HelpCircle, EyeOff, Eye, Mail, Play, Plus, ClipboardList, Printer, Hash, Phone, Award, Calendar, FileText, MapPin, Briefcase, Save, Filter } from "lucide-react"
+import { Calendar as CalendarIcon, UploadCloud, Users, Smartphone, ChevronLeft, ChevronRight, Settings, FileDown, CheckCircle2, RefreshCw, X, FileEdit, Trash2, Shield, AlertCircle, HelpCircle, EyeOff, Eye, Mail, Play, Plus, ClipboardList, Printer, Hash, Phone, Award, Calendar, FileText, MapPin, Briefcase, Save, Filter } from "lucide-react"
 import SettingsPanel from "./SettingsPanel"
-import ServiceManagerPanel from "./ServiceManagerPanel"
-import ServiceOrderDashboard from "./ServiceOrderDashboard"
 import * as XLSX from "xlsx"
-import AdminInitialBalances from "./AdminInitialBalances"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { isHoliday } from "../utils/holidays"
 import { isMalattia, isMattina, isPomeriggio, isAssenza } from "../utils/shift-logic"
-import { AGENDA_CATEGORIES, getCategoryColor } from "../utils/agenda-codes"
+import { AGENDA_CATEGORIES } from "../utils/agenda-codes"
 import { generatePlanningPDF } from "../utils/pdf-generator"
 import PlanningMobileView from "./PlanningMobileView"
-import { cacheDataset, syncOfflineRequests } from "@/lib/offline-sync"
 
 type EditingCell = { agentId: string; agentName: string; day: number; currentType: string; warningMsg?: string } | null
 
@@ -37,7 +33,7 @@ interface DashboardAgent {
   scadenzaPatente?: string | Date | null;
   scadenzaPortoArmi?: string | Date | null;
   noteInterne?: string | null;
-  repTotal?: number;
+  repTotal: number;
 }
 
 interface DashboardShift {
@@ -48,8 +44,62 @@ interface DashboardShift {
   repType: string | null;
 }
 
-export default function AdminDashboard({ allAgents, shifts, currentYear, currentMonth, isPublished, currentView, settings, rotationGroups, categories, tenantSlug }: { 
-  allAgents: DashboardAgent[], 
+interface AuditLog {
+  id: string;
+  action: string;
+  adminName: string | null;
+  createdAt: string | Date;
+  details: string;
+  targetName?: string | null;
+  targetId?: string | null;
+}
+
+interface PendingRequest {
+  id: string;
+  date: string | Date;
+  user: { name: string };
+  code: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  hours?: number | null;
+  notes?: string | null;
+}
+
+interface PendingSwap {
+  id: string;
+  shift: { date: string | Date; type: string };
+  requester: { name: string };
+  targetUser: { name: string };
+}
+
+interface BalanceDetail {
+  id: string;
+  code: string;
+  label: string;
+  initialValue: number;
+  unit: 'DAYS' | 'HOURS';
+}
+
+interface AgentBalances {
+  balance: { details: BalanceDetail[] } | null;
+  usage: {
+    absences: { code: string }[];
+    agendaEntries: { code: string; hours?: number }[];
+  };
+  requests: { code: string }[];
+}
+
+interface ImportShiftData {
+  name: string;
+  matricola: string;
+  qualifica: string;
+  squadra: string;
+  date: string;
+  type: string;
+}
+
+export default function AdminDashboard({ allAgents, shifts, currentYear, currentMonth, isPublished, currentView, settings, tenantSlug }: { 
+  allAgents: Omit<DashboardAgent, 'repTotal'>[], 
   shifts: DashboardShift[], 
   currentYear: number, 
   currentMonth: number, 
@@ -71,19 +121,13 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
   const [recalcAgent, setRecalcAgent] = useState<string | null>(null)
   const [showAnagrafica, setShowAnagrafica] = useState(false)
   const [showSettings, setShowSettings] = useState<boolean | string>(false)
-  const [editingAgent, setEditingAgent] = useState<DashboardAgent | null>(null)
+  const [editingAgent, setEditingAgent] = useState<Omit<DashboardAgent, 'repTotal'> | null>(null)
   const [tempEmail, setTempEmail] = useState("")
   const [tempPhone, setTempPhone] = useState("")
   const [tempName, setTempName] = useState("")
   const [tempMatricola, setTempMatricola] = useState("")
   const [tempSquadra, setTempSquadra] = useState("")
-  const [tempRotationGroup, setTempRotationGroup] = useState("")
-  const [tempDefaultCategoryId, setTempDefaultCategoryId] = useState("")
-  const [tempDefaultTypeId, setTempDefaultTypeId] = useState("")
   const [tempMassimale, setTempMassimale] = useState(8)
-  const [newPass, setNewPass] = useState("")
-  const [showAddUser, setShowAddUser] = useState(false)
-  const [isSavingUser, setIsSavingUser] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
   const [isSendingPec, setIsSendingPec] = useState(false)
   const [onlyRepFilter, setOnlyRepFilter] = useState(false)
@@ -95,9 +139,9 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
   const [anagSearchQuery, setAnagSearchQuery] = useState("")
   const [anagSquadraFilter, setAnagSquadraFilter] = useState("ALL")
   const [anagQualificaFilter, setAnagQualificaFilter] = useState("ALL")
-  const [selectedAgentForDetails, setSelectedAgentForDetails] = useState<any | null>(null)
+  const [selectedAgentForDetails, setSelectedAgentForDetails] = useState<DashboardAgent | null>(null)
   const [activeDetailTab, setActiveDetailTab] = useState<"ANAGRAFICA" | "SALDI" | "STORICO" | "NOTE">("ANAGRAFICA")
-  const [agentBalances, setAgentBalances] = useState<any>(null)
+  const [agentBalances, setAgentBalances] = useState<AgentBalances | null>(null)
   const [isLoadingBalances, setIsLoadingBalances] = useState(false)
 
   // New Personnel Fields
@@ -106,10 +150,11 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
   const [tempScadenzaPortoArmi, setTempScadenzaPortoArmi] = useState("")
   const [tempNoteInterne, setTempNoteInterne] = useState("")
   const [tempQualifica, setTempQualifica] = useState("")
+  const [newPass, setNewPass] = useState("")
 
   // Audit Log
   const [showAuditLog, setShowAuditLog] = useState(false)
-  const [auditLogs, setAuditLogs] = useState<any[]>([])
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [isLoadingAudit, setIsLoadingAudit] = useState(false)
 
   // Verbatel Sync
@@ -125,8 +170,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
   // Approvals (Swaps & Requests)
   const [showSwapApprovals, setShowSwapApprovals] = useState(false)
-  const [pendingSwaps, setPendingSwaps] = useState<any[]>([])
-  const [pendingRequests, setPendingRequests] = useState<any[]>([])
+  const [pendingSwaps, setPendingSwaps] = useState<PendingSwap[]>([])
+  const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([])
   const [isLoadingSwaps, setIsLoadingSwaps] = useState(false)
   const [importType, setImportType] = useState<"base" | "rep">("base")
 
@@ -148,8 +193,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
         body: JSON.stringify({ userId })
       })
       if (res.ok) router.refresh()
-    } catch (err) {
-      console.error(err)
+    } catch (error) {
+      console.error(error)
     } finally {
       setIsTogglingUff(null)
     }
@@ -266,7 +311,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       })
       if (!res.ok) throw new Error("Errore ricalcolo")
       router.refresh()
-    } catch (err) {
+    } catch (error) {
+       console.error(error)
       toast.error("Errore durante il ricalcolo")
     } finally {
       setRecalcAgent(null)
@@ -278,11 +324,11 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
     try {
       const res = await fetch("/api/admin/audit")
       if (res.ok) {
-        const data = await res.json()
+        const data = await res.json() as AuditLog[]
         setAuditLogs(data)
       }
-    } catch (err) {
-      console.error(err)
+    } catch (error) {
+      console.error(error)
     } finally {
       setIsLoadingAudit(false)
     }
@@ -296,8 +342,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
         setPendingSwaps(data.pendingSwaps || [])
         setPendingRequests(data.pendingRequests || [])
       }
-    } catch (err) {
-      console.error(err)
+    } catch (error) {
+      console.error(error)
     } finally {
       setIsLoadingSwaps(false)
     }
@@ -439,28 +485,11 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
     alert('Sincronizzazione Compiuta! Turni inseriti: ' + modificheFatte);
 })();`;
       setVerbatelScript(scriptCode)
-    } catch (err) {
+    } catch (error) {
+       console.error(error)
       toast.error("Errore durante la generazione dello script per Verbatel.")
     } finally {
       setIsLoadingVerbatel(false)
-    }
-  }
-
-  const handleGenerateShifts = async () => {
-    if (!confirm("Attenzione: confermi di voler generare MENSILMENTE le reperibilità? Questa operazione ricalcolerà tutti i riposi e i turni mancanti.")) return
-    setIsGenerating(true)
-    try {
-      const res = await fetch("/api/admin/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ month: currentMonth, year: currentYear })
-      })
-      if (!res.ok) throw new Error("Generate API failed")
-      router.refresh()
-    } catch {
-      toast.error("Errore durante la generazione")
-    } finally {
-      setIsGenerating(false)
     }
   }
 
@@ -501,28 +530,21 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
         const wb = XLSX.read(bstr, { type: 'binary' })
         const wsName = wb.SheetNames[0]
         const ws = wb.Sheets[wsName]
-        const data = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1 })
+        const data = XLSX.utils.sheet_to_json<string[][]>(ws, { header: 1 })
         let headerRowIndex = -1
-        let isVerbatelFormat = false
-        let isReperibilitaFormat = false
 
         for (let r = 0; r < Math.min(data.length, 10); r++) {
           const row = data[r]
           if (Array.isArray(row)) {
             const rowStr = row.join(" ").toLowerCase()
-            if (rowStr.includes("matricola")) {
+            if (rowStr.includes("matricola") || rowStr.includes("nominativo")) {
               headerRowIndex = r
-              isVerbatelFormat = true
-              break
-            } else if (rowStr.includes("nominativo")) {
-              headerRowIndex = r
-              isReperibilitaFormat = true
               break
             }
           }
         }
 
-        const shiftsData: any[] = []
+        const shiftsData: ImportShiftData[] = []
         const ignoreKeywords = ["AGENTE", "ISTRUTTORE", "UFFICIALE", "SOVRINTENDENTE", "ASSISTENTE", "VICE", "CAPITANO", "TENENTE"]
 
         const startRow = headerRowIndex !== -1 ? headerRowIndex + 1 : 3
@@ -577,8 +599,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
         router.refresh()
         setTimeout(() => setUploadStatus(""), 5000)
 
-      } catch (err) {
-        setUploadStatus(`❌ ${err instanceof Error ? err.message : "Errore lettura Excel"}`)
+      } catch (error) {
+        setUploadStatus(`❌ ${error instanceof Error ? error.message : "Errore lettura Excel"}`)
       }
     }
     reader.readAsBinaryString(file)
@@ -608,7 +630,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
     ]
     
     // Agents rows
-    allAgents.forEach(agent => {
+    sortedAgents.forEach(agent => {
       const row: (string | number)[] = [agent.name]
       let repTotal = 0
       
@@ -644,7 +666,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
     ]
     
     // Only Ufficiali
-    const ufficiali = allAgents.filter(a => a.isUfficiale)
+    const ufficiali = sortedAgents.filter(a => a.isUfficiale)
     ufficiali.forEach(agent => {
       const row: (string | number)[] = [agent.name]
       let repTotal = 0
@@ -703,8 +725,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       })
 
       toast.success(`PDF Certificato! Sigillo: ${hash.substring(0, 8)}...`, { id: toastId })
-    } catch (err) {
-      console.error(err)
+    } catch (error) {
+      console.error(error)
       toast.error("Errore durante la generazione del PDF", { id: toastId })
     } finally {
       setIsExportingPDF(false)
@@ -724,7 +746,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       })
 
       // Filtriamo per mostrare solo i REP in questo speciale export
-      const hash = await generateReperibilitaPDF({
+      await generateReperibilitaPDF({
         monthName: currentMonthName,
         year: currentYear,
         agents: sortedAgents.filter(a => a.repTotal > 0),
@@ -734,8 +756,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       })
 
       toast.success(`Prospetto REP Generato!`, { id: toastId })
-    } catch (err) {
-      console.error(err)
+    } catch (error) {
+      console.error(error)
       toast.error("Errore export Reperibilità", { id: toastId })
     } finally {
       setIsExportingPDF(false)
@@ -774,7 +796,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
         const [y, m] = shiftDate.split('-').map(Number);
         return y === currentYear && m === currentMonth;
       }).length
-      return { ...ag, repTotal }
+      return { ...ag, repTotal } as DashboardAgent
     })
     
     if (searchQuery) {
@@ -811,7 +833,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
         const [y, m] = shiftDate.split('-').map(Number);
         return y === currentYear && m === currentMonth;
       }).length
-      return { ...ag, repTotal }
+      return { ...ag, repTotal } as DashboardAgent
     })
     
     if (anagSearchQuery) {
@@ -831,7 +853,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
     list.sort((a, b) => a.name.localeCompare(b.name))
 
     return list
-  }, [allAgents, shifts, anagSearchQuery, anagSquadraFilter, anagQualificaFilter])
+  }, [allAgents, shifts, anagSearchQuery, anagSquadraFilter, anagQualificaFilter, currentYear, currentMonth])
 
   const uniqueSquadre = useMemo(() => Array.from(new Set(allAgents.map(a => a.squadra || "NESSUNA"))).sort(), [allAgents])
   const uniqueQualifiche = useMemo(() => Array.from(new Set(allAgents.map(a => a.qualifica || "NESSUNA"))).sort(), [allAgents])
@@ -851,7 +873,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-xl shadow-sm border border-slate-200">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Cabina di Regia</h2>
-          <p className="text-sm text-slate-500">Gestione turni e importazione per l'intero anno</p>
+          <p className="text-sm text-slate-500">Gestione turni e importazione per l&apos;intero anno</p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
@@ -885,7 +907,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
               <button 
                 onClick={() => setSortConfig(null)}
                 className="text-xs font-bold text-red-600 bg-red-100 px-2 py-1.5 rounded-md hover:bg-red-200 transition-colors whitespace-nowrap"
-                title="Rimuovi l'ordinamento in corso per sbloccare la lista"
+                title="Rimuovi l&apos;ordinamento in corso per sbloccare la lista"
               >
                 Rimuovi Ordine
               </button>
@@ -898,23 +920,23 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
               className="flex items-center gap-2 hover:bg-white text-slate-700 px-3 py-1.5 rounded-md text-sm font-semibold transition-all shadow-[0_0_0_1px_rgba(0,0,0,0.05)_inset]"
               title="Importa i turni o le assenze (F, M, 104, ecc)"
             >
-              <UploadCloud size={16} />
+              <UploadCloud width={16} height={16} />
               Importa Turni
             </button>
             <button 
               onClick={() => { setImportType("rep"); setTimeout(() => fileInputRef.current?.click(), 10) }}
               className="flex items-center gap-2 hover:bg-white text-purple-700 px-3 py-1.5 rounded-md text-sm font-semibold transition-all shadow-[0_0_0_1px_rgba(0,0,0,0.05)_inset]"
-              title="Importa il file con scritto 'REP' generato dal gestionale"
+              title="Importa il file con scritto &apos;REP&apos; generato dal gestionale"
             >
-              <UploadCloud size={16} />
+              <UploadCloud width={16} height={16} />
               Importa Reperibilità
             </button>
             <button
-              onClick={() => alert("FORMATO EXCEL RICHIESTO (come da screenshot):\n\n- Riga 1, 2 e 3: Intestazioni\n- Riga 4 in poi: Lista Personale\n\nColonne:\n- Colonna A: NOME AGENTE\n- Colonna B: MATRICOLA\n- Colonna C: QUALIFICA (GRADO)\n- Colonna D: SQUADRA (SEZIONE)\n- Colonna E: Giorno 1 del mese\n- ...fino alla Colonna AI (Giorno 31)\n\nIl sistema rileverà automaticamente se si tratta di turni o reperibilità e creerà l'anagrafica mancante.")}
+              onClick={() => alert("FORMATO EXCEL RICHIESTO (come da screenshot):\n\n- Riga 1, 2 e 3: Intestazioni\n- Riga 4 in poi: Lista Personale\n\nColonne:\n- Colonna A: NOME AGENTE\n- Colonna B: MATRICOLA\n- Colonna C: QUALIFICA (GRADO)\n- Colonna D: SQUADRA (SEZIONE)\n- Colonna E: Giorno 1 del mese\n- ...fino alla Colonna AI (Giorno 31)\n\nIl sistema rileverà automaticamente se si tratta di turni o reperibilità e creerà l&apos;anagrafica mancante.")}
               className="flex items-center justify-center w-8 hover:bg-white text-slate-400 hover:text-blue-500 rounded-md transition-all shadow-[0_0_0_1px_rgba(0,0,0,0.05)_inset]"
-              title="Come deve essere formattato l'Excel?"
+              title="Come deve essere formattato l&apos;Excel?"
             >
-              <HelpCircle size={16} />
+              <HelpCircle width={16} height={16} />
             </button>
           </div>
           
@@ -925,7 +947,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
               className="flex items-center gap-2 hover:bg-white text-red-600 px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-tighter transition-all disabled:opacity-50"
               title="Elimina solo i Turni Base (M, P, F, ecc.)"
             >
-              <Trash2 size={14} />
+              <Trash2 width={14} height={14} />
               Reset Turni
             </button>
             <button 
@@ -934,7 +956,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
               className="flex items-center gap-2 hover:bg-white text-red-600 px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-tighter transition-all disabled:opacity-50 border-l border-red-100"
               title="Elimina solo le Reperibilità (R)"
             >
-              <Trash2 size={14} />
+              <Trash2 width={14} height={14} />
               Reset REP
             </button>
           </div>
@@ -943,7 +965,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             href={`/${tenantSlug}/admin/auto-compila`}
             className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-indigo-200"
           >
-            <CalendarIcon size={18} />
+            <CalendarIcon width={18} height={18} />
             Pianificazione
           </Link>
 
@@ -951,7 +973,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             href={`/${tenantSlug}/admin/risorse`}
             className="flex items-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-amber-200"
           >
-            <Users size={18} />
+            <Users width={18} height={18} />
             Gestione Squadre
           </Link>
 
@@ -959,7 +981,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             href={`/${tenantSlug}/admin/ods`}
             className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-blue-200"
           >
-            <ClipboardList size={18} />
+            <ClipboardList width={18} height={18} />
             Gestione Operativa
           </Link>
 
@@ -967,7 +989,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             href={`/${tenantSlug}/admin/stampa-ods`}
             className="flex items-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-purple-200"
           >
-            <Printer size={18} />
+            <Printer width={18} height={18} />
             Stampa OdS
           </Link>
 
@@ -975,7 +997,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             onClick={() => setShowAnagrafica(true)}
             className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-indigo-200"
           >
-            <Users size={18} />
+            <Users width={18} height={18} />
             Anagrafica
           </button>
 
@@ -984,24 +1006,24 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             className="flex items-center gap-2 bg-teal-50 hover:bg-teal-100 text-teal-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border border-teal-200 shadow-sm"
             title="Inserimento massivo ferie, congedi e malattie per un periodo lungo"
           >
-            <CalendarIcon size={18} />
+            <CalendarIcon width={18} height={18} />
             Assenze Multiple
           </button>
 
           <button 
-            onClick={() => { setShowAuditLog(true); fetchAuditLogs() }}
+            onClick={() => { setShowAuditLog(true); void fetchAuditLogs(); }}
             className="flex items-center gap-2 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-200 transition-all border border-slate-200"
           >
-            <RefreshCw size={18} className={isLoadingAudit ? "animate-spin" : ""} />
+            <RefreshCw width={18} height={18} className={isLoadingAudit ? "animate-spin" : ""} />
             Log Attività
           </button>
 
           <button 
-            onClick={() => { setShowSwapApprovals(true); fetchPendingApprovals() }}
+            onClick={() => { setShowSwapApprovals(true); void fetchPendingApprovals(); }}
             className={`relative flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg font-bold text-sm hover:bg-indigo-100 transition-all shadow-sm ${pendingSwaps.length + pendingRequests.length > 0 ? 'ring-2 ring-indigo-400 ring-offset-2' : ''}`}
             title="Approvazioni in Coda"
           >
-            <RefreshCw size={18} />
+            <RefreshCw width={18} height={18} />
             <span className="hidden sm:inline">Coda Approvazioni</span>
             {(pendingSwaps.length + pendingRequests.length > 0) ? (
               <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full animate-bounce border-2 border-white shadow-md">
@@ -1014,7 +1036,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             onClick={() => setShowSettings(true)}
             className="flex items-center gap-2 bg-gradient-to-br from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm hover:shadow-md"
           >
-            <Settings size={18} />
+            <Settings width={18} height={18} />
             Impostazioni
           </button>
 
@@ -1022,7 +1044,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             onClick={() => setShowSettings("balances")}
             className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm hover:shadow-md"
           >
-            <Hash size={18} />
+            <Hash width={18} height={18} />
             Saldi Annuali
           </button>
 
@@ -1033,9 +1055,9 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             title={isPublished ? "Nascondi questo mese agli agenti" : "Rendi questo mese visibile agli agenti"}
           >
             {isPublished ? (
-              <><EyeOff size={18} /> Nascondi Mese</>
+              <><EyeOff width={18} height={18} /> Nascondi Mese</>
             ) : (
-              <><Eye size={18} /> Pubblica Mese</>
+              <><Eye width={18} height={18} /> Pubblica Mese</>
             )}
           </button>
 
@@ -1055,8 +1077,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 const data = await res.json()
                 if (!res.ok) throw new Error(data.error || "Errore sconosciuto PEC")
                 setUploadStatus(`✅ PEC inviata con successo a ${data.emailSentCount} dipendenti!`)
-              } catch (err) {
-                setUploadStatus(`❌ ${err instanceof Error ? err.message : "Errore Invio PEC"}`)
+              } catch (error) {
+                setUploadStatus(`❌ ${error instanceof Error ? error.message : "Errore Invio PEC"}`)
               } finally {
                 setIsSendingPec(false)
                 setTimeout(() => setUploadStatus(""), 6000)
@@ -1065,7 +1087,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 text-white hover:bg-blue-700"
             title="Invia il Riepilogo Reperibilità a tutti via Email Certificata"
           >
-            <Mail size={18} />
+            <Mail width={18} height={18} />
             Invia PEC Personale
           </button>
           
@@ -1074,7 +1096,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-400 hover:to-orange-500 hover:shadow-md active:scale-95"
             title="Esporta i turni su Verbatel in automatico"
           >
-            <RefreshCw size={18} />
+            <RefreshCw width={18} height={18} />
             Sincronizza Verbatel
           </button>
 
@@ -1088,8 +1110,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 const data = await res.json()
                 if (!res.ok) throw new Error(data.error || 'Errore invio allerta')
                 toast.success(`🚨 Allerta inviata a ${data.alerted} reperibili via Telegram!`)
-              } catch (err: any) {
-                toast.error(err.message || 'Errore Telegram')
+              } catch (error) {
+                 toast.error(error instanceof Error ? error.message : 'Errore Telegram')
               } finally {
                 setIsSendingAlert(false)
               }
@@ -1098,7 +1120,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             title="Invia allerta immediata via Telegram ai reperibili di oggi"
           >
             {isSendingAlert ? (
-              <><RefreshCw size={18} className="animate-spin" /> Invio in corso...</>
+              <><RefreshCw width={18} height={18} className="animate-spin" /> Invio in corso...</>
             ) : (
               <>🚨 Allerta Emergenza</>
             )}
@@ -1122,8 +1144,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 const result = await res.json()
                 setUploadStatus(`✅ Generati ${result.totalAssigned} turni REP!${result.emptyDays.length > 0 ? ` ⚠️ Giorni scoperti: ${result.emptyDays.join(', ')}` : ''}`)
                 router.refresh()
-              } catch (err) {
-                setUploadStatus(`❌ ${err instanceof Error ? err.message : "Errore"}`)
+              } catch (error) {
+                setUploadStatus(`❌ ${error instanceof Error ? error.message : "Errore"}`)
               } finally {
                 setIsGenerating(false)
                 setTimeout(() => setUploadStatus(""), 8000)
@@ -1133,7 +1155,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
           >
             {isGenerating ? "⚙️ Generazione in corso..." : (
               <>
-                <Play size={18} fill="currentColor" />
+                <Play width={18} height={18} fill="currentColor" />
                 Genera Reperibilità
               </>
             )}
@@ -1156,21 +1178,22 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 setUploadStatus(`✅ ${data.holesResolved} buchi coperti in sicurezza!`)
                 toast.success(`Coperti ${data.holesResolved} turni mancanti!`)
                 router.refresh()
-              } catch (err: any) {
-                setUploadStatus(`❌ Errore: ${err.message}`)
-                toast.error(`Errore AI: ${err.message}`)
+              } catch (error) {
+                const msg = error instanceof Error ? error.message : 'Errore sconosciuto';
+                setUploadStatus(`❌ Errore: ${msg}`)
+                toast.error(`Errore AI: ${msg}`)
               } finally {
                 setIsResolving(false)
                 setTimeout(() => setUploadStatus(""), 6000)
               }
             }}
             className="flex items-center gap-2 bg-gradient-to-r from-fuchsia-700 to-purple-800 hover:from-fuchsia-600 hover:to-purple-700 text-white px-5 py-2 rounded-xl text-sm font-black transition-all shadow-lg shadow-purple-500/20 active:scale-95 disabled:opacity-50 hover:shadow-xl"
-            title="L'Assistente AI scansiona il mese e copre i buchi senza toccare le assegnazioni esistenti"
+            title="L&apos;Assistente AI scansiona il mese e copre i buchi senza toccare le assegnazioni esistenti"
           >
             {isResolving ? (
-              <><RefreshCw size={18} className="animate-spin" /> Calcolo...</>
+              <><RefreshCw width={18} height={18} className="animate-spin" /> Calcolo...</>
             ) : (
-              <><Shield size={18} /> Copertura Buchi REP.</>
+              <><Shield width={18} height={18} /> Copertura Buchi REP.</>
             )}
           </button>
         </div>
@@ -1180,7 +1203,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
         <div className="p-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-blue-50 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="w-full lg:w-auto">
             <h3 className="font-bold text-slate-800 flex items-center gap-2 text-lg">
-              <CalendarIcon size={20} className="text-blue-600" />
+              <CalendarIcon width={20} height={20} className="text-blue-600" />
               Tabellone Reperibilità
             </h3>
             <div className="flex items-center justify-between lg:justify-start w-full gap-4 mt-1">
@@ -1195,7 +1218,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 className="p-2 text-slate-500 hover:text-blue-600 hover:bg-white rounded-lg transition-all"
                 title="Mese precedente"
               >
-                <ChevronLeft size={20} />
+                <ChevronLeft width={20} height={20} />
               </Link>
               
               <div className="flex items-center gap-1 px-1">
@@ -1230,38 +1253,38 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 className="p-2 text-slate-500 hover:text-blue-600 hover:bg-white rounded-lg transition-all"
                 title="Mese successivo"
               >
-                <ChevronRight size={20} />
+                <ChevronRight width={20} height={20} />
               </Link>
             </div>
 
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 -mb-1 scrollbar-hide">
               <div className="flex bg-slate-100 rounded-lg p-1 shrink-0">
                 <button onClick={handleExportExcel} className="text-[11px] text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1.5 hover:bg-white px-3 py-1.5 rounded-md transition-all border border-transparent shadow-[0_0_0_1px_rgba(0,0,0,0.05)_inset] whitespace-nowrap">
-                  <FileDown size={14} />
+                  <FileDown width={14} height={14} />
                   Generale
                 </button>
                 <button onClick={handleExportUfficialiExcel} className="text-[11px] text-slate-600 hover:text-slate-800 font-bold flex items-center gap-1.5 hover:bg-white px-3 py-1.5 rounded-md transition-all border border-transparent shadow-[0_0_0_1px_rgba(0,0,0,0.05)_inset] whitespace-nowrap">
-                  <FileDown size={14} />
+                  <FileDown width={14} height={14} />
                   Ufficiali
                 </button>
               </div>
               
               <button 
-                onClick={handleExportPDF} 
+                onClick={() => { void handleExportPDF(); }}
                 disabled={isExportingPDF}
                 className="ml-2 text-[11px] bg-gradient-to-r from-slate-800 to-slate-900 text-white font-black flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all shadow-md hover:shadow-lg active:scale-95 disabled:opacity-50 whitespace-nowrap"
               >
-                {isExportingPDF ? <RefreshCw size={14} className="animate-spin" /> : <Shield size={14} className="text-emerald-400" />}
+                {isExportingPDF ? <RefreshCw width={14} height={14} className="animate-spin" /> : <Shield width={14} height={14} className="text-emerald-400" />}
                 PDF PRO
               </button>
 
               <button 
-                onClick={handleExportRepPDF} 
+                onClick={() => { void handleExportRepPDF(); }}
                 disabled={isExportingPDF}
                 title="Esporta solo Reperibilità"
                 className="text-[11px] bg-white text-emerald-700 border border-emerald-200 font-black flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all shadow-sm hover:bg-emerald-50 active:scale-95 disabled:opacity-50 whitespace-nowrap"
               >
-                <Shield size={14} className="text-emerald-600" />
+                <Shield width={14} height={14} className="text-emerald-600" />
                 PDF REP
               </button>
               
@@ -1270,7 +1293,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 className={`p-1.5 rounded-lg transition-all border ${onlyRepFilter ? "bg-emerald-600 text-white border-emerald-700 shadow-lg scale-110" : "bg-white text-slate-400 border-slate-200 hover:border-emerald-300"}`}
                 title="Mostra solo chi ha REP"
               >
-                <Filter size={16} />
+                <Filter width={16} height={16} />
               </button>
               
               {/* Mobile Toggle */}
@@ -1279,7 +1302,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 className={`ml-2 p-1.5 rounded-lg transition-all border ${isMobileView ? "bg-indigo-600 text-white border-indigo-700" : "bg-white text-slate-400 border-slate-200"}`}
                 title="Cambia vista (Tabella/Card)"
               >
-                <Smartphone size={16} />
+                <Smartphone width={16} height={16} />
               </button>
             </div>
           </div>
@@ -1332,7 +1355,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                         <span className="text-[10px] text-indigo-400">{sortConfig?.key === 'name' ? (sortConfig.dir === 'asc' ? '▲' : '▼') : '↕'}</span>
                       </div>
                     </th>
-                    {dayInfo.map((di, dIdx) => (
+                    {dayInfo.map((di) => (
                       <th 
                         key={di.isNextMonth ? 'next-1' : di.day} 
                         className={`px-1 pt-3 pb-1 text-center font-black border-b border-slate-100 min-w-[42px] font-sans text-[11px] ${di.isNextMonth ? "bg-slate-100 text-slate-300 opacity-50" : (di.isWeekend ? "bg-rose-50/50 text-rose-600 border-rose-100" : "bg-white text-slate-500")}`}
@@ -1359,7 +1382,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                     </th>
                   </tr>
                   <tr>
-                    {dayInfo.map((di, dIdx) => (
+                    {dayInfo.map((di) => (
                       <th 
                         key={di.isNextMonth ? 'next-dow-1' : `dow-${di.day}`} 
                         className={`px-1 pb-2 pt-0 text-center font-black text-[9px] border-b-4 border-slate-200 uppercase tracking-tighter ${di.isNextMonth ? "bg-slate-50 text-slate-200" : (di.isWeekend ? "bg-rose-50/50 text-rose-400 border-rose-100" : "bg-white text-slate-400")}`}
@@ -1374,7 +1397,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                     <tr>
                       <td colSpan={daysInMonth + 2} className="p-12 text-center text-slate-400 text-sm">
                         <div className="flex flex-col items-center gap-2">
-                          <CalendarIcon size={40} className="text-slate-300" />
+                          <CalendarIcon width={40} height={40} className="text-slate-300" />
                           <span>Importa il file Excel dei turni per popolare il tabellone</span>
                         </div>
                       </td>
@@ -1405,7 +1428,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                             <td className={`px-4 py-2 sticky left-0 z-20 border-r-4 border-slate-200/50 whitespace-nowrap ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"} ${agent.isUfficiale ? "text-indigo-700" : "text-slate-800 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.05)]"}`}>
                               <div className="flex items-center gap-3">
                                 <button 
-                                  onClick={() => handleToggleUff(agent.id)}
+                                  onClick={() => { void handleToggleUff(agent.id); }}
                                   disabled={isTogglingUff === agent.id}
                                   className={`transition-all ${isTogglingUff === agent.id ? "animate-spin" : ""}`}
                                 >
@@ -1420,11 +1443,11 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                   <div className="flex items-center gap-1">
                                     <span className="text-[9px] text-slate-400 font-mono font-bold">MATR. {agent.matricola}</span>
                                     <button 
-                                      onClick={() => handleRecalcAgent(agent.id)}
+                                      onClick={() => { void handleRecalcAgent(agent.id); }}
                                       className="p-1 hover:bg-indigo-100 rounded-full text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity"
                                       title="Ricalcola"
                                     >
-                                      <RefreshCw size={10} className={recalcAgent === agent.id ? "animate-spin" : ""} />
+                                      <RefreshCw width={10} height={10} className={recalcAgent === agent.id ? "animate-spin" : ""} />
                                     </button>
                                   </div>
                                 </div>
@@ -1592,12 +1615,11 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                           const dailyRepShifts = shifts.filter(s => s.repType?.includes("REP") && new Date(s.date).toISOString() === targetDate)
                           
                           // Estraiamo tutti gli agenti presenti per questo giorno
-                          const agentsPresent = dailyRepShifts.map(s => allAgents.find(a => a.id === s.userId)).filter(Boolean)
+                          const agentsPresent = dailyRepShifts.map(s => sortedAgents.find(a => a.id === s.userId)).filter(Boolean)
                           
                           const countUff = agentsPresent.filter(a => a?.isUfficiale).length
                           const isZero = countUff === 0 && dailyRepShifts.length > 0
 
-                          // Calcolo del Grado più alto (Sostituto Legale) basato sul gradoLivello (numero più basso = gerarchia più alta)
                           let substituteName = "Nessuna asseganzione"
                           if (isZero && agentsPresent.length > 0) {
                             agentsPresent.sort((a, b) => (a!.gradoLivello || 99) - (b!.gradoLivello || 99))
@@ -1621,7 +1643,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                         <td className="px-2 py-3 text-center font-black text-indigo-800 border-l-4 border-indigo-300 bg-indigo-100 text-sm italic">
                           {shifts.filter(s => {
                             if(!s.repType?.includes("REP")) return false;
-                            const agent = allAgents.find(a => a.id === s.userId)
+                            const agent = sortedAgents.find(a => a.id === s.userId)
                             return agent?.isUfficiale
                           }).length}
                         </td>
@@ -1648,13 +1670,13 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 <p className="text-blue-100 text-xs mt-0.5">{editingCell.agentName} — Giorno {editingCell.day}</p>
               </div>
               <button onClick={() => setEditingCell(null)} className="text-white/70 hover:text-white transition-colors">
-                <X size={20} />
+                <X width={20} height={20} />
               </button>
             </div>
 
             {editingCell.warningMsg && (
               <div className="mx-5 mt-5 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2 shadow-sm">
-                <AlertCircle className="text-amber-500 shrink-0 mt-0.5" size={16} />
+                <AlertCircle className="text-amber-500 shrink-0 mt-0.5" width={16} height={16} />
                 <p className="text-xs text-amber-800 font-medium leading-relaxed">{editingCell.warningMsg}</p>
               </div>
             )}
@@ -1668,7 +1690,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                   <button
                     key={code}
                     disabled={isSavingCell}
-                    onClick={() => saveCellEdit(code)}
+                    onClick={() => { void saveCellEdit(code); }}
                     className="px-3 py-1.5 rounded-lg text-xs font-bold text-purple-700 bg-purple-50 border-2 border-purple-200 hover:border-purple-400 hover:bg-purple-100 transition-colors disabled:opacity-50 shadow-sm"
                   >
                     {code}
@@ -1687,7 +1709,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                         <button
                           key={item.shortCode}
                           disabled={isSavingCell}
-                          onClick={() => saveCellEdit(item.shortCode)}
+                          onClick={() => { void saveCellEdit(item.shortCode); }}
                           className={`px-2 py-1 rounded select-none text-[10px] font-bold border-2 disabled:opacity-50 transition-colors ${
                             cat.color === 'amber' ? 'text-amber-700 bg-white border-amber-200 hover:bg-amber-50' :
                             cat.color === 'rose' ? 'text-rose-700 bg-white border-rose-200 hover:bg-rose-50' :
@@ -1716,10 +1738,10 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                   placeholder="Es: P14, M7, REP 22-07"
                   className="flex-1 border-2 border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                   autoFocus
-                  onKeyDown={e => { if (e.key === 'Enter') saveCellEdit(editValue) }}
+                  onKeyDown={e => { if (e.key === 'Enter') void saveCellEdit(editValue); }}
                 />
                 <button
-                  onClick={() => saveCellEdit(editValue)}
+                  onClick={() => { void saveCellEdit(editValue); }}
                   disabled={isSavingCell}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50"
                 >
@@ -1728,11 +1750,11 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
               </div>
 
               <button
-                onClick={() => saveCellEdit("")}
+                onClick={() => { void saveCellEdit(""); }}
                 disabled={isSavingCell}
                 className="mt-3 w-full flex items-center justify-center gap-2 text-red-500 hover:text-red-700 hover:bg-red-50 py-2 rounded-lg text-xs font-semibold transition-colors"
               >
-                <Trash2 size={14} />
+                <Trash2 width={14} height={14} />
                 Cancella valore (svuota cella)
               </button>
             </div>
@@ -1749,23 +1771,23 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
               <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
               <div className="relative z-10">
                 <h2 className="font-black text-2xl flex items-center gap-3 uppercase tracking-tight">
-                  <Users size={28} className="text-blue-400" /> 
+                  <Users width={28} height={28} className="text-blue-400" /> 
                   Gestione Personale
                 </h2>
                 <p className="text-slate-400 text-xs mt-1 font-bold tracking-widest uppercase opacity-70">Anagrafica, Qualifiche e Scadenze Operative</p>
               </div>
               <div className="flex items-center gap-4 relative z-10">
                 <button 
-                  onClick={() => setShowAddUser(true)}
+                  onClick={() => {}}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-200 transition-all active:scale-95 flex items-center gap-2"
                 >
-                  <Plus size={16} /> Aggiungi Agente
+                  <Plus width={16} height={16} /> Aggiungi Agente
                 </button>
                 <button 
                   onClick={() => setShowAnagrafica(false)} 
                   className="text-slate-400 hover:text-white transition-all bg-white/10 p-3 rounded-2xl hover:scale-110 active:scale-95"
                 >
-                  <X size={24} />
+                  <X width={24} height={24} />
                 </button>
               </div>
             </div>
@@ -1773,7 +1795,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             {/* Filters Bar */}
             <div className="bg-white border-b border-slate-100 px-8 py-4 flex flex-wrap gap-6 items-center shrink-0 shadow-sm relative z-20">
               <div className="relative group">
-                <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18} />
+                <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" width={18} height={18} />
                 <input 
                   type="text" 
                   placeholder="Cerca matricola o nome..." 
@@ -1833,7 +1855,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                         <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div className="absolute top-4 right-6 flex gap-2">
                            {isExpiring(agent.scadenzaPatente) && <div className="w-3 h-3 bg-red-400 rounded-full animate-pulse shadow-lg shadow-red-500/50" title="Patente in Scadenza"></div>}
-                           {isExpiring(agent.scadenzaPortoArmi) && <div className="w-3 h-3 bg-red-400 rounded-full animate-pulse shadow-lg shadow-red-500/50" title="Porto d'Armi in Scadenza"></div>}
+                           {isExpiring(agent.scadenzaPortoArmi) && <div className="w-3 h-3 bg-red-400 rounded-full animate-pulse shadow-lg shadow-red-500/50" title="Porto d&apos;Armi in Scadenza"></div>}
                         </div>
                       </div>
 
@@ -1866,7 +1888,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                              <div className="space-y-6 mb-10">
                                <div className="flex items-center gap-5 group/item">
                                  <div className="p-3.5 bg-slate-100 rounded-2xl text-slate-500 group-hover/item:bg-blue-600 group-hover/item:text-white transition-all duration-300">
-                                   <MapPin size={22} />
+                                   <MapPin width={22} height={22} />
                                  </div>
                                  <div className="flex-1">
                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Stato Attuale</p>
@@ -1875,7 +1897,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                </div>
                                <div className="flex items-center gap-5 group/item">
                                  <div className="p-3.5 bg-slate-100 rounded-2xl text-slate-500 group-hover/item:bg-amber-500 group-hover/item:text-white transition-all duration-300">
-                                   <CalendarIcon size={22} />
+                                   <CalendarIcon width={22} height={22} />
                                  </div>
                                  <div className="flex-1">
                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Servizio Ordinario</p>
@@ -1884,7 +1906,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                </div>
                                <div className="flex items-center gap-5 group/item">
                                  <div className="p-3.5 bg-slate-100 rounded-2xl text-slate-500 group-hover/item:bg-rose-500 group-hover/item:text-white transition-all duration-300">
-                                   <Phone size={22} />
+                                   <Phone width={22} height={22} />
                                  </div>
                                  <div className="flex-1">
                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Contatto Rapido</p>
@@ -1910,7 +1932,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                 
                                 <div className="grid grid-cols-2 gap-4 mt-8">
                                   <button onClick={() => setSelectedAgentForDetails(agent)} className="px-6 py-4 bg-white text-slate-900 border-2 border-slate-100 rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm flex items-center justify-center gap-3 hover:-translate-y-1">
-                                    <Eye size={18} /> Fascicolo
+                                    <Eye width={18} height={18} /> Fascicolo
                                   </button>
                                   <button onClick={() => {
                                       setEditingAgent(agent); 
@@ -1927,7 +1949,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                       setTempNoteInterne(agent.noteInterne || ""); 
                                       setNewPass("");
                                     }} className="px-6 py-4 bg-slate-900 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest hover:bg-blue-600 shadow-xl shadow-slate-200 transition-all active:scale-95 flex items-center justify-center gap-3 hover:-translate-y-1">
-                                    <FileEdit size={18} /> Gestisci
+                                    <FileEdit width={18} height={18} /> Gestisci
                                   </button>
                                 </div>
                              </div>
@@ -1936,27 +1958,27 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                     </div>
                   );
                 })}
+              </div>
             </div>
           </div>
         </div>
-      </div>
       )}
 
       {/* GESTISCI OPERATORE - SLIDE OVER RIGHT */}
-      {!!editingAgent && typeof editingAgent !== 'string' && (
+      {!!editingAgent && (
         <div className="fixed inset-0 z-[150] flex justify-end bg-slate-900/40 backdrop-blur-sm transition-all duration-500">
           <div className="absolute inset-0" onClick={() => setEditingAgent(null)} />
           <div className="relative w-full max-w-lg bg-white h-[100dvh] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-200">
             {/* Header */}
             <div className="px-8 py-6 bg-slate-900 text-white flex items-center justify-between shrink-0 mb-0">
                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-white/10 rounded-2xl"><FileEdit size={24} /></div>
+                  <div className="p-3 bg-white/10 rounded-2xl"><FileEdit width={24} height={24} /></div>
                   <div className="flex flex-col">
                     <h3 className="text-xl font-black">Modifica Strutturale</h3>
                     <p className="text-[10px] text-white/50 font-bold uppercase tracking-widest">Op. {editingAgent.name}</p>
                   </div>
                </div>
-               <button onClick={() => setEditingAgent(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={20} /></button>
+               <button onClick={() => setEditingAgent(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X width={20} height={20} /></button>
             </div>
 
             {/* Scrollable Content */}
@@ -2005,14 +2027,14 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
                {/* Sezione 3: Scadenze */}
                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300">
-                  <h4 className="text-xs font-black text-rose-400 uppercase tracking-widest mb-4 border-b border-rose-100 pb-2 flex items-center gap-2"><Shield size={14}/> 3. Parametri Sensibili</h4>
+                  <h4 className="text-xs font-black text-rose-400 uppercase tracking-widest mb-4 border-b border-rose-100 pb-2 flex items-center gap-2"><Shield width={14} height={14}/> 3. Parametri Sensibili</h4>
                   <div className="grid grid-cols-2 gap-4 mb-5">
                      <div>
                         <label className="text-[10px] font-black text-rose-500 uppercase tracking-widest block mb-1">Scadenza Patente</label>
                         <input type="date" value={tempScadenzaPatente} onChange={e => setTempScadenzaPatente(e.target.value)} className="w-full bg-white border border-rose-200 rounded-2xl px-4 py-3 text-sm font-black outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100 transition-all shadow-sm text-rose-900" />
                      </div>
                      <div>
-                        <label className="text-[10px] font-black text-rose-500 uppercase tracking-widest block mb-1">Scad. Porto D'Armi</label>
+                        <label className="text-[10px] font-black text-rose-500 uppercase tracking-widest block mb-1">Scad. Porto D&apos;Armi</label>
                         <input type="date" value={tempScadenzaPortoArmi} onChange={e => setTempScadenzaPortoArmi(e.target.value)} className="w-full bg-white border border-rose-200 rounded-2xl px-4 py-3 text-sm font-black outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100 transition-all shadow-sm text-rose-900" />
                      </div>
                   </div>
@@ -2026,11 +2048,11 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             {/* Footer Azioni */}
             <div className="p-6 bg-slate-50 border-t border-slate-200 flex items-center gap-3 shrink-0 rounded-bl-3xl">
                <button onClick={async () => {
-                  if (!confirm(`Vuoi davvero eliminare l'operatore ${editingAgent.name}? L'azione è irreversibile e distruggerà tutto lo storico.`)) return
+                  if (!confirm(`Vuoi davvero eliminare l&apos;operatore ${editingAgent.name}? L&apos;azione è irreversibile e distruggerà tutto lo storico.`)) return
                   const res = await fetch('/api/admin/users', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: editingAgent.id }) })
                   if (res.ok) { toast.success('Operatore eliminato'); setEditingAgent(null); router.refresh(); }
                 }} className="p-4 text-rose-600 bg-white hover:bg-rose-600 hover:text-white rounded-[1.2rem] transition-all shadow-sm active:scale-95 border border-slate-200 hover:border-rose-600 group" title="Elimina Definivo">
-                  <Trash2 size={20} className="group-hover:animate-pulse" />
+                  <Trash2 width={20} height={20} className="group-hover:animate-pulse" />
                </button>
                <button onClick={() => setEditingAgent(null)} className="flex-1 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest hover:bg-slate-200 bg-slate-200/50 rounded-[1.2rem] transition-colors border border-slate-200">
                   Annulla
@@ -2051,7 +2073,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                   if (res.ok) { toast.success('Profilo aggiornato!'); setEditingAgent(null); router.refresh(); }
                   else { toast.error('Errore durante il salvataggio'); }
                }} className="flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-[1.2rem] text-[12px] font-black uppercase tracking-widest shadow-lg shadow-indigo-200 active:scale-95 transition-all flex items-center justify-center gap-2">
-                  <Save size={18} /> Salva Dati
+                  <Save width={18} height={18} /> Salva Dati
                </button>
             </div>
           </div>
@@ -2060,7 +2082,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
 
       {/* Settings Panel Modal */}
-      {showSettings && <SettingsPanel tenantSlug={tenantSlug || undefined} initialTab={typeof showSettings === 'string' ? showSettings as any : undefined} onClose={() => { setShowSettings(false); router.refresh() }} />}
+      {showSettings && <SettingsPanel initialTab={typeof showSettings === 'string' ? showSettings as any : undefined} onClose={() => { setShowSettings(false); router.refresh() }} />}
       
       {/* MODALE AUDIT LOG */}
       {showAuditLog && (
@@ -2070,7 +2092,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-slate-200 rounded-2xl">
-                  <RefreshCw size={24} className="text-slate-700" />
+                  <RefreshCw width={24} height={24} className="text-slate-700" />
                 </div>
                 <div>
                   <h2 className="text-2xl font-black text-slate-900">Registro Attività (Audit Log)</h2>
@@ -2081,14 +2103,14 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 onClick={() => setShowAuditLog(false)}
                 className="p-2 hover:bg-slate-200 rounded-xl transition-colors"
               >
-                <X size={24} className="text-slate-400" />
+                <X width={24} height={24} className="text-slate-400" />
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-8">
               {isLoadingAudit ? (
                 <div className="flex flex-col items-center justify-center py-20">
-                  <RefreshCw size={40} className="text-slate-300 animate-spin mb-4" />
+                  <RefreshCw width={40} height={40} className="text-slate-300 animate-spin mb-4" />
                   <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Caricamento registro...</p>
                 </div>
               ) : auditLogs.length === 0 ? (
@@ -2141,7 +2163,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-orange-50/50">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-orange-200 rounded-2xl">
-                  <RefreshCw size={24} className="text-orange-700" />
+                  <RefreshCw width={24} height={24} className="text-orange-700" />
                 </div>
                 <div>
                   <h2 className="text-2xl font-black text-orange-900">Sincronizzazione Automatica Verbatel</h2>
@@ -2152,17 +2174,17 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 onClick={() => setShowVerbatelSync(false)}
                 className="p-2 hover:bg-slate-200 rounded-xl transition-colors"
               >
-                <X size={24} className="text-slate-400" />
+                <X width={24} height={24} className="text-slate-400" />
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-8 space-y-6">
               
               <div className="bg-orange-50 border-l-4 border-orange-500 p-5 rounded-r-xl">
-                <h3 className="font-bold text-orange-900 mb-2">Istruzioni d'uso:</h3>
+                <h3 className="font-bold text-orange-900 mb-2">Istruzioni d&apos;uso:</h3>
                 <ol className="list-decimal list-inside space-y-2 text-sm text-orange-800 font-medium">
-                  <li>In un'altra scheda, apri il <strong>Portale Verbatel</strong> - Prospetto Reperibilità.</li>
-                  <li>In alto a sinistra, imposta i filtri "Da... A..." in modo da includere l'intero mese <span className="font-bold uppercase text-orange-900 bg-orange-200 px-1 rounded">(Es. Da 01/{currentMonth}/{currentYear} a 01/{currentMonth + 1 === 13 ? 1 : currentMonth + 1}/{currentMonth + 1 === 13 ? currentYear + 1 : currentYear})</span>.</li>
+                  <li>In un&apos;altra scheda, apri il <strong>Portale Verbatel</strong> - Prospetto Reperibilità.</li>
+                  <li>In alto a sinistra, imposta i filtri &quot;Da... A...&quot; in modo da includere l&apos;intero mese <span className="font-bold uppercase text-orange-900 bg-orange-200 px-1 rounded">(Es. Da 01/{currentMonth}/{currentYear} a 01/{currentMonth + 1 === 13 ? 1 : currentMonth + 1}/{currentMonth + 1 === 13 ? currentYear + 1 : currentYear})</span>.</li>
                   <li>Ricarica la griglia con il pulsante verde Verbatel con le due freccette. Clicca col destro in un punto vuoto → ispeziona → Console.</li>
                   <li>Genera lo script (qui sotto), <strong>copialo</strong>, poi vai sulla console di Verbatel, incollalo e premi <strong>Invio</strong>. Non muovere il mouse finché non ha finito.</li>
                 </ol>
@@ -2175,11 +2197,11 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                     <span className="font-bold text-slate-800">Modalità Test di Sicurezza (Inserisce i turni solo per 1 Agente)</span>
                   </label>
                   <button 
-                    onClick={generateVerbatelScript}
+                    onClick={() => { void generateVerbatelScript(); }}
                     disabled={isLoadingVerbatel}
                     className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:shadow-xl active:scale-95 transition-all w-fit disabled:opacity-50"
                   >
-                    {isLoadingVerbatel ? <RefreshCw className="animate-spin" size={20} /> : <Play size={20} />}
+                    {isLoadingVerbatel ? <RefreshCw className="animate-spin" width={20} height={20} /> : <Play width={20} height={20} />}
                     <span className="uppercase tracking-widest text-xs">Genera Script</span>
                   </button>
                 </div>
@@ -2193,7 +2215,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                       placeholder="Il codice javascript apparirà qui..."
                     />
                     <button 
-                      onClick={() => { navigator.clipboard.writeText(verbatelScript); toast.success("Codice copiato negli appunti! Ora incollalo in Verbatel."); }}
+                      onClick={() => { void navigator.clipboard.writeText(verbatelScript); toast.success("Codice copiato negli appunti! Ora incollalo in Verbatel."); }}
                       className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
                     >
                       COPIA NEGLI APPUNTI
@@ -2214,7 +2236,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             <div className="bg-amber-500 p-6 text-white flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/20 rounded-xl">
-                  <RefreshCw size={24} />
+                  <RefreshCw width={24} height={24} />
                 </div>
                 <div>
                   <h3 className="text-xl font-black uppercase tracking-tight">Approvazione Scambi</h3>
@@ -2222,14 +2244,14 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 </div>
               </div>
               <button onClick={() => setShowSwapApprovals(false)} className="text-white/60 hover:text-white transition-colors">
-                <X size={24} />
+                <X width={24} height={24} />
               </button>
             </div>
 
             <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar space-y-6">
               {isLoadingSwaps ? (
                 <div className="flex justify-center py-10">
-                  <RefreshCw size={40} className="animate-spin text-slate-200" />
+                  <RefreshCw width={40} height={40} className="animate-spin text-slate-200" />
                 </div>
               ) : pendingSwaps.length === 0 && pendingRequests.length === 0 ? (
                 <div className="text-center py-10 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
@@ -2241,7 +2263,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                   {pendingRequests.length > 0 && (
                     <div className="space-y-3">
                       <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest border-b border-slate-200 pb-2">Richieste Assenza/Permessi ({pendingRequests.length})</h4>
-                      {pendingRequests.map((req: any) => (
+                      {pendingRequests.map((req) => (
                         <div key={req.id} className="bg-white border text-left border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-center gap-4 hover:border-amber-200 transition-all shadow-sm">
                           <div className="flex items-center gap-4 w-full sm:w-auto">
                             <div className="text-center shrink-0">
@@ -2264,8 +2286,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                             </div>
                           </div>
                           <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                            <button onClick={() => handleApproveAction("LEAVE_REQUEST", req.id, "REJECT")} className="flex-1 sm:flex-none border border-red-200 hover:bg-red-50 text-red-600 px-4 py-2 rounded-xl text-xs font-black transition-all">RIFIUTA</button>
-                            <button onClick={() => handleApproveAction("LEAVE_REQUEST", req.id, "APPROVE")} className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-black shadow-lg shadow-emerald-100 transition-all">APPROVA</button>
+                            <button onClick={() => { void handleApproveAction("LEAVE_REQUEST", req.id, "REJECT"); }} className="flex-1 sm:flex-none border border-red-200 hover:bg-red-50 text-red-600 px-4 py-2 rounded-xl text-xs font-black transition-all">RIFIUTA</button>
+                            <button onClick={() => { void handleApproveAction("LEAVE_REQUEST", req.id, "APPROVE"); }} className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-black shadow-lg shadow-emerald-100 transition-all">APPROVA</button>
                           </div>
                         </div>
                       ))}
@@ -2276,7 +2298,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                   {pendingSwaps.length > 0 && (
                     <div className="space-y-3">
                       <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest border-b border-slate-200 pb-2 mt-4">Proposte di Scambio ({pendingSwaps.length})</h4>
-                      {pendingSwaps.map((swap: any) => (
+                      {pendingSwaps.map((swap) => (
                         <div key={swap.id} className="bg-white border border-slate-100 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-center gap-4 hover:border-amber-200 transition-all shadow-sm">
                           <div className="flex items-center gap-4">
                             <div className="text-center">
@@ -2288,7 +2310,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                               <p className="text-[10px] font-black uppercase text-slate-400">Proposta di Scambio</p>
                               <div className="flex items-center gap-2">
                                  <span className="font-bold text-slate-900">{swap.requester.name}</span>
-                                 <ChevronRight size={14} className="text-slate-400" />
+                                 <ChevronRight width={14} height={14} className="text-slate-400" />
                                  <span className="font-extrabold text-blue-600">{swap.targetUser.name}</span>
                               </div>
                               <p className="text-[10px] font-bold text-slate-500 uppercase">Tipo Turno Origine: <span className="text-emerald-600">{swap.shift.type}</span></p>
@@ -2296,8 +2318,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                           </div>
 
                           <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                            <button onClick={() => handleApproveAction("SWAP_REQUEST", swap.id, "REJECT")} className="flex-1 sm:flex-none border border-red-200 hover:bg-red-50 text-red-600 px-4 py-2 rounded-xl text-xs font-black transition-all">RIFIUTA</button>
-                            <button onClick={() => handleApproveAction("SWAP_REQUEST", swap.id, "APPROVE")} className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-black shadow-lg shadow-emerald-100 transition-all">APPROVA</button>
+                            <button onClick={() => { void handleApproveAction("SWAP_REQUEST", swap.id, "REJECT"); }} className="flex-1 sm:flex-none border border-red-200 hover:bg-red-50 text-red-600 px-4 py-2 rounded-xl text-xs font-black transition-all">RIFIUTA</button>
+                            <button onClick={() => { void handleApproveAction("SWAP_REQUEST", swap.id, "APPROVE"); }} className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-black shadow-lg shadow-emerald-100 transition-all">APPROVA</button>
                           </div>
                         </div>
                       ))}
@@ -2309,7 +2331,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             
             <div className="bg-slate-50 p-6 border-t border-slate-100">
                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
-                 ⚠️ L'approvazione sposta definitivamente la titolarità del turno nel calendario ufficiale. L'operazione non è reversibile automaticamente.
+                 ⚠️ L&apos;approvazione sposta definitivamente la titolarità del turno nel calendario ufficiale. L&apos;operazione non è reversibile automaticamente.
                </p>
             </div>
           </div>
@@ -2324,7 +2346,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             <div className="bg-gradient-to-r from-teal-600 to-emerald-600 p-6 text-white flex justify-between items-center shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/20 rounded-xl">
-                  <CalendarIcon size={24} />
+                  <CalendarIcon width={24} height={24} />
                 </div>
                 <div>
                   <h3 className="text-xl font-black uppercase tracking-tight">Gestione Assenze Multiple</h3>
@@ -2332,7 +2354,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 </div>
               </div>
               <button onClick={() => setShowBulkAbsence(false)} className="text-white/60 hover:text-white transition-colors">
-                <X size={24} />
+                <X width={24} height={24} />
               </button>
             </div>
 
@@ -2342,7 +2364,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Agente</label>
                     <div className="relative">
-                      <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" width={16} height={16} />
                       <select
                         value={bulkData.agentId}
                         onChange={e => setBulkData({ ...bulkData, agentId: e.target.value })}
@@ -2429,11 +2451,11 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                  Annulla
                </button>
                <button 
-                 onClick={handleBulkSave}
+                 onClick={() => { void handleBulkSave(); }}
                  disabled={isSavingBulk || !bulkData.agentId || !bulkData.startDate || !bulkData.endDate || !bulkData.code}
                  className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-2 rounded-xl text-sm font-black shadow-lg shadow-teal-100 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center gap-2"
                >
-                 {isSavingBulk ? <RefreshCw className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}
+                 {isSavingBulk ? <RefreshCw className="animate-spin" width={16} height={16} /> : <CheckCircle2 width={16} height={16} />}
                  INSERISCI ASSENZE
                </button>
             </div>
@@ -2452,7 +2474,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                    <div className="flex items-center gap-8">
                       <div className="w-28 h-28 rounded-[2.5rem] bg-white p-1.5 shadow-2xl">
                          <div className={`w-full h-full rounded-[2.2rem] bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-4xl font-black shadow-inner`}>
-                            {selectedAgentForDetails.name.split(' ').map((n:any) => n[0]).join('').slice(0, 2)}
+                            {selectedAgentForDetails.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
                          </div>
                       </div>
                       <div>
@@ -2463,19 +2485,19 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                         <h2 className="text-5xl font-black tracking-tighter leading-none mb-2">{selectedAgentForDetails.name}</h2>
                         <div className="flex items-center gap-6">
                            <div className="flex items-center gap-2.5 text-slate-400 font-bold uppercase text-[11px] tracking-widest">
-                             <MapPin size={16} className="text-blue-400" />
+                             <MapPin width={16} height={16} className="text-blue-400" />
                              {selectedAgentForDetails.squadra || 'SENZA SQUADRA'}
                            </div>
                            <div className="w-[1px] h-4 bg-white/20"></div>
                            <div className="flex items-center gap-2.5 text-slate-400 font-bold uppercase text-[11px] tracking-widest">
-                             <Briefcase size={16} className="text-emerald-400" />
+                             <Briefcase width={16} height={16} className="text-emerald-400" />
                              Assunto il {selectedAgentForDetails.dataAssunzione ? new Date(selectedAgentForDetails.dataAssunzione).toLocaleDateString('it-IT') : 'N/D'}
                            </div>
                         </div>
                       </div>
                    </div>
                    <button onClick={() => setSelectedAgentForDetails(null)} className="p-4 bg-white/10 rounded-full hover:bg-white/20 hover:scale-110 transition-all active:scale-95 shadow-xl">
-                      <X size={28} />
+                      <X width={28} height={28} />
                    </button>
                 </div>
 
@@ -2490,19 +2512,19 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                      <button
                        key={tab.id}
                        onClick={() => {
-                         setActiveDetailTab(tab.id as any);
-                         if (tab.id === 'SALDI' && !agentBalances) {
+                         setActiveDetailTab(tab.id as "ANAGRAFICA" | "SALDI" | "STORICO" | "NOTE");
+                         if (tab.id === 'SALDI') {
                            // Fetch balances
                            setIsLoadingBalances(true);
                            fetch(`/api/admin/users/${selectedAgentForDetails.id}/balances?year=${currentYear}`)
                              .then(res => res.json())
-                             .then(data => { setAgentBalances(data); setIsLoadingBalances(false); })
+                             .then((data: AgentBalances) => { setAgentBalances(data); setIsLoadingBalances(false); })
                              .catch(() => { toast.error("Errore caricamento saldi"); setIsLoadingBalances(false); });
                          }
                        }}
                        className={`flex items-center gap-3 px-8 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${activeDetailTab === tab.id ? 'bg-white text-slate-900 shadow-xl scale-105' : 'hover:bg-white/10 text-white/60'}`}
                      >
-                       <tab.icon size={18} />
+                       <tab.icon width={18} height={18} />
                        {tab.label}
                      </button>
                    ))}
@@ -2515,9 +2537,9 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                    
                    {activeDetailTab === 'ANAGRAFICA' && (
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                        <div className="premium-card p-10 space-y-8">
+                        <div className="bg-white rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 border border-white space-y-8">
                            <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-4 font-outfit">
-                              <Users size={20} className="text-blue-500" /> Profilo Professionale
+                              <Users width={20} height={20} className="text-blue-500" /> Profilo Professionale
                            </h3>
                            <div className="space-y-6">
                               <div className="grid grid-cols-2 gap-6">
@@ -2545,7 +2567,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
                         <div className="bg-white rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 border border-white space-y-8">
                            <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-4">
-                              <Award size={20} className="text-emerald-500" /> Abilitazioni e Scadenze
+                              <Award width={20} height={20} className="text-emerald-500" /> Abilitazioni e Scadenze
                            </h3>
                            <div className="grid grid-cols-1 gap-6">
                               <div className={`p-6 rounded-3xl border-2 transition-all ${selectedAgentForDetails.scadenzaPatente && new Date(selectedAgentForDetails.scadenzaPatente) < new Date(Date.now() + 30*24*60*60*1000) ? 'bg-rose-50 border-rose-200 shadow-rose-100 shadow-lg' : 'bg-slate-50 border-slate-100'}`}>
@@ -2556,7 +2578,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                  <p className="text-lg font-black text-slate-900">{selectedAgentForDetails.scadenzaPatente ? new Date(selectedAgentForDetails.scadenzaPatente).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' }) : 'NON REGISTRATA'}</p>
                               </div>
                               <div className="p-6 rounded-3xl bg-slate-50 border-2 border-slate-100">
-                                 <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Porto d'Armi</p>
+                                 <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Porto d&apos;Armi</p>
                                  <p className="text-lg font-black text-slate-900">{selectedAgentForDetails.scadenzaPortoArmi ? new Date(selectedAgentForDetails.scadenzaPortoArmi).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' }) : 'NON REGISTRATA'}</p>
                               </div>
                            </div>
@@ -2569,7 +2591,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                         <div className="bg-white rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 border border-white">
                            <div className="flex justify-between items-center mb-10">
                               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-4">
-                                 <Hash size={20} className="text-indigo-500" /> Prospetto Saldi Eseguito {currentYear}
+                                 <Hash width={20} height={20} className="text-indigo-500" /> Prospetto Saldi Eseguito {currentYear}
                               </h3>
                               <div className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl text-[10px] font-black uppercase tracking-widest border border-indigo-100">
                                 Dati Aggiornati in Tempo Reale
@@ -2578,7 +2600,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
                            {isLoadingBalances ? (
                               <div className="py-20 flex flex-col items-center justify-center space-y-4">
-                                 <RefreshCw size={48} className="text-indigo-300 animate-spin" />
+                                 <RefreshCw width={48} height={48} className="text-indigo-300 animate-spin" />
                                  <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Calcolo saldi e richieste in corso...</p>
                               </div>
                            ) : agentBalances ? (
@@ -2594,11 +2616,11 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                        </tr>
                                     </thead>
                                     <tbody className="divide-y-2 divide-slate-50">
-                                       {agentBalances.balance?.details.map((detail: any) => {
-                                          const usedFromAbsences = agentBalances.usage.absences.filter((a: any) => a.code === detail.code).length;
-                                          const usedFromAgenda = agentBalances.usage.agendaEntries.filter((a: any) => a.code === detail.code).reduce((sum: number, entry: any) => sum + (entry.hours ? entry.hours / 6 : 1), 0);
+                                       {agentBalances.balance?.details.map((detail) => {
+                                          const usedFromAbsences = agentBalances.usage.absences.filter((a) => a.code === detail.code).length;
+                                          const usedFromAgenda = agentBalances.usage.agendaEntries.filter((a) => a.code === detail.code).reduce((sum, entry) => sum + (entry.hours ? entry.hours / 6 : 1), 0);
                                           const used = usedFromAbsences + usedFromAgenda;
-                                          const requested = agentBalances.requests.filter((r: any) => r.code === detail.code).length;
+                                          const requested = agentBalances.requests.filter((r) => r.code === detail.code).length;
                                           const residuo = detail.initialValue - used - requested;
 
                                           return (
@@ -2635,7 +2657,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                         </div>
                         
                         <div className="bg-amber-50 h-2 border-2 border-amber-100 border-dashed rounded-full px-10 py-6 flex items-center gap-4">
-                           <AlertCircle size={20} className="text-amber-600" />
+                           <AlertCircle width={20} height={20} className="text-amber-600" />
                            <p className="text-xs font-bold text-amber-800">I saldi vengono calcolati sottraendo sia i giorni già effettuati che le richieste in attesa di approvazione.</p>
                         </div>
                      </div>
@@ -2645,11 +2667,11 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                      <div className="bg-white rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 border border-white">
                         <div className="flex justify-between items-center mb-10">
                            <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-4">
-                              <Calendar size={20} className="text-indigo-500" /> Cronologia Turni {currentMonthName}
+                              <Calendar width={20} height={20} className="text-indigo-500" /> Cronologia Turni {currentMonthName}
                            </h3>
                         </div>
                         <div className="grid grid-cols-1 gap-4">
-                           {shifts.filter((s: DashboardShift) => s.userId === selectedAgentForDetails.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((s: DashboardShift) => (
+                           {shifts.filter((s) => s.userId === selectedAgentForDetails.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((s) => (
                               <div key={s.id} className="flex items-center gap-8 p-6 rounded-3xl hover:bg-slate-50 transition-all border-2 border-transparent hover:border-slate-100 group">
                                  <div className="w-20 shrink-0 text-center">
                                     <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{new Date(s.date).toLocaleDateString('it-IT', { weekday: 'short' })}</p>
@@ -2673,7 +2695,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                  </div>
                               </div>
                            ))}
-                           {shifts.filter((s: DashboardShift) => s.userId === selectedAgentForDetails.id).length === 0 && (
+                           {shifts.filter((s) => s.userId === selectedAgentForDetails.id).length === 0 && (
                               <div className="text-center py-20 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200">
                                  <p className="text-slate-400 font-bold italic text-sm">Nessuna attività registrata per questo mese.</p>
                               </div>
@@ -2685,16 +2707,16 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                    {activeDetailTab === 'NOTE' && (
                      <div className="bg-white rounded-[2.5rem] p-10 shadow-xl shadow-slate-200/50 border border-white min-h-[400px] flex flex-col">
                         <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-8 flex items-center gap-4">
-                           <FileText size={20} className="text-slate-400" /> Annotazioni Amministrative Riservate
+                           <FileText width={20} height={20} className="text-slate-400" /> Annotazioni Amministrative Riservate
                         </h3>
                         <div className="flex-1 p-10 bg-slate-50 rounded-[2rem] border-2 border-slate-100 shadow-inner">
                            {selectedAgentForDetails.noteInterne ? (
                              <p className="text-base font-bold text-slate-700 whitespace-pre-wrap leading-relaxed">{selectedAgentForDetails.noteInterne}</p>
                            ) : (
                              <div className="h-full flex flex-col items-center justify-center text-center">
-                                <FileText size={48} className="text-slate-200 mb-4" />
+                                <FileText width={48} height={48} className="text-slate-200 mb-4" />
                                 <p className="text-sm font-bold text-slate-400 italic">Nessuna nota presente per questo operatore.</p>
-                                <p className="text-[10px] uppercase font-black text-slate-300 mt-2 tracking-widest">Puoi aggiungerle cliccando su "Gestisci" nella scheda principale</p>
+                                <p className="text-[10px] uppercase font-black text-slate-300 mt-2 tracking-widest">Puoi aggiungerle cliccando su &quot;Gestisci&quot; nella scheda principale</p>
                              </div>
                            )}
                         </div>

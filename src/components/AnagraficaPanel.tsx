@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import toast from "react-hot-toast"
-import { Users, Plus, Trash2, Search, Shield } from "lucide-react"
+import { Users, Plus, Trash2, Search } from "lucide-react"
 
 interface AnagraficaPanelProps {
   agents: {
@@ -14,8 +14,8 @@ interface AnagraficaPanelProps {
     rotationGroupId?: string | null;
     rotationGroup?: { id: string; name: string } | null;
   }[]
-  rotationGroups: any[]
-  categories: any[]
+  rotationGroups: { id: string; name: string }[]
+  categories: { id: string; name: string; types: { id: string; name: string }[] }[]
 }
 
 export default function AnagraficaPanel({ agents, rotationGroups, categories }: AnagraficaPanelProps) {
@@ -59,7 +59,7 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
     })
   }, [agents, searchQuery, squadraFilter, qualificaFilter])
 
-  const startEdit = (agent: any) => {
+  const startEdit = (agent: AnagraficaPanelProps["agents"][number]) => {
     setEditingAgent(agent.id)
     setTempName(agent.name)
     setTempMatricola(agent.matricola)
@@ -101,7 +101,7 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
     }
   }
 
-  const deleteAgent = async (agent: any) => {
+  const deleteAgent = async (agent: { id: string; name: string }) => {
     if (!confirm(`Vuoi davvero eliminare l'agente ${agent.name}? Operazione irreversibile.`)) return
     const res = await fetch("/api/admin/users", {
       method: "DELETE",
@@ -281,7 +281,7 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
                           {tempDefaultCategoryId && (
                             <select value={tempDefaultTypeId} onChange={e => setTempDefaultTypeId(e.target.value)} className="border border-slate-300 rounded-lg px-2 py-1.5 w-full text-[10px] font-bold text-blue-700 outline-none bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                               <option value="">Generico</option>
-                              {categories.find((c: any) => c.id === tempDefaultCategoryId)?.types.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                              {categories.find(c => c.id === tempDefaultCategoryId)?.types.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                             </select>
                           )}
                         </div>
@@ -299,7 +299,7 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
                         {agent.defaultServiceCategoryId && (
                           <span className="text-[9px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-200 inline-block">
                             {categories.find(c => c.id === agent.defaultServiceCategoryId)?.name}
-                            {agent.defaultServiceTypeId && ` ▶ ${categories.find(c => c.id === agent.defaultServiceCategoryId)?.types.find((t: any) => t.id === agent.defaultServiceTypeId)?.name}`}
+                            {agent.defaultServiceTypeId && ` ▶ ${categories.find(c => c.id === agent.defaultServiceCategoryId)?.types.find(t => t.id === agent.defaultServiceTypeId)?.name}`}
                           </span>
                         )}
                       </div>

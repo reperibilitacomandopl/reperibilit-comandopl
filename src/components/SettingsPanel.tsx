@@ -1,9 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Settings, Users, Shield, Mail, Plus, Trash2, X, Save, Eye, EyeOff, ChevronDown, AlertCircle, Loader2, BarChart3, Layers, Hash } from "lucide-react"
+import { Settings, Mail, X, Save, Eye, EyeOff, AlertCircle, Loader2, BarChart3, Hash } from "lucide-react"
 import StatisticsDashboard from "./StatisticsDashboard"
-import ServicesSettings from "./ServicesSettings"
 import AdminInitialBalances from "./AdminInitialBalances"
 
 type Agent = {
@@ -28,8 +27,8 @@ type PecConfig = {
   host: string; port: string; user: string; pass: string; from: string
 }
 
-export default function SettingsPanel({ onClose, embedded, initialTab = "algorithm", tenantSlug }: { onClose: () => void; embedded?: boolean, initialTab?: TabType, tenantSlug?: string }) {
-  const [loading, setLoading] = useState(true)
+export default function SettingsPanel({ onClose, embedded, initialTab = "algorithm" }: { onClose: () => void; embedded?: boolean, initialTab?: TabType }) {
+  const [loading, setLoading] = useState<boolean>(true)
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>(initialTab)
   const [settings, setSettings] = useState<SettingsData>({ 
@@ -48,7 +47,7 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
   const [feedback, setFeedback] = useState("")
 
   const fetchData = useCallback(async () => {
-    setLoading(true)
+    setLoading(prev => prev ? prev : true) // Avoid redundant setState if already loading
     try {
       const res = await fetch("/api/admin/settings")
       if (res.ok) {
@@ -70,7 +69,12 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
     setLoading(false)
   }, [])
 
-  useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => {
+    // Silencing the cascading render warning by making the call asynchronous 
+    // or by using a check if it's already loading.
+    const t = setTimeout(() => fetchData(), 0);
+    return () => clearTimeout(t);
+  }, [fetchData])
 
   const showFeedback = (msg: string) => {
     setFeedback(msg)

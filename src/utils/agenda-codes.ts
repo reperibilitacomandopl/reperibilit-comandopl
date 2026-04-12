@@ -100,7 +100,7 @@ export function getLabel(codeOrShortCode: string): string {
 export function getUnit(codeOrShortCode: string): "DAYS" | "HOURS" {
   for (const cat of AGENDA_CATEGORIES) {
     for (const item of cat.items) {
-      if (item.code === codeOrShortCode || item.shortCode === codeOrShortCode) return item.unit as any
+      if (item.code === codeOrShortCode || item.shortCode === codeOrShortCode) return item.unit as "DAYS" | "HOURS"
     }
   }
   return "DAYS"

@@ -7,8 +7,8 @@ import Link from "next/link"
 
 export default function SezioniManager() {
   const [loading, setLoading] = useState(true)
-  const [categories, setCategories] = useState<any[]>([])
-  const [users, setUsers] = useState<any[]>([])
+  const [categories, setCategories] = useState<{ id: string; name: string; types?: { id: string; name: string }[] }[]>([])
+  const [users, setUsers] = useState<{ id: string; name: string; isUfficiale?: boolean; defaultServiceCategoryId?: string; defaultServiceTypeId?: string }[]>([])
 
   const loadData = async () => {
     setLoading(true)
@@ -59,7 +59,7 @@ export default function SezioniManager() {
     }
   }
 
-  const handleDropOnCategory = (e: React.DragEvent, cat: any) => {
+  const handleDropOnCategory = (e: React.DragEvent, cat: { id: string; name: string }) => {
     e.preventDefault()
     const userId = e.dataTransfer.getData("userId")
     if (userId) {
@@ -92,7 +92,7 @@ export default function SezioniManager() {
       
       {/* Notice */}
       <div className="bg-blue-50 border-b border-blue-200 p-3 text-sm text-blue-800 font-medium">
-        Questa schermata gestisce il <b>Servizio di Default</b> dell'agente. Queste informazioni verranno utilizzate per compilare automaticamente la colonna corretta quando si clicca "Auto-Genera" nel tabellone OdS giornaliero.
+        Questa schermata gestisce il <b>Servizio di Default</b> dell&apos;agente. Queste informazioni verranno utilizzate per compilare automaticamente la colonna corretta quando si clicca &quot;Auto-Genera&quot; nel tabellone OdS giornaliero.
       </div>
 
       {/* Body: 2 colonne */}
@@ -179,7 +179,7 @@ export default function SezioniManager() {
                             onChange={(e) => assignService(u.id, cat.id, e.target.value || null, cat.name)}
                           >
                             <option value="">Nessun Incarico (Generico)</option>
-                            {cat.types.map((t: any) => (
+                            {cat.types.map((t: { id: string; name: string }) => (
                               <option key={t.id} value={t.id}>{t.name}</option>
                             ))}
                           </select>

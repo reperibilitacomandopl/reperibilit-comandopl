@@ -1,16 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import { Calendar, User, Shield, Info, ChevronLeft, ChevronRight, Clock, MapPin, AlertCircle, RefreshCw, Bell } from "lucide-react"
-import NotificationHub from "./NotificationHub"
+import { Calendar, User, Clock, AlertCircle, RefreshCw } from "lucide-react"
 import toast from "react-hot-toast"
-import { storeOfflineRequest } from "@/lib/offline-sync"
+import { storeOfflineRequest } from "../lib/offline-sync"
 
 interface Agent {
   id: string
   name: string
   matricola: string
   isUfficiale: boolean
+  telegramChatId?: string | null
 }
 
 interface Shift {
@@ -29,7 +29,7 @@ interface DayInfo {
 
 interface PlanningMobileViewProps {
   agents: Agent[]
-  shifts: Shift[]
+  shifts: any[]
   dayInfo: DayInfo[]
   currentYear: number
   currentMonth: number
@@ -46,7 +46,7 @@ export default function PlanningMobileView({
   currentMonth,
   onEditCell,
   isAdmin = false,
-  userRole
+  userRole = "AGENT"
 }: PlanningMobileViewProps) {
   const [viewType, setViewType] = useState<'day' | 'agent'>('day')
   const [selectedDay, setSelectedDay] = useState(new Date().getDate())
@@ -110,8 +110,8 @@ export default function PlanningMobileView({
           } else {
             throw new Error("API SOS failed")
           }
-        } catch (err) {
-          console.warn("[PWA] Errore API, archiviazione locale SOS...", err)
+        } catch {
+          console.warn("[PWA] Errore API, archiviazione locale SOS...")
           await storeOfflineRequest('/api/admin/alert-emergency', 'POST', {
             type: 'SOS',
             message: `🆘 SOS GPS (OFFLINE)! Richiesta intervento dal Terminale Mobile.`,
@@ -123,7 +123,7 @@ export default function PlanningMobileView({
           setLoadingSOS(false)
         }
       },
-      (err) => {
+      () => {
         setLoadingSOS(false)
         toast.error("Impossibile ottenere GPS per SOS. Verifica permessi.", { id: toastId })
       },

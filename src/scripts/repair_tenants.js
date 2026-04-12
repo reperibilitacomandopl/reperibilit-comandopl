@@ -1,9 +1,10 @@
+/* eslint-disable */
 const { PrismaClient } = require("@prisma/client")
 const prisma = new PrismaClient()
 
 async function main() {
   console.log("INIZIO RIPARAZIONE TENANT...")
-
+  
   // 1. Ripara ShiftSwapRequest
   const orphanSwaps = await prisma.shiftSwapRequest.findMany({
     where: { tenantId: null },
@@ -20,7 +21,7 @@ async function main() {
       console.log(`- Richiesta ${swap.id} aggiornata al tenant ${swap.requester.tenantId}`)
     }
   }
-
+  
   // 2. Ripara Notifications
   const orphanNotifications = await prisma.notification.findMany({
     where: { tenantId: null },
@@ -37,7 +38,7 @@ async function main() {
       console.log(`- Notifica ${n.id} aggiornata al tenant ${n.user.tenantId}`)
     }
   }
-
+  
   console.log("RIPARAZIONE COMPLETATA.")
 }
 

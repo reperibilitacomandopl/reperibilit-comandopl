@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Loader2, ChevronLeft, ChevronRight, Save, Trash2, CalendarClock, RotateCcw, Wand2, FilterX } from "lucide-react"
 import toast from "react-hot-toast"
 import Link from "next/link"
@@ -11,7 +11,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   
-  const [users, setUsers] = useState<any[]>([])
+  const [users, setUsers] = useState<{ id: string; name: string; rotationGroupId?: string; fixedRestDay?: number | null }[]>([])
   // Map of userId -> "YYYY-MM-DD" -> type
   const [grid, setGrid] = useState<Record<string, Record<string, string>>>({})
   const [syncedGrid, setSyncedGrid] = useState<Record<string, Record<string, boolean>>>({})
@@ -29,7 +29,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
   const daysInMonth = new Date(year, month, 0).getDate()
   const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1)
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch(`/api/admin/shifts/monthly?year=${year}&month=${month}`)
@@ -39,7 +39,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
       if (data.shifts) {
         const initialGrid: Record<string, Record<string, string>> = {}
         const initialSynced: Record<string, Record<string, boolean>> = {}
-        data.shifts.forEach((s: any) => {
+        data.shifts.forEach((s: { date: string; userId: string; type: string; isSyncedToVerbatel?: boolean }) => {
           const dStr = s.date.split("T")[0] // YYYY-MM-DD
           if (!initialGrid[s.userId]) {
             initialGrid[s.userId] = {}
@@ -56,9 +56,12 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
       toast.error("Errore caricamento dati")
     }
     setLoading(false)
-  }
+  }, [year, month])
 
-  useEffect(() => { loadData() }, [year, month])
+  useEffect(() => { 
+    const t = setTimeout(() => loadData(), 0);
+    return () => clearTimeout(t);
+  }, [loadData])
 
   const changeMonth = (delta: number) => {
     setCurrentDate(new Date(year, currentDate.getMonth() + delta, 1))
@@ -225,11 +228,11 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
   const [wizardTarget, setWizardTarget] = useState("ALL")
   const [wizardGroupId, setWizardGroupId] = useState("")
   const [wizardStartDay, setWizardStartDay] = useState(0) // 0-27: quale giorno del ciclo corrisponde al 1° del mese
-  const [rotationGroups, setRotationGroups] = useState<any[]>([])
+  const [rotationGroups, setRotationGroups] = useState<{ id: string; name: string; pattern: string; mStartTime?: string; mEndTime?: string; pStartTime?: string; pEndTime?: string; startDate?: string; users?: { id: string }[] }[]>([])
   const [filterText, setFilterText] = useState("")
 
   // Carica i gruppi di rotazione dal database
-  const loadGroups = async () => {
+  const loadGroups = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/rotation-groups")
       const data = await res.json()
@@ -238,8 +241,11 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
         if (data.length > 0 && !wizardGroupId) setWizardGroupId(data[0].id)
       }
     } catch {}
-  }
-  useEffect(() => { loadGroups() }, [])
+  }, [wizardGroupId])
+  useEffect(() => { 
+    const t = setTimeout(() => loadGroups(), 0);
+    return () => clearTimeout(t);
+  }, [loadGroups])
   
   // Automazione calcolo offset quando cambiano gruppo o data
   useEffect(() => {
@@ -257,7 +263,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
   }, [wizardGroupId, year, month, rotationGroups])
 
   const applyAutomation = () => {
-    let group: any;
+    let group: { id: string; name: string; pattern: string; mStartTime?: string; mEndTime?: string; pStartTime?: string; pEndTime?: string; startDate?: string } | undefined;
     if (wizardGroupId !== "AUTO") {
       group = rotationGroups.find(g => g.id === wizardGroupId)
       if (!group) {
@@ -309,7 +315,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
              uStartIndex = 0
            }
         } else {
-           try { uPattern = JSON.parse(group.pattern) } catch { return }
+           try { uPattern = JSON.parse(group!.pattern) } catch { return }
            if (uPattern.length === 0) return;
         }
 
@@ -342,9 +348,9 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
           const pVal = uPattern[patternIndex]
           
           if (pVal === "M") {
-            nextGrid[u.id][dStr] = formatShiftCode("M", uGroup.mStartTime)
+            nextGrid[u.id][dStr] = formatShiftCode("M", uGroup?.mStartTime)
           } else if (pVal === "P") {
-            nextGrid[u.id][dStr] = formatShiftCode("P", uGroup.pStartTime)
+            nextGrid[u.id][dStr] = formatShiftCode("P", uGroup?.pStartTime)
           } else {
             nextGrid[u.id][dStr] = pVal
           }
@@ -372,11 +378,11 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
         <h2 className="text-xl font-bold uppercase tracking-wide">Pianificatore Mensile Turni Ordinari</h2>
         
         <div className="flex items-center bg-slate-800 border border-slate-700 rounded-lg p-1 shadow-inner my-2 sm:my-0">
-          <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-slate-700 rounded transition-colors"><ChevronLeft size={20}/></button>
+          <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-slate-700 rounded transition-colors"><ChevronLeft width={20} height={20}/></button>
           <div className="px-6 font-bold tracking-wide uppercase text-sm sm:text-base">
             {currentDate.toLocaleDateString("it-IT", { month: "long", year: "numeric" })}
           </div>
-          <button onClick={() => changeMonth(1)} className="p-2 hover:bg-slate-700 rounded transition-colors"><ChevronRight size={20}/></button>
+          <button onClick={() => changeMonth(1)} className="p-2 hover:bg-slate-700 rounded transition-colors"><ChevronRight width={20} height={20}/></button>
         </div>
 
         <div className="flex gap-2">
@@ -384,7 +390,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
             onClick={() => setShowWizard(!showWizard)}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold flex items-center gap-2"
           >
-            <CalendarClock size={16}/> Auto-Compila
+            <CalendarClock width={16} height={16}/> Auto-Compila
           </button>
           
           <button 
@@ -392,7 +398,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
             disabled={isResetting}
             className="px-4 py-2 bg-slate-700 hover:bg-rose-800 text-white rounded-lg text-sm font-bold flex items-center gap-2 border border-slate-600 transition-colors"
           >
-            {isResetting ? <Loader2 className="animate-spin" size={16}/> : <RotateCcw size={16}/>} Reset Mese
+            {isResetting ? <Loader2 className="animate-spin" width={16} height={16}/> : <RotateCcw width={16} height={16}/>} Reset Mese
           </button>
           
           <button 
@@ -402,24 +408,24 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
             }}
             className="px-4 py-2 bg-rose-700 hover:bg-rose-600 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg transition-all active:scale-95 border border-rose-800"
           >
-            <FilterX size={16}/> Reset Generale
+            <FilterX width={16} height={16}/> Reset Generale
           </button>
           <button 
             onClick={saveChanges} disabled={saving}
             className="px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white rounded-lg text-sm font-bold flex items-center gap-2"
           >
-            {saving ? <Loader2 className="animate-spin" size={16}/> : <Save size={16}/>} Salva Modifiche
+            {saving ? <Loader2 className="animate-spin" width={16} height={16}/> : <Save width={16} height={16}/>} Salva Modifiche
           </button>
           
           <button 
             onClick={publishToTelegram} disabled={isPublishing}
             className="px-4 py-2 bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-md shadow-sky-500/20"
           >
-            {isPublishing ? <Loader2 className="animate-spin" size={16}/> : <span>🚀 Invia Telegram</span>}
+            {isPublishing ? <Loader2 className="animate-spin" width={16} height={16}/> : <span>🚀 Invia Telegram</span>}
           </button>
 
           <Link href={`/${tenantSlug || ''}`} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-bold flex items-center gap-2 border border-slate-600">
-            <ChevronLeft size={16}/> Esci
+            <ChevronLeft width={16} height={16}/> Esci
           </Link>
         </div>
       </div>
@@ -481,7 +487,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
               onClick={applyAutomation}
               className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-lg transition-all active:scale-95 text-sm flex items-center gap-2"
             >
-              <Wand2 size={16}/> COMPILA GRIGLIA MESE
+              <Wand2 width={16} height={16}/> COMPILA GRIGLIA MESE
             </button>
 
             <button 
@@ -489,7 +495,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
               disabled={isGeneratingAnnual}
               className="px-8 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-lg transition-all active:scale-95 text-sm flex items-center gap-2"
             >
-              {isGeneratingAnnual ? <Loader2 className="animate-spin" size={16}/> : <RotateCcw size={16}/>} GENERA TUTTO L'ANNO {year}
+              {isGeneratingAnnual ? <Loader2 className="animate-spin" width={16} height={16}/> : <RotateCcw width={16} height={16}/>} GENERA TUTTO L&apos;ANNO {year}
             </button>
             
             <Link 
@@ -508,7 +514,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
 
 
       {loading ? (
-        <div className="flex-1 flex items-center justify-center"><Loader2 size={40} className="animate-spin text-blue-600" /></div>
+        <div className="flex-1 flex items-center justify-center"><Loader2 width={40} height={40} className="animate-spin text-blue-600" /></div>
       ) : (
         <div className="flex-1 overflow-auto p-2 custom-scrollbar">
           {/* Barra filtro agenti */}
@@ -553,7 +559,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
                         className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-600 transition-all"
                         title="Resetta mese per questo agente"
                       >
-                        <Trash2 size={12} />
+                        <Trash2 width={12} height={12} />
                       </button>
                     </td>
                     {daysArray.map(day => {
@@ -609,7 +615,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
             <div className="bg-rose-700 p-6 text-white text-center">
               <div className="bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Trash2 size={32} className="text-white" />
+                <Trash2 width={32} height={32} className="text-white" />
               </div>
               <h3 className="text-2xl font-black uppercase tracking-tight">Reset Generale</h3>
               <p className="text-rose-100 text-sm font-medium mt-1 opacity-90 italic">Pulisci i turni di più mesi contemporaneamente</p>
@@ -676,7 +682,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
                   className="w-full py-4 bg-rose-700 hover:bg-rose-800 text-white font-black rounded-2xl shadow-xl shadow-rose-200 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 text-sm uppercase tracking-widest"
                 >
                   {isExecutingGeneralReset ? (
-                    <Loader2 size={18} className="animate-spin" />
+                    <Loader2 width={18} height={18} className="animate-spin" />
                   ) : (
                     <>ESEGUI RESET MASSIVO ({selectedMonths.length})</>
                   )}

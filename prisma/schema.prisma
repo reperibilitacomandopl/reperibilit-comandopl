@@ -31,6 +31,7 @@ model Tenant {
   agentRequests      AgentRequest[]
   auditLogs          AuditLog[]
   certifiedDocuments CertifiedDocument[]
+  announcements      Announcement[]
   clockRecords       ClockRecord[]
   emergencyAlerts    EmergencyAlert[]
   globalSettings     GlobalSettings?
@@ -461,4 +462,32 @@ model CertifiedDocument {
   tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([hash, tenantId])
+}
+
+model Announcement {
+  id           String             @id @default(uuid())
+  tenantId     String?
+  authorId     String
+  authorName   String
+  title        String
+  body         String
+  priority     String             @default("NORMAL")
+  requiresRead Boolean            @default(false)
+  isPinned     Boolean            @default(false)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  tenant       Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reads        AnnouncementRead[]
+
+  @@index([tenantId, createdAt])
+}
+
+model AnnouncementRead {
+  id             String       @id @default(uuid())
+  announcementId String
+  userId         String
+  readAt         DateTime     @default(now())
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
 }

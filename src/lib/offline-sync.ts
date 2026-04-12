@@ -21,7 +21,7 @@ export async function initDB() {
 
 // --- GESTIONE CACHE DATI (Lettura Offline) ---
 
-export async function cacheDataset(key: string, data: any) {
+export async function cacheDataset(key: string, data: unknown) {
   try {
     const db = await initDB();
     await db.put(CACHE_STORE, {
@@ -49,7 +49,7 @@ export async function getCachedDataset(key: string) {
 // --- GESTIONE RICHIESTE PENDENTI (Scrittura Offline) ---
 
 // Parcheggia ("Store") la richiesta fallita se non c'è internet
-export async function storeOfflineRequest(url: string, method: string, body: any) {
+export async function storeOfflineRequest(url: string, method: string, body: unknown) {
   try {
     const db = await initDB();
     await db.add(STORE_NAME, {
@@ -63,7 +63,7 @@ export async function storeOfflineRequest(url: string, method: string, body: any
     // Proviamo a triggerare un sync automatico se possibile
     if ('serviceWorker' in navigator && 'SyncManager' in window) {
       const registration = await navigator.serviceWorker.ready;
-      await (registration as any).sync.register('sentinel-sync-queue');
+            await registration.sync.register('sentinel-sync-queue');
     }
   } catch (error) {
     console.error('[PWA] Fallimento apertura DB Locale:', error);
@@ -94,7 +94,7 @@ export async function syncOfflineRequests() {
            await store.delete(req.id);
            console.log(`[PWA] Record #${req.id} consegnato in Centrale.`);
         }
-      } catch (e) {
+      } catch {
         console.warn(`[PWA] Tentativo di recapito Record #${req.id} fallito. Ritenterò.`);
       }
     }

@@ -54,6 +54,8 @@ export default async function PannelloPage() {
         settings={settings as any}
         totalVehicles={totalVehicles}
         pendingSwaps={pendingSwaps}
+        tenantSlug={session.user.tenantSlug || ""}
+        tenantName={session.user.tenantName || ""}
       />
     </div>
   )

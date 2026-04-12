@@ -10,9 +10,17 @@ import SquadreManager from "./SquadreManager"
 import PermissionsPanel from "./PermissionsPanel"
 import { Shield, RotateCcw } from "lucide-react"
 
-export default function RisorseTabs({ agents, rotationGroups, categories }: any) {
+type TabType = "personale" | "cicli" | "servizi" | "pattuglie" | "permessi"
+
+interface RisorseTabsProps {
+  agents: { id: string; name: string; rotationGroupId?: string | null }[]
+  rotationGroups: { id: string; name: string }[]
+  categories: { id: string; name: string; types: { id: string; name: string }[] }[]
+}
+
+export default function RisorseTabs({ agents, rotationGroups, categories }: RisorseTabsProps) {
   const searchParams = useSearchParams()
-  const initialTab = searchParams.get("tab") as any
+  const initialTab = searchParams.get("tab") as TabType | null
   const [activeTab, setActiveTab] = useState<"personale" | "cicli" | "servizi" | "pattuglie" | "permessi">(
     initialTab && ["personale", "cicli", "servizi", "pattuglie", "permessi"].includes(initialTab) 
       ? initialTab 
@@ -23,7 +31,8 @@ export default function RisorseTabs({ agents, rotationGroups, categories }: any)
   useEffect(() => {
     const tab = searchParams.get("tab")
     if (tab && ["personale", "cicli", "servizi", "pattuglie", "permessi"].includes(tab)) {
-      setActiveTab(tab as any)
+       const t = setTimeout(() => setActiveTab(tab as TabType), 0);
+       return () => clearTimeout(t);
     }
   }, [searchParams])
 
@@ -41,7 +50,7 @@ export default function RisorseTabs({ agents, rotationGroups, categories }: any)
             activeTab === "personale" ? "bg-white text-blue-600 shadow-sm shadow-blue-100" : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          <Users size={18} />
+          <Users width={18} height={18} />
           Anagrafica Agenti
         </button>
         <button
@@ -50,7 +59,7 @@ export default function RisorseTabs({ agents, rotationGroups, categories }: any)
             activeTab === "cicli" ? "bg-white text-orange-600 shadow-sm shadow-orange-100" : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          <RotateCcw size={18} />
+          <RotateCcw width={18} height={18} />
           Motori Ciclici (Turni)
         </button>
         <button
@@ -59,7 +68,7 @@ export default function RisorseTabs({ agents, rotationGroups, categories }: any)
             activeTab === "servizi" ? "bg-white text-emerald-600 shadow-sm shadow-emerald-100" : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          <Briefcase size={18} />
+          <Briefcase width={18} height={18} />
           Servizi e Autoparco
         </button>
         <button
@@ -68,7 +77,7 @@ export default function RisorseTabs({ agents, rotationGroups, categories }: any)
             activeTab === "pattuglie" ? "bg-white text-indigo-600 shadow-sm shadow-indigo-100" : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          <Shield size={18} />
+          <Shield width={18} height={18} />
           Pattuglie Fisse
         </button>
         <button
@@ -77,7 +86,7 @@ export default function RisorseTabs({ agents, rotationGroups, categories }: any)
             activeTab === "permessi" ? "bg-white text-indigo-600 shadow-sm shadow-indigo-100" : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          <Key size={18} />
+          <Key width={18} height={18} />
           Permessi Operativi
         </button>
       </div>
@@ -85,7 +94,7 @@ export default function RisorseTabs({ agents, rotationGroups, categories }: any)
       <div className="mt-4">
         {activeTab === "personale" && (
           <div className="animate-in fade-in duration-500">
-            <AnagraficaPanel agents={agents} rotationGroups={rotationGroups} categories={categories} />
+            <AnagraficaPanel agents={agents as any} rotationGroups={rotationGroups} categories={categories} />
           </div>
         )}
         
@@ -107,7 +116,7 @@ export default function RisorseTabs({ agents, rotationGroups, categories }: any)
         )}
         {activeTab === "permessi" && (
           <div className="animate-in fade-in duration-500 bg-white p-6 md:p-10 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-indigo-100/50">
-            <PermissionsPanel users={agents} />
+            <PermissionsPanel users={agents as any} />
           </div>
         )}
 

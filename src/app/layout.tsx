@@ -27,16 +27,17 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Portale Polizia Locale",
-  description: "Sistema di Gestione Reperibilità e Turni",
+  title: "Sentinel Security Suite — La Sala Operativa Digitale per la Polizia Locale",
+  description: "Piattaforma cloud per la gestione turni, OdS con firma digitale, timbrature GPS, SOS emergenze e notifiche Telegram. Pensata per i Comandi di Polizia Locale italiani.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Polizia PL",
+    title: "Sentinel PL",
   },
   formatDetection: {
     telephone: false,
   },
+  keywords: ["polizia locale", "turni", "ordine di servizio", "reperibilità", "gestione turni", "OdS digitale", "firma digitale"],
 };
 
 import PWAListener from "@/components/PWAListener";
@@ -48,7 +49,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="it"
       className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">

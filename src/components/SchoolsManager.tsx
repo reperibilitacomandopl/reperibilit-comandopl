@@ -1,11 +1,24 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { School, Trash2, Plus, Clock, Save, ChevronDown, ChevronUp, GraduationCap } from "lucide-react"
+import { Trash2, Plus, Clock, Save, ChevronDown, ChevronUp, GraduationCap } from "lucide-react"
 import toast from "react-hot-toast"
 
+interface SchoolSchedule {
+  dayOfWeek: number;
+  entranceTime: string;
+  exitTime: string;
+  afternoonExitTime?: string;
+}
+
+interface SchoolData {
+  id: string;
+  name: string;
+  schedules: SchoolSchedule[];
+}
+
 export default function SchoolsManager() {
-  const [schools, setSchools] = useState<any[]>([])
+  const [schools, setSchools] = useState<SchoolData[]>([])
   const [loading, setLoading] = useState(true)
   const [newSchoolName, setNewSchoolName] = useState("")
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -22,7 +35,10 @@ export default function SchoolsManager() {
     setLoading(false)
   }
 
-  useEffect(() => { loadSchools() }, [])
+  useEffect(() => { 
+    const t = setTimeout(() => loadSchools(), 0);
+    return () => clearTimeout(t);
+  }, [])
 
   const handleAddSchool = async () => {
     if (!newSchoolName.trim()) return
@@ -55,7 +71,7 @@ export default function SchoolsManager() {
     }
   }
 
-  const handleUpdateSchedule = async (schoolId: string, name: string, schedules: any[]) => {
+  const handleUpdateSchedule = async (schoolId: string, name: string, schedules: SchoolSchedule[]) => {
     try {
       const res = await fetch(`/api/admin/schools/${schoolId}`, {
         method: "PUT",
@@ -142,7 +158,7 @@ export default function SchoolsManager() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {dayLabels.slice(1, 7).concat(dayLabels[0]).map((label, idx) => {
                        const dow = (idx + 1) % 7; // Convert logic to match 0=Sun, 1=Mon...
-                       const schedule = school.schedules.find((s: any) => s.dayOfWeek === dow) || { dayOfWeek: dow, entranceTime: "07:45-08:30", exitTime: "13:00-14:00", afternoonExitTime: "" };
+                       const schedule = school.schedules.find(s => s.dayOfWeek === dow) || { dayOfWeek: dow, entranceTime: "07:45-08:30", exitTime: "13:00-14:00", afternoonExitTime: "" };
                        
                        return (
                          <div key={dow} className="bg-slate-50 p-4 rounded-2xl space-y-3 ring-1 ring-slate-100">
@@ -159,7 +175,7 @@ export default function SchoolsManager() {
                                 onChange={(e) => {
                                   const newVal = e.target.value;
                                   const updatedSchedules = [...school.schedules];
-                                  const sIdx = updatedSchedules.findIndex((s: any) => s.dayOfWeek === dow);
+                                  const sIdx = updatedSchedules.findIndex(s => s.dayOfWeek === dow);
                                   if (sIdx > -1) updatedSchedules[sIdx].entranceTime = newVal;
                                   else updatedSchedules.push({ dayOfWeek: dow, entranceTime: newVal, exitTime: "13:00-14:00", afternoonExitTime: "" });
                                   setSchools(prev => prev.map(s => s.id === school.id ? { ...s, schedules: updatedSchedules } : s));
@@ -175,7 +191,7 @@ export default function SchoolsManager() {
                                 onChange={(e) => {
                                   const newVal = e.target.value;
                                   const updatedSchedules = [...school.schedules];
-                                  const sIdx = updatedSchedules.findIndex((s: any) => s.dayOfWeek === dow);
+                                  const sIdx = updatedSchedules.findIndex(s => s.dayOfWeek === dow);
                                   if (sIdx > -1) updatedSchedules[sIdx].exitTime = newVal;
                                   else updatedSchedules.push({ dayOfWeek: dow, entranceTime: "07:45-08:30", exitTime: newVal, afternoonExitTime: "" });
                                   setSchools(prev => prev.map(s => s.id === school.id ? { ...s, schedules: updatedSchedules } : s));
@@ -194,7 +210,7 @@ export default function SchoolsManager() {
                                 onChange={(e) => {
                                   const newVal = e.target.value;
                                   const updatedSchedules = [...school.schedules];
-                                  const sIdx = updatedSchedules.findIndex((s: any) => s.dayOfWeek === dow);
+                                  const sIdx = updatedSchedules.findIndex(s => s.dayOfWeek === dow);
                                   if (sIdx > -1) updatedSchedules[sIdx].afternoonExitTime = newVal;
                                   else updatedSchedules.push({ dayOfWeek: dow, entranceTime: "07:45-08:30", exitTime: "13:00-14:00", afternoonExitTime: newVal });
                                   setSchools(prev => prev.map(s => s.id === school.id ? { ...s, schedules: updatedSchedules } : s));

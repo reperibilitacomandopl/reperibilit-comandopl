@@ -14,11 +14,11 @@ interface Props {
     defaultServiceCategoryId: string | null
     defaultServiceTypeId: string | null
     servizio: string | null
-    rotationGroup: any
-    defaultServiceCategory: any
+    rotationGroup: { id: string; name: string } | null
+    defaultServiceCategory: { id: string; name: string } | null
   }
-  rotationGroups: any[]
-  categories: any[]
+  rotationGroups: { id: string; name: string }[]
+  categories: { id: string; name: string; types: { id: string; name: string }[] }[]
 }
 
 export default function OperativeAssignmentEditor({ agent, rotationGroups, categories }: Props) {
@@ -121,7 +121,7 @@ export default function OperativeAssignmentEditor({ agent, rotationGroups, categ
                     className="w-full text-xs border border-slate-200 bg-white rounded-xl py-2 px-4 focus:border-indigo-500 outline-none text-slate-700 font-bold transition-all"
                   >
                     <option value="">Incarico Generico (Nessun Default)</option>
-                    {categories.find(c => c.id === catId)?.types.map((t: any) => (
+                    {categories.find(c => c.id === catId)?.types.map(t => (
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                   </select>

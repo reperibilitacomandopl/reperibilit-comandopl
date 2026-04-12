@@ -22,7 +22,9 @@ import {
   ArrowLeftRight,
   Clock,
   Key,
-  GraduationCap
+  GraduationCap,
+  BarChart3,
+  Server
 } from "lucide-react"
 
 type NavSection = {
@@ -68,7 +70,10 @@ const NAV_SECTIONS: NavSection[] = [
     accent: "text-purple-400",
     items: [
       { label: "Configurazione & Audit", href: "/admin/impostazioni", icon: Settings, description: "Saldi Ore, Impostazioni, Log di Sistema" },
+      { label: "Gestione Straordinari", href: "/admin/straordinari", icon: Clock, description: "Budget mensili ed elettorali" },
+      { label: "Report Mensile", href: "/admin/report", icon: BarChart3, description: "Riepilogo Ore, Assenze, Straordinari" },
       { label: "Export Ragioneria", href: "/admin/export-paghe", icon: FileText, description: "Report Excel Indennità e Paghe" },
+      { label: "API REST & Integrazioni", href: "/admin/api", icon: Server, description: "Documentazione Endpoint" },
     ],
   },
 ]

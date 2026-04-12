@@ -4,11 +4,27 @@ import { useState, useEffect } from "react"
 import { Shield, Plus, Trash2, Loader2, Users } from "lucide-react"
 import toast from "react-hot-toast"
 
+interface PatrolMember {
+  id: string;
+  name: string;
+  matricola: string;
+}
+
+interface PatrolTemplate {
+  id: string;
+  name: string;
+  members: PatrolMember[];
+  serviceCategory?: { id: string; name: string };
+  serviceType?: { id: string; name: string };
+  vehicle?: { id: string; name: string };
+  preferredShift: string;
+}
+
 export default function PatrolSettingsPanel() {
-  const [patrols, setPatrols] = useState<any[]>([])
-  const [agents, setAgents] = useState<any[]>([])
-  const [categories, setCategories] = useState<any[]>([])
-  const [vehicles, setVehicles] = useState<any[]>([])
+  const [patrols, setPatrols] = useState<PatrolTemplate[]>([])
+  const [agents, setAgents] = useState<{ id: string; name: string }[]>([])
+  const [categories, setCategories] = useState<{ id: string; name: string; types: { id: string; name: string }[] }[]>([])
+  const [vehicles, setVehicles] = useState<{ id: string; name: string }[]>([])
   const [loading, setLoading] = useState(true)
 
   // Form State
@@ -42,7 +58,10 @@ export default function PatrolSettingsPanel() {
     setLoading(false)
   }
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { 
+    const t = setTimeout(() => loadData(), 0);
+    return () => clearTimeout(t);
+  }, [])
 
   const addPatrol = async () => {
     if (!name || !selectedAgent1 || !selectedAgent2) return toast.error("Nome e almeno 2 agenti obbligatori")
@@ -86,7 +105,7 @@ export default function PatrolSettingsPanel() {
           </div>
           Pattuglie Fisse (Modelli)
         </h3>
-        <p className="text-sm text-slate-500 font-medium ml-12">Associa operatori fissi per generare automaticamente l'OdS quando lavorano insieme</p>
+        <p className="text-sm text-slate-500 font-medium ml-12">Associa operatori fissi per generare automaticamente l&apos;OdS quando lavorano insieme</p>
       </div>
 
       <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-200/40">
@@ -121,7 +140,7 @@ export default function PatrolSettingsPanel() {
               {selectedCategory && (
                 <select value={selectedType} onChange={e => setSelectedType(e.target.value)} className="flex-1 rounded-2xl border-2 border-slate-200 px-3 py-3 text-xs focus:border-indigo-500 font-black text-indigo-800 outline-none bg-white">
                   <option value="">Generico</option>
-                  {categories.find(c => c.id === selectedCategory)?.types.map((t:any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  {categories.find(c => c.id === selectedCategory)?.types.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               )}
             </div>
@@ -168,7 +187,7 @@ export default function PatrolSettingsPanel() {
               <div className="flex items-center gap-2">
                 <Users size={14} className="text-slate-600" />
                 <div className="flex flex-col">
-                  {p.members.map((m:any) => (
+                  {p.members.map(m => (
                     <span key={m.id} className="text-[13px] font-black text-slate-900">{m.name} <span className="text-[11px] text-indigo-700 font-mono ml-1">({m.matricola})</span></span>
                   ))}
                 </div>
@@ -200,7 +219,7 @@ export default function PatrolSettingsPanel() {
           <div className="col-span-full py-10 flex flex-col items-center justify-center text-center opacity-50">
             <Shield size={48} className="text-slate-400 mb-3" />
             <p className="font-black text-slate-600 text-lg">Nessuna pattuglia fissa configurata</p>
-            <p className="text-sm font-bold text-slate-500 max-w-sm mt-1">Crea dei modelli qui sopra per velocizzare la generazione dell'Ordine di Servizio automatico.</p>
+            <p className="text-sm font-bold text-slate-500 max-w-sm mt-1">Crea dei modelli qui sopra per velocizzare la generazione dell&apos;Ordine di Servizio automatico.</p>
           </div>
         )}
       </div>

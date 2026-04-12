@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Trash2, Plus, Loader2, Car, Layers, X } from "lucide-react"
 
 type ServiceType = { id: string; name: string; categoryId: string }
@@ -17,7 +17,7 @@ export default function ServicesSettings() {
   const [selectedCatForType, setSelectedCatForType] = useState("")
   const [newVehicleName, setNewVehicleName] = useState("")
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     try {
       const [resCat, resVeh] = await Promise.all([
@@ -30,9 +30,12 @@ export default function ServicesSettings() {
       if (dataVeh.vehicles) setVehicles(dataVeh.vehicles)
     } catch { }
     setLoading(false)
-  }
+  }, [])
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => {
+    const t = setTimeout(() => loadData(), 0);
+    return () => clearTimeout(t);
+  }, [loadData])
 
   const addCategory = async () => {
     if (!newCatName) return

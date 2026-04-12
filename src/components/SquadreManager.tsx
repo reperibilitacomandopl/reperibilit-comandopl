@@ -22,7 +22,7 @@ interface RotationGroup {
 export default function SquadreManager() {
   const [loading, setLoading] = useState(true)
   const [groups, setGroups] = useState<RotationGroup[]>([])
-  const [allUsers, setAllUsers] = useState<any[]>([])
+  const [allUsers, setAllUsers] = useState<{ id: string; name: string }[]>([])
 
   // Creazione nuovo gruppo
   const [showCreate, setShowCreate] = useState(false)
@@ -260,7 +260,7 @@ export default function SquadreManager() {
             <div className="flex flex-col items-center justify-center h-full text-slate-400">
               <Users size={48} className="mb-4" />
               <p className="text-lg font-bold">Nessun turno configurato</p>
-              <p className="text-sm">Clicca "Nuovo Turno" per creare il primo gruppo di rotazione.</p>
+              <p className="text-sm">Clicca &quot;Nuovo Turno&quot; per creare il primo gruppo di rotazione.</p>
             </div>
           )}
 
@@ -307,7 +307,6 @@ export default function SquadreManager() {
                     let displayCode = p
                     if (p === "M") {
                       const [h] = (group.mStartTime || "07:00").split(":")
-                      const [,,m] = (group.mStartTime || "07:00").split(":") // Just for checking
                       const min = parseInt((group.mStartTime || "07:00").split(":")[1])
                       displayCode = min === 0 ? `M${parseInt(h)}` : `M${parseInt(h)},${min}`
                     } else if (p === "P") {
@@ -331,15 +330,15 @@ export default function SquadreManager() {
                   })}
                   {parsedPattern.length > 14 && <span className="text-[10px] text-slate-400">...+{parsedPattern.length - 14}</span>}
                   <span className="text-[10px] text-slate-300 mx-1">|</span>
-                  <span className="text-[10px] font-bold text-blue-700 shrink-0">M {(group as any).mStartTime || "07:00"}-{(group as any).mEndTime || "13:00"}</span>
-                  <span className="text-[10px] font-bold text-purple-700 shrink-0 ml-1">P {(group as any).pStartTime || "13:00"}-{(group as any).pEndTime || "19:00"}</span>
+                  <span className="text-[10px] font-bold text-blue-700 shrink-0">M {group.mStartTime || "07:00"}-{group.mEndTime || "13:00"}</span>
+                  <span className="text-[10px] font-bold text-purple-700 shrink-0 ml-1">P {group.pStartTime || "13:00"}-{group.pEndTime || "19:00"}</span>
                 </div>
 
                 {/* Agenti dentro la squadra */}
                 <div className="p-1">
                   {group.users.length === 0 && (
                     <div className="text-xs text-slate-400 italic p-3 text-center border-2 border-dashed border-slate-200 m-1 rounded">
-                      Trascina qui gli agenti per assegnarli a "{group.name}"
+                      Trascina qui gli agenti per assegnarli a &quot;{group.name}&quot;
                     </div>
                   )}
                   {group.users.map((u, i) => (
