@@ -61,7 +61,7 @@ export async function POST(req: Request) {
               message: note ? `Nota: ${note}` : pushPayload.body,
               type: "ALERT",
               link: pushPayload.url,
-              metadata: JSON.stringify({ lat, lng, alertId: alert.id, note })
+              metadata: JSON.stringify({ lat, lng, alertId: alert.id, note, audio })
             }
           });
         } catch (e) {

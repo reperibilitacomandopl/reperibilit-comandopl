@@ -196,6 +196,8 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
         const res = await fetch(`/api/admin/absence-requests/${metadata.requestId}`)
         const data = await res.json()
         if (data.success) setDetailData({ type: 'REQUEST', ...data.request })
+      } else if (metadata?.alertId) {
+        setDetailData({ type: 'ALERT', ...metadata })
       }
     } catch (err) {
       console.error("Failed to fetch notification details", err)
@@ -455,7 +457,7 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
                        <div className="flex items-center gap-4">
                           <div className="flex-1 p-4 bg-white/5 rounded-2xl border border-white/5">
                              <User className="text-indigo-400 mb-2" width={16} height={16} />
-                             <p className="text-sm font-black text-white">{detailData.user.name}</p>
+                             <p className="text-sm font-black text-white">{detailData.user?.name}</p>
                              <p className="text-[10px] text-slate-500">Operatore Richiedente</p>
                           </div>
                           <div className="flex-1 p-4 bg-white/5 rounded-2xl border border-white/5">
@@ -464,6 +466,25 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
                              <p className="text-[10px] text-slate-500">Motivo: {getLabel(detailData.code)}</p>
                           </div>
                        </div>
+                    </div>
+                  )}
+
+                  {/* DETTAGLI EMERGENZA SOS AUDIO */}
+                  {detailData.type === 'ALERT' && (
+                    <div className="space-y-4">
+                       {detailData.audio ? (
+                          <div className="p-4 bg-rose-500/10 rounded-2xl border border-rose-500/20">
+                             <p className="text-[9px] font-black uppercase text-rose-400 mb-2">🔴 Messaggio Vocale Operatore</p>
+                             <audio controls src={detailData.audio} className="w-full h-10 rounded-lg outline-none" />
+                          </div>
+                       ) : (
+                          <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                             <p className="text-[9px] font-black uppercase text-slate-400 text-center">Nessun file audio allegato all'emergenza</p>
+                          </div>
+                       )}
+                       {detailData.lat && detailData.lng && (
+                          <a href={`https://www.google.com/maps?q=${detailData.lat},${detailData.lng}`} target="_blank" rel="noreferrer" className="block w-full bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-widest text-center border border-white/5 transition-all">📍 APRI POSIZIONE GPS MAPS</a>
+                       )}
                     </div>
                   )}
 
