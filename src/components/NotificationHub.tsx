@@ -479,7 +479,7 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
                           </div>
                        ) : (
                           <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                             <p className="text-[9px] font-black uppercase text-slate-400 text-center">Nessun file audio allegato all'emergenza</p>
+                             <p className="text-[9px] font-black uppercase text-slate-400 text-center">Nessun file audio allegato all&apos;emergenza</p>
                           </div>
                        )}
                        {detailData.lat && detailData.lng && (
