@@ -1,4 +1,19 @@
-export const AGENDA_CATEGORIES = [
+export interface AgendaItem {
+  code: string;
+  shortCode: string;
+  label: string;
+  unit: "DAYS" | "HOURS";
+  emoji?: string;
+}
+
+export interface AgendaCategory {
+  group: string;
+  emoji: string;
+  color: string;
+  items: AgendaItem[];
+}
+
+export const AGENDA_CATEGORIES: AgendaCategory[] = [
   {
     group: "Ferie e Festività",
     emoji: "🏖️",

@@ -28,14 +28,17 @@ export interface DashboardShift {
   overtimeHours?: number
 }
 
+import { AgendaCategory } from "@/utils/agenda-codes"
+
 // ====== CODICI AGENDA PERSONALE ======
-const AGENDA_CATEGORIES = [
+const RAW_AGENDA_CATEGORIES = [
   {
     group: "Ferie e Festività", emoji: "🏖️", color: "amber",
     items: [
       { code: "0015", label: "Ferie Anno Corrente" },
       { code: "0016", label: "Ferie Anni Precedenti" },
       { code: "0010", label: "Festività Soppresse" },
+      { code: "BR", label: "Blocco Reperibilità" },
     ]
   },
   {
@@ -116,6 +119,15 @@ const AGENDA_CATEGORIES = [
     ]
   },
 ]
+
+const AGENDA_CATEGORIES: AgendaCategory[] = RAW_AGENDA_CATEGORIES.map(cat => ({
+  ...cat,
+  items: cat.items.map(item => ({
+    ...item,
+    shortCode: (item as any).shortCode || item.code,
+    unit: (item as any).unit || (item.code.startsWith('2') || item.code === "0009" ? "HOURS" : "DAYS")
+  }))
+})) as AgendaCategory[]
 
 // Helper: get category color for a code
 function getCategoryForCode(code: string) {
