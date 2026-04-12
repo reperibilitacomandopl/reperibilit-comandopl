@@ -39,18 +39,26 @@ export async function sendTelegramMessage(chatId: string, text: string, replyMar
 
 /**
  * Invia una nota vocale a un chatId specifico
+ * Restituisce l'oggetto messaggio di Telegram se l'invio ha successo, altrimenti null
  */
-export async function sendTelegramVoice(chatId: string, audioBase64: string, caption?: string) {
-  if (!BOT_TOKEN) return false;
+export async function sendTelegramVoice(chatId: string, audioSource: string, caption?: string) {
+  if (!BOT_TOKEN) return null;
 
   try {
-    // Rimuovi header base64 se presente
-    const base64Data = audioBase64.split(",")[1] || audioBase64;
-    const buffer = Buffer.from(base64Data, "base64");
-    
     const formData = new FormData();
     formData.append("chat_id", chatId);
-    formData.append("voice", new Blob([buffer], { type: "audio/webm" }), "sos_voice.webm");
+    
+    // Se la sorgente è un data URL o base64, convertila in Blob
+    if (audioSource.includes(";base64,") || audioSource.length > 500) {
+      const base64Data = audioSource.split(",")[1] || audioSource;
+      const buffer = Buffer.from(base64Data, "base64");
+      // Tricky: Spacciamo il webm per ogg per attivare la bolla vocale di Telegram (Codec Opus è compatibile)
+      formData.append("voice", new Blob([buffer], { type: "audio/ogg" }), "sos_voice.ogg");
+    } else {
+      // Altrimenti assumiamo sia un file_id pre-caricato
+      formData.append("voice", audioSource);
+    }
+
     if (caption) formData.append("caption", caption);
     formData.append("parse_mode", "HTML");
 
@@ -59,16 +67,17 @@ export async function sendTelegramVoice(chatId: string, audioBase64: string, cap
       body: formData,
     });
 
+    const data = await res.json();
+
     if (!res.ok) {
-      const err = await res.json();
-      console.error("❌ Errore invio vocale Telegram:", err);
-      return false;
+      console.error("❌ Errore invio vocale Telegram:", data);
+      return null;
     }
 
-    return true;
+    return data.result; // Contiene file_id
   } catch (error) {
     console.error("❌ Eccezione invio vocale Telegram:", error);
-    return false;
+    return null;
   }
 }
 

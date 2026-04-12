@@ -33,12 +33,9 @@ export async function POST(req: Request) {
       const alertRecipients = await prisma.user.findMany({
         where: { 
           tenantId: tenantId || null, 
-          OR: [
-            { role: "ADMIN" },
-            { role: "OFFICER" }
-          ]
+          OR: [{ role: "ADMIN" }, { role: "OFFICER" }]
         },
-        select: { id: true, name: true }
+        select: { id: true, name: true, telegramChatId: true }
       });
 
       // 3. Invia Push ai destinatari e crea Notifica nel DB
@@ -48,37 +45,62 @@ export async function POST(req: Request) {
         url: `/${session.user.tenantSlug}/admin/timbrature?alertId=${alert.id}`
       };
 
-      for (const recipient of alertRecipients) {
-        // 1. Notifica Push (Browsers)
-        await sendPushNotification(recipient.id, pushPayload);
-        
-        // 2. Notifica Hub (Database)
-        await prisma.notification.create({
-          data: {
-            tenantId: tenantId || null,
-            userId: recipient.id,
-            title: pushPayload.title,
-            message: note ? `Nota: ${note}` : pushPayload.body,
-            type: "ALERT",
-            link: pushPayload.url,
-            metadata: JSON.stringify({ lat, lng, alertId: alert.id, note })
-          }
+ 
+      const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+      const telegramText = `🚨 <b>ALLERTA SOS GPS</b> 🚨\n\nOperatore: <b>${session.user.name}</b> (Matr. ${session.user.matricola || 'N/D'})\n\n📝 <b>NOTA:</b> ${note || "Nessuna nota fornita"}\n\n📍 <a href="${mapUrl}">Vedi Posizione su Mappe</a>`;
+ 
+      // 4. Invio in parallelo di Push e Notifiche Hub
+      const notificationPromises = alertRecipients.map(async (recipient) => {
+        try {
+          await sendPushNotification(recipient.id, pushPayload);
+          await prisma.notification.create({
+            data: {
+              tenantId: tenantId || null,
+              userId: recipient.id,
+              title: pushPayload.title,
+              message: note ? `Nota: ${note}` : pushPayload.body,
+              type: "ALERT",
+              link: pushPayload.url,
+              metadata: JSON.stringify({ lat, lng, alertId: alert.id, note })
+            }
+          });
+        } catch (e) {
+          console.error(`❌ Fallimento notifica push per ${recipient.name}:`, e);
+        }
+      });
+ 
+      // 5. Gestione Telegram (Ottimizzata con file_id)
+      const telegramPromises = [];
+      let sharedFileId: string | null = null;
+ 
+      // Troviamo i destinatari con Telegram attivo
+      const telegramRecipients = alertRecipients.filter(r => r.telegramChatId);
+      
+      if (telegramRecipients.length > 0) {
+        // Invia testo a tutti in parallelo
+        telegramRecipients.forEach(r => {
+          telegramPromises.push(sendTelegramMessage(r.telegramChatId!, telegramText));
         });
-
-        // 3. Telegram (Bot agli Ufficiali/Admin)
-        const recipientUser = await prisma.user.findUnique({ where: { id: recipient.id }, select: { telegramChatId: true } });
-        if (recipientUser?.telegramChatId) {
-          const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-          const telegramText = `🚨 <b>ALLERTA SOS GPS</b> 🚨\n\nOperatore: <b>${session.user.name}</b> (Matr. ${session.user.matricola || 'N/D'})\n\n📝 <b>NOTA:</b> ${note || "Nessuna nota fornita"}\n\n📍 <a href="${mapUrl}">Vedi Posizione su Mappe</a>`;
+ 
+        // Gestione Audio (Invia al primo, ottieni file_id, invia agli altri)
+        if (audio && telegramRecipients.length > 0) {
+          const firstRecipient = telegramRecipients[0];
+          const voiceRes = await sendTelegramVoice(firstRecipient.telegramChatId!, audio, `🎤 Vocale SOS - ${session.user.name}`);
           
-          await sendTelegramMessage(recipientUser.telegramChatId, telegramText);
-          
-          // Se c'è un audio, invialo come nota vocale
-          if (audio) {
-            await sendTelegramVoice(recipientUser.telegramChatId, audio, `🎤 Vocale SOS d'emergenza - ${session.user.name}`);
+          if (voiceRes && voiceRes.voice?.file_id && typeof voiceRes.voice.file_id === 'string') {
+            sharedFileId = voiceRes.voice.file_id;
+            // Invia agli altri usando il file_id
+            for (let i = 1; i < telegramRecipients.length; i++) {
+              if (sharedFileId) {
+                telegramPromises.push(sendTelegramVoice(telegramRecipients[i].telegramChatId!, sharedFileId, `🎤 Vocale SOS - ${session.user.name}`));
+              }
+            }
           }
         }
       }
+ 
+      // Attendi il completamento di tutto
+      await Promise.allSettled([...notificationPromises, ...telegramPromises]);
 
       return NextResponse.json({ success: true, alertId: alert.id });
     }
