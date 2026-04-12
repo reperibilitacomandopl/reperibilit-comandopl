@@ -56,9 +56,30 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
   }, [lastNotificationId])
 
   const playAlertSound = () => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0
-      audioRef.current.play().catch(e => console.warn("Audio play blocked by browser:", e))
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext
+      if (!AudioContext) return
+      
+      const ctx = new AudioContext()
+      const osc = ctx.createOscillator()
+      const gainNode = ctx.createGain()
+      
+      // Crea un suono tipo "sirena bit" per l'allarme
+      osc.type = 'square'
+      osc.frequency.setValueAtTime(800, ctx.currentTime) // Tono altissimo
+      osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.8) // Scende
+      
+      // Volume e decadenza
+      gainNode.gain.setValueAtTime(1, ctx.currentTime)
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1)
+      
+      osc.connect(gainNode)
+      gainNode.connect(ctx.destination)
+      
+      osc.start()
+      osc.stop(ctx.currentTime + 1)
+    } catch (e) {
+      console.warn("Autoplay audio bloccato. Interazione necessaria.", e)
     }
   }
 
@@ -92,6 +113,19 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
        /* */
     }
   }
+
+  // Ascolto Messaggi dal Service Worker per Notifiche Push in Background
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return
+    const handleSWMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === "PLAY_ALARM" && event.data.isSos) {
+        playAlertSound()
+        fetchNotifications() // Ricarica le notifiche visto che c'è un'emergenza
+      }
+    }
+    navigator.serviceWorker.addEventListener("message", handleSWMessage)
+    return () => navigator.serviceWorker.removeEventListener("message", handleSWMessage)
+  }, [fetchNotifications])
 
   const handleAction = async (notificationId: string, action: "ACCEPT" | "REJECT", metadataRaw: any) => {
     const toastId = toast.loading("Elaborazione in corso...")

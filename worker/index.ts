@@ -58,19 +58,30 @@ self.addEventListener('push', (event: PushEvent) => {
     // Pattern vibrazione SOS: Lunghi impulsi ripetuti
     const sosVibration = [500, 100, 500, 100, 500, 100, 500];
     const defaultVibration = [200, 100, 200];
-    const isSos = data.title?.includes('SOS') || data.title?.includes('EMERGENZA');
+    const isSos = data.title?.includes('SOS') || data.title?.includes('EMERGENZA') || data.type === 'ALERT';
+
+    // Propaga via messaggio ai tab aperti per forzare lo sblocco sonoro Web Audio
+    event.waitUntil(
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+        clients.forEach(c => c.postMessage({ type: 'PLAY_ALARM', isSos }));
+      })
+    );
 
     event.waitUntil(
       self.registration.showNotification(data.title, {
         body: data.body,
         icon: '/icon-192.png',
         badge: '/badge-icon.png',
+        tag: isSos ? 'sos-alarm' : 'default-alert',
+        renotify: isSos,
+        requireInteraction: isSos,
+        silent: false, // Forza l'overload sonoro del sistema operativo
+        vibrate: isSos ? sosVibration : defaultVibration,
         data: {
           url: data.url || '/'
         },
-        vibrate: isSos ? sosVibration : defaultVibration,
         actions: [
-          { action: 'open', title: isSos ? 'RISPONDI ORA' : 'Vedi Dettagli' }
+          { action: 'open', title: isSos ? '🚨 RISPONDI ORA' : 'Vedi Dettagli' }
         ]
       } as NotificationOptions)
     );

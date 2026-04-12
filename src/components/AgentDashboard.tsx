@@ -929,17 +929,14 @@ export default function AgentDashboard({ currentUser, shifts, allAgents, current
         </div>
       )}
 
-      <div className="block lg:hidden px-2 mb-2">
+      <div className="block lg:hidden mt-2 mb-2 sticky bottom-4 z-50 px-4">
          <button 
            id="btn-sos-pwa"
            onClick={() => setShowSosModal(true)}
-           className="w-full bg-red-600 active:bg-red-800 text-white rounded-2xl py-5 px-4 flex items-center justify-center gap-3 shadow-xl shadow-red-200 animate-pulse border-4 border-red-500/50"
+           className="w-full bg-rose-600 hover:bg-rose-700 text-white rounded-xl py-3 px-4 flex items-center justify-center gap-2 shadow-lg shadow-rose-200 border-2 border-rose-400/50 transition-all active:scale-[0.98]"
          >
-           <AlertCircle size={32} className="shrink-0" />
-           <div className="text-left">
-              <p className="font-black text-lg leading-tight uppercase">SOS GPS EMERGENZA</p>
-              <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Descrivi Urgenza e Invia</p>
-           </div>
+           <AlertCircle size={20} className="shrink-0 animate-pulse" />
+           <span className="font-black text-sm tracking-widest uppercase">SOS Emergenza</span>
          </button>
       </div>
 
