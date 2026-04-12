@@ -1659,69 +1659,101 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
       {/* === CELL EDIT MODAL === */}
       {editingCell && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setEditingCell(null)}>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200" onClick={() => setEditingCell(null)}>
           <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
+            className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh] border border-white"
             onClick={e => e.stopPropagation()}
           >
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4 text-white flex justify-between items-center">
-              <div>
-                <h3 className="font-bold text-base">Modifica Cella</h3>
-                <p className="text-blue-100 text-xs mt-0.5">{editingCell.agentName} — Giorno {editingCell.day}</p>
+            {/* Header Premium */}
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 shrink-0">
+              <div className="flex items-center gap-4">
+                 <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200">
+                    <Calendar width={24} height={24} />
+                 </div>
+                 <div>
+                   <h3 className="font-black text-xl text-slate-800 tracking-tight leading-tight">Modifica Turno</h3>
+                   <p className="text-slate-500 text-[11px] font-bold uppercase tracking-widest mt-0.5">{editingCell.agentName} <span className="text-indigo-400 mx-1">•</span> Giorno {editingCell.day}</p>
+                 </div>
               </div>
-              <button onClick={() => setEditingCell(null)} className="text-white/70 hover:text-white transition-colors">
+              <button onClick={() => setEditingCell(null)} className="w-10 h-10 flex items-center justify-center bg-white text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all shadow-sm border border-slate-200 active:scale-95">
                 <X width={20} height={20} />
               </button>
             </div>
 
             {editingCell.warningMsg && (
-              <div className="mx-5 mt-5 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2 shadow-sm">
-                <AlertCircle className="text-amber-500 shrink-0 mt-0.5" width={16} height={16} />
-                <p className="text-xs text-amber-800 font-medium leading-relaxed">{editingCell.warningMsg}</p>
+              <div className="mx-6 mt-5 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3 shadow-sm shrink-0">
+                <AlertCircle className="text-amber-500 shrink-0 mt-0.5" width={18} height={18} />
+                <p className="text-xs text-amber-800 font-bold leading-relaxed">{editingCell.warningMsg}</p>
               </div>
             )}
 
-            <div className="p-5">
-              <p className="text-xs text-slate-500 mb-3">Valore attuale: <strong>{editingCell.currentType || "(vuoto)"}</strong></p>
-
-              <div className="text-xs font-semibold text-slate-600 mb-2">Operativi veloci:</div>
-              <div className="flex flex-wrap gap-2 mb-4">
-                {["REP"].map(code => (
+            <div className="p-6 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-8">
+              
+              {/* Inserimento Manuale Veloce Spostato In Cima */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-end mb-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Inserimento Rapido</label>
+                  <span className="text-[10px] text-slate-400 font-medium">Attuale: <strong className="text-indigo-600 font-black">{editingCell.currentType || 'VUOTA'}</strong></span>
+                </div>
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    value={editValue}
+                    onChange={e => setEditValue(e.target.value.toUpperCase())}
+                    placeholder="Es: P14, M7, REP_01"
+                    className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl pl-5 pr-24 py-4 text-sm font-black text-slate-800 placeholder-slate-300 focus:border-indigo-500 focus:bg-white transition-all outline-none shadow-inner"
+                    autoFocus
+                    onKeyDown={e => { if (e.key === 'Enter') void saveCellEdit(editValue); }}
+                  />
                   <button
-                    key={code}
-                    disabled={isSavingCell}
-                    onClick={() => { void saveCellEdit(code); }}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-purple-700 bg-purple-50 border-2 border-purple-200 hover:border-purple-400 hover:bg-purple-100 transition-colors disabled:opacity-50 shadow-sm"
+                    onClick={() => { void saveCellEdit(editValue); }}
+                    disabled={isSavingCell || !editValue}
+                    className="absolute right-2 px-4 py-2 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:bg-slate-300 transition-all shadow-md active:scale-95"
                   >
-                    {code}
+                    Salva
                   </button>
-                ))}
+                </div>
               </div>
 
-              <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar mb-4 space-y-4">
+              {/* Bottoni Causali (A blocchi colorati fluidi) */}
+              <div className="space-y-6">
+                <div>
+                  <div className="text-[10px] font-black text-slate-400 mb-3 flex items-center gap-2 uppercase tracking-widest">
+                    <span>⚡</span> OPERATIVI VELOCI
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {["REP"].map(code => (
+                      <button key={code} disabled={isSavingCell} onClick={() => { void saveCellEdit(code); }} className="px-4 py-2.5 rounded-xl text-xs font-black text-purple-700 bg-purple-100 hover:bg-purple-200 transition-colors disabled:opacity-50 shadow-sm active:scale-95 border border-purple-200/50">
+                        {code}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {AGENDA_CATEGORIES.map(cat => (
                   <div key={cat.group}>
-                    <div className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1.5 uppercase">
+                    <div className="text-[10px] font-black text-slate-400 mb-3 flex items-center gap-2 uppercase tracking-widest">
                       <span>{cat.emoji}</span> {cat.group}
                     </div>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {cat.items.map(item => (
                         <button
                           key={item.shortCode}
                           disabled={isSavingCell}
                           onClick={() => { void saveCellEdit(item.shortCode); }}
-                          className={`px-2 py-1 rounded select-none text-[10px] font-bold border-2 disabled:opacity-50 transition-colors ${
-                            cat.color === 'amber' ? 'text-amber-700 bg-white border-amber-200 hover:bg-amber-50' :
-                            cat.color === 'rose' ? 'text-rose-700 bg-white border-rose-200 hover:bg-rose-50' :
-                            cat.color === 'blue' ? 'text-blue-700 bg-white border-blue-200 hover:bg-blue-50' :
-                            cat.color === 'red' ? 'text-red-700 bg-white border-red-200 hover:bg-red-50' :
-                            cat.color === 'teal' ? 'text-teal-700 bg-white border-teal-200 hover:bg-teal-50' :
-                            cat.color === 'indigo' ? 'text-indigo-700 bg-white border-indigo-200 hover:bg-indigo-50' :
-                            'text-slate-700 bg-white border-slate-200 hover:bg-slate-50'
+                          className={`p-2.5 rounded-xl select-none text-left flex flex-col gap-0.5 disabled:opacity-50 transition-all active:scale-95 shadow-sm border ${
+                            cat.color === 'amber' ? 'text-amber-800 bg-amber-100/80 border-amber-200 hover:bg-amber-200 hover:border-amber-300' :
+                            cat.color === 'rose' ? 'text-rose-800 bg-rose-100/80 border-rose-200 hover:bg-rose-200 hover:border-rose-300' :
+                            cat.color === 'blue' ? 'text-blue-800 bg-blue-100/80 border-blue-200 hover:bg-blue-200 hover:border-blue-300' :
+                            cat.color === 'red' ? 'text-red-800 bg-red-100/80 border-red-200 hover:bg-red-200 hover:border-red-300' :
+                            cat.color === 'teal' ? 'text-teal-800 bg-teal-100/80 border-teal-200 hover:bg-teal-200 hover:border-teal-300' :
+                            cat.color === 'indigo' ? 'text-indigo-800 bg-indigo-100/80 border-indigo-200 hover:bg-indigo-200 hover:border-indigo-300' :
+                            'text-slate-800 bg-slate-100/80 border-slate-200 hover:bg-slate-200 hover:border-slate-300'
                           }`}
                           title={item.label}
                         >
-                          {item.shortCode}
+                          <span className="text-[11px] font-black tracking-tight">{item.shortCode}</span>
+                          <span className="text-[9px] font-bold opacity-75 leading-tight line-clamp-2">{item.label}</span>
                         </button>
                       ))}
                     </div>
@@ -1729,35 +1761,18 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 ))}
               </div>
 
-              <div className="text-xs font-semibold text-slate-600 mb-2">Oppure scrivi manualmente:</div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={editValue}
-                  onChange={e => setEditValue(e.target.value.toUpperCase())}
-                  placeholder="Es: P14, M7, REP 22-07"
-                  className="flex-1 border-2 border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  autoFocus
-                  onKeyDown={e => { if (e.key === 'Enter') void saveCellEdit(editValue); }}
-                />
-                <button
-                  onClick={() => { void saveCellEdit(editValue); }}
-                  disabled={isSavingCell}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50"
-                >
-                  Salva
-                </button>
-              </div>
+            </div>
 
+             {/* Footer con bottone Elimina Definitivo */}
+             <div className="p-5 bg-slate-50 border-t border-slate-100 shrink-0">
               <button
                 onClick={() => { void saveCellEdit(""); }}
                 disabled={isSavingCell}
-                className="mt-3 w-full flex items-center justify-center gap-2 text-red-500 hover:text-red-700 hover:bg-red-50 py-2 rounded-lg text-xs font-semibold transition-colors"
+                className="w-full flex items-center justify-center gap-2 text-rose-600 bg-white hover:bg-rose-50 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all shadow-sm border border-slate-200 hover:border-rose-200 active:scale-95"
               >
-                <Trash2 width={14} height={14} />
-                Cancella valore (svuota cella)
+                <Trash2 width={16} height={16} /> Svuota e Pulisci Turno
               </button>
-            </div>
+             </div>
           </div>
         </div>
       )}
