@@ -153,54 +153,56 @@ export default function AdminSidebar({
 
       <aside
         className={`${
-          collapsed ? "w-[72px]" : "w-[260px]"
-        } h-screen flex flex-col bg-[#0b1120] border-r border-slate-800/60 transition-all duration-300 ease-in-out shrink-0 relative z-[70] 
+          collapsed ? "w-[80px]" : "w-[300px]"
+        } h-screen flex flex-col bg-[#050914] border-r border-white/5 transition-all duration-500 ease-in-out shrink-0 relative z-[70] 
         ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         fixed lg:sticky top-0 left-0`}
       >
         {/* Mobile Close Button */}
         <button
           onClick={() => setMobileOpen(false)}
-          className="lg:hidden absolute top-4 right-[-50px] p-2 bg-slate-900 border border-slate-800 text-slate-400 rounded-xl"
+          className="lg:hidden absolute top-4 right-[-50px] p-3 bg-slate-900 border border-slate-800 text-slate-400 rounded-2xl shadow-2xl"
         >
-          <X size={20} />
+          <X size={24} />
         </button>
-      <div className="px-5 py-6 border-b border-slate-800/40 flex items-center gap-4 shrink-0 bg-gradient-to-b from-slate-900/50 to-transparent">
-        <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-xs shadow-lg shadow-indigo-500/20 shrink-0 ring-1 ring-white/10">
+
+      {/* Brand Header Premium */}
+      <div className="px-8 py-10 border-b border-white/5 flex items-center gap-4 shrink-0 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-600/5 to-transparent pointer-events-none"></div>
+        <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-xs shadow-lg shadow-blue-500/20 shrink-0 ring-1 ring-white/20 relative z-10 transition-transform hover:scale-110">
           PL
         </div>
         {!collapsed && (
-          <div className="overflow-hidden font-sans">
-            <h1 className="text-sm font-black text-white tracking-tight leading-tight truncate">
-              {isImpersonating ? "Supporto Attivo" : "Polizia Locale"}
+          <div className="overflow-hidden font-sans relative z-10">
+            <h1 className="text-lg font-black text-white tracking-tighter leading-tight truncate uppercase">
+              {isImpersonating ? "Support" : "Sentinel"} <span className="text-blue-500">Premium</span>
             </h1>
-            <p className={`text-[10px] font-bold tracking-wider uppercase leading-tight ${isImpersonating ? "text-indigo-400 animate-pulse" : "text-slate-500"}`}>
-              {isImpersonating ? "Impersonificazione" : "Sistema Gestionale"}
+            <p className={`text-[8px] font-black tracking-[0.3em] uppercase leading-tight mt-1 ${isImpersonating ? "text-indigo-400 animate-pulse" : "text-white/20"}`}>
+              {isImpersonating ? "Sessione Attiva" : "Command Console"}
             </p>
           </div>
         )}
       </div>
 
-      {/* Super-Admin Back Button (If Impersonating) */}
+      {/* Super-Admin Back Button Premium */}
       {isImpersonating && !collapsed && (
-        <div className="px-4 py-3 bg-purple-500/10 border-b border-purple-500/20">
+        <div className="p-6">
           <button 
             disabled={isEnding}
             onClick={handleEndImpersonation}
-            className="w-full flex items-center justify-center gap-2 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-purple-900/20"
+            className="group w-full flex items-center justify-center gap-3 py-4 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] transition-all border border-indigo-500/20 shadow-lg shadow-indigo-950/20"
           >
-            <Shield size={12} />
-            {isEnding ? "Ripristino..." : "Torna Super-Admin"}
+            <Shield size={14} className="group-hover:animate-bounce" />
+            {isEnding ? "Ripristino..." : "Reset Sessione"}
           </button>
         </div>
       )}
-      {/* Navigation Items */}
-      <nav className="flex-1 py-4 px-2 space-y-5 overflow-y-auto custom-scrollbar pb-20">
+
+      {/* Navigation Items Premium */}
+      <nav className="flex-1 py-10 px-4 space-y-10 overflow-y-auto custom-scrollbar-dark pb-32">
         {NAV_SECTIONS.map((section) => {
-          // Filter items based on permissions
           const filteredItems = section.items.filter(item => {
             if (userRole === "ADMIN") return true;
-
             if (section.title === "Centro Operativo") return canManageShifts;
             if (section.title === "Risorse Umane") {
               if (item.label === "Timbrature GPS") return canVerifyClockIns;
@@ -208,23 +210,20 @@ export default function AdminSidebar({
             }
             if (section.title === "Logistica & Mezzi") return canConfigureSystem;
             if (section.title === "Amministrazione") return canConfigureSystem;
-            
-            // Overview is always visible for anyone who can enter admin layout
             if (item.label === "Overview & KPI") return true;
-
             return false;
           });
 
           if (filteredItems.length === 0) return null;
 
           return (
-            <div key={section.title}>
+            <div key={section.title} className="animate-in fade-in duration-700">
               {!collapsed && (
-                <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] px-3 mb-2 ${section.accent}`}>
+                <h3 className={`text-[9px] font-black uppercase tracking-[0.4em] px-4 mb-6 opacity-30 ${section.accent}`}>
                   {section.title}
                 </h3>
               )}
-              <div className="space-y-0.5">
+              <div className="space-y-1.5">
                 {filteredItems.map((item) => {
                   const itemHref = `/${tenantSlug}/admin${item.href.replace("/admin", "")}`
                   const isActive = pathname === itemHref || pathname?.startsWith(itemHref + "/")
@@ -234,30 +233,36 @@ export default function AdminSidebar({
                       key={item.href}
                       href={itemHref}
                       title={collapsed ? item.label : undefined}
-                      className={`group flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 relative ${
+                      className={`group flex items-center gap-5 px-5 py-4 rounded-2xl transition-all duration-500 relative overflow-hidden ${
                         isActive
-                          ? "bg-indigo-600/10 text-indigo-400 ring-1 ring-inset ring-indigo-500/20"
-                          : "text-slate-400 hover:text-white hover:bg-slate-800/40"
+                          ? "bg-blue-600 text-white shadow-xl shadow-blue-900/40"
+                          : "text-white/40 hover:text-white hover:bg-white/5"
                       }`}
                     >
                       {isActive && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[4px] h-6 bg-indigo-500 rounded-r-full shadow-[0_0_12px_rgba(79,70,229,0.8)]" />
+                        <div className="absolute right-[-2.5rem] top-[-2.5rem] w-20 h-20 bg-white/10 rounded-full blur-2xl"></div>
                       )}
+                      
                       <Icon
                         size={20}
-                        className={`shrink-0 transition-colors ${
-                          isActive ? "text-blue-400" : "text-slate-500 group-hover:text-slate-300"
+                        className={`shrink-0 transition-transform duration-500 group-hover:scale-110 ${
+                          isActive ? "text-white" : "text-white/20 group-hover:text-blue-400"
                         }`}
                       />
+                      
                       {!collapsed && (
-                        <div className="overflow-hidden flex-1">
-                          <span className={`text-[13px] font-bold block truncate tracking-tight ${isActive ? "text-indigo-300" : "group-hover:text-slate-200"}`}>
+                        <div className="overflow-hidden flex-1 relative z-10">
+                          <span className={`text-[12px] font-black block truncate tracking-tight uppercase ${isActive ? "text-white" : "group-hover:text-white"}`}>
                             {item.label}
                           </span>
-                          <span className="text-[10px] text-slate-500 group-hover:text-slate-400 font-medium block truncate">
+                          <span className={`text-[9px] font-bold block truncate tracking-wide mt-0.5 ${isActive ? "text-white/60" : "text-white/10 group-hover:text-white/30"}`}>
                             {item.description}
                           </span>
                         </div>
+                      )}
+                      
+                      {isActive && !collapsed && (
+                        <div className="w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_10px_white]"></div>
                       )}
                     </Link>
                   )
@@ -268,61 +273,61 @@ export default function AdminSidebar({
         })}
       </nav>
 
-
-      {/* Collapse toggle */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="mx-2 mb-2 p-2 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800/60 transition-colors flex items-center justify-center"
-        title={collapsed ? "Espandi menu" : "Comprimi menu"}
-      >
-        {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-      </button>
-
-      {/* User Footer */}
-      <div className="border-t border-slate-800/60 px-3 py-3 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg flex items-center justify-center text-white text-[11px] font-black shrink-0 shadow-inner">
-            {userName
-              .split(" ")
-              .map((n) => n[0])
-              .join("")
-              .substring(0, 2)
-              .toUpperCase()}
+      {/* Fixed Footer Premium */}
+      <div className="absolute bottom-0 left-0 w-full bg-[#050914] border-t border-white/5 p-6 space-y-4">
+        
+        {/* User Card */}
+        <div className="flex items-center gap-4 bg-white/5 p-4 rounded-3xl border border-white/5 group hover:bg-white/10 transition-colors">
+          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-blue-700 rounded-xl flex items-center justify-center text-white text-[12px] font-black shrink-0 shadow-lg shadow-blue-500/20">
+            {userName.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase()}
           </div>
           {!collapsed && (
             <div className="flex-1 overflow-hidden">
-              <p className="text-xs font-bold text-slate-300 truncate">
+              <p className="text-[11px] font-black text-white truncate uppercase tracking-tight">
                 {userName}
               </p>
-              <p className="text-[10px] text-slate-600 font-medium">
-                Matr. {userMatricola} • ADMIN
+              <p className="text-[9px] text-white/30 font-black uppercase tracking-widest mt-0.5">
+                Admin Console
               </p>
             </div>
           )}
           <form action={signOutAction}>
             <button
               type="submit"
-              className="p-1.5 text-slate-600 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors"
-              title="Esci"
+              className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-rose-600 text-white/40 hover:text-white rounded-xl transition-all"
+              title="Disconnetti Sessione"
             >
               <LogOut size={16} />
             </button>
           </form>
         </div>
-      </div>
 
-      {/* Preview Agente Link */}
-      {!collapsed && (
-        <div className="px-3 pb-3">
-          <Link
-            href={`/${tenantSlug}?view=agent`}
-            className="flex items-center justify-center gap-2 w-full px-3 py-2 bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 rounded-xl text-[10px] font-bold text-slate-500 hover:text-slate-300 uppercase tracking-wider transition-all"
-          >
-            <Shield size={12} />
-            Preview Agente
-          </Link>
-        </div>
-      )}
+        {!collapsed && (
+          <div className="grid grid-cols-2 gap-3">
+             <Link
+                href={`/${tenantSlug}?view=agent`}
+                className="flex items-center justify-center gap-2 py-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl text-[9px] font-black text-white/30 hover:text-white uppercase tracking-widest transition-all"
+              >
+                <Shield size={12} /> Preview
+              </Link>
+              <button
+                onClick={() => setCollapsed(!collapsed)}
+                className="flex items-center justify-center gap-2 py-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl text-[9px] font-black text-white/30 hover:text-white uppercase tracking-widest transition-all"
+              >
+                <ChevronLeft size={14} /> Close
+              </button>
+          </div>
+        )}
+
+        {collapsed && (
+           <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="w-full py-4 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl text-white/20 hover:text-white transition-all"
+            >
+              <ChevronRight size={16} />
+           </button>
+        )}
+      </div>
       </aside>
     </>
   )

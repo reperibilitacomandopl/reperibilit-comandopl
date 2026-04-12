@@ -109,71 +109,57 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
       <div className={`bg-white ${embedded ? 'rounded-2xl' : 'rounded-3xl shadow-2xl'} w-full ${embedded ? '' : 'max-w-7xl w-[95vw] max-h-[95vh]'} overflow-hidden flex flex-col`} onClick={e => e.stopPropagation()}
         style={embedded ? undefined : { animation: 'fadeInUp 0.3s ease-out' }}
       >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 p-6 text-white relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-32 -mt-32"></div>
+        {/* Header Premium */}
+        <div className="bg-slate-900 p-8 text-white relative overflow-hidden shrink-0">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 rounded-full blur-[100px] -mr-48 -mt-48"></div>
           <div className="relative z-10 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-white/10 backdrop-blur-sm rounded-2xl">
-                <Settings size={28} />
+            <div className="flex items-center gap-5">
+              <div className="w-14 h-14 bg-white/10 backdrop-blur-md border border-white/10 rounded-[1.5rem] flex items-center justify-center shadow-2xl">
+                <Settings size={28} className="text-blue-400" />
               </div>
               <div>
-                <h2 className="text-2xl font-black tracking-tight">Pannello di Controllo</h2>
-                <p className="text-white/50 text-xs font-semibold mt-0.5">Impostazioni · Algoritmo · Agenti · PEC</p>
+                <h2 className="text-3xl font-black tracking-tighter uppercase leading-tight">Pannello di Controllo</h2>
+                <p className="text-slate-400 text-[10px] font-black tracking-[0.3em] uppercase opacity-70 mt-1">Sentinel Autonomous System Configuration</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all">
-              <X size={20} />
+            <button 
+              onClick={onClose} 
+              className="w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 text-white/40 rounded-2xl transition-all border border-white/5 active:scale-95"
+            >
+              <X size={24} />
             </button>
           </div>
         </div>
 
         {/* Feedback Banner */}
         {feedback && (
-          <div className="bg-slate-900 text-white text-sm font-bold text-center py-2 px-4 animate-pulse">
+          <div className="bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.2em] text-center py-2.5 px-4 animate-in slide-in-from-top duration-300">
             {feedback}
           </div>
         )}
 
-        {/* Tabs */}
-        <div className="flex border-b border-slate-100 bg-slate-50 px-4 py-3">
-          <div className="flex gap-1 bg-slate-100 p-1.5 rounded-2xl">
-            <button
-              onClick={() => setActiveTab("algorithm")}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                activeTab === "algorithm" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <Settings size={18} />
-              Algoritmo
-            </button>
-            <button
-              onClick={() => setActiveTab("pec")}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                activeTab === "pec" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <Mail size={18} />
-              Configurazione PEC
-            </button>
-            <button
-              onClick={() => setActiveTab("stats")}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                activeTab === "stats" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <BarChart3 size={18} />
-              Statistiche
-            </button>
-            <button
-              onClick={() => setActiveTab("balances")}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                activeTab === "balances" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <Hash size={18} />
-              Saldi Annuali
-            </button>
+        {/* Tabs Modernized */}
+        <div className="flex border-b border-slate-100 bg-white px-8 py-5 shrink-0 overflow-x-auto no-scrollbar">
+          <div className="flex gap-2 bg-slate-50 p-1.5 rounded-[1.2rem] border border-slate-100">
+            {[
+              { id: "algorithm", label: "Algoritmo", icon: Settings },
+              { id: "pec", label: "Email / PEC", icon: Mail },
+              { id: "stats", label: "Analisi Dati", icon: BarChart3 },
+              { id: "balances", label: "Saldi", icon: Hash }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as TabType)}
+                className={`flex items-center gap-2.5 px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
+                  activeTab === tab.id 
+                    ? "bg-white text-blue-600 shadow-md shadow-blue-900/10 border border-slate-100" 
+                    : "text-slate-400 hover:text-slate-600 hover:bg-slate-100/50"
+                }`}
+              >
+                <tab.icon size={16} />
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -187,39 +173,35 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
             <>
               {/* TAB: ALGORITHM */}
               {activeTab === "algorithm" && (
-                <div className="space-y-6 max-w-xl">
-                  <div>
-                    <h3 className="text-lg font-black text-slate-900 mb-1">⚙️ Parametri Algoritmo</h3>
-                    <p className="text-xs text-slate-400">Configura come vengono distribuite le reperibilità</p>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-amber-50 rounded-2xl p-5 border border-amber-100">
-                      <p className="text-sm font-bold text-amber-900 mb-1">Mese Corrente</p>
-                      <p className="text-[10px] text-amber-600 mb-3">Seleziona il mese attivo nell&apos;app</p>
-                      <select 
-                        value={settings.meseCorrente} 
-                        onChange={e => setSettings(s => ({ ...s, meseCorrente: parseInt(e.target.value) }))}
-                        className="bg-white border-2 border-amber-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-amber-400 w-full"
-                      >
-                        {["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"].map((m, i) => (
-                          <option key={i} value={i + 1}>{m}</option>
-                        ))}
-                      </select>
+                <div className="space-y-10 max-w-4xl animate-in fade-in slide-in-from-bottom-5 duration-500">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-100">
+                    <div className="flex items-center gap-4">
+                       <div className="w-1.5 h-8 bg-blue-600 rounded-full"></div>
+                       <div>
+                          <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Parametri Temporali</h3>
+                          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Configurazione ciclo operativo mensile</p>
+                       </div>
                     </div>
-
-                    <div className="bg-amber-50 rounded-2xl p-5 border border-amber-100">
-                      <p className="text-sm font-bold text-amber-900 mb-1">Anno</p>
-                      <p className="text-[10px] text-amber-600 mb-3">Anno di riferimento</p>
-                      <select 
-                        value={settings.annoCorrente} 
-                        onChange={e => setSettings(s => ({ ...s, annoCorrente: parseInt(e.target.value) }))}
-                        className="bg-white border-2 border-amber-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-amber-400 w-full"
-                      >
-                        {[2025, 2026, 2027].map(y => (
-                          <option key={y} value={y}>{y}</option>
-                        ))}
-                      </select>
+                    
+                    <div className="flex items-center gap-3 bg-white p-2 rounded-[1.5rem] border border-slate-200 shadow-sm">
+                        <select 
+                          value={settings.meseCorrente} 
+                          onChange={e => setSettings(s => ({ ...s, meseCorrente: parseInt(e.target.value) }))}
+                          className="bg-slate-50 border border-slate-100 rounded-xl px-5 py-2.5 text-xs font-black text-slate-700 focus:outline-none focus:border-blue-500 transition-all uppercase appearance-none cursor-pointer"
+                        >
+                          {["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"].map((m, i) => (
+                            <option key={i} value={i + 1}>{m}</option>
+                          ))}
+                        </select>
+                        <select 
+                          value={settings.annoCorrente} 
+                          onChange={e => setSettings(s => ({ ...s, annoCorrente: parseInt(e.target.value) }))}
+                          className="bg-slate-50 border border-slate-100 rounded-xl px-5 py-2.5 text-xs font-black text-slate-700 focus:outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer"
+                        >
+                          {[2025, 2026, 2027].map(y => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
                     </div>
                   </div>
 
@@ -408,27 +390,27 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
           )}
         </div>
 
-        {/* Footer */}
+        {/* Footer Polish */}
         {activeTab !== "balances" && (
-          <div className="px-8 py-5 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 rounded-b-3xl">
+          <div className="px-10 py-6 bg-slate-50 border-t border-slate-100 flex justify-end items-center gap-4 shrink-0">
             {activeTab !== "stats" ? (
               <>
-                <button onClick={fetchData} className="px-6 py-2.5 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-100 transition-colors">
-                  Annulla
+                <button onClick={fetchData} className="px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-200 transition-colors">
+                  Reset Valori
                 </button>
                 <button
                   onClick={activeTab === "pec" ? savePec : saveSettings}
                   disabled={saving}
-                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-100 transition-all scale-100 active:scale-95"
+                  className="flex items-center gap-3 bg-slate-900 hover:bg-blue-600 disabled:opacity-50 text-white px-10 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200 transition-all active:scale-95"
                 >
                   {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                  Salva Modifiche
+                  Aggiorna Sentinel
                 </button>
               </>
             ) : (
-              <div className="flex items-center gap-2 text-xs text-slate-400 font-medium bg-slate-100/50 px-4 py-2 rounded-full">
-                <BarChart3 size={14} />
-                Statistiche aggiornate in tempo reale
+              <div className="flex items-center gap-3 text-[10px] text-slate-400 font-black uppercase tracking-widest bg-white border border-slate-100 px-6 py-3 rounded-full shadow-sm">
+                <BarChart3 size={16} className="text-blue-500" />
+                Dati sincronizzati in tempo reale dal cloud
               </div>
             )}
           </div>

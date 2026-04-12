@@ -2,7 +2,7 @@
 
 import toast from "react-hot-toast"
 import { useState, useRef, useMemo } from "react"
-import { Calendar as CalendarIcon, UploadCloud, Users, Smartphone, ChevronLeft, ChevronRight, Settings, FileDown, CheckCircle2, RefreshCw, X, FileEdit, Trash2, Shield, AlertCircle, HelpCircle, EyeOff, Eye, Mail, Play, Plus, ClipboardList, Printer, Hash, Phone, Award, Calendar, FileText, MapPin, Briefcase, Save, Filter } from "lucide-react"
+import { Calendar as CalendarIcon, UploadCloud, Users, Smartphone, ChevronLeft, ChevronRight, Settings, Settings2, FileDown, CheckCircle2, RefreshCw, X, FileEdit, Trash2, Shield, AlertCircle, HelpCircle, EyeOff, Eye, Mail, Play, Plus, ClipboardList, Printer, Hash, Phone, Award, Calendar, FileText, MapPin, Briefcase, Save, Filter, Wand2 } from "lucide-react"
 import SettingsPanel from "./SettingsPanel"
 import * as XLSX from "xlsx"
 import { useRouter, usePathname } from "next/navigation"
@@ -218,8 +218,12 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
     const nType = nextShift?.type || ""
     
     let warningMsg = ""
-    if (tType && isBlocked(tType)) {
+    if (tType === "BR") {
+      warningMsg = `BLOCCO REPERIBILITÀ ATTIVO: Non assegnare reperibilità in questo giorno.`
+    } else if (tType && isBlocked(tType)) {
       warningMsg = `Attenzione: l'agente ha un'assenza registrata oggi (${tType}). La reperibilità NON dovrebbe essere assegnata.`
+    } else if (nType === "BR") {
+      warningMsg = `BLOCCO REPERIBILITÀ DOMANI: L'agente è bloccato il giorno successivo.`
     } else if (nType && isBlocked(nType)) {
       warningMsg = `Attenzione: l'agente ha un'assenza registrata domani (${nType}). La reperibilità odierna NON dovrebbe essere assegnata.`
     }
@@ -1208,7 +1212,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             </h3>
             <div className="flex items-center justify-between lg:justify-start w-full gap-4 mt-1">
               <p className="text-[10px] sm:text-xs text-slate-500 font-medium uppercase tracking-wider">{currentMonthName} {currentYear}</p>
-              <p className="text-[10px] sm:text-xs text-slate-400 font-bold bg-slate-100 px-2 py-0.5 rounded-full">{allAgents.length} agenti · {shifts.filter(s => s.repType?.includes("REP")).length} REP</p>
+              <p className="text-[10px] sm:text-xs text-slate-400 font-bold bg-slate-100 px-2 py-0.5 rounded-full">{allAgents.length} agenti · {shifts.filter(s => (s.repType || s.type)?.toUpperCase().includes("REP")).length} REP</p>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto overflow-hidden">
@@ -1416,7 +1420,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                         dayInfo.forEach(di => {
                           const targetDate = new Date(Date.UTC(currentYear, di.isNextMonth ? currentMonth : currentMonth - 1, di.day)).toISOString()
                           const shift = shifts.find(s => s.userId === agent.id && new Date(s.date).toISOString() === targetDate)
-                          if (shift?.repType?.toLowerCase().includes("rep")) {
+                          const isRep = (shift?.repType || shift?.type)?.toUpperCase().includes("REP")
+                          if (isRep) {
                             repDays.push(di.day)
                             if (di.isWeekend) repFest++
                             else repFer++
@@ -1477,6 +1482,10 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                 cellBg = "bg-emerald-100"
                                 badge = "REP"
                                 badgeClass = "bg-emerald-500 text-white font-black shadow-sm"
+                              } else if (sType === "BR") {
+                                cellBg = "bg-slate-100"
+                                badge = "BR"
+                                badgeClass = "bg-slate-800 text-white font-black shadow-lg"
                               } else if (isMalattia(sType)) {
                                 cellBg = "bg-amber-50"
                                 badge = sType.length > 3 ? sType.substring(0, 3) : sType
@@ -1581,7 +1590,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                         </td>
                         {dayInfo.map(di => {
                           const targetDate = new Date(Date.UTC(currentYear, di.isNextMonth ? currentMonth : currentMonth - 1, di.day)).toISOString()
-                          const dailyShifts = shifts.filter(s => s.repType?.includes("REP") && new Date(s.date).toISOString() === targetDate)
+                          const dailyShifts = shifts.filter(s => (s.repType || s.type)?.toUpperCase().includes("REP") && new Date(s.date).toISOString() === targetDate)
                           const count = dailyShifts.length
                           
                           const isLow = count > 0 && count < 6
@@ -1763,14 +1772,30 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
             </div>
 
-             {/* Footer con bottone Elimina Definitivo */}
-             <div className="p-5 bg-slate-50 border-t border-slate-100 shrink-0">
+             {/* Footer con Azioni Operatore */}
+             <div className="p-5 bg-slate-50 border-t border-slate-100 shrink-0 space-y-3">
+              <button
+                disabled={recalcAgent === editingCell.agentId}
+                onClick={async () => {
+                  await handleRecalcAgent(editingCell.agentId);
+                  setEditingCell(null);
+                }}
+                className="w-full flex items-center justify-center gap-3 text-indigo-600 bg-white hover:bg-slate-900 hover:text-white py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all shadow-sm border border-slate-200 active:scale-95 group/sync"
+              >
+                {recalcAgent === editingCell.agentId ? (
+                  <RefreshCw width={16} height={16} className="animate-spin" />
+                ) : (
+                  <Wand2 width={16} height={16} className="group-hover/sync:rotate-12 transition-transform" />
+                )}
+                Ricalcola Reperibilità Mese
+              </button>
+              
               <button
                 onClick={() => { void saveCellEdit(""); }}
                 disabled={isSavingCell}
-                className="w-full flex items-center justify-center gap-2 text-rose-600 bg-white hover:bg-rose-50 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all shadow-sm border border-slate-200 hover:border-rose-200 active:scale-95"
+                className="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-rose-600 bg-white hover:bg-rose-50 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all shadow-sm border border-slate-100 hover:border-rose-200 active:scale-95"
               >
-                <Trash2 width={16} height={16} /> Svuota e Pulisci Turno
+                <Trash2 width={16} height={16} /> Svuota Turno
               </button>
              </div>
           </div>
@@ -1781,72 +1806,82 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       {showAnagrafica && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 lg:p-6" onClick={() => setShowAnagrafica(false)}>
           <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-7xl max-h-[95vh] flex flex-col overflow-hidden border border-white/20 animate-in zoom-in-95 duration-500" onClick={e => e.stopPropagation()}>
-            {/* Modal Header */}
-            <div className="bg-slate-900 px-8 py-6 text-white flex justify-between items-center shrink-0 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+            {/* Modal Header Premium */}
+            <div className="bg-slate-900 px-10 py-8 text-white flex justify-between items-center shrink-0 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] -mr-48 -mt-48"></div>
               <div className="relative z-10">
-                <h2 className="font-black text-2xl flex items-center gap-3 uppercase tracking-tight">
-                  <Users width={28} height={28} className="text-blue-400" /> 
+                <h2 className="font-black text-3xl flex items-center gap-4 uppercase tracking-tighter">
+                  <Users width={32} height={32} className="text-blue-400" /> 
                   Gestione Personale
                 </h2>
-                <p className="text-slate-400 text-xs mt-1 font-bold tracking-widest uppercase opacity-70">Anagrafica, Qualifiche e Scadenze Operative</p>
+                <div className="flex items-center gap-3 mt-2">
+                   <span className="text-slate-400 text-[10px] font-black tracking-[0.3em] uppercase opacity-70">Sentinel Database Operativo</span>
+                   <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
+                </div>
               </div>
               <div className="flex items-center gap-4 relative z-10">
                 <button 
                   onClick={() => {}}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-200 transition-all active:scale-95 flex items-center gap-2"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-blue-900/40 transition-all active:scale-95 flex items-center gap-2 hover:-translate-y-1"
                 >
-                  <Plus width={16} height={16} /> Aggiungi Agente
+                  <Plus width={18} height={18} /> Aggiungi Agente
                 </button>
                 <button 
                   onClick={() => setShowAnagrafica(false)} 
-                  className="text-slate-400 hover:text-white transition-all bg-white/10 p-3 rounded-2xl hover:scale-110 active:scale-95"
+                  className="w-14 h-14 flex items-center justify-center bg-white/10 text-white/50 hover:text-white hover:bg-white/20 rounded-[1.5rem] transition-all active:scale-95 border border-white/5"
                 >
-                  <X width={24} height={24} />
+                  <X width={28} height={28} />
                 </button>
               </div>
             </div>
 
-            {/* Filters Bar */}
-            <div className="bg-white border-b border-slate-100 px-8 py-4 flex flex-wrap gap-6 items-center shrink-0 shadow-sm relative z-20">
-              <div className="relative group">
-                <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" width={18} height={18} />
+            {/* Filters Bar Glassmorphic */}
+            <div className="bg-white border-b border-slate-100 px-10 py-5 flex flex-wrap gap-6 items-center shrink-0 shadow-sm relative z-20">
+              <div className="relative group flex-1 max-w-sm">
+                <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors" width={18} height={18} />
                 <input 
                   type="text" 
-                  placeholder="Cerca matricola o nome..." 
+                  placeholder="Cerca per nome o matricola..." 
                   value={anagSearchQuery}
                   onChange={e => setAnagSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2.5 text-sm bg-slate-50 border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-blue-500 focus:bg-white font-black text-slate-700 w-64 transition-all"
+                  className="w-full pl-12 pr-4 py-4 text-xs bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:bg-white font-black text-slate-700 transition-all shadow-inner"
                 />
               </div>
               
-              <div className="flex gap-3">
-                <select
-                  value={anagSquadraFilter}
-                  onChange={e => setAnagSquadraFilter(e.target.value)}
-                  className="px-4 py-2.5 text-xs bg-slate-50 border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-blue-500 font-black text-slate-700 cursor-pointer transition-all uppercase"
-                >
-                  <option value="ALL">TUTTE LE SQUADRE</option>
-                  {uniqueSquadre.map(sq => (
-                    <option key={sq} value={sq}>{sq}</option>
-                  ))}
-                </select>
+              <div className="flex gap-4">
+                <div className="flex flex-col gap-1">
+                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Squadra</label>
+                   <select
+                     value={anagSquadraFilter}
+                     onChange={e => setAnagSquadraFilter(e.target.value)}
+                     className="px-5 py-3 text-[11px] bg-slate-100 border border-slate-200 rounded-[1.2rem] focus:outline-none focus:border-blue-500 font-black text-slate-700 cursor-pointer transition-all uppercase"
+                   >
+                     <option value="ALL">TUTTE</option>
+                     {uniqueSquadre.map(sq => (
+                       <option key={sq} value={sq}>{sq}</option>
+                     ))}
+                   </select>
+                </div>
 
-                <select
-                  value={anagQualificaFilter}
-                  onChange={e => setAnagQualificaFilter(e.target.value)}
-                  className="px-4 py-2.5 text-xs bg-slate-50 border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-blue-500 font-black text-slate-700 cursor-pointer transition-all uppercase"
-                >
-                  <option value="ALL">TUTTE LE QUALIFICHE</option>
-                  {uniqueQualifiche.map(q => (
-                    <option key={q} value={q}>{q}</option>
-                  ))}
-                </select>
+                <div className="flex flex-col gap-1">
+                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Qualifica</label>
+                   <select
+                     value={anagQualificaFilter}
+                     onChange={e => setAnagQualificaFilter(e.target.value)}
+                     className="px-5 py-3 text-[11px] bg-slate-100 border border-slate-200 rounded-[1.2rem] focus:outline-none focus:border-blue-500 font-black text-slate-700 cursor-pointer transition-all uppercase"
+                   >
+                     <option value="ALL">TUTTE</option>
+                     {uniqueQualifiche.map(q => (
+                       <option key={q} value={q}>{q}</option>
+                     ))}
+                   </select>
+                </div>
               </div>
 
-              <div className="ml-auto flex items-center gap-4">
-                <div className="text-[10px] font-black text-slate-400 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200 uppercase tracking-widest">
-                  {filteredAnagraficaAgents.length} {filteredAnagraficaAgents.length === 1 ? 'Operatore' : 'Operatori'}
+              <div className="ml-auto hidden xl:block">
+                <div className="flex items-center gap-3 bg-blue-50 px-5 py-3 rounded-[1.5rem] border border-blue-100">
+                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                   <span className="text-[10px] font-black text-blue-900 uppercase tracking-widest">{filteredAnagraficaAgents.length} Operatori Attivi</span>
                 </div>
               </div>
             </div>
@@ -1864,89 +1899,89 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                   };
 
                   return (
-                    <div key={agent.id} className={`group relative bg-white rounded-[2.5rem] shadow-sm border-2 transition-all duration-500 overflow-hidden flex flex-col ${editingAgent?.id === agent.id ? 'border-amber-400 shadow-2xl ring-8 ring-amber-100/50 scale-[1.02]' : 'border-slate-100 hover:border-blue-400 hover:shadow-2xl hover:-translate-y-2 hover:bg-white'}`}>
+                    <div key={agent.id} className={`group relative bg-white rounded-[3rem] shadow-sm border border-slate-100 transition-all duration-500 overflow-hidden flex flex-col ${editingAgent?.id === agent.id ? 'ring-4 ring-blue-500 shadow-2xl scale-[1.02]' : 'hover:shadow-2xl hover:-translate-y-3 hover:border-blue-200'}`}>
                       {/* Card Top Decoration */}
-                      <div className={`h-28 transition-all duration-500 ${agent.isUfficiale ? 'bg-indigo-600' : 'bg-slate-800'} ${editingAgent?.id === agent.id ? 'bg-amber-500' : ''} relative p-6`}>
-                        <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <div className="absolute top-4 right-6 flex gap-2">
-                           {isExpiring(agent.scadenzaPatente) && <div className="w-3 h-3 bg-red-400 rounded-full animate-pulse shadow-lg shadow-red-500/50" title="Patente in Scadenza"></div>}
-                           {isExpiring(agent.scadenzaPortoArmi) && <div className="w-3 h-3 bg-red-400 rounded-full animate-pulse shadow-lg shadow-red-500/50" title="Porto d&apos;Armi in Scadenza"></div>}
+                      <div className={`h-32 transition-all duration-500 ${agent.isUfficiale ? 'bg-gradient-to-br from-indigo-900 via-indigo-800 to-blue-900' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'} relative p-6`}>
+                        <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div className="absolute top-6 right-8 flex gap-3">
+                           {isExpiring(agent.scadenzaPatente) && <div className="w-4 h-4 bg-rose-500 rounded-full animate-pulse shadow-lg shadow-rose-500/50 border-2 border-white" title="Patente in Scadenza"></div>}
+                           {isExpiring(agent.scadenzaPortoArmi) && <div className="w-4 h-4 bg-orange-500 rounded-full animate-pulse shadow-lg shadow-orange-500/50 border-2 border-white" title="Porto d'Armi in Scadenza"></div>}
                         </div>
                       </div>
 
                       {/* Avatar & Header Info */}
-                      <div className="absolute top-12 left-8 flex items-end gap-5">
-                        <div className="w-24 h-24 bg-white rounded-[2rem] p-1.5 shadow-2xl border border-slate-50 transition-transform duration-500 group-hover:scale-105">
-                          <div className={`w-full h-full rounded-[1.7rem] flex items-center justify-center text-white font-black text-3xl shadow-inner ${agent.isUfficiale ? 'bg-indigo-500' : 'bg-slate-700'}`}>
+                      <div className="absolute top-14 left-10 flex items-end gap-6">
+                        <div className="w-28 h-28 bg-white rounded-[2.5rem] p-1.5 shadow-2xl border border-white/50 transition-transform duration-500 group-hover:scale-110">
+                          <div className={`w-full h-full rounded-[2.2rem] flex items-center justify-center text-white font-black text-4xl shadow-inner ${agent.isUfficiale ? 'bg-indigo-600' : 'bg-slate-700'}`}>
                             {agent.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
                           </div>
                         </div>
-                        <div className="mb-4">
-                           <span className="text-[10px] font-black text-white/90 uppercase tracking-widest block mb-1 drop-shadow-sm">Matr. {agent.matricola}</span>
-                           <h4 className="text-white font-black text-lg tracking-tighter leading-none uppercase truncate max-w-[150px] drop-shadow-md">{agent.name}</h4>
+                        <div className="mb-6">
+                           <span className="text-[10px] font-black text-white/70 uppercase tracking-[0.2em] block mb-1 drop-shadow-sm">ID {agent.matricola}</span>
+                           <h4 className="text-white font-black text-xl tracking-tighter leading-none uppercase truncate max-w-[180px] drop-shadow-md">{agent.name}</h4>
                         </div>
                       </div>
 
-                      <div className="px-10 pt-8 pb-10 flex-1 flex flex-col">
+                      <div className="px-10 pt-16 pb-10 flex-1 flex flex-col bg-white">
                           <div className="flex-1 flex flex-col animate-in fade-in duration-700">
                              {/* Display Info Chips */}
-                             <div className="flex flex-wrap gap-2.5 mb-8">
-                               <span className="px-4 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm shadow-emerald-100">
-                                 {agent.squadra || 'SENZA SQUADRA'}
+                             <div className="flex flex-wrap gap-2.5 mb-10">
+                               <span className="px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border bg-slate-50 text-slate-500 border-slate-100 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-100 transition-colors">
+                                 {agent.squadra || 'AREA GENERICA'}
                                </span>
-                               <span className="px-4 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border bg-blue-50 text-blue-700 border-blue-200 shadow-sm shadow-blue-100">
-                                 MATR. {agent.matricola}
+                               <span className="px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border bg-slate-50 text-slate-500 border-slate-100 transition-colors">
+                                 {agent.qualifica || 'OPERANTE'}
                                </span>
                              </div>
 
                              {/* Quick Details List */}
-                             <div className="space-y-6 mb-10">
-                               <div className="flex items-center gap-5 group/item">
-                                 <div className="p-3.5 bg-slate-100 rounded-2xl text-slate-500 group-hover/item:bg-blue-600 group-hover/item:text-white transition-all duration-300">
-                                   <MapPin width={22} height={22} />
+                             <div className="space-y-6 mb-12">
+                               <div className="flex items-center gap-6 group/item">
+                                 <div className="w-12 h-12 flex items-center justify-center bg-slate-50 rounded-2xl text-slate-400 group-hover/item:bg-blue-600 group-hover/item:text-white transition-all duration-300">
+                                   <MapPin width={20} height={20} />
                                  </div>
                                  <div className="flex-1">
-                                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Stato Attuale</p>
-                                   <span className="text-sm font-black text-slate-900 group-hover/item:text-blue-600 transition-colors uppercase">{todayShift ? todayShift.type : 'Fuori Turno / Libero'}</span>
+                                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Status Odierno</p>
+                                   <span className="text-sm font-black text-slate-900 uppercase">{todayShift ? todayShift.type : 'RIPOSO / SMONTANTE'}</span>
                                  </div>
                                </div>
-                               <div className="flex items-center gap-5 group/item">
-                                 <div className="p-3.5 bg-slate-100 rounded-2xl text-slate-500 group-hover/item:bg-amber-500 group-hover/item:text-white transition-all duration-300">
-                                   <CalendarIcon width={22} height={22} />
+                               <div className="flex items-center gap-6 group/item">
+                                 <div className="w-12 h-12 flex items-center justify-center bg-slate-50 rounded-2xl text-slate-400 group-hover/item:bg-teal-500 group-hover/item:text-white transition-all duration-300">
+                                   <CalendarIcon width={20} height={20} />
                                  </div>
                                  <div className="flex-1">
-                                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Servizio Ordinario</p>
-                                   <span className="text-sm font-black text-slate-900 uppercase">Turnazione Ciclica</span>
+                                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Inquadramento</p>
+                                   <span className="text-sm font-black text-slate-900 uppercase">Organico Effettivo</span>
                                  </div>
                                </div>
-                               <div className="flex items-center gap-5 group/item">
-                                 <div className="p-3.5 bg-slate-100 rounded-2xl text-slate-500 group-hover/item:bg-rose-500 group-hover/item:text-white transition-all duration-300">
-                                   <Phone width={22} height={22} />
+                               <div className="flex items-center gap-6 group/item">
+                                 <div className="w-12 h-12 flex items-center justify-center bg-slate-50 rounded-2xl text-slate-400 group-hover/item:bg-slate-900 group-hover/item:text-white transition-all duration-300">
+                                   <Phone width={20} height={20} />
                                  </div>
                                  <div className="flex-1">
-                                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Contatto Rapido</p>
-                                   <span className="text-sm font-black text-slate-900 tracking-tight">{agent.phone || 'NON INSERITO'}</span>
+                                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Contatto Mobile</p>
+                                   <span className="text-sm font-black text-slate-900 tracking-tight">{agent.phone || '+39 --- --- ----'}</span>
                                  </div>
                                </div>
                              </div>
 
                              {/* Progress Bars / Stats */}
-                             <div className="mt-auto pt-8 border-t-2 border-slate-50">
-                                <div className="flex items-center justify-between mb-3">
+                             <div className="mt-auto pt-8 border-t border-slate-50">
+                                <div className="flex items-center justify-between mb-4">
                                    <div>
-                                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Carico Reperibilità Mensile</p>
+                                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Saturation Score (REP)</p>
                                       <div className="flex items-center gap-3">
-                                         <span className={`text-2xl font-black tracking-tighter ${agent.repTotal > agent.massimale ? 'text-rose-600' : 'text-slate-900'}`}>{agent.repTotal}</span>
-                                         <span className="text-xs font-black text-slate-300 uppercase tracking-widest">/ {agent.massimale} Max</span>
+                                         <span className={`text-3xl font-black tracking-tighter ${agent.repTotal > agent.massimale ? 'text-rose-600' : 'text-slate-900'}`}>{agent.repTotal}</span>
+                                         <span className="text-xs font-black text-slate-300 uppercase tracking-widest">/ {agent.massimale}</span>
                                       </div>
                                    </div>
-                                   <div className="w-32 h-2.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                                      <div className={`h-full rounded-full transition-all duration-1000 ${agent.repTotal > agent.massimale ? 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]' : 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]'}`} style={{ width: `${Math.min(100, (agent.repTotal / agent.massimale) * 100)}%` }}></div>
+                                   <div className="w-40 h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-50">
+                                      <div className={`h-full rounded-full transition-all duration-1000 ${agent.repTotal > agent.massimale ? 'bg-rose-500' : 'bg-blue-600'}`} style={{ width: `${Math.min(100, (agent.repTotal / agent.massimale) * 100)}%` }}></div>
                                    </div>
                                 </div>
                                 
                                 <div className="grid grid-cols-2 gap-4 mt-8">
-                                  <button onClick={() => setSelectedAgentForDetails(agent)} className="px-6 py-4 bg-white text-slate-900 border-2 border-slate-100 rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm flex items-center justify-center gap-3 hover:-translate-y-1">
+                                  <button onClick={() => setSelectedAgentForDetails(agent)} className="px-6 py-4.5 bg-white text-slate-900 border border-slate-200 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest hover:border-blue-600 hover:text-blue-600 transition-all shadow-sm flex items-center justify-center gap-3 active:scale-95">
                                     <Eye width={18} height={18} /> Fascicolo
                                   </button>
                                   <button onClick={() => {
@@ -1963,8 +1998,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                                       setTempScadenzaPortoArmi(agent.scadenzaPortoArmi ? new Date(agent.scadenzaPortoArmi).toISOString().split('T')[0] : "");
                                       setTempNoteInterne(agent.noteInterne || ""); 
                                       setNewPass("");
-                                    }} className="px-6 py-4 bg-slate-900 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest hover:bg-blue-600 shadow-xl shadow-slate-200 transition-all active:scale-95 flex items-center justify-center gap-3 hover:-translate-y-1">
-                                    <FileEdit width={18} height={18} /> Gestisci
+                                    }} className="px-6 py-4.5 bg-slate-900 text-white rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 shadow-xl shadow-slate-200 transition-all active:scale-95 flex items-center justify-center gap-3">
+                                    <Settings2 width={18} height={18} /> Gestisci
                                   </button>
                                 </div>
                              </div>
@@ -2057,8 +2092,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                      <label className="text-[10px] font-black text-amber-500 uppercase tracking-widest block mb-1">Note e Limitazioni</label>
                      <textarea value={tempNoteInterne} onChange={e => setTempNoteInterne(e.target.value)} rows={3} className="w-full bg-white border border-amber-200 rounded-2xl px-5 py-4 text-sm font-bold outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 resize-none transition-all shadow-sm text-amber-900 placeholder:text-amber-200/50" placeholder="Annotazioni su turnazioni, limitazioni operative dirette o altro..." />
                   </div>
-               </div>
-            </div>
+                </div>
+             </div>
 
             {/* Footer Azioni */}
             <div className="p-6 bg-slate-50 border-t border-slate-200 flex items-center gap-3 shrink-0 rounded-bl-3xl">
@@ -2101,68 +2136,101 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       
       {/* MODALE AUDIT LOG */}
       {showAuditLog && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowAuditLog(false)} />
-          <div className="relative bg-white w-full max-w-4xl max-h-[90vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col border border-slate-200">
-            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-slate-200 rounded-2xl">
-                  <RefreshCw width={24} height={24} className="text-slate-700" />
+          <div className="relative bg-white w-full max-w-4xl max-h-[90vh] rounded-[3rem] shadow-2xl overflow-hidden flex flex-col border border-white animate-in zoom-in-95 duration-300">
+            {/* Header Glassmorphic */}
+            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
+              <div className="flex items-center gap-5">
+                <div className="p-4 bg-slate-100 rounded-[1.5rem] shadow-sm">
+                   <ClipboardList width={28} height={28} className="text-slate-700" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-slate-900">Registro Attività (Audit Log)</h2>
-                  <p className="text-sm text-slate-500 font-medium">Ultime 100 azioni amministrative registrate</p>
+                  <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Registro Attività</h2>
+                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1">Sentinel Autonomous Audit System — Ultime 100 Azioni</p>
                 </div>
               </div>
               <button 
                 onClick={() => setShowAuditLog(false)}
-                className="p-2 hover:bg-slate-200 rounded-xl transition-colors"
+                className="w-12 h-12 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all shadow-sm border border-slate-100 active:scale-95"
               >
-                <X width={24} height={24} className="text-slate-400" />
+                <X width={24} height={24} />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-8">
+            <div className="flex-1 overflow-y-auto p-8 bg-slate-50/50 custom-scrollbar">
               {isLoadingAudit ? (
-                <div className="flex flex-col items-center justify-center py-20">
-                  <RefreshCw width={40} height={40} className="text-slate-300 animate-spin mb-4" />
-                  <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Caricamento registro...</p>
+                <div className="flex flex-col items-center justify-center py-24">
+                  <div className="relative">
+                    <RefreshCw width={48} height={48} className="text-slate-200 animate-spin" />
+                    <RefreshCw width={24} height={24} className="text-indigo-500 animate-spin absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" style={{ animationDirection: 'reverse' }} />
+                  </div>
+                  <p className="text-slate-400 font-black uppercase tracking-widest text-[10px] mt-6">Sincronizzazione registri...</p>
                 </div>
               ) : auditLogs.length === 0 ? (
-                <div className="text-center py-20 text-slate-400 italic">
-                  Nessuna attività registrata nel sistema.
+                <div className="text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-slate-200">
+                  <ClipboardList className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                  <p className="text-slate-400 font-black uppercase tracking-widest text-xs">Nessun log disponibile nel database</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {auditLogs.map((log) => (
-                    <div key={log.id} className="bg-slate-50 border border-slate-100 rounded-2xl p-5 hover:border-slate-300 transition-colors">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
-                            log.action.includes("DELETE") ? "bg-red-100 text-red-700" :
-                            log.action.includes("CREATE") || log.action.includes("ADD") ? "bg-emerald-100 text-emerald-700" :
-                            log.action.includes("UPDATE") || log.action.includes("EDIT") ? "bg-blue-100 text-blue-700" :
-                            "bg-slate-200 text-slate-700"
-                          }`}>
-                            {log.action}
-                          </span>
-                          <span className="text-xs font-bold text-slate-900">da {log.adminName || 'Admin'}</span>
+                <div className="relative">
+                  {/* Timeline vertical line */}
+                  <div className="absolute left-6 top-2 bottom-2 w-0.5 bg-slate-200"></div>
+                  
+                  <div className="space-y-8 relative">
+                    {auditLogs.map((log) => (
+                      <div key={log.id} className="relative pl-14 group">
+                        {/* Timeline dot */}
+                        <div className={`absolute left-4.5 top-0 w-3.5 h-3.5 rounded-full border-4 border-white shadow-sm -translate-x-1/2 z-10 transition-transform group-hover:scale-150 ${
+                          log.action.includes("DELETE") ? "bg-rose-500 ring-4 ring-rose-100" :
+                          log.action.includes("CREATE") || log.action.includes("ADD") ? "bg-emerald-500 ring-4 ring-emerald-100" :
+                          log.action.includes("UPDATE") || log.action.includes("EDIT") ? "bg-blue-500 ring-4 ring-blue-100" :
+                          "bg-slate-400 ring-4 ring-slate-100"
+                        }`}></div>
+                        
+                        <div className="bg-white border border-slate-100 rounded-[1.5rem] p-6 shadow-sm hover:shadow-xl hover:border-slate-300 transition-all duration-300">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                            <div className="flex items-center gap-3">
+                              <span className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider shadow-sm border ${
+                                log.action.includes("DELETE") ? "bg-rose-50 text-rose-700 border-rose-100" :
+                                log.action.includes("CREATE") || log.action.includes("ADD") ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                                log.action.includes("UPDATE") || log.action.includes("EDIT") ? "bg-blue-50 text-blue-700 border-blue-100" :
+                                "bg-slate-100 text-slate-700 border-slate-200"
+                              }`}>
+                                {log.action}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Eseguito da</span>
+                                <span className="text-xs font-black text-slate-900 bg-slate-100 px-3 py-1 rounded-lg">{log.adminName || 'Admin Sistema'}</span>
+                              </div>
+                            </div>
+                            <time className="text-[10px] text-slate-400 font-black uppercase tracking-widest flex items-center gap-2">
+                              <CalendarIcon width={12} height={12} />
+                              {new Date(log.createdAt).toLocaleString("it-IT", { 
+                                day: '2-digit', month: '2-digit', year: 'numeric', 
+                                hour: '2-digit', minute: '2-digit' 
+                              })}
+                            </time>
+                          </div>
+                          
+                          <p className="text-sm text-slate-700 font-bold leading-relaxed mb-4">{log.details}</p>
+                          
+                          {log.targetName && (
+                            <div className="pt-4 border-t border-slate-50 flex items-center gap-4">
+                               <div className="px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-100">
+                                  <p className="text-[9px] text-slate-400 font-black uppercase mb-0.5">Soggetto interessato</p>
+                                  <p className="text-[11px] font-black text-slate-700 uppercase">{log.targetName}</p>
+                               </div>
+                               <div className="px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-100 hidden sm:block">
+                                  <p className="text-[9px] text-slate-400 font-black uppercase mb-0.5">System ID Hash</p>
+                                  <p className="text-[9px] font-mono font-bold text-slate-400 uppercase">{log.targetId?.slice(0,12)}...</p>
+                               </div>
+                            </div>
+                          )}
                         </div>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
-                          {new Date(log.createdAt).toLocaleString("it-IT", { 
-                            day: '2-digit', month: '2-digit', year: 'numeric', 
-                            hour: '2-digit', minute: '2-digit' 
-                          })}
-                        </span>
                       </div>
-                      <p className="text-sm text-slate-700 font-medium mb-1">{log.details}</p>
-                      {log.targetName && (
-                        <p className="text-[10px] text-slate-500 font-bold uppercase">
-                          Target: <span className="text-slate-700">{log.targetName}</span> (ID: {log.targetId?.slice(0,8)}...)
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -2172,69 +2240,100 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
 
       {/* MODALE VERBATEL SYNC */}
       {showVerbatelSync && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowVerbatelSync(false)} />
-          <div className="relative bg-white w-full max-w-4xl max-h-[90vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col border border-slate-200">
-            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-orange-50/50">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-orange-200 rounded-2xl">
-                  <RefreshCw width={24} height={24} className="text-orange-700" />
+          <div className="relative bg-white w-full max-w-4xl max-h-[90vh] rounded-[3rem] shadow-2xl overflow-hidden flex flex-col border border-white animate-in zoom-in-95 duration-300">
+            
+            {/* Header Tech Style */}
+            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-orange-50/30 shrink-0">
+              <div className="flex items-center gap-5">
+                <div className="w-14 h-14 bg-orange-600 text-white rounded-[1.5rem] flex items-center justify-center shadow-lg shadow-orange-200">
+                   <RefreshCw width={28} height={28} className={isLoadingVerbatel ? "animate-spin" : ""} />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-orange-900">Sincronizzazione Automatica Verbatel</h2>
-                  <p className="text-sm text-orange-700/80 font-medium">Iniettare i turni di {currentMonth}/{currentYear} direttamente sul portale Verbatel</p>
+                  <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Sincronizzazione Esterna</h2>
+                  <div className="flex items-center gap-2 mt-1">
+                     <span className="text-[10px] text-orange-600 font-black uppercase tracking-widest bg-orange-100 px-2 py-0.5 rounded">Verbatel API Bridge</span>
+                     <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">•</span>
+                     <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest uppercase">Mese {currentMonth}/{currentYear}</span>
+                  </div>
                 </div>
               </div>
               <button 
                 onClick={() => setShowVerbatelSync(false)}
-                className="p-2 hover:bg-slate-200 rounded-xl transition-colors"
+                className="w-12 h-12 flex items-center justify-center bg-white text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all shadow-sm border border-slate-100 active:scale-95"
               >
-                <X width={24} height={24} className="text-slate-400" />
+                <X width={24} height={24} />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-8 space-y-6">
+            <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-slate-50/30 custom-scrollbar">
               
-              <div className="bg-orange-50 border-l-4 border-orange-500 p-5 rounded-r-xl">
-                <h3 className="font-bold text-orange-900 mb-2">Istruzioni d&apos;uso:</h3>
-                <ol className="list-decimal list-inside space-y-2 text-sm text-orange-800 font-medium">
-                  <li>In un&apos;altra scheda, apri il <strong>Portale Verbatel</strong> - Prospetto Reperibilità.</li>
-                  <li>In alto a sinistra, imposta i filtri &quot;Da... A...&quot; in modo da includere l&apos;intero mese <span className="font-bold uppercase text-orange-900 bg-orange-200 px-1 rounded">(Es. Da 01/{currentMonth}/{currentYear} a 01/{currentMonth + 1 === 13 ? 1 : currentMonth + 1}/{currentMonth + 1 === 13 ? currentYear + 1 : currentYear})</span>.</li>
-                  <li>Ricarica la griglia con il pulsante verde Verbatel con le due freccette. Clicca col destro in un punto vuoto → ispeziona → Console.</li>
-                  <li>Genera lo script (qui sotto), <strong>copialo</strong>, poi vai sulla console di Verbatel, incollalo e premi <strong>Invio</strong>. Non muovere il mouse finché non ha finito.</li>
-                </ol>
+              {/* Process Steps */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                 {[
+                   { step: "01", title: "Aperto Verbatel", desc: "Seleziona 'Prospetto Reperibilità'" },
+                   { step: "02", title: "Imposta Filtri", desc: `Dal 01/${currentMonth} al 01/${currentMonth+1 === 13 ? 1 : currentMonth+1}` },
+                   { step: "03", title: "Genera & Incolla", desc: "Usa la Console (F12) per iniettare" }
+                 ].map((s, idx) => (
+                   <div key={s.step} className="bg-white p-5 rounded-[1.5rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+                      <span className="absolute -top-2 -right-2 text-4xl font-black text-slate-50 group-hover:text-orange-50 transition-colors pointer-events-none">{s.step}</span>
+                      <p className="text-[10px] font-black text-orange-600 mb-1 uppercase tracking-widest">Passaggio {s.step}</p>
+                      <h4 className="text-sm font-black text-slate-900 mb-1 uppercase tracking-tight">{s.title}</h4>
+                      <p className="text-[11px] text-slate-500 font-bold">{s.desc}</p>
+                      {idx < 2 && <div className="hidden md:block absolute -right-2 top-1/2 -translate-y-1/2 translate-x-1/2 z-20 text-slate-200"><ChevronRight width={16} height={16} /></div>}
+                   </div>
+                 ))}
               </div>
 
-              <div className="bg-slate-100 p-6 rounded-2xl flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input type="checkbox" checked={verbatelTestMode} onChange={(e) => setVerbatelTestMode(e.target.checked)} className="w-5 h-5 rounded border-slate-300 text-orange-600 focus:ring-orange-600" />
-                    <span className="font-bold text-slate-800">Modalità Test di Sicurezza (Inserisce i turni solo per 1 Agente)</span>
-                  </label>
+              <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl space-y-6">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pb-6 border-b border-slate-50">
+                  <div className="flex flex-col gap-1">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div className="relative">
+                        <input type="checkbox" checked={verbatelTestMode} onChange={(e) => setVerbatelTestMode(e.target.checked)} className="peer sr-only" />
+                        <div className="w-11 h-6 bg-slate-200 peer-focus:ring-2 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
+                      </div>
+                      <span className="font-black text-[12px] text-slate-700 uppercase tracking-tight">Esegui Test di Sicurezza (1 Agente)</span>
+                    </label>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase pl-14">Consigliato prima del caricamento massivo</p>
+                  </div>
+
                   <button 
                     onClick={() => { void generateVerbatelScript(); }}
                     disabled={isLoadingVerbatel}
-                    className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:shadow-xl active:scale-95 transition-all w-fit disabled:opacity-50"
+                    className="w-full sm:w-auto bg-slate-900 hover:bg-orange-600 text-white px-8 py-4 rounded-2xl font-black flex items-center justify-center gap-3 shadow-lg shadow-slate-200 active:scale-95 transition-all disabled:opacity-50"
                   >
                     {isLoadingVerbatel ? <RefreshCw className="animate-spin" width={20} height={20} /> : <Play width={20} height={20} />}
-                    <span className="uppercase tracking-widest text-xs">Genera Script</span>
+                    <span className="uppercase tracking-widest text-[11px]">Avvia Generazione Script</span>
                   </button>
                 </div>
 
-                {verbatelScript && (
-                  <div className="relative mt-2">
-                    <textarea 
-                      readOnly 
-                      value={verbatelScript} 
-                      className="w-full h-48 bg-slate-900 text-emerald-400 font-mono text-xs p-4 rounded-xl border-2 border-slate-800 focus:outline-none focus:border-orange-500 transition-colors"
-                      placeholder="Il codice javascript apparirà qui..."
-                    />
-                    <button 
-                      onClick={() => { void navigator.clipboard.writeText(verbatelScript); toast.success("Codice copiato negli appunti! Ora incollalo in Verbatel."); }}
-                      className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
-                    >
-                      COPIA NEGLI APPUNTI
-                    </button>
+                {verbatelScript ? (
+                  <div className="space-y-4 animate-in slide-in-from-bottom-5 duration-500">
+                    <div className="flex items-center justify-between px-2">
+                       <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dna dello Script Generato</h5>
+                       <span className="text-[9px] text-emerald-500 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">PRONTO PER IL COPIA-INCOLLA</span>
+                    </div>
+                    <div className="relative group">
+                      <textarea 
+                        readOnly 
+                        value={verbatelScript} 
+                        className="w-full h-48 bg-slate-900 text-emerald-400 font-mono text-[10px] p-6 rounded-[1.5rem] border-2 border-slate-800 focus:outline-none focus:border-orange-500 transition-colors shadow-inner selection:bg-orange-500/30"
+                        placeholder="In attesa di generazione dati..."
+                      />
+                      <button 
+                        onClick={() => { void navigator.clipboard.writeText(verbatelScript); toast.success("Script copiato! Incollalo nella Console di Verbatel."); }}
+                        className="absolute right-4 bottom-4 bg-orange-600 hover:bg-orange-700 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 flex items-center gap-2"
+                      >
+                         <ClipboardList width={16} height={16} /> Copia Script
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-20 flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-[1.5rem] bg-slate-50/50">
+                    <UploadCloud className="w-12 h-12 text-slate-200 mb-4" />
+                    <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">In attesa della richiesta di sincronizzazione</p>
                   </div>
                 )}
               </div>
@@ -2245,97 +2344,113 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       )}
       {/* Modal Richieste Scambio */}
       {showSwapApprovals && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowSwapApprovals(false)}></div>
-          <div className="relative w-full max-w-2xl bg-white rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="bg-amber-500 p-6 text-white flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/20 rounded-xl">
-                  <RefreshCw width={24} height={24} />
+          <div className="relative w-full max-w-3xl bg-white rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 border border-white flex flex-col max-h-[90vh]">
+            
+            {/* Header Moderno Amber */}
+            <div className="bg-white border-b border-slate-100 p-8 text-slate-900 flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-5">
+                <div className="w-14 h-14 bg-amber-500 text-white rounded-[1.5rem] flex items-center justify-center shadow-lg shadow-amber-200">
+                   <RefreshCw width={28} height={28} className={isLoadingSwaps ? "animate-spin" : ""} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black uppercase tracking-tight">Approvazione Scambi</h3>
-                  <p className="text-amber-100 text-xs font-bold uppercase tracking-widest opacity-80">Richieste in attesa di autorizzazione</p>
+                  <h3 className="text-2xl font-black uppercase tracking-tight">Centro Approvazioni</h3>
+                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1">Gestione Scambi e Permessi Dipendenti</p>
                 </div>
               </div>
-              <button onClick={() => setShowSwapApprovals(false)} className="text-white/60 hover:text-white transition-colors">
+              <button 
+                onClick={() => setShowSwapApprovals(false)}
+                className="w-12 h-12 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all shadow-sm border border-slate-100 active:scale-95"
+              >
                 <X width={24} height={24} />
               </button>
             </div>
 
-            <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar space-y-6">
+            <div className="p-8 overflow-y-auto bg-slate-50/50 custom-scrollbar flex-1 space-y-10">
               {isLoadingSwaps ? (
-                <div className="flex justify-center py-10">
-                  <RefreshCw width={40} height={40} className="animate-spin text-slate-200" />
+                <div className="flex flex-col items-center justify-center py-20">
+                  <RefreshCw width={40} height={40} className="animate-spin text-slate-300 mb-4" />
+                  <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Verifica code in corso...</p>
                 </div>
               ) : pendingSwaps.length === 0 && pendingRequests.length === 0 ? (
-                <div className="text-center py-10 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-                  <p className="text-slate-400 font-medium">Nessuna richiesta o scambio in coda.</p>
+                <div className="text-center py-20 bg-white rounded-[2.5rem] border-2 border-dashed border-slate-200 flex flex-col items-center">
+                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-6">
+                     <CheckCircle2 className="w-8 h-8 text-slate-200" />
+                  </div>
+                  <p className="text-slate-400 font-black uppercase tracking-widest text-xs">Nessuna operazione in coda</p>
                 </div>
               ) : (
                 <>
-                  {/* Richieste Assenze / Permessi */}
+                  {/* Sezione 1: Assenze */}
                   {pendingRequests.length > 0 && (
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest border-b border-slate-200 pb-2">Richieste Assenza/Permessi ({pendingRequests.length})</h4>
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 px-2">
+                         <div className="w-1.5 h-6 bg-amber-500 rounded-full"></div>
+                         <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Richieste di Assenza ({pendingRequests.length})</h4>
+                      </div>
                       {pendingRequests.map((req) => (
-                        <div key={req.id} className="bg-white border text-left border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-center gap-4 hover:border-amber-200 transition-all shadow-sm">
-                          <div className="flex items-center gap-4 w-full sm:w-auto">
-                            <div className="text-center shrink-0">
-                               <p className="text-[10px] font-black uppercase text-slate-400">Data</p>
-                               <p className="font-black text-slate-800">{new Date(req.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}</p>
-                            </div>
-                            <div className="h-10 w-[2px] bg-slate-100 hidden sm:block"></div>
-                            <div className="flex-1">
-                              <p className="text-[10px] font-black uppercase text-slate-400">Richiedente</p>
-                              <div className="flex items-center gap-2">
-                                 <span className="font-bold text-slate-900">{req.user.name}</span>
+                        <div key={req.id} className="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm hover:shadow-xl transition-all duration-300 group">
+                           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                              <div className="flex items-center gap-6">
+                                 {/* Data Circle */}
+                                 <div className="w-16 h-16 bg-slate-900 text-white rounded-[1.2rem] flex flex-col items-center justify-center shadow-xl shadow-slate-200 shrink-0">
+                                    <span className="text-[10px] font-black uppercase opacity-60 leading-none mb-1">{new Date(req.date).toLocaleDateString('it-IT', { month: 'short' })}</span>
+                                    <span className="text-2xl font-black leading-none">{new Date(req.date).getDate()}</span>
+                                 </div>
+                                 
+                                 <div>
+                                    <h5 className="font-black text-slate-900 text-lg uppercase leading-tight tracking-tight mb-1">{req.user.name}</h5>
+                                    <div className="flex flex-wrap items-center gap-3">
+                                       <span className="px-3 py-1 bg-amber-50 text-amber-700 text-[10px] font-black rounded-lg border border-amber-100 uppercase">{req.code}</span>
+                                       {req.startTime && <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1"><RefreshCw width={10}/> {req.startTime} • {req.endTime}</span>}
+                                    </div>
+                                    {req.notes && <p className="mt-3 text-xs text-slate-500 italic font-medium bg-slate-50 p-2 rounded-xl group-hover:bg-amber-50/50 transition-colors">&ldquo;{req.notes}&rdquo;</p>}
+                                 </div>
                               </div>
-                              <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">Tipo: <span className="text-amber-600 font-black">{req.code}</span></p>
-                              {(req.startTime && req.endTime) && (
-                                <p className="text-[10px] text-slate-500 font-bold bg-amber-50 px-2 rounded w-max mt-1 border border-amber-100">
-                                  {req.startTime} - {req.endTime} ({req.hours}h)
-                                </p>
-                              )}
-                              {req.notes && <p className="text-[10px] text-slate-500 italic mt-1">&quot;{req.notes}&quot;</p>}
-                            </div>
-                          </div>
-                          <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                            <button onClick={() => { void handleApproveAction("LEAVE_REQUEST", req.id, "REJECT"); }} className="flex-1 sm:flex-none border border-red-200 hover:bg-red-50 text-red-600 px-4 py-2 rounded-xl text-xs font-black transition-all">RIFIUTA</button>
-                            <button onClick={() => { void handleApproveAction("LEAVE_REQUEST", req.id, "APPROVE"); }} className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-black shadow-lg shadow-emerald-100 transition-all">APPROVA</button>
-                          </div>
+                              
+                              <div className="flex items-center gap-3 shrink-0">
+                                 <button onClick={() => { void handleApproveAction("LEAVE_REQUEST", req.id, "REJECT"); }} className="px-6 py-3.5 border-2 border-slate-100 text-slate-400 font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-all active:scale-95">Rifiuta</button>
+                                 <button onClick={() => { void handleApproveAction("LEAVE_REQUEST", req.id, "APPROVE"); }} className="px-8 py-3.5 bg-indigo-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95">Approva</button>
+                              </div>
+                           </div>
                         </div>
                       ))}
                     </div>
                   )}
 
-                  {/* Scambi */}
+                  {/* Sezione 2: Scambi */}
                   {pendingSwaps.length > 0 && (
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest border-b border-slate-200 pb-2 mt-4">Proposte di Scambio ({pendingSwaps.length})</h4>
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 px-2">
+                         <div className="w-1.5 h-6 bg-blue-500 rounded-full"></div>
+                         <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Proposte di Scambio Turno ({pendingSwaps.length})</h4>
+                      </div>
                       {pendingSwaps.map((swap) => (
-                        <div key={swap.id} className="bg-white border border-slate-100 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-center gap-4 hover:border-amber-200 transition-all shadow-sm">
-                          <div className="flex items-center gap-4">
-                            <div className="text-center">
-                               <p className="text-[10px] font-black uppercase text-slate-400">Data Turno</p>
-                               <p className="font-black text-slate-800">{new Date(swap.shift.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}</p>
-                            </div>
-                            <div className="h-10 w-[2px] bg-slate-100"></div>
-                            <div>
-                              <p className="text-[10px] font-black uppercase text-slate-400">Proposta di Scambio</p>
-                              <div className="flex items-center gap-2">
-                                 <span className="font-bold text-slate-900">{swap.requester.name}</span>
-                                 <ChevronRight width={14} height={14} className="text-slate-400" />
-                                 <span className="font-extrabold text-blue-600">{swap.targetUser.name}</span>
+                        <div key={swap.id} className="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden relative group">
+                           <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><RefreshCw size={80}/></div>
+                           
+                           <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 relative z-10">
+                              <div className="flex flex-col sm:flex-row items-center gap-6">
+                                 {/* User Swap Flow */}
+                                 <div className="flex items-center gap-4 bg-slate-100 p-2 rounded-[1.8rem]">
+                                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-900 font-black text-xs shadow-sm border border-slate-200">{swap.requester.name.slice(0,2)}</div>
+                                    <div className="p-2 bg-slate-900 text-white rounded-full animate-pulse"><RefreshCw width={14} height={14} /></div>
+                                    <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-xs shadow-sm">{swap.targetUser.name.slice(0,2)}</div>
+                                 </div>
+                                 
+                                 <div className="text-center sm:text-left">
+                                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Passaggio Turno del {new Date(swap.shift.date).toLocaleDateString('it-IT')}</p>
+                                    <h5 className="font-black text-slate-900 text-sm uppercase"><span className="text-slate-500">{swap.requester.name}</span> <span className="text-indigo-600">→</span> {swap.targetUser.name}</h5>
+                                    <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 rounded-lg uppercase tracking-tighter">Turno: {swap.shift.type}</span>
+                                 </div>
                               </div>
-                              <p className="text-[10px] font-bold text-slate-500 uppercase">Tipo Turno Origine: <span className="text-emerald-600">{swap.shift.type}</span></p>
-                            </div>
-                          </div>
-
-                          <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                            <button onClick={() => { void handleApproveAction("SWAP_REQUEST", swap.id, "REJECT"); }} className="flex-1 sm:flex-none border border-red-200 hover:bg-red-50 text-red-600 px-4 py-2 rounded-xl text-xs font-black transition-all">RIFIUTA</button>
-                            <button onClick={() => { void handleApproveAction("SWAP_REQUEST", swap.id, "APPROVE"); }} className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-black shadow-lg shadow-emerald-100 transition-all">APPROVA</button>
-                          </div>
+                              
+                              <div className="flex items-center gap-3 shrink-0">
+                                 <button onClick={() => { void handleApproveAction("SWAP_REQUEST", swap.id, "REJECT"); }} className="px-6 py-3.5 border-2 border-slate-100 text-slate-400 font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-all active:scale-95">Annulla</button>
+                                 <button onClick={() => { void handleApproveAction("SWAP_REQUEST", swap.id, "APPROVE"); }} className="px-8 py-3.5 bg-emerald-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95">Conferma Scambio</button>
+                              </div>
+                           </div>
                         </div>
                       ))}
                     </div>
@@ -2344,10 +2459,13 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
               )}
             </div>
             
-            <div className="bg-slate-50 p-6 border-t border-slate-100">
-               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
-                 ⚠️ L&apos;approvazione sposta definitivamente la titolarità del turno nel calendario ufficiale. L&apos;operazione non è reversibile automaticamente.
-               </p>
+            <div className="p-6 bg-slate-900 text-white shrink-0">
+               <div className="flex items-start gap-4">
+                  <div className="p-2 bg-white/10 rounded-xl"><AlertCircle className="text-amber-400" width={18} height={18}/></div>
+                  <p className="text-[10px] text-white/60 font-medium leading-relaxed">
+                    ATTENZIONE: L&apos;approvazione è definitiva e sposterà i turni nel Database centrale, notificando immediatamente gli interessati via Telegram e Push.
+                  </p>
+               </div>
             </div>
           </div>
         </div>
@@ -2355,124 +2473,122 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       
       {/* Modal Assenze Multiple */}
       {showBulkAbsence && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowBulkAbsence(false)}></div>
-          <div className="relative w-full max-w-3xl bg-white rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-            <div className="bg-gradient-to-r from-teal-600 to-emerald-600 p-6 text-white flex justify-between items-center shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/20 rounded-xl">
-                  <CalendarIcon width={24} height={24} />
+          <div className="relative w-full max-w-4xl bg-white rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh] border border-white">
+            
+            {/* Header Moderno Teal */}
+            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-teal-50/30 shrink-0">
+              <div className="flex items-center gap-5">
+                <div className="w-14 h-14 bg-teal-600 text-white rounded-[1.5rem] flex items-center justify-center shadow-lg shadow-teal-200">
+                   <CalendarIcon width={28} height={28} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black uppercase tracking-tight">Gestione Assenze Multiple</h3>
-                  <p className="text-teal-100 text-xs font-bold uppercase tracking-widest opacity-80">Inserimento massivo ferie, malattie e permessi lungi</p>
+                  <h3 className="text-2xl font-black uppercase tracking-tight text-teal-900">Gestione Assenze</h3>
+                  <p className="text-[10px] text-teal-600 font-black uppercase tracking-[0.2em] mt-1">Sentinel Bulk Entry System — Inserimento Massivo</p>
                 </div>
               </div>
-              <button onClick={() => setShowBulkAbsence(false)} className="text-white/60 hover:text-white transition-colors">
+              <button 
+                onClick={() => setShowBulkAbsence(false)}
+                className="w-12 h-12 flex items-center justify-center bg-white text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all shadow-sm border border-slate-100 active:scale-95"
+              >
                 <X width={24} height={24} />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Agente</label>
-                    <div className="relative">
-                      <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" width={16} height={16} />
-                      <select
-                        value={bulkData.agentId}
-                        onChange={e => setBulkData({ ...bulkData, agentId: e.target.value })}
-                        className="w-full pl-10 pr-4 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
-                      >
-                        <option value="">Seleziona un Agente...</option>
-                        {allAgents
-                           .filter(a => roleFilter === "ALL" || (roleFilter === "UFF" && a.isUfficiale) || (roleFilter === "AGT" && !a.isUfficiale))
-                           .sort((a,b) => a.name.localeCompare(b.name))
-                           .map(agent => (
-                          <option key={agent.id} value={agent.id}>{agent.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Da</label>
-                      <input 
-                        type="date"
-                        value={bulkData.startDate}
-                        onChange={e => setBulkData({ ...bulkData, startDate: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase mb-2">A</label>
-                      <input 
-                        type="date"
-                        value={bulkData.endDate}
-                        onChange={e => setBulkData({ ...bulkData, endDate: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:border-teal-500 transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="bg-teal-50 p-4 rounded-xl border border-teal-100">
-                    <p className="text-xs text-teal-800 font-bold mb-1">Riepilogo Selezione:</p>
-                    {bulkData.code ? (
-                       <p className="text-sm">Inserimento causale <strong className="bg-teal-200 px-1 rounded text-teal-900">{bulkData.code}</strong></p>
-                    ) : (
-                       <p className="text-sm text-teal-600 italic">Scegli una causale dal pannello a destra.</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 p-4 rounded-2xl border-2 border-slate-100 h-[300px] overflow-y-auto custom-scrollbar">
-                   <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Prontuario Causali</h4>
-                   <div className="space-y-4">
-                    {AGENDA_CATEGORIES.map(cat => (
-                      <div key={`bulk-${cat.group}`}>
-                        <div className="text-xs font-bold text-slate-600 mb-2 flex items-center gap-1.5 uppercase">
-                          <span>{cat.emoji}</span> {cat.group}
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {cat.items.map(item => (
-                            <button
-                              key={`bulk-${item.shortCode}`}
-                              onClick={() => setBulkData({ ...bulkData, code: item.shortCode })}
-                              className={`px-2 py-1 rounded select-none text-[10px] font-bold border-2 transition-all ${
-                                bulkData.code === item.shortCode 
-                                  ? 'border-teal-500 bg-teal-100 text-teal-800 scale-105 shadow-sm' 
-                                  : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
-                              }`}
-                              title={item.label}
-                            >
-                              {item.shortCode}
-                            </button>
-                          ))}
+            <div className="p-8 overflow-y-auto bg-slate-50/50 flex-1 custom-scrollbar">
+              <div className="flex flex-col lg:flex-row gap-10">
+                {/* Pannello Configurazione (Sinistra) */}
+                <div className="w-full lg:w-80 space-y-8 shrink-0">
+                   <div>
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">01. Parametri Agente</h4>
+                      <div className="space-y-4">
+                        <div className="relative group">
+                          <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-600 transition-colors" width={18} height={18} />
+                          <select
+                            value={bulkData.agentId}
+                            onChange={e => setBulkData({ ...bulkData, agentId: e.target.value })}
+                            className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-[1.2rem] text-sm font-black text-slate-700 outline-none focus:border-teal-500 shadow-sm transition-all appearance-none cursor-pointer"
+                          >
+                            <option value="">Seleziona Operatore...</option>
+                            {allAgents
+                               .filter(a => roleFilter === "ALL" || (roleFilter === "UFF" && a.isUfficiale) || (roleFilter === "AGT" && !a.isUfficiale))
+                               .sort((a,b) => a.name.localeCompare(b.name))
+                               .map(agent => (
+                              <option key={agent.id} value={agent.id}>{agent.name}</option>
+                            ))}
+                          </select>
                         </div>
                       </div>
-                    ))}
+                   </div>
+
+                   <div>
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">02. Periodo Temporale</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
+                           <p className="text-[8px] font-black text-slate-400 uppercase mb-1">DATA INIZIO</p>
+                           <input type="date" value={bulkData.startDate} onChange={e => setBulkData({ ...bulkData, startDate: e.target.value })} className="w-full bg-transparent text-xs font-black text-slate-700 outline-none" />
+                        </div>
+                        <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
+                           <p className="text-[8px] font-black text-slate-400 uppercase mb-1">DATA FINE</p>
+                           <input type="date" value={bulkData.endDate} onChange={e => setBulkData({ ...bulkData, endDate: e.target.value })} className="w-full bg-transparent text-xs font-black text-slate-700 outline-none" />
+                        </div>
+                      </div>
+                   </div>
+
+                   <div className="p-6 bg-teal-900 rounded-[2rem] text-white shadow-xl shadow-teal-100 animate-in zoom-in-95">
+                      <p className="text-[10px] font-black uppercase opacity-60 tracking-widest mb-3">Riepilogo Comando</p>
+                      <div className="space-y-4">
+                         <div className="flex justify-between items-center text-xs font-bold">
+                            <span>Operatore:</span>
+                            <span className="text-teal-300">{allAgents.find(a => a.id === bulkData.agentId)?.name || '---'}</span>
+                         </div>
+                         <div className="flex justify-between items-center text-xs font-bold">
+                            <span>Causale:</span>
+                            <span className="bg-teal-500 px-2 py-0.5 rounded text-[10px] font-black">{bulkData.code || 'DA SCEGLIERE'}</span>
+                         </div>
+                      </div>
+                      <button 
+                        onClick={() => { void handleBulkSave(); }}
+                        disabled={isSavingBulk || !bulkData.agentId || !bulkData.startDate || !bulkData.endDate || !bulkData.code}
+                        className="w-full mt-6 bg-white text-teal-900 py-4 rounded-[1.2rem] text-[11px] font-black uppercase tracking-widest shadow-lg hover:bg-teal-50 transition-all active:scale-95 disabled:opacity-30 flex items-center justify-center gap-2"
+                      >
+                         {isSavingBulk ? <RefreshCw className="animate-spin" width={16} height={16} /> : <CheckCircle2 width={18} height={18} />}
+                         Esegui Inserimento
+                      </button>
                    </div>
                 </div>
-              </div>
-            </div>
 
-            <div className="bg-slate-50 p-6 border-t border-slate-100 flex justify-end gap-3 shrink-0">
-               <button 
-                 onClick={() => setShowBulkAbsence(false)}
-                 className="px-6 py-2 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-200 transition-colors"
-               >
-                 Annulla
-               </button>
-               <button 
-                 onClick={() => { void handleBulkSave(); }}
-                 disabled={isSavingBulk || !bulkData.agentId || !bulkData.startDate || !bulkData.endDate || !bulkData.code}
-                 className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-2 rounded-xl text-sm font-black shadow-lg shadow-teal-100 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center gap-2"
-               >
-                 {isSavingBulk ? <RefreshCw className="animate-spin" width={16} height={16} /> : <CheckCircle2 width={16} height={16} />}
-                 INSERISCI ASSENZE
-               </button>
+                {/* Pannello Causali (Destra) */}
+                <div className="flex-1 space-y-8">
+                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">03. Selezione Causale Informatizzata</h4>
+                   <div className="space-y-8">
+                      {AGENDA_CATEGORIES.map(cat => (
+                        <div key={`bulk-premium-${cat.group}`}>
+                          <div className="text-[10px] font-black text-slate-400 mb-4 flex items-center gap-2 uppercase tracking-widest">
+                            <span>{cat.emoji}</span> {cat.group}
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+                            {cat.items.map(item => (
+                              <button
+                                key={`bulk-item-${item.shortCode}`}
+                                onClick={() => setBulkData({ ...bulkData, code: item.shortCode })}
+                                className={`p-3 rounded-2xl select-none text-left flex flex-col gap-1 transition-all active:scale-95 shadow-sm border ${
+                                  bulkData.code === item.shortCode 
+                                    ? 'bg-teal-600 border-teal-500 text-white shadow-lg shadow-teal-100 -translate-y-1' 
+                                    : 'bg-white border-slate-100 text-slate-800 hover:border-teal-200 hover:bg-teal-50/30'
+                                }`}
+                              >
+                                <span className={`text-[11px] font-black tracking-tight ${bulkData.code === item.shortCode ? 'text-white' : 'text-slate-900'}`}>{item.shortCode}</span>
+                                <span className={`text-[9px] font-bold leading-tight line-clamp-2 ${bulkData.code === item.shortCode ? 'text-teal-100' : 'text-slate-400'}`}>{item.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -2482,54 +2598,58 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
       {selectedAgentForDetails && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 lg:p-12 animate-in fade-in duration-300" onClick={() => setSelectedAgentForDetails(null)}>
           <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden border border-white/20" onClick={e => e.stopPropagation()}>
-             {/* Header Dynamically Colored */}
-             <div className={`${selectedAgentForDetails.isUfficiale ? 'bg-indigo-900' : 'bg-slate-900'} p-10 text-white shrink-0 relative overflow-hidden transition-colors duration-500`}>
-                <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -mr-48 -mt-48 animate-pulse"></div>
-                <div className="flex justify-between items-start relative z-10">
-                   <div className="flex items-center gap-8">
-                      <div className="w-28 h-28 rounded-[2.5rem] bg-white p-1.5 shadow-2xl">
-                         <div className={`w-full h-full rounded-[2.2rem] bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-4xl font-black shadow-inner`}>
+             {/* Header Dynamically Colored Premium */}
+             <div className={`${selectedAgentForDetails.isUfficiale ? 'bg-indigo-950' : 'bg-slate-900'} px-12 py-10 text-white shrink-0 relative overflow-hidden transition-colors duration-500`}>
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] -mr-64 -mt-64 animate-pulse"></div>
+                <div className="flex justify-between items-center relative z-10">
+                   <div className="flex items-center gap-10">
+                      <div className="w-32 h-32 rounded-[3.5rem] bg-white p-2 shadow-2xl transition-transform hover:scale-105 duration-500">
+                         <div className={`w-full h-full rounded-[3rem] bg-gradient-to-br ${selectedAgentForDetails.isUfficiale ? 'from-indigo-600 to-blue-700 shadow-indigo-900/40' : 'from-slate-700 to-slate-900 shadow-slate-950/40'} flex items-center justify-center text-4xl font-black shadow-inner`}>
                             {selectedAgentForDetails.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
                          </div>
                       </div>
                       <div>
-                        <div className="flex items-center gap-3 mb-3">
-                           <span className="px-4 py-1.5 bg-white/10 rounded-xl text-xs font-black uppercase tracking-widest text-blue-300 border border-white/10 shadow-sm">Matricola {selectedAgentForDetails.matricola}</span>
-                           <span className="px-4 py-1.5 bg-blue-500/20 rounded-xl text-xs font-black uppercase tracking-widest text-blue-200 border border-blue-400/20 shadow-sm">{selectedAgentForDetails.qualifica || 'Agente di P.L.'}</span>
+                        <div className="flex items-center gap-4 mb-4">
+                           <span className="px-5 py-2 bg-blue-500/10 backdrop-blur-md rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-blue-300 border border-blue-400/20 shadow-lg">ID {selectedAgentForDetails.matricola}</span>
+                           <span className={`px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] border shadow-lg ${selectedAgentForDetails.isUfficiale ? 'bg-indigo-500/20 text-indigo-200 border-indigo-400/30' : 'bg-slate-500/20 text-slate-300 border-slate-400/30'}`}>
+                             {selectedAgentForDetails.qualifica || 'Agente di P.L.'}
+                           </span>
                         </div>
-                        <h2 className="text-5xl font-black tracking-tighter leading-none mb-2">{selectedAgentForDetails.name}</h2>
-                        <div className="flex items-center gap-6">
-                           <div className="flex items-center gap-2.5 text-slate-400 font-bold uppercase text-[11px] tracking-widest">
-                             <MapPin width={16} height={16} className="text-blue-400" />
-                             {selectedAgentForDetails.squadra || 'SENZA SQUADRA'}
+                        <h2 className="text-6xl font-black tracking-tighter leading-none mb-3 uppercase">{selectedAgentForDetails.name}</h2>
+                        <div className="flex items-center gap-8">
+                           <div className="flex items-center gap-3 text-slate-400 font-extrabold uppercase text-[11px] tracking-[0.2em]">
+                             <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                             {selectedAgentForDetails.squadra || 'DISTACCAMENTO GENERALE'}
                            </div>
-                           <div className="w-[1px] h-4 bg-white/20"></div>
-                           <div className="flex items-center gap-2.5 text-slate-400 font-bold uppercase text-[11px] tracking-widest">
-                             <Briefcase width={16} height={16} className="text-emerald-400" />
-                             Assunto il {selectedAgentForDetails.dataAssunzione ? new Date(selectedAgentForDetails.dataAssunzione).toLocaleDateString('it-IT') : 'N/D'}
+                           <div className="w-[1.5px] h-4 bg-white/10"></div>
+                           <div className="flex items-center gap-3 text-slate-400 font-extrabold uppercase text-[11px] tracking-[0.2em]">
+                             <Briefcase width={16} height={16} className="text-blue-400" />
+                             Assunzione: {selectedAgentForDetails.dataAssunzione ? new Date(selectedAgentForDetails.dataAssunzione).toLocaleDateString('it-IT') : 'N/D'}
                            </div>
                         </div>
                       </div>
                    </div>
-                   <button onClick={() => setSelectedAgentForDetails(null)} className="p-4 bg-white/10 rounded-full hover:bg-white/20 hover:scale-110 transition-all active:scale-95 shadow-xl">
-                      <X width={28} height={28} />
+                   <button 
+                     onClick={() => setSelectedAgentForDetails(null)} 
+                     className="w-16 h-16 flex items-center justify-center bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 text-white/40 rounded-[2rem] transition-all border border-white/5 active:scale-95 shadow-xl"
+                   >
+                      <X width={32} height={32} />
                    </button>
                 </div>
 
-                {/* TAB NAVIGATION */}
-                <div className="flex gap-2 mt-10 relative z-10">
+                {/* TAB NAVIGATION PREMIUM */}
+                <div className="flex gap-3 mt-12 relative z-10 px-2 overflow-x-auto no-scrollbar">
                    {[
-                     { id: 'ANAGRAFICA', label: 'Dati Personali', icon: Users },
-                     { id: 'SALDI', label: 'Saldi e Ferie', icon: Hash },
-                     { id: 'STORICO', label: 'Storico Turni', icon: Calendar },
-                     { id: 'NOTE', label: 'Note Operative', icon: FileText }
+                     { id: 'ANAGRAFICA', label: 'Profilo Atleta', icon: Users },
+                     { id: 'SALDI', label: 'Saldi Operativi', icon: Hash },
+                     { id: 'STORICO', label: 'Riepilogo Turnazione', icon: Calendar },
+                     { id: 'NOTE', label: 'Dossier Interno', icon: FileText }
                    ].map(tab => (
                      <button
                        key={tab.id}
                        onClick={() => {
                          setActiveDetailTab(tab.id as "ANAGRAFICA" | "SALDI" | "STORICO" | "NOTE");
                          if (tab.id === 'SALDI') {
-                           // Fetch balances
                            setIsLoadingBalances(true);
                            fetch(`/api/admin/users/${selectedAgentForDetails.id}/balances?year=${currentYear}`)
                              .then(res => res.json())
@@ -2537,7 +2657,11 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                              .catch(() => { toast.error("Errore caricamento saldi"); setIsLoadingBalances(false); });
                          }
                        }}
-                       className={`flex items-center gap-3 px-8 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${activeDetailTab === tab.id ? 'bg-white text-slate-900 shadow-xl scale-105' : 'hover:bg-white/10 text-white/60'}`}
+                       className={`flex items-center gap-3 px-10 py-4.5 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 border ${
+                         activeDetailTab === tab.id 
+                           ? 'bg-white text-slate-900 shadow-2xl border-white scale-105' 
+                           : 'bg-white/5 text-white/40 border-white/5 hover:bg-white/10 hover:text-white'
+                       }`}
                      >
                        <tab.icon width={18} height={18} />
                        {tab.label}

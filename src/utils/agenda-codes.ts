@@ -7,6 +7,7 @@ export const AGENDA_CATEGORIES = [
       { code: "0015", shortCode: "FERIE", label: "Ferie Anno Corrente", unit: "DAYS" },
       { code: "0016", shortCode: "FERIE_AP", label: "Ferie Anni Precedenti", unit: "DAYS" },
       { code: "0010", shortCode: "FEST_SOP", label: "Festività Soppresse", unit: "DAYS" },
+      { code: "BR", shortCode: "BR", label: "Blocco Reperibilità", unit: "DAYS" },
     ]
   },
   {

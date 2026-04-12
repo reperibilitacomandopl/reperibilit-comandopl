@@ -48,6 +48,8 @@ export const isAssenza = (code: string | null | undefined): boolean => {
     "CONG_PAT", "CONG_PAR", "CONGEDO",
     // Recupero
     "RR", "RP", "RPS",
+    // Blocco
+    "BR",
     // Altro
     "CORSO", "SMART", "MISSIONE",
     // Storici
@@ -80,6 +82,7 @@ export const isAssenzaProtetta = (code: string | null | undefined): boolean => {
     "CONG_PAT", "CONG_PAR", "CONGEDO",
     // Altro
     "CORSO", "SMART", "MISSIONE",
+    "BR",
     // Storici (esclusi RP/RR)
     "ASS", "INFR", "CS", "PNR", "SD", "RF", "AM", "AP"
   ];

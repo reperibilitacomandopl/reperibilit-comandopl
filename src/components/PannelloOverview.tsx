@@ -111,75 +111,101 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
         />
       )}
 
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Pannello Comando</h1>
-          <p className="text-sm text-slate-500 mt-1 font-medium">
-            {currentTime.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-            {" — "}
-            <span className="text-slate-400">{currentTime.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}</span>
+      {/* Page Header Premium */}
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-10">
+        <div className="animate-in slide-in-from-left duration-700">
+          <div className="flex items-center gap-3 mb-2">
+             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                <Activity width={18} height={18} />
+             </div>
+             <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Sentinel Command Dashboard</span>
+          </div>
+          <h1 className="text-5xl font-black text-slate-900 tracking-tighter uppercase leading-none">Pannello <span className="text-blue-600">Overview</span></h1>
+          <p className="text-sm text-slate-500 mt-4 font-bold flex items-center gap-3">
+             <span className="bg-slate-100 px-3 py-1 rounded-lg text-slate-700">
+               {currentTime.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" })}
+             </span>
+             <span className="w-1.5 h-1.5 bg-slate-200 rounded-full"></span>
+             <span className="text-slate-400 font-black tracking-widest">{currentTime.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}</span>
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border ${isPublished ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
-            {isPublished ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
-            {MESI[currentMonth]} {currentYear} — {isPublished ? "Pubblicato" : "Bozza"}
+        <div className="flex items-center gap-4 animate-in slide-in-from-right duration-700">
+          <div className={`flex items-center gap-3 px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border shadow-xl transition-all ${isPublished ? "bg-emerald-500 text-white border-emerald-400 shadow-emerald-200" : "bg-white text-amber-600 border-amber-200 shadow-amber-50"}`}>
+            {isPublished ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} className="animate-pulse" />}
+            {MESI[currentMonth]} {currentYear} — {isPublished ? "Stato: Pubblicato" : "Stato: In Bozza"}
           </div>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {cards.map((card) => {
+      {/* KPI Cards Premium Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {cards.map((card, idx) => {
           const Icon = card.icon
           return (
             <div
               key={card.label}
-              className={`bg-gradient-to-br ${card.color} rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:shadow-xl transition-shadow duration-300`}
+              style={{ animationDelay: `${idx * 100}ms` }}
+              className={`relative overflow-hidden bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 group hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 animate-in zoom-in-95`}
             >
-              <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -translate-y-8 translate-x-8 group-hover:scale-125 transition-transform duration-500" />
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-3">
-                  <span className={`text-xs font-black uppercase tracking-widest ${card.textColor} opacity-95`}>
-                    {card.label}
-                  </span>
-                  <Icon size={20} className={`${card.textColor} opacity-80`} />
+              {/* Decorative Background Blob */}
+              <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-full blur-[40px] opacity-10 group-hover:opacity-20 transition-opacity bg-gradient-to-br ${card.color}`} />
+              
+              <div className="relative z-10 flex flex-col h-full">
+                <div className="flex items-center justify-between mb-8">
+                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${card.color} flex items-center justify-center text-white shadow-xl shadow-slate-200 group-hover:scale-110 transition-transform duration-500`}>
+                    <Icon size={24} />
+                  </div>
+                  <span className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] group-hover:text-slate-500 transition-colors">Sentinel Kpi 0{idx+1}</span>
                 </div>
-                <p className={`text-4xl font-black ${card.textColor} tracking-tight`}>{card.value}</p>
-                <p className={`text-[11px] mt-2 ${card.textColor} opacity-90 font-bold`}>{card.sub}</p>
+                
+                <div className="mb-2">
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{card.label}</p>
+                   <p className="text-5xl font-black text-slate-900 tracking-tighter leading-none">{card.value}</p>
+                </div>
+                
+                <div className="mt-8 pt-4 border-t border-slate-50 flex items-center justify-between">
+                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate pr-2">{card.sub}</span>
+                   <div className="flex gap-1">
+                      <div className="w-1 h-1 bg-slate-200 rounded-full"></div>
+                      <div className="w-1 h-1 bg-slate-200 rounded-full"></div>
+                      <div className="w-1 h-4 bg-slate-200 rounded-full"></div>
+                   </div>
+                </div>
               </div>
             </div>
           )
         })}
       </div>
 
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <TrendingUp size={20} className="text-blue-500" />
-          Accesso Rapido
+      {/* Premium Quick Actions */}
+      <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 delay-300">
+        <h2 className="text-[12px] font-black text-slate-400 mb-6 flex items-center gap-3 uppercase tracking-[0.2em]">
+          <TrendingUp size={18} className="text-blue-500" />
+          Protocolli di Accesso Rapido
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[
-            { label: "Pianificazione Mensile", desc: "Griglia Turni & Reperibilità", href: "/admin/pianificazione", icon: CalendarDays, accent: "blue" },
-            { label: "Ordine di Servizio", desc: "Assegnazione Giornaliera", href: "/admin/ods", icon: Shield, accent: "emerald" },
-            { label: "Generatore Ciclico", desc: "Auto-Compilazione Turni", href: "/admin/auto-compila", icon: Clock, accent: "violet" },
+            { label: "Pianificazione Mensile", desc: "Griglia Turni & Reperibilità", href: `/${tenantSlug}/admin/pianificazione`, icon: CalendarDays, accent: "blue", shadow: "shadow-blue-50" },
+            { label: "Ordine di Servizio", desc: "Assegnazione Giornaliera", href: `/${tenantSlug}/admin/ods`, icon: Shield, accent: "indigo", shadow: "shadow-indigo-50" },
+            { label: "Generatore Ciclico", desc: "Auto-Compilazione Algoritmica", href: `/${tenantSlug}/admin/auto-compila`, icon: Clock, accent: "slate", shadow: "shadow-slate-50" },
           ].map((action) => {
             const Icon = action.icon
             return (
               <Link
                 key={action.href}
                 href={action.href}
-                className={`group flex items-center gap-4 p-4 bg-white rounded-xl border border-slate-200 hover:border-${action.accent}-300 hover:shadow-md transition-all duration-200`}
+                className={`group relative flex items-center gap-6 p-8 bg-white rounded-[2rem] border border-slate-100 hover:border-${action.accent}-500 hover:shadow-2xl transition-all duration-500 overflow-hidden`}
               >
-                <div className={`w-11 h-11 bg-${action.accent}-50 rounded-xl flex items-center justify-center group-hover:bg-${action.accent}-100 transition-colors shrink-0`}>
-                  <Icon size={20} className={`text-${action.accent}-500`} />
+                <div className={`absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity duration-700`}>
+                   <Icon size={120} />
                 </div>
-                <div>
-                  <span className="text-sm font-bold text-slate-800 block">{action.label}</span>
-                  <span className="text-xs text-slate-400 font-medium">{action.desc}</span>
+                <div className={`w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center group-hover:bg-slate-900 group-hover:text-white transition-all duration-500 shrink-0 shadow-inner`}>
+                  <Icon size={24} />
+                </div>
+                <div className="relative z-10">
+                  <span className="text-sm font-black text-slate-900 block uppercase tracking-tight mb-1">{action.label}</span>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest opacity-70">{action.desc}</span>
                 </div>
               </Link>
             )
@@ -187,156 +213,201 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
         </div>
       </div>
 
-      {/* KPI Strategici Comandante */}
-      <div>
-        <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <Activity size={20} className="text-indigo-500" />
-          Scanner Strategico
+      {/* KPI Strategici Comandante Premium */}
+      <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 delay-500">
+        <h2 className="text-[12px] font-black text-slate-400 mb-6 flex items-center gap-3 uppercase tracking-[0.2em]">
+          <Activity size={18} className="text-indigo-500" />
+          Scanner Strategico Forze
         </h2>
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row items-center gap-8">
+        <div className="bg-slate-900 rounded-[3rem] p-10 shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center gap-12 border border-slate-800">
+           <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(79,70,229,0.1),transparent)] pointer-events-none"></div>
            
-           <div className="flex-1 w-full relative">
-              <div className="flex justify-between items-end mb-2">
+           <div className="flex-1 w-full relative z-10">
+              <div className="flex justify-between items-end mb-4">
                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tasso di Copertura Effettivo</p>
-                    <h3 className="text-3xl font-black text-slate-800 tracking-tight">{coperturaPercent}%</h3>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Tasso di Copertura Effettivo</p>
+                    <h3 className="text-5xl font-black text-white tracking-tighter leading-none">{coperturaPercent}%</h3>
                  </div>
-                 <span className={`text-xs font-bold px-2.5 py-1 rounded-xl ${coperturaPercent >= 80 ? 'bg-emerald-100 text-emerald-700' : coperturaPercent >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'}`}>
-                    {coperturaPercent >= 80 ? 'Ottimale' : coperturaPercent >= 50 ? 'Accettabile' : 'Critico'}
+                 <span className={`text-[10px] font-black px-4 py-2 rounded-xl uppercase tracking-widest border transition-all duration-500 ${coperturaPercent >= 80 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : coperturaPercent >= 50 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>
+                    {coperturaPercent >= 80 ? 'Status Ottimale' : coperturaPercent >= 50 ? 'Status Accettabile' : 'Status Critico'}
                  </span>
               </div>
-              <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                 <div className={`h-full rounded-full transition-all duration-1000 ${coperturaPercent >= 80 ? 'bg-emerald-500' : coperturaPercent >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${coperturaPercent}%` }}></div>
+              <div className="h-4 w-full bg-white/5 rounded-full overflow-hidden shadow-inner border border-white/5 p-1">
+                 <div className={`h-full rounded-full transition-all duration-1000 shadow-[0_0_20px_rgba(0,0,0,0.5)] ${coperturaPercent >= 80 ? 'bg-emerald-500' : coperturaPercent >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${coperturaPercent}%` }}></div>
               </div>
            </div>
 
-           <div className="hidden md:block w-px h-16 bg-slate-200"></div>
+           <div className="hidden md:block w-px h-24 bg-white/10 relative z-10"></div>
 
-           <div className="flex-1 w-full grid grid-cols-2 gap-4">
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Squadre Formate</p>
-                 <p className="text-2xl font-black text-indigo-600">
-                    {new Set(todayShifts.filter(s => s.patrolGroupId).map(s => s.patrolGroupId)).size}
-                 </p>
+           <div className="flex-1 w-full grid grid-cols-2 gap-6 relative z-10">
+              <div className="bg-white/5 p-6 rounded-[2rem] border border-white/5 backdrop-blur-md group hover:bg-white/10 transition-colors">
+                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Squadre Formate</p>
+                 <div className="flex items-end gap-3">
+                    <p className="text-4xl font-black text-white leading-none">
+                       {new Set(todayShifts.filter(s => s.patrolGroupId).map(s => s.patrolGroupId)).size}
+                    </p>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase mb-1">Unità</span>
+                 </div>
               </div>
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status Ufficiali</p>
-                 <p className={`text-xl font-black ${ufficialiStatusOk ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {ufficialiOggi} / {targetUfficiali}
-                 </p>
+              <div className="bg-white/5 p-6 rounded-[2rem] border border-white/5 backdrop-blur-md group hover:bg-white/10 transition-colors">
+                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Status Ufficiali</p>
+                 <div className="flex items-end gap-3">
+                    <p className={`text-4xl font-black leading-none ${ufficialiStatusOk ? 'text-emerald-400' : 'text-rose-400'}`}>
+                       {ufficialiOggi}
+                    </p>
+                    <span className="text-slate-500 text-[10px] font-black mb-1">/ {targetUfficiali}</span>
+                 </div>
               </div>
            </div>
         </div>
       </div>
 
-      {/* Pattuglie / Cockpit Operativo */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Operational Cockpit & Exceptions Premium */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-700">
         
         {/* Colonna Operativa */}
-        <div className="lg:col-span-2 space-y-6">
-          <button onClick={() => setCollapsedPattuglie(!collapsedPattuglie)} className="flex items-center gap-2 w-full text-left hover:bg-slate-50 rounded-xl p-2 -ml-2 transition-colors">
-            <Shield size={24} className="text-emerald-500" />
-            <h2 className="text-xl font-black text-slate-900 flex-1">Pattuglie e Servizi Assegnati</h2>
-            {collapsedPattuglie ? <ChevronDown size={20} className="text-slate-400" /> : <ChevronUp size={20} className="text-slate-400" />}
-          </button>
-
-          {collapsedPattuglie ? null : operativiOggi === 0 ? (
-            <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center">
-               <p className="text-slate-500 font-black uppercase tracking-widest">Nessuna unità operativa in servizio</p>
+        <div className="lg:col-span-2 space-y-8">
+          <div className="flex items-center justify-between group cursor-pointer" onClick={() => setCollapsedPattuglie(!collapsedPattuglie)}>
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-600">
+                 <Shield size={24} />
+              </div>
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Cockpit Operativo</h2>
             </div>
-          ) : (
-            // Raggruppiamo i turni operativi per Categoria, poi per orari/tipo.
-            (() => {
-              const opShifts = todayShifts.filter(s => !isAssenza(s.type))
-              const categories = [...new Set(opShifts.map(s => s.serviceCategory?.name || "Servizio Generico"))]
-              
-              return categories.map(cat => (
-                <div key={cat} className="space-y-3">
-                  <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest border-b-2 border-slate-100 pb-2 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                    {cat}
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Le pattuglie in questa categoria raggruppate per orario/veicolo/servizio */}
-                    {(() => {
-                      const shiftsInCat = opShifts.filter(s => (s.serviceCategory?.name || "Servizio Generico") === cat)
-                      
-                      // Raggruppa per un mix di parametri per simulare l'entità "Pattuglia".
-                      // Se manca un patrolGroupId, useremo type+cat+vehc
-                      const grouped: Record<string, typeof shiftsInCat> = {}
-                      shiftsInCat.forEach(s => {
-                         const gId = s.patrolGroupId || `${s.type}-${s.serviceType?.name || 'Base'}-${s.vehicle?.name || 'N/A'}`
-                         if (!grouped[gId]) grouped[gId] = []
-                         grouped[gId].push(s)
-                      })
+            <div className="w-10 h-10 bg-slate-50 flex items-center justify-center rounded-xl text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all duration-300">
+               {collapsedPattuglie ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+            </div>
+          </div>
 
-                      return Object.values(grouped).map((group, idx) => (
-                        <div key={idx} className="bg-white border-2 border-slate-100 hover:border-emerald-200 rounded-2xl p-4 shadow-sm transition-all hover:shadow-md">
-                          <div className="flex justify-between items-start mb-3">
-                            <div>
-                               <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 font-black text-[10px] uppercase rounded mb-1">{group[0].type}</span>
-                               <h4 className="font-bold text-slate-800 leading-tight block">{group[0].serviceType?.name || "Pattugliamento"}</h4>
-                               {group[0].timeRange && <p className="text-xs text-slate-500 font-bold mt-0.5">{group[0].timeRange}</p>}
-                            </div>
-                            {group[0].vehicle && (
-                               <div className="flex items-center gap-1.5 bg-slate-800 text-slate-100 px-2.5 py-1 rounded-lg text-xs font-black shadow-sm">
-                                  <CarFront size={14} className="opacity-80" />
-                                  {group[0].vehicle.name}
-                               </div>
-                            )}
-                          </div>
-                          
-                          <div className="space-y-1.5 pt-2 border-t border-slate-50">
-                             {group.map(member => (
-                                <div key={member.userId} className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                                   {member.user.isUfficiale && <span className="text-[9px] bg-blue-100 text-blue-700 px-1 rounded font-black">UFF</span>}
-                                   {member.user.name}
-                                   {member.repType && <span className="ml-auto text-[9px] font-black text-violet-600 bg-violet-100 px-1.5 py-0.5 rounded uppercase">Eredità {member.repType}</span>}
-                                </div>
-                             ))}
-                          </div>
-                        </div>
-                      ))
-                    })()}
-                  </div>
+          {!collapsedPattuglie && (
+            <div className="space-y-10">
+              {operativiOggi === 0 ? (
+                <div className="bg-white border-2 border-dashed border-slate-100 rounded-[3rem] p-16 text-center shadow-inner">
+                   <Activity className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                   <p className="text-slate-400 font-extrabold uppercase tracking-[0.2em] text-xs">Soggiorno Operativo Vacante</p>
+                   <p className="text-[10px] text-slate-300 font-black uppercase mt-2">Nessuna unità rilevata nei registri odierni</p>
                 </div>
-              ))
-            })()
+              ) : (
+                (() => {
+                  const opShifts = todayShifts.filter(s => !isAssenza(s.type))
+                  const categories = [...new Set(opShifts.map(s => s.serviceCategory?.name || "Servizio Generico"))]
+                  
+                  return categories.map(cat => (
+                    <div key={cat} className="space-y-6">
+                      <div className="flex items-center gap-4 px-2">
+                         <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+                         <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] font-outfit">{cat}</h3>
+                         <div className="flex-1 h-px bg-gradient-to-r from-slate-100 to-transparent"></div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        {(() => {
+                          const shiftsInCat = opShifts.filter(s => (s.serviceCategory?.name || "Servizio Generico") === cat)
+                          const grouped: Record<string, typeof shiftsInCat> = {}
+                          shiftsInCat.forEach(s => {
+                             const gId = s.patrolGroupId || `${s.type}-${s.serviceType?.name || 'Base'}-${s.vehicle?.name || 'N/A'}`
+                             if (!grouped[gId]) grouped[gId] = []
+                             grouped[gId].push(s)
+                          })
+
+                          return Object.values(grouped).map((group, idx) => (
+                            <div key={idx} className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-2xl hover:border-emerald-200 transition-all duration-500 group/card">
+                              <div className="flex justify-between items-start mb-6">
+                                <div>
+                                   <div className="flex items-center gap-2 mb-2">
+                                      <span className="px-3 py-1 bg-slate-900 text-white font-black text-[9px] uppercase rounded-lg tracking-widest">{group[0].type}</span>
+                                      {group[0].timeRange && <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{group[0].timeRange}</span>}
+                                   </div>
+                                   <h4 className="font-black text-slate-900 text-lg uppercase tracking-tight leading-tight">{group[0].serviceType?.name || "Pattugliamento"}</h4>
+                                </div>
+                                {group[0].vehicle && (
+                                   <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-2xl text-[10px] font-black border border-blue-100 shadow-sm group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors duration-500">
+                                      <CarFront size={14} />
+                                      {group[0].vehicle.name}
+                                   </div>
+                                )}
+                              </div>
+                              
+                              <div className="space-y-4 pt-6 border-t border-slate-50">
+                                 {group.map(member => (
+                                    <div key={member.userId} className="flex items-center justify-between group/row">
+                                       <div className="flex items-center gap-4">
+                                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-[10px] ${member.user.isUfficiale ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-slate-100 text-slate-500'}`}>
+                                             {member.user.name.split(' ').map(n => n[0]).join('').slice(0,2)}
+                                          </div>
+                                          <div>
+                                             <p className="text-sm font-black text-slate-800 uppercase tracking-tight">{member.user.name}</p>
+                                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{member.user.qualifica || 'Operatore'}</p>
+                                          </div>
+                                       </div>
+                                       {member.repType && (
+                                          <div className="px-3 py-1 bg-amber-50 text-amber-700 text-[8px] font-black rounded-lg border border-amber-100 uppercase animate-pulse">
+                                             Rep. {member.repType}
+                                          </div>
+                                       )}
+                                    </div>
+                                 ))}
+                              </div>
+                            </div>
+                          ))
+                        })()}
+                      </div>
+                    </div>
+                  ))
+                })()
+              )}
+            </div>
           )}
         </div>
 
         {/* Colonna Eccezioni */}
-        <div className="space-y-6">
-          <button onClick={() => setCollapsedEccezioni(!collapsedEccezioni)} className="flex items-center gap-2 w-full text-left hover:bg-slate-50 rounded-xl p-2 -ml-2 transition-colors">
-            <AlertTriangle size={24} className="text-amber-500" />
-            <h2 className="text-xl font-black text-slate-900 flex-1">Eccezioni & Gestione</h2>
-            {collapsedEccezioni ? <ChevronDown size={20} className="text-slate-400" /> : <ChevronUp size={20} className="text-slate-400" />}
-          </button>
+        <div className="space-y-8">
+          <div className="flex items-center justify-between group cursor-pointer" onClick={() => setCollapsedEccezioni(!collapsedEccezioni)}>
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-rose-500/10 rounded-2xl text-rose-600">
+                 <AlertTriangle size={24} />
+              </div>
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Eccezioni</h2>
+            </div>
+            <div className="w-10 h-10 bg-slate-50 flex items-center justify-center rounded-xl text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all duration-300">
+               {collapsedEccezioni ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+            </div>
+          </div>
           
           {!collapsedEccezioni && (
-          <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-5">
-             <h3 className="font-black text-amber-900 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
-               Assenti (<span className="text-rose-700 font-black">{assentiOggi}</span>)
-             </h3>
-             {assentiOggi === 0 ? (
-               <p className="text-amber-700/60 text-sm font-medium italic">Nessun dipendente assente oggi.</p>
-             ) : (
-               <div className="space-y-2">
-                 {todayShifts.filter(s => isAssenza(s.type)).map(s => (
-                   <div key={s.userId} className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-amber-50 shadow-sm">
-                      <span className="font-bold text-slate-700 text-sm">{s.user.name}</span>
-                       <span className="text-[11px] font-black uppercase px-2 py-1 bg-amber-100 text-amber-900 rounded">
-                         {isMalattia(s.type) ? <span className="text-rose-700 font-black">MALATTIA</span> : s.type}
-                       </span>
-                    </div>
-                 ))}
+            <div className="bg-white border border-slate-100 rounded-[3rem] p-8 shadow-sm">
+               <div className="flex items-center justify-between mb-8 px-2">
+                  <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Assenze Cloud</h3>
+                  <span className="bg-rose-500 text-white px-3 py-1 rounded-full text-[10px] font-black shadow-lg shadow-rose-200">{assentiOggi}</span>
                </div>
-             )}
-          </div>
+               
+               {assentiOggi === 0 ? (
+                 <div className="py-12 text-center bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-100">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-3" />
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nessuna Defezione</p>
+                 </div>
+               ) : (
+                 <div className="space-y-4">
+                   {todayShifts.filter(s => isAssenza(s.type)).map(s => (
+                     <div key={s.userId} className="flex items-center gap-4 bg-slate-50 p-5 rounded-[1.8rem] border border-slate-100 hover:bg-white hover:shadow-xl hover:scale-105 transition-all duration-300">
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white font-black text-xs shadow-lg ${isMalattia(s.type) ? 'bg-rose-600 shadow-rose-100' : 'bg-amber-500 shadow-amber-100'}`}>
+                           {s.user.name[0]}
+                        </div>
+                        <div className="flex-1">
+                           <p className="text-sm font-black text-slate-800 uppercase leading-snug">{s.user.name}</p>
+                           <p className={`text-[9px] font-black uppercase tracking-wider ${isMalattia(s.type) ? 'text-rose-600' : 'text-amber-600'}`}>
+                              {isMalattia(s.type) ? 'Stato: Malattia' : `Stato: ${s.type}`}
+                           </p>
+                        </div>
+                     </div>
+                   ))}
+                 </div>
+               )}
+            </div>
           )}
         </div>
       </div>
+
     </div>
   )
 }
