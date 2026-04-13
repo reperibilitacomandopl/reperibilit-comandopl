@@ -1311,7 +1311,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
             </div>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto custom-scrollbar-horizontal scroll-smooth">
           {(() => {
             const dayInfo = Array.from({ length: daysInMonth }, (_, i) => {
               const d = i + 1
@@ -1350,7 +1350,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                 <thead>
                   <tr>
                     <th 
-                      className="p-3 text-left font-black text-slate-900 w-52 min-w-[200px] sticky left-0 z-30 bg-slate-50 border-b-4 border-r-2 border-slate-200 cursor-pointer hover:bg-slate-100 transition-all font-sans italic uppercase tracking-tighter" 
+                      className="p-3 text-left font-black text-slate-900 w-52 min-w-[200px] sticky left-0 top-0 z-[60] bg-slate-50 border-b-4 border-r-2 border-slate-200 cursor-pointer hover:bg-slate-100 transition-all font-sans italic uppercase tracking-tighter" 
                       rowSpan={2}
                       onClick={() => toggleSort('name')}
                     >
@@ -1362,20 +1362,20 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                     {dayInfo.map((di) => (
                       <th 
                         key={di.isNextMonth ? 'next-1' : di.day} 
-                        className={`px-1 pt-3 pb-1 text-center font-black border-b border-slate-100 min-w-[42px] font-sans text-[11px] ${di.isNextMonth ? "bg-slate-100 text-slate-300 opacity-50" : (di.isWeekend ? "bg-rose-50/50 text-rose-600 border-rose-100" : "bg-white text-slate-500")}`}
+                        className={`px-1 pt-3 pb-1 text-center font-black border-b border-slate-100 min-w-[42px] font-sans text-[11px] sticky top-0 z-[50] ${di.isNextMonth ? "bg-slate-100 text-slate-300 opacity-50" : (di.isWeekend ? "bg-rose-50/50 text-rose-600 border-rose-100" : "bg-white text-slate-500")}`}
                         title={di.isNextMonth ? `1 ${monthNames[nextMonth - 1]} (Contesto)` : ""}
                       >
                         {di.isNextMonth ? '1*' : di.day}
                       </th>
                     ))}
-                    <th className="px-2 pt-3 pb-1 text-center font-black bg-indigo-50 text-indigo-700 border-b-4 border-l-4 border-indigo-100 min-w-[40px] font-sans text-[9px] uppercase tracking-tighter" rowSpan={2} title="Reperibilità nei giorni Festivi e Weekend">
+                    <th className="px-2 pt-3 pb-1 text-center font-black bg-indigo-50 text-indigo-700 border-b-4 border-l-4 border-indigo-100 min-w-[40px] font-sans text-[9px] uppercase tracking-tighter sticky top-0 z-[50]" rowSpan={2} title="Reperibilità nei giorni Festivi e Weekend">
                       FEST
                     </th>
-                    <th className="px-2 pt-3 pb-1 text-center font-black bg-slate-50 text-slate-600 border-b-4 border-slate-200 min-w-[40px] font-sans text-[9px] uppercase tracking-tighter" rowSpan={2} title="Reperibilità nei giorni Feriali">
+                    <th className="px-2 pt-3 pb-1 text-center font-black bg-slate-50 text-slate-600 border-b-4 border-slate-200 min-w-[40px] font-sans text-[9px] uppercase tracking-tighter sticky top-0 z-[50]" rowSpan={2} title="Reperibilità nei giorni Feriali">
                       FER
                     </th>
                     <th 
-                      className="px-3 pt-3 pb-1 text-center font-black bg-indigo-600 text-white border-b-4 border-l-4 border-indigo-900 min-w-[50px] cursor-pointer hover:bg-indigo-700 transition-colors font-sans text-[10px] uppercase tracking-widest" 
+                      className="px-3 pt-3 pb-1 text-center font-black bg-indigo-600 text-white border-b-4 border-l-4 border-indigo-900 min-w-[50px] cursor-pointer hover:bg-indigo-700 transition-colors font-sans text-[10px] uppercase tracking-widest sticky top-0 z-[50]" 
                       rowSpan={2}
                       onClick={() => toggleSort('repTotal')}
                     >
@@ -1389,7 +1389,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                     {dayInfo.map((di) => (
                       <th 
                         key={di.isNextMonth ? 'next-dow-1' : `dow-${di.day}`} 
-                        className={`px-1 pb-2 pt-0 text-center font-black text-[9px] border-b-4 border-slate-200 uppercase tracking-tighter ${di.isNextMonth ? "bg-slate-50 text-slate-200" : (di.isWeekend ? "bg-rose-50/50 text-rose-400 border-rose-100" : "bg-white text-slate-400")}`}
+                        className={`px-1 pb-2 pt-0 text-center font-black text-[9px] border-b-4 border-slate-200 uppercase tracking-tighter sticky top-[46px] z-[50] ${di.isNextMonth ? "bg-slate-50 text-slate-200" : (di.isWeekend ? "bg-rose-50/50 text-rose-400 border-rose-100" : "bg-white text-slate-400")}`}
                       >
                         {di.name.substring(0, 3)}
                       </th>
