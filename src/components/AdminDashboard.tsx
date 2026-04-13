@@ -1429,7 +1429,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                         })
 
                         return (
-                          <tr key={agent.id} className={`${idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"} hover:bg-blue-50/30 transition-colors`}>
+                          <tr key={agent.id} className={`group ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"} hover:bg-blue-50/30 transition-colors`}>
                             <td className={`px-4 py-2 sticky left-0 z-20 border-r-4 border-slate-200/50 whitespace-nowrap ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"} ${agent.isUfficiale ? "text-indigo-700" : "text-slate-800 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.05)]"}`}>
                               <div className="flex items-center gap-3">
                                 <button 
