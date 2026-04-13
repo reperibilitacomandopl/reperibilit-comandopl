@@ -3,6 +3,7 @@ import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
+import { rateLimit } from "@/lib/rate-limit"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -16,6 +17,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.matricola || !credentials?.password || !credentials?.tenantSlug) {
           return null
+        }
+
+        const limitKey = `login-${credentials.tenantSlug}-${credentials.matricola}`
+        if (!rateLimit(limitKey, 5, 60000)) {
+          throw new Error("Troppi tentativi di accesso. Riprova tra un minuto.")
         }
 
         // 1. Trova il Tenant per slug

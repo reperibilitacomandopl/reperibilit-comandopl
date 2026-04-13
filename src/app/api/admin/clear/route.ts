@@ -2,6 +2,14 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { logAudit } from "@/lib/audit"
+import { rateLimit } from "@/lib/rate-limit"
+import { z } from "zod"
+
+const ClearSchema = z.object({
+  month: z.number(),
+  year: z.number(),
+  type: z.enum(["all", "base", "rep"]).optional().default("all")
+})
 
 export async function POST(req: Request) {
   const session = await auth()
@@ -9,18 +17,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
+  const tenantId = session.user.tenantId
+  if (!tenantId) {
+    return NextResponse.json({ error: "Fail-Safe: Impossibile cancellare i dati senza aver prima selezionato un comando specifico." }, { status: 400 })
+  }
+
+  // Rate Limiting: max 5 richieste al minuto
+  if (!rateLimit(`clear-${tenantId}`, 5, 60000)) {
+    return NextResponse.json({ error: "Troppe richieste (Rate Limit). Riprova tra poco." }, { status: 429 })
+  }
+
   try {
     const body = await req.json()
-    const { month, year, type = "all" } = body // type: "all", "base", "rep"
-
-    if (month === undefined || year === undefined) {
-       return NextResponse.json({ error: "Mese e anno richiesti" }, { status: 400 })
+    const parsed = ClearSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Mese e anno richiesti e validi" }, { status: 400 })
     }
 
-    const tenantId = session.user.tenantId
-    if (!tenantId) {
-       return NextResponse.json({ error: "Fail-Safe: Impossibile cancellare i dati senza aver prima selezionato un comando specifico." }, { status: 400 })
-    }
+    const { month, year, type } = parsed.data
     const tf = { tenantId }
 
     const startDate = new Date(Date.UTC(year, month - 1, 1))

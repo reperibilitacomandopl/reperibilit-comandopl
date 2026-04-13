@@ -4,6 +4,13 @@ import { prisma } from "@/lib/prisma"
 import { isHoliday } from "@/utils/holidays"
 import { BLOCK_CODES } from "@/utils/constants"
 import { isAssenza } from "@/utils/shift-logic"
+import { rateLimit } from "@/lib/rate-limit"
+import { z } from "zod"
+
+const GenerateSchema = z.object({
+  year: z.union([z.number(), z.string()]).optional(),
+  month: z.union([z.number(), z.string()]).optional()
+})
 
 function getDaysInMonth(month: number, year: number): number {
   return new Date(year, month + 1, 0).getDate()
@@ -19,10 +26,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
+  const tenantId = session.user.tenantId
+  if (!tenantId) {
+    return NextResponse.json({ error: "Tenant isolato richiesto" }, { status: 400 })
+  }
+
+  // Rate Limiting: max 5 richieste al minuto per tenant
+  if (!rateLimit(`generate-${tenantId}`, 5, 60000)) {
+    return NextResponse.json({ error: "Troppe richieste (Rate Limit). Riprova tra poco." }, { status: 429 })
+  }
+
   try {
+    const body = await req.json().catch(() => ({}))
+    const parsed = GenerateSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Input non valido" }, { status: 400 })
+    }
+
     // === SETTINGS ===
-    const { year: reqYear, month: reqMonth } = await req.json().catch(() => ({}))
-    const tenantId = session.user.tenantId
+    const { year: reqYear, month: reqMonth } = parsed.data
     const tf = tenantId ? { tenantId } : {}
     const settings = await prisma.globalSettings.findFirst({ where: { ...tf } })
     const year = reqYear ? parseInt(reqYear, 10) : (settings?.annoCorrente ?? 2026)
