@@ -40,16 +40,26 @@ yarn-error.log*
 *.db
 *.db-journal
 /tmp/
+/scratch/
+.vscode/
+
+# Temp/build logs
 *_out*.txt
 *_errors*.txt
-lint_final.txt
+*.log
+lint_*.txt
+lint_*.json
+lint_*.json.tmp
+
+# Data files (never commit)
 *.pdf
 *.xlsx
-.vscode/
+*.xls
+*.csv
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
 
 /src/generated/prisma
-
 .vercel
