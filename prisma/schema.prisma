@@ -144,6 +144,7 @@ model Shift {
   swaps              ShiftSwapRequest[]
 
   @@unique([userId, date, tenantId])
+  @@index([date, tenantId])
 }
 
 model PatrolTemplate {
@@ -383,21 +384,21 @@ model BalanceDetail {
 }
 
 model Notification {
-  id        String   @id @default(uuid())
-  tenantId  String?
-  userId    String
-  title     String
-  message   String
-  type      String   @default("INFO")
-  link      String?
-  isRead    Boolean  @default(false)
+  id         String   @id @default(uuid())
+  tenantId   String?
+  userId     String
+  title      String
+  message    String
+  type       String   @default("INFO")
+  link       String?
+  isRead     Boolean  @default(false)
   isArchived Boolean  @default(false)
   createdAt  DateTime @default(now())
-  metadata  String?
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  metadata   String?
+  tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, tenantId])
+  @@index([userId, isRead, tenantId])
 }
 
 model PushSubscription {
