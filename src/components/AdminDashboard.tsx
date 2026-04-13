@@ -1597,9 +1597,16 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                           const isGood = count >= 6
                           const isBad = count > 10
 
+                          // Tooltip: mostra i nomi dei reperibili
+                          const namesList = dailyShifts
+                            .map(s => allAgents.find(a => a.id === s.userId)?.name)
+                            .filter(Boolean)
+                            .join(", ")
+
                           return (
                             <td 
                               key={di.isNextMonth ? `next-tot-${di.day}` : `curr-tot-${di.day}`} 
+                              title={namesList ? `Reperibili: ${namesList}` : "Nessuno in reperibilità"}
                               className={`px-1 py-3 text-center font-black text-sm cursor-help transition-all ${di.isNextMonth ? "opacity-20" : ""} ${isGood ? "text-emerald-600 bg-emerald-50/30" : isLow ? "text-amber-600 bg-amber-50/30" : isBad ? "text-rose-600 bg-rose-50/30" : "text-slate-200"}`}
                             >
                               {count || "·"}
@@ -1607,7 +1614,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                           )
                         })}
                         <td className="px-2 py-3 text-center font-black text-indigo-700 border-l-4 border-indigo-200 bg-indigo-50/50 text-base italic">
-                          {shifts.filter(s => s.repType?.includes("REP")).length}
+                          {shifts.filter(s => s.repType?.toUpperCase().includes("REP")).length}
                         </td>
                       </tr>
 
@@ -1621,10 +1628,10 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                         </td>
                         {dayInfo.map(di => {
                           const targetDate = new Date(Date.UTC(currentYear, currentMonth - 1, di.day)).toISOString()
-                          const dailyRepShifts = shifts.filter(s => s.repType?.includes("REP") && new Date(s.date).toISOString() === targetDate)
+                          const dailyRepShifts = shifts.filter(s => s.repType?.toUpperCase().includes("REP") && new Date(s.date).toISOString() === targetDate)
                           
-                          // Estraiamo tutti gli agenti presenti per questo giorno
-                          const agentsPresent = dailyRepShifts.map(s => sortedAgents.find(a => a.id === s.userId)).filter(Boolean)
+                          // BUG FIX: Usa allAgents invece di sortedAgents per mantenere visibilità globale anche durante la ricerca
+                          const agentsPresent = dailyRepShifts.map(s => allAgents.find(a => a.id === s.userId)).filter(Boolean)
                           
                           const countUff = agentsPresent.filter(a => a?.isUfficiale).length
                           const isZero = countUff === 0 && dailyRepShifts.length > 0
@@ -1638,7 +1645,7 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                           return (
                             <td 
                               key={di.isNextMonth ? `next-uff-${di.day}` : `curr-uff-${di.day}`} 
-                              title={isZero ? `⚠ ALLERTA UFFICIALE ⚠\nSostituto al Comando: ${substituteName}` : undefined}
+                              title={isZero ? `⚠ ALLERTA UFFICIALE ⚠\nSostituto al Comando: ${substituteName}` : countUff > 0 ? `Ufficiali: ${agentsPresent.filter(a => a?.isUfficiale).map(a => a?.name).join(", ")}` : undefined}
                               className={`px-1 py-3 text-center font-black transition-all ${di.isNextMonth ? "opacity-20" : ""} ${
                                 isZero 
                                   ? "bg-red-500 text-yellow-300 text-sm shadow-[0_0_12px_rgba(239,68,68,0.8)] border border-red-500 hover:scale-125 cursor-help z-10 relative saturate-150" 
@@ -1651,8 +1658,8 @@ export default function AdminDashboard({ allAgents, shifts, currentYear, current
                         })}
                         <td className="px-2 py-3 text-center font-black text-indigo-800 border-l-4 border-indigo-300 bg-indigo-100 text-sm italic">
                           {shifts.filter(s => {
-                            if(!s.repType?.includes("REP")) return false;
-                            const agent = sortedAgents.find(a => a.id === s.userId)
+                            if(!s.repType?.toUpperCase().includes("REP")) return false;
+                            const agent = allAgents.find(a => a.id === s.userId)
                             return agent?.isUfficiale
                           }).length}
                         </td>
