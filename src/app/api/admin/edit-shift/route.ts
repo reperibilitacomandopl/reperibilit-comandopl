@@ -39,7 +39,7 @@ export async function PUT(req: Request) {
       if (currentShift?.repType) {
         // Clear only REPERIBILITÀ, keep base shift
         await prisma.shift.update({
-          where: { id: currentShift.id, tenantId: tenantId || null },
+          where: { id: currentShift.id },
           data: { repType: null }
         })
       } else {

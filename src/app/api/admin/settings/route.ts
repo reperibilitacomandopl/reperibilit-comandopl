@@ -60,6 +60,7 @@ export async function PUT(req: Request) {
   }
 
   try {
+    const tenantId = session.user.tenantId
     const body = await req.json()
     const { action } = body
 
@@ -105,7 +106,7 @@ export async function PUT(req: Request) {
       const { userId, massimale } = body
       if (!userId || massimale == null) return NextResponse.json({ error: "Missing data" }, { status: 400 })
       const user = await prisma.user.update({ 
-        where: { id: userId, tenantId: tenantId || null }, 
+        where: { id: userId }, 
         data: { massimale: parseInt(massimale, 10) } 
       })
 
@@ -154,7 +155,7 @@ export async function PUT(req: Request) {
       if (user.role === "ADMIN") return NextResponse.json({ error: "Non puoi eliminare un admin" }, { status: 403 })
       
       await prisma.user.delete({ 
-        where: { id: userId, tenantId: tenantId || null } 
+        where: { id: userId } 
       })
 
       await logAudit({

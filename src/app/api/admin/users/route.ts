@@ -5,6 +5,37 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { logAudit } from "@/lib/audit"
 
+const rankMap = [
+  { rank: "DIRIGENTE GENERALE", level: 1 },
+  { rank: "DIRIGENTE SUPERIORE", level: 2 },
+  { rank: "DIRIGENTE", level: 3 },
+  { rank: "COMANDANTE", level: 3 },
+  { rank: "COMMISSARIO SUPERIORE", level: 4 },
+  { rank: "COMMISSARIO CAPO", level: 5 },
+  { rank: "COMMISSARIO", level: 6 },
+  { rank: "VICE COMMISSARIO", level: 7 },
+  { rank: "ISPETTORE SUPERIORE", level: 8 },
+  { rank: "ISPETTORE CAPO", level: 9 },
+  { rank: "ISPETTORE", level: 10 },
+  { rank: "VICE ISPETTORE", level: 11 },
+  { rank: "SOVRINTENDENTE CAPO", level: 12 },
+  { rank: "SOVRINTENDENTE", level: 13 },
+  { rank: "VICE SOVRINTENDENTE", level: 14 },
+  { rank: "ASSISTENTE CAPO", level: 15 },
+  { rank: "ASSISTENTE", level: 15 },
+  { rank: "AGENTE SCELTO", level: 16 },
+  { rank: "AGENTE DI P.L.", level: 17 },
+  { rank: "AGENTE", level: 17 }
+];
+
+function getGradoLivello(qualifica: string | null | undefined): number {
+  if (!qualifica) return 99;
+  const qStr = qualifica.toUpperCase().trim();
+  for (const r of rankMap) { if (qStr === r.rank) return r.level; }
+  for (const r of rankMap) { if (qStr.includes(r.rank)) return r.level; }
+  return 99;
+}
+
 export async function GET(req: Request) {
   const session = await auth()
   if (session?.user?.role !== "ADMIN" && !session?.user?.canManageUsers) {
@@ -44,14 +75,14 @@ export async function PUT(req: Request) {
 
     const targetUser = await prisma.user.findFirst({ 
       where: { id: userId, tenantId: tenantId || null }, 
-      select: { name: true } 
+      select: { name: true, matricola: true } 
     })
     if (!targetUser) return NextResponse.json({ error: "Utente non trovato o non appartenente al tuo comando" }, { status: 404 })
 
     if (action === "resetPassword" && newPassword) {
       const hashed = await bcrypt.hash(newPassword, 10)
       await prisma.user.update({
-        where: { id: userId, tenantId: tenantId || null },
+        where: { id: userId },
         data: { password: hashed }
       })
 
@@ -68,8 +99,41 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: true, message: "Password resettata" })
     }
 
+    if (action === "restore") {
+      const originalMatricola = targetUser.matricola.split("_ARCHIVED_")[0]
+      
+      // Verifica se la matricola originale è stata ripresa da qualcun altro nel frattempo
+      const collision = await prisma.user.findFirst({
+        where: { matricola: originalMatricola, tenantId: tenantId || null, isActive: true }
+      })
+      
+      if (collision) {
+        return NextResponse.json({ error: "Impossibile ripristinare: la matricola originale è già in uso da un altro agente attivo." }, { status: 409 })
+      }
+
+      const restoredUser = await prisma.user.update({
+        where: { id: userId },
+        data: { 
+          isActive: true,
+          matricola: originalMatricola
+        }
+      })
+
+      await logAudit({
+        tenantId: tenantId || null,
+        adminId: session.user.id!,
+        adminName: session.user.name!,
+        action: "RESTORE_USER",
+        targetId: userId,
+        targetName: restoredUser.name,
+        details: `Ripristinato agente dall'archivio: ${restoredUser.name} (Matr. ${restoredUser.matricola})`
+      })
+
+      return NextResponse.json({ success: true, user: restoredUser })
+    }
+
     const updatedUser = await prisma.user.update({
-      where: { id: userId, tenantId: tenantId || null },
+      where: { id: userId },
       data: {
         email: email === undefined ? undefined : (email || null),
         phone: phone === undefined ? undefined : (phone || null),
@@ -82,6 +146,7 @@ export async function PUT(req: Request) {
         defaultServiceTypeId: defaultServiceTypeId === undefined ? undefined : (defaultServiceTypeId || null),
         rotationGroupId: rotationGroupId === undefined ? undefined : (rotationGroupId || null),
         qualifica: qualifica === undefined ? undefined : (qualifica || null),
+        gradoLivello: qualifica ? getGradoLivello(qualifica) : undefined,
         dataAssunzione: dataAssunzione ? new Date(dataAssunzione) : (dataAssunzione === null ? null : undefined),
         scadenzaPatente: scadenzaPatente ? new Date(scadenzaPatente) : (scadenzaPatente === null ? null : undefined),
         scadenzaPortoArmi: scadenzaPortoArmi ? new Date(scadenzaPortoArmi) : (scadenzaPortoArmi === null ? null : undefined),
@@ -146,6 +211,7 @@ export async function POST(req: Request) {
         squadra: squadra || null,
         massimale: massimale ? parseInt(massimale, 10) : 8,
         qualifica: qualifica || "Agente di P.L.",
+        gradoLivello: getGradoLivello(qualifica || "Agente di P.L."),
         dataAssunzione: dataAssunzione ? new Date(dataAssunzione) : null,
         scadenzaPatente: scadenzaPatente ? new Date(scadenzaPatente) : null,
         scadenzaPortoArmi: scadenzaPortoArmi ? new Date(scadenzaPortoArmi) : null
@@ -188,7 +254,7 @@ export async function DELETE(req: Request) {
 
     const timestamp = Date.now()
     await prisma.user.update({ 
-      where: { id: userId, tenantId: tenantId || null },
+      where: { id: userId },
       data: { 
         isActive: false,
         matricola: `${targetUser.matricola}_ARCHIVED_${timestamp}`

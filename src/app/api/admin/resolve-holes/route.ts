@@ -46,8 +46,8 @@ export async function POST(req: Request) {
     const tf = tenantId ? { tenantId } : {}
     
     const settings = await prisma.globalSettings.findFirst({ where: { ...tf } })
-    const year = reqYear ? parseInt(reqYear, 10) : (settings?.annoCorrente ?? 2026)
-    const month = reqMonth ? parseInt(reqMonth, 10) - 1 : ((settings?.meseCorrente ?? 4) - 1)
+    const year = reqYear ? parseInt(String(reqYear), 10) : (settings?.annoCorrente ?? 2026)
+    const month = reqMonth ? parseInt(String(reqMonth), 10) - 1 : ((settings?.meseCorrente ?? 4) - 1)
     const daysInMonth = getDaysInMonth(month, year)
 
     const agents = await prisma.user.findMany({

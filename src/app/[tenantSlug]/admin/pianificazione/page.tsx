@@ -11,8 +11,9 @@ export default async function PianificazionePage({ params, searchParams }: { par
   if (!session?.user) redirect("/login")
 
   const { tenantSlug } = await params
-  const tenantId = session.user.tenantId || "N0T-EX1ST1NG"
-  const tf = { tenantId }
+  const rawTenantId = session.user.tenantId
+  const tenantId = rawTenantId || null
+  const tf = tenantId ? { tenantId } : { tenantId: null }
 
   const monthStr = (await searchParams).month
   const yearStr = (await searchParams).year
@@ -26,7 +27,7 @@ export default async function PianificazionePage({ params, searchParams }: { par
       where: { role: "AGENTE", ...tf },
       orderBy: { name: "asc" },
       select: { 
-        id: true, name: true, matricola: true, isUfficiale: true, 
+        id: true, name: true, matricola: true, isUfficiale: true, isActive: true,
         email: true, phone: true, qualifica: true, gradoLivello: true, 
         squadra: true, massimale: true, defaultServiceCategoryId: true, 
         defaultServiceTypeId: true, rotationGroupId: true,
@@ -43,7 +44,13 @@ export default async function PianificazionePage({ params, searchParams }: { par
       },
     }),
     prisma.monthStatus.findUnique({
-      where: { month_year_tenantId: { month: currentMonth, year: currentYear, tenantId: tenantId || "" } },
+      where: { 
+        month_year_tenantId: { 
+          month: currentMonth, 
+          year: currentYear, 
+          tenantId: tenantId || "" 
+        } 
+      },
     }),
     prisma.globalSettings.findFirst({ where: tf }),
     prisma.rotationGroup.findMany({ where: tf, orderBy: { name: "asc" } }),

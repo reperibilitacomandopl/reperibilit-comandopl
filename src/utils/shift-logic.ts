@@ -43,9 +43,11 @@ export const isAssenza = (code: string | null | undefined): boolean => {
     // Ferie
     "F", "FERIE", "FERIE_AP", "FEST_SOP",
     // Permessi
-    "104", "MOT_PERS", "ELETT",
+    "104", "104_1", "104_2", "MOT_PERS", "ELETT",
     // Congedi
     "CONG_PAT", "CONG_PAR", "CONGEDO",
+    // Riposo
+    "R", "RIP", "RIPOSO", "RIPC",
     // Recupero
     "RR", "RP", "RPS",
     // Blocco

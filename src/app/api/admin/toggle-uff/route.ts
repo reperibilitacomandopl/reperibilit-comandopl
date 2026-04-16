@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: "Utente non trovato o non appartenente al tuo comando" }, { status: 404 })
 
     const updated = await prisma.user.update({
-      where: { id: userId, tenantId: tenantId || null },
+      where: { id: userId },
       data: { isUfficiale: !user.isUfficiale }
     })
 

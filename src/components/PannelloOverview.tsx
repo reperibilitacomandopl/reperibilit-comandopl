@@ -277,87 +277,119 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
             <div className="w-10 h-10 bg-slate-50 flex items-center justify-center rounded-xl text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all duration-300">
                {collapsedPattuglie ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
             </div>
-          </div>
-
-          {!collapsedPattuglie && (
-            <div className="space-y-10">
-              {operativiOggi === 0 ? (
-                <div className="bg-white border-2 border-dashed border-slate-100 rounded-[3rem] p-16 text-center shadow-inner">
-                   <Activity className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-                   <p className="text-slate-400 font-extrabold uppercase tracking-[0.2em] text-xs">Soggiorno Operativo Vacante</p>
-                   <p className="text-[10px] text-slate-300 font-black uppercase mt-2">Nessuna unità rilevata nei registri odierni</p>
+          </div>          <div className="space-y-10">
+            {/* 1. SEZIONE REPERIBILITÀ (Sempre visibile se ci sono persone) */}
+            {(() => {
+              const repOnly = todayShifts.filter(s => s.repType && (s.repType.toLowerCase().includes("rep")));
+              if (repOnly.length === 0) return null;
+              
+              return (
+                <div className="space-y-6 pb-6 border-b border-slate-100">
+                  <div className="flex items-center gap-4 px-2">
+                     <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.5)] animate-pulse"></div>
+                     <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">Personale in Reperibilità</h3>
+                     <div className="flex-1 h-px bg-gradient-to-r from-slate-100 to-transparent"></div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                     {repOnly.map(s => (
+                       <div key={s.userId} className="bg-amber-50/30 border border-amber-100 rounded-[2rem] p-6 shadow-sm flex items-center justify-between group hover:bg-white hover:border-amber-400 transition-all duration-300">
+                          <div className="flex items-center gap-4">
+                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs ${s.user.isUfficiale ? 'bg-amber-600 text-white shadow-lg' : 'bg-amber-100 text-amber-700'}`}>
+                                {s.user.name.split(' ').map(n => n[0]).join('').slice(0,2)}
+                             </div>
+                             <div>
+                                <p className="text-sm font-black text-slate-800 uppercase tracking-tight">{s.user.name}</p>
+                                <p className="text-[9px] font-bold text-amber-600 uppercase tracking-widest leading-none mt-1">Stato: Reperibile ({s.repType})</p>
+                             </div>
+                          </div>
+                       </div>
+                     ))}
+                  </div>
                 </div>
-              ) : (
-                (() => {
-                  const opShifts = todayShifts.filter(s => !isAssenza(s.type))
-                  const categories = [...new Set(opShifts.map(s => s.serviceCategory?.name || "Servizio Generico"))]
-                  
-                  return categories.map(cat => (
-                    <div key={cat} className="space-y-6">
-                      <div className="flex items-center gap-4 px-2">
-                         <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-                         <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] font-outfit">{cat}</h3>
-                         <div className="flex-1 h-px bg-gradient-to-r from-slate-100 to-transparent"></div>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        {(() => {
-                          const shiftsInCat = opShifts.filter(s => (s.serviceCategory?.name || "Servizio Generico") === cat)
-                          const grouped: Record<string, typeof shiftsInCat> = {}
-                          shiftsInCat.forEach(s => {
-                             const gId = s.patrolGroupId || `${s.type}-${s.serviceType?.name || 'Base'}-${s.vehicle?.name || 'N/A'}`
-                             if (!grouped[gId]) grouped[gId] = []
-                             grouped[gId].push(s)
-                          })
+              )
+            })()}
 
-                          return Object.values(grouped).map((group, idx) => (
-                            <div key={idx} className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-2xl hover:border-emerald-200 transition-all duration-500 group/card">
-                              <div className="flex justify-between items-start mb-6">
-                                <div>
-                                   <div className="flex items-center gap-2 mb-2">
-                                      <span className="px-3 py-1 bg-slate-900 text-white font-black text-[9px] uppercase rounded-lg tracking-widest">{group[0].type}</span>
-                                      {group[0].timeRange && <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{group[0].timeRange}</span>}
+            {/* 2. COCKPIT OPERATIVO (Pattuglie) */}
+            {operativiOggi === 0 ? (
+              <div className="bg-white border-2 border-dashed border-slate-100 rounded-[3rem] p-16 text-center shadow-inner">
+                 <Activity className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                 <p className="text-slate-400 font-extrabold uppercase tracking-[0.2em] text-xs">Soggiorno Operativo Vacante</p>
+                 <p className="text-[10px] text-slate-300 font-black uppercase mt-2">Nessuna unità rilevata nei registri odierni</p>
+              </div>
+            ) : (
+              (() => {
+                const opShifts = todayShifts.filter(s => !isAssenza(s.type))
+                const categories = [...new Set(opShifts.map(s => s.serviceCategory?.name || "Servizio Generico"))]
+                
+                return (
+                  <div className="space-y-12">
+                    {categories.map(cat => (
+                      <div key={cat} className="space-y-6">
+                         <div className="flex items-center gap-4 px-2">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+                            <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] font-outfit">{cat}</h3>
+                            <div className="flex-1 h-px bg-gradient-to-r from-slate-100 to-transparent"></div>
+                         </div>
+                         
+                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                           {(() => {
+                             const shiftsInCat = opShifts.filter(s => (s.serviceCategory?.name || "Servizio Generico") === cat)
+                             const grouped: Record<string, typeof shiftsInCat> = {}
+                             shiftsInCat.forEach(s => {
+                                const gId = s.patrolGroupId || `${s.type}-${s.serviceType?.name || 'Base'}-${s.vehicle?.name || 'N/A'}`
+                                if (!grouped[gId]) grouped[gId] = []
+                                grouped[gId].push(s)
+                             })
+
+                             return Object.values(grouped).map((group, idx) => (
+                               <div key={idx} className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-2xl hover:border-emerald-200 transition-all duration-500 group/card">
+                                 <div className="flex justify-between items-start mb-6">
+                                   <div>
+                                      <div className="flex items-center gap-2 mb-2">
+                                         <span className="px-3 py-1 bg-slate-900 text-white font-black text-[9px] uppercase rounded-lg tracking-widest">{group[0].type}</span>
+                                         {group[0].timeRange && <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{group[0].timeRange}</span>}
+                                      </div>
+                                      <h4 className="font-black text-slate-900 text-lg uppercase tracking-tight leading-tight">{group[0].serviceType?.name || "Pattugliamento"}</h4>
                                    </div>
-                                   <h4 className="font-black text-slate-900 text-lg uppercase tracking-tight leading-tight">{group[0].serviceType?.name || "Pattugliamento"}</h4>
-                                </div>
-                                {group[0].vehicle && (
-                                   <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-2xl text-[10px] font-black border border-blue-100 shadow-sm group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors duration-500">
-                                      <CarFront size={14} />
-                                      {group[0].vehicle.name}
-                                   </div>
-                                )}
-                              </div>
-                              
-                              <div className="space-y-4 pt-6 border-t border-slate-50">
-                                 {group.map(member => (
-                                    <div key={member.userId} className="flex items-center justify-between group/row">
-                                       <div className="flex items-center gap-4">
-                                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-[10px] ${member.user.isUfficiale ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-slate-100 text-slate-500'}`}>
-                                             {member.user.name.split(' ').map(n => n[0]).join('').slice(0,2)}
+                                   {group[0].vehicle && (
+                                      <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-2xl text-[10px] font-black border border-blue-100 shadow-sm group-hover/card:bg-blue-600 group-hover/card:text-white transition-colors duration-500">
+                                         <CarFront size={14} />
+                                         {group[0].vehicle.name}
+                                      </div>
+                                   )}
+                                 </div>
+                                 
+                                 <div className="space-y-4 pt-6 border-t border-slate-50">
+                                    {group.map(member => (
+                                       <div key={member.userId} className="flex items-center justify-between group/row">
+                                          <div className="flex items-center gap-4">
+                                             <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-[10px] ${member.user.isUfficiale ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-slate-100 text-slate-500'}`}>
+                                                {member.user.name.split(' ').map(n => n[0]).join('').slice(0,2)}
+                                             </div>
+                                             <div>
+                                                <p className="text-sm font-black text-slate-800 uppercase tracking-tight">{member.user.name}</p>
+                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{member.user.qualifica || 'Operatore'}</p>
+                                             </div>
                                           </div>
-                                          <div>
-                                             <p className="text-sm font-black text-slate-800 uppercase tracking-tight">{member.user.name}</p>
-                                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{member.user.qualifica || 'Operatore'}</p>
-                                          </div>
+                                          {member.repType && (
+                                             <div className="px-3 py-1 bg-amber-50 text-amber-700 text-[8px] font-black rounded-lg border border-amber-100 uppercase animate-pulse">
+                                                Rep. {member.repType}
+                                             </div>
+                                          )}
                                        </div>
-                                       {member.repType && (
-                                          <div className="px-3 py-1 bg-amber-50 text-amber-700 text-[8px] font-black rounded-lg border border-amber-100 uppercase animate-pulse">
-                                             Rep. {member.repType}
-                                          </div>
-                                       )}
-                                    </div>
-                                 ))}
-                              </div>
-                            </div>
-                          ))
-                        })()}
+                                    ))}
+                                 </div>
+                               </div>
+                             ))
+                           })()}
+                         </div>
                       </div>
-                    </div>
-                  ))
-                })()
-              )}
-            </div>
-          )}
+                    ))}
+                  </div>
+                )
+              })()
+            )}
+           </div>
         </div>
 
         {/* Colonna Eccezioni */}

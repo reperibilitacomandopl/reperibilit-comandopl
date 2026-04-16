@@ -1,155 +1,183 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server"
-import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { Prisma } from "@prisma/client"
-import bcrypt from "bcryptjs"
+import { auth } from "@/auth"
+import { notifyAdminActivity } from "@/lib/telegram"
+
+function getGradoLivello(qualifica: string): number {
+  const q = (qualifica || "").toUpperCase()
+  if (q.includes("DIRIGENTE GENERALE")) return 1
+  if (q.includes("DIRIGENTE SUPERIORE")) return 2
+  if (q.includes("DIRIGENTE")) return 3
+  if (q.includes("COMANDANTE")) return 4
+  if (q.includes("COMMISSARIO SUPERIORE")) return 5
+  if (q.includes("COMMISSARIO CAPO")) return 6
+  if (q.includes("COMMISSARIO")) return 7
+  if (q.includes("VICE COMMISSARIO")) return 8
+  if (q.includes("ISPETTORE SUPERIORE")) return 9
+  if (q.includes("ISPETTORE CAPO")) return 10
+  if (q.includes("VICE ISPETTORE")) return 11
+  if (q.includes("SOVRINTENDENTE CAPO")) return 12
+  if (q.includes("SOVRINTENDENTE")) return 13
+  if (q.includes("VICE SOVRINTENDENTE")) return 14
+  if (q.includes("ASSISTENTE SCELTO")) return 15
+  if (q.includes("ASSISTENTE")) return 16
+  if (q.includes("AGENTE SCELTO")) return 17
+  if (q.includes("AGENTE")) return 18
+  return 19
+}
+
+// Pulisce una stringa rimuovendo doppi spazi e portandola a UpperCase
+const superClean = (s: string) => (s || "").toString().toUpperCase().replace(/\s+/g, " ").trim()
 
 export async function POST(req: Request) {
-  const session = await auth()
-  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageShifts) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
   try {
-    const { shifts, importType } = await req.json()
-
-    if (!shifts || !Array.isArray(shifts) || shifts.length === 0) {
-      return NextResponse.json({ error: "Nessun turno da importare" }, { status: 400 })
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
     }
 
-    const tenantId = session.user.tenantId
-    const defaultPass = await bcrypt.hash("Cambiami2026!", 10)
+    const { shifts, importType } = await req.json()
+    if (!shifts || !Array.isArray(shifts)) {
+      return NextResponse.json({ error: "Dati non validi" }, { status: 400 })
+    }
 
-    // 1. Carica categorie per la mappatura automatica Squadra -> Sezione
-    const categories = await prisma.serviceCategory.findMany({
-      where: { tenantId },
-      include: { types: true }
-    })
-
-    // 2. Pre-carica gli utenti esistenti
+    // TenantId dalla sessione - Questo è il nostro riferimento unico
+    const tenantId = session.user.tenantId || null
+    
+    // 1. Caricamento anagrafica Command filtrato per tenant
     const allUsers = await prisma.user.findMany({
-      where: { role: "AGENTE", tenantId: tenantId || null },
-      select: { id: true, name: true, matricola: true }
+      where: { tenantId },
+      select: { id: true, name: true, matricola: true, tenantId: true }
     })
 
-    const matricolaMap = new Map()
-    const nameMap = new Map()
+    const nameMap = new Map<string, any>()
+    const matricolaMap = new Map<string, any>()
     allUsers.forEach(u => {
-      if (u.matricola) matricolaMap.set(u.matricola, u.id)
-      nameMap.set(u.name.toUpperCase().trim(), u.id)
+      if (u.name) nameMap.set(superClean(u.name), u)
+      if (u.matricola) matricolaMap.set(String(u.matricola).trim(), u)
     })
 
-    const resolvedOps = []
-    let createdUsersCount = 0
-    let skipped = 0
+    const resolvedOps: any[] = []
+    const missingUsers = new Set<string>()
 
-    // 3. Elaborazione turni e anagrafica
-    for (const entry of shifts) {
-      const { name, matricola, qualifica, squadra, date, type } = entry
-      if (!date || !type) continue
-
-      let userId = matricola ? matricolaMap.get(matricola) : null
-      if (!userId && name) {
-        userId = nameMap.get(name.toUpperCase().trim())
+    // 2. Risoluzione Agenti
+    for (const shiftData of shifts) {
+      const { name, matricola, date, type } = shiftData
+      const cleanName = superClean(name)
+      const cleanMatricola = matricola ? String(matricola).trim() : ""
+      
+      let userObj = cleanMatricola ? matricolaMap.get(cleanMatricola) : null
+      if (!userObj && cleanName) {
+        userObj = nameMap.get(cleanName)
       }
 
-      // AUTO-CREAZIONE AGENTE SE MANCANTE (Con Grado e Squadra)
-      if (!userId && name) {
-        try {
-          const qual = (qualifica || "").toUpperCase()
-          const squad = (squadra || "").toUpperCase()
-          
-          // Rilevamento Ufficiale (Grado o Squadra "Ufficiali")
-          const isUff = squad.includes("UFFICIALI") || 
-                        qual.includes("COMMISSARIO") || 
-                        qual.includes("ISPETTORE") || 
-                        qual.includes("DIRIGENTE") || 
-                        qual.includes("COMANDANTE") ||
-                        qual.includes("TENENTE") ||
-                        qual.includes("CAPITANO")
-
-          // Mappatura automatica Categoria ODS (Squadra -> Categoria)
-          let defaultCatId = null
-          let defaultTypeId = null
-          
-          const matchedCat = categories.find(c => {
-            const cName = c.name.toUpperCase()
-            // Semplificazione: rimuoviamo prefissi comuni per il matching
-            const sClean = squad.replace("POLIZIA ", "").replace("PRONTO ", "").replace("UFFICIO ", "").trim()
-            return squad.includes(cName) || cName.includes(sClean)
-          })
-          
-          if (matchedCat) {
-            defaultCatId = matchedCat.id
-            if (matchedCat.types.length > 0) defaultTypeId = matchedCat.types[0].id
-          }
-
-          const newUser = await prisma.user.create({
-            data: {
-              name: name.toUpperCase().trim(),
-              matricola: matricola || `NEW-${Math.random().toString(36).substr(2, 5)}`,
-              password: defaultPass,
-              role: "AGENTE",
-              tenantId: tenantId || null,
-              qualifica: qualifica || null,
-              servizio: squadra || null,
-              isUfficiale: isUff,
-              defaultServiceCategoryId: defaultCatId,
-              defaultServiceTypeId: defaultTypeId,
-              forcePasswordChange: true
-            }
-          })
-          userId = newUser.id
-          nameMap.set(newUser.name, userId)
-          createdUsersCount++
-        } catch (e) {
-          console.error("Errore autocreazione:", e); skipped++; continue
-        }
+      if (!userObj) {
+        if (cleanName) missingUsers.add(cleanName)
+        continue
       }
-
-      if (!userId) { skipped++; continue }
 
       const targetDate = new Date(date)
+      if (isNaN(targetDate.getTime())) continue
       targetDate.setUTCHours(0, 0, 0, 0)
-      resolvedOps.push({ userId, date: targetDate, type: type.toString().trim() })
+      
+      resolvedOps.push({ 
+        userId: userObj.id, 
+        date: targetDate, 
+        type: (type || "RP").toString().trim(),
+        tenantId: tenantId // Usiamo sempre il tenantId della sessione per coerenza
+      })
     }
 
     if (resolvedOps.length === 0) {
-      return NextResponse.json({ success: true, count: 0, skipped, importType, createdUsersCount })
+      const missingList = Array.from(missingUsers).slice(0, 10).join(", ")
+      return NextResponse.json({ 
+        error: `Nessun agente riconosciuto nel database per questo comando. Mancanti: ${missingList}...` 
+      }, { status: 400 })
     }
 
-    // 4. Inserimento Bulk con INSERT ... ON CONFLICT
-    if (importType === "rep") {
-      const values = resolvedOps.map(op => Prisma.sql`(gen_random_uuid(), ${op.userId}, ${op.date}::timestamp, 'RP', 'REP', ${tenantId || null})`)
-      await prisma.$executeRaw`INSERT INTO "Shift" ("id", "userId", "date", "type", "repType", "tenantId") VALUES ${Prisma.join(values)} ON CONFLICT ("userId", "date", "tenantId") DO UPDATE SET "repType" = EXCLUDED."repType"`
-    } else {
-      const values = resolvedOps.map(op => Prisma.sql`(gen_random_uuid(), ${op.userId}, ${op.date}::timestamp, ${op.type}, ${tenantId || null})`)
-      await prisma.$executeRaw`INSERT INTO "Shift" ("id", "userId", "date", "type", "tenantId") VALUES ${Prisma.join(values)} ON CONFLICT ("userId", "date", "tenantId") DO UPDATE SET "type" = EXCLUDED."type"`
-    }
+    // 3. Esecuzione Import
+    let processedCount = 0
+    const affectedUserIds = [...new Set(resolvedOps.map(op => op.userId))]
+    const allDates = resolvedOps.map(op => op.date.getTime())
+    const minDate = new Date(Math.min(...allDates))
+    const maxDate = new Date(Math.max(...allDates))
 
-    // --- NOTIFICA PER L'ADMIN CHE HA ESEGUITO L'IMPORT ---
-    try {
-      await (prisma as any).notification.create({
-        data: {
-          tenantId: tenantId || null,
-          userId: session.user.id,
-          title: "Importazione Completata",
-          message: `Caricati con successo ${resolvedOps.length} record. ${createdUsersCount > 0 ? `Creati ${createdUsersCount} nuovi agenti.` : ''}`,
-          type: "SUCCESS",
-          link: "/admin/risorse"
+    await prisma.$transaction(async (tx) => {
+      if (importType === "rep") {
+        // Reset REP selettivo: togliamo solo il flag repType per gli agenti e il periodo coinvolto
+        await tx.shift.updateMany({
+          where: {
+            userId: { in: affectedUserIds },
+            date: { gte: minDate, lte: maxDate },
+            tenantId,
+            repType: { not: null }
+          },
+          data: { repType: null }
+        })
+
+        // Upsert per ogni turno: preserva 'type' (M, P, etc) se esiste, crea se nuovo
+        for (const op of resolvedOps) {
+          await tx.shift.upsert({
+            where: {
+              userId_date_tenantId: {
+                userId: op.userId,
+                date: op.date,
+                tenantId: tenantId as any // Cast per bypassare limiti TS su indici composti nullable
+              }
+            },
+            update: {
+              repType: "rep_i"
+            },
+            create: {
+              userId: op.userId,
+              date: op.date,
+              tenantId: tenantId,
+              type: (op.type && !op.type.toUpperCase().includes("REP")) ? op.type : "RP",
+              repType: "rep_i"
+            }
+          })
+          processedCount++
         }
-      })
-    } catch (notifyError) {
-      console.error("Error creating import notification:", notifyError)
-    }
+      } else {
+        // Import Base: Reset totale nel periodo per questo comando
+        await tx.shift.deleteMany({
+          where: { userId: { in: affectedUserIds }, date: { gte: minDate, lte: maxDate }, tenantId }
+        })
+        const res = await tx.shift.createMany({
+          data: resolvedOps.map(op => ({ userId: op.userId, date: op.date, tenantId, type: op.type })),
+          skipDuplicates: true
+        })
+        processedCount = res.count
+      }
+    }, { timeout: 60000 })
+
+    // 4. Report Finale
+    const matchCount = affectedUserIds.length
+    const msg = `Elaborati ${processedCount} turni per ${matchCount} agenti. I nomi non riconosciuti sono stati saltati.`
+    
+    try {
+      notifyAdminActivity(
+        `📊 <b>Importazione Excel (${importType})</b>\n` +
+        `✅ Record elaborati: ${processedCount}\n` +
+        `👥 Agenti coinvolti: ${matchCount}\n` +
+        `⚠️ Nomi non trovati: ${missingUsers.size}\n` +
+        `👤 Da: ${session.user.name}`,
+        tenantId || undefined
+      );
+    } catch (e) {}
 
     return NextResponse.json({ 
       success: true, 
-      count: resolvedOps.length, 
-      createdUsersCount,
-      message: `Importati ${resolvedOps.length} record. Creati ${createdUsersCount} utenti con Grado e Sezione mappati correttamente.` 
+      count: processedCount, 
+      message: msg,
+      details: {
+        matched: matchCount,
+        missing: Array.from(missingUsers)
+      }
     })
   } catch (error) {
-    console.error("[SHIFTS IMPORT]", error)
-    return NextResponse.json({ error: "Errore interno caricamento" }, { status: 500 })
+    console.error("[IMPORT ERROR]", error)
+    return NextResponse.json({ error: "Errore interno durante il salvataggio" }, { status: 500 })
   }
 }

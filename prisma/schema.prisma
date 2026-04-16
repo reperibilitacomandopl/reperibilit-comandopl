@@ -26,12 +26,12 @@ model Tenant {
   lng                Float?
   primaryColor       String              @default("#4f46e5")
   absences           Absence[]
+  announcements      Announcement[]
   agendaEntries      AgendaEntry[]
   agentBalances      AgentBalance[]
   agentRequests      AgentRequest[]
   auditLogs          AuditLog[]
   certifiedDocuments CertifiedDocument[]
-  announcements      Announcement[]
   clockRecords       ClockRecord[]
   emergencyAlerts    EmergencyAlert[]
   globalSettings     GlobalSettings?
@@ -144,7 +144,6 @@ model Shift {
   swaps              ShiftSwapRequest[]
 
   @@unique([userId, date, tenantId])
-  @@index([date, tenantId])
 }
 
 model PatrolTemplate {
@@ -392,13 +391,13 @@ model Notification {
   type       String   @default("INFO")
   link       String?
   isRead     Boolean  @default(false)
-  isArchived Boolean  @default(false)
   createdAt  DateTime @default(now())
   metadata   String?
+  isArchived Boolean  @default(false)
   tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, isRead, tenantId])
+  @@index([userId, tenantId])
 }
 
 model PushSubscription {
@@ -469,7 +468,7 @@ model Announcement {
   id           String             @id @default(uuid())
   tenantId     String?
   authorId     String
-  authorName   String
+  authorName   String             @default("Comando")
   title        String
   body         String
   priority     String             @default("NORMAL")
@@ -479,8 +478,6 @@ model Announcement {
   updatedAt    DateTime           @updatedAt
   tenant       Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   reads        AnnouncementRead[]
-
-  @@index([tenantId, createdAt])
 }
 
 model AnnouncementRead {
@@ -490,5 +487,5 @@ model AnnouncementRead {
   readAt         DateTime     @default(now())
   announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
 
-  @@unique([announcementId, userId])
+  @@unique([announcementId, userId], name: "announcementId_userId")
 }

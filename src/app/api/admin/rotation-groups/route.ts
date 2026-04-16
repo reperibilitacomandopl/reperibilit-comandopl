@@ -14,7 +14,10 @@ export async function GET() {
     const groups = await prisma.rotationGroup.findMany({
       where: { ...tf },
       include: {
-        users: { select: { id: true, name: true, fixedRestDay: true } }
+        users: { 
+          where: { isActive: true },
+          select: { id: true, name: true, fixedRestDay: true } 
+        }
       },
       orderBy: { name: 'asc' }
     })

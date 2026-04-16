@@ -12,29 +12,24 @@ export async function GET() {
 
     const tenantId = session.user.tenantId
 
-    // 1. Data di oggi a mezzanotte UTC
+    // 1. Data di oggi normalizzata al fuso Europe/Rome
     const now = new Date()
-    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+    const localDateStr = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Rome' }).format(now)
+    const today = new Date(`${localDateStr}T00:00:00.000Z`)
 
-    // 2. Verifica se l'utente è un Ufficiale reperibile oggi nel proprio comando
-    const isOfficerOnDuty = await prisma.shift.findFirst({
-      where: {
-        userId: session.user.id,
-        date: today,
-        tenantId: tenantId || null,
-        user: { isUfficiale: true },
-        repType: { not: null }
-      }
+    // 2. Verifica accesso: Admin, Ufficiale o reperibile oggi
+    const isAdmin = session.user.role === "ADMIN"
+    
+    // Controlla se l'utente è un ufficiale (anche non in reperibilità oggi)
+    const userRecord = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { isUfficiale: true }
     })
 
-    const isAdmin = session.user.role === "ADMIN"
-
-    if (!isOfficerOnDuty && !isAdmin) {
-      return NextResponse.json({ error: "Accesso negato. Funzione disponibile solo per l'Ufficiale di servizio." }, { status: 403 })
-    }
+    const isOfficer = userRecord?.isUfficiale === true
 
     // 3. Recupera tutti i reperibili di oggi per lo stesso tenant
-    const dutyTeam = await prisma.shift.findMany({
+    const dutyTeamShifts = await prisma.shift.findMany({
       where: {
         date: today,
         tenantId: tenantId || null,
@@ -49,18 +44,48 @@ export async function GET() {
             phone: true,
             qualifica: true,
             telegramChatId: true,
-            gradoLivello: true
+            gradoLivello: true,
+            isUfficiale: true
           }
         }
-      },
-      orderBy: {
-        user: { gradoLivello: 'desc' } // Ordina per grado
       }
     })
 
+    const hasOfficersOnCall = dutyTeamShifts.some(s => s.user.isUfficiale)
+    let isHighestRankingOnCall = false;
+
+    if (!isOfficer && !isAdmin) {
+      // Se c'è un ufficiale in turno, gli agenti normali non hanno accesso
+      if (hasOfficersOnCall) {
+        return NextResponse.json({ error: "Accesso negato. Funzione disponibile solo per l'Ufficiale di servizio." }, { status: 403 })
+      }
+      
+      // Nessun ufficiale oggi. L'agente è in reperibilità oggi?
+      const isOnCallToday = dutyTeamShifts.some(s => s.user.id === session.user.id)
+      if (!isOnCallToday) {
+         return NextResponse.json({ error: "Accesso negato." }, { status: 403 })
+      }
+
+      // Ordiniamo per trovare il più alto in grado (gradoLivello minore)
+      if (dutyTeamShifts.length > 0) {
+        const sorted = [...dutyTeamShifts].sort((a,b) => (a.user.gradoLivello ?? 99) - (b.user.gradoLivello ?? 99))
+        const highestUserId = sorted[0].user.id
+        if (session.user.id === highestUserId) {
+           isHighestRankingOnCall = true
+        }
+      }
+
+      if (!isHighestRankingOnCall) {
+         return NextResponse.json({ error: "Accesso negato." }, { status: 403 })
+      }
+    }
+
+    // Ordina la squadra da restituire per grado
+    dutyTeamShifts.sort((a,b) => (a.user.gradoLivello ?? 99) - (b.user.gradoLivello ?? 99))
+
     return NextResponse.json({ 
       date: today,
-      team: dutyTeam.map(s => ({
+      team: dutyTeamShifts.map(s => ({
         ...s.user,
         repType: s.repType
       }))

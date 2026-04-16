@@ -29,14 +29,38 @@ export async function POST(req: Request) {
         }
       });
 
-      // 2. Trova tutti gli ADMIN e gli OFFICER del tenant per inviare notifiche push
-      const alertRecipients = await prisma.user.findMany({
-        where: { 
-          tenantId: tenantId || null, 
-          OR: [{ role: "ADMIN" }, { role: "OFFICER" }]
-        },
-        select: { id: true, name: true, telegramChatId: true }
+      // 2. Calcola oggi locale (Altamura/Roma) per trovare i reperibili
+      const now = new Date();
+      const localDateStr = now.toLocaleDateString("en-CA", { timeZone: "Europe/Rome" }); // YYYY-MM-DD
+      const localTodayUTC = new Date(localDateStr + "T00:00:00Z");
+
+      // 3. Trova tutti i destinatari: ADMIN, OFFICER e REPERIBILI del giorno
+      const [adminsAndOfficers, todayRepShifts] = await Promise.all([
+        prisma.user.findMany({
+          where: { 
+            tenantId: tenantId || null, 
+            OR: [{ role: "ADMIN" }, { role: "OFFICER" }]
+          },
+          select: { id: true, name: true, telegramChatId: true }
+        }),
+        prisma.shift.findMany({
+          where: {
+            tenantId: tenantId || null,
+            date: localTodayUTC,
+            repType: { not: null }
+          },
+          include: { user: { select: { id: true, name: true, telegramChatId: true } } }
+        })
+      ]);
+
+      // Unifica i destinatari (evitando duplicati)
+      const recipientMap = new Map<string, { id: string, name: string, telegramChatId: string | null }>();
+      adminsAndOfficers.forEach(u => recipientMap.set(u.id, u));
+      todayRepShifts.forEach(s => {
+        if (s.user) recipientMap.set(s.user.id, s.user);
       });
+
+      const alertRecipients = Array.from(recipientMap.values());
 
       // 3. Invia Push ai destinatari e crea Notifica nel DB
       const pushPayload = {
@@ -105,9 +129,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, alertId: alert.id });
     }
 
-    // --- CASO 2: ALLERTA COMANDO (Top-Down - Logica Preesistente) ---
-    const today = new Date();
-    const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+    // --- CASO 2: ALLERTA COMANDO (Top-Down) ---
+    const now = new Date();
+    // Normalizzazione data a mezzanotte Locale (Europe/Rome) -> Mezzanotte UTC per match database
+    const localDateStr = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Rome' }).format(now); // YYYY-MM-DD
+    const localTodayUTC = new Date(`${localDateStr}T00:00:00.000Z`);
+    
+    console.log(`🔍 [ALERT] Cerco reperibili per data: ${localTodayUTC.toISOString()}`);
+    
     const tf = tenantId ? { tenantId } : {};
 
     // Check if Admin OR Officer on duty today
@@ -115,7 +144,7 @@ export async function POST(req: Request) {
       where: {
         ...tf,
         userId: userId,
-        date: todayUTC,
+        date: localTodayUTC,
         user: { isUfficiale: true },
         repType: { not: null }
       }
@@ -131,16 +160,16 @@ export async function POST(req: Request) {
     const todayShifts = await prisma.shift.findMany({
       where: {
         ...tf,
-        date: todayUTC,
+        date: localTodayUTC,
         repType: { not: null }
       },
       include: { user: true }
     });
 
-    const repUsers = todayShifts.filter(s => s.user.telegramChatId);
+    const repUsers = todayShifts; // Tutti i reperibili, non solo quelli con Telegram
 
     if (repUsers.length === 0) {
-      return NextResponse.json({ error: "Nessun reperibile per la data odierna ha collegato Telegram!" }, { status: 400 });
+      return NextResponse.json({ error: "Nessun reperibile rintracciato per la data odierna!" }, { status: 400 });
     }
 
     // 2. Crea il log dell'emergenza
@@ -156,34 +185,51 @@ export async function POST(req: Request) {
       }
     });
 
-    // 3. Invia messaggi Telegram tramite la utility centralizzata
-    let sentCount = 0;
-    for (const shift of repUsers) {
-      const chatId = shift.user.telegramChatId;
-      if (chatId) {
-        const keyboard = {
-          inline_keyboard: [[{ text: "👍 PRESO IN CARICO", callback_data: `ack_alert_${alert.id}` }]]
-        };
-        const text = `🚨 <b>ALLERTA URGENZA DAL COMANDO</b> 🚨\n\nAgente <b>${shift.user.name}</b>, sei in reperibilità oggi (${shift.repType}).\nDevi recarti in comando entro 30 minuti.\n\nClicca il pulsante qui sotto per confermare la presa visione.`;
-        
-        const ok = await sendTelegramMessage(chatId, text, keyboard);
-        if (ok) {
-          sentCount++;
-          // Crea anche notifica interna nel portale
-          await prisma.notification.create({
-            data: {
-              tenantId: tenantId || null,
-              userId: shift.userId,
-              title: "🚨 ALLERTA URGENZA",
-              message: "Il Comando ha richiesto la tua presenza immediata. Controlla Telegram per i dettagli.",
-              type: "ALERT"
-            }
-          });
-        }
-      }
-    }
+    // 3. Invia messaggi (Push + Telegram) in parallelo
+    const alertPromises = repUsers.map(async (shift) => {
+      const { user } = shift;
+      const pushPayload = {
+        title: "🚨 ALLERTA URGENZA",
+        body: "Il Comando ha richiesto la tua presenza immediata. Controlla Telegram per i dettagli.",
+        url: `/${session.user.tenantSlug}/?view=agent`
+      };
 
-    return NextResponse.json({ success: true, alerted: sentCount });
+      try {
+        // A. Notifica Push PWA
+        await sendPushNotification(user.id, pushPayload);
+        
+        // B. Notifica Hub Interna
+        await prisma.notification.create({
+          data: {
+            tenantId: tenantId || null,
+            userId: user.id,
+            title: pushPayload.title,
+            message: "Allerta urgente dal comando. Recarsi in sede entro 30 minuti.",
+            type: "ALERT",
+            link: pushPayload.url
+          }
+        });
+
+        // C. Telegram (solo se disponibile)
+        if (user.telegramChatId) {
+          const keyboard = {
+            inline_keyboard: [[{ text: "👍 PRESO IN CARICO", callback_data: `ack_alert_${alert.id}` }]]
+          };
+          const text = `🚨 <b>ALLERTA URGENZA DAL COMANDO</b> 🚨\n\n${message || "Devi recarti in comando entro 30 minuti."}\n\nAgente <b>${user.name}</b>, sei in reperibilità oggi (${shift.repType}).\n\nClicca il pulsante qui sotto per confermare la presa visione.`;
+          await sendTelegramMessage(user.telegramChatId, text, keyboard);
+        }
+        
+        return true;
+      } catch (err) {
+        console.error(`❌ Errore notifica allerta per ${user.name}:`, err);
+        return false;
+      }
+    });
+
+    const results = await Promise.allSettled(alertPromises);
+    const successCount = results.filter(r => r.status === 'fulfilled').length;
+
+    return NextResponse.json({ success: true, alerted: successCount });
   } catch (err: any) {
     console.error("❌ Errore API Alert Emergency:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });

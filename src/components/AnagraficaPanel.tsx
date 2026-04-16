@@ -7,7 +7,7 @@ import { Users, Plus, Trash2, Search } from "lucide-react"
 
 interface AnagraficaPanelProps {
   agents: {
-    id: string; name: string; matricola: string; isUfficiale: boolean;
+    id: string; name: string; matricola: string; isUfficiale: boolean; isActive: boolean;
     email: string | null; phone: string | null; qualifica: string | null;
     gradoLivello: number; squadra: string | null; servizio: string | null; massimale: number;
     defaultServiceCategoryId?: string | null; defaultServiceTypeId?: string | null;
@@ -25,6 +25,7 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
   const [searchQuery, setSearchQuery] = useState("")
   const [squadraFilter, setSquadraFilter] = useState("ALL")
   const [qualificaFilter, setQualificaFilter] = useState("ALL")
+  const [showArchived, setShowArchived] = useState(false)
 
   // Edit state
   const [editingAgent, setEditingAgent] = useState<string | null>(null)
@@ -49,6 +50,7 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
 
   const filteredAgents = useMemo(() => {
     return agents.filter(a => {
+      if (a.isActive === showArchived) return false // Se mostro archiviati, escludo i non archiviati e viceversa
       if (searchQuery && !a.name.toLowerCase().includes(searchQuery.toLowerCase()) && !a.matricola.includes(searchQuery)) return false
       if (squadraFilter !== "ALL") {
         const agentSquadra = a.rotationGroup?.name || a.squadra || "Senza Squadra"
@@ -57,7 +59,7 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
       if (qualificaFilter !== "ALL" && (a.qualifica || "Agente") !== qualificaFilter) return false
       return true
     })
-  }, [agents, searchQuery, squadraFilter, qualificaFilter])
+  }, [agents, searchQuery, squadraFilter, qualificaFilter, showArchived])
 
   const startEdit = (agent: AnagraficaPanelProps["agents"][number]) => {
     setEditingAgent(agent.id)
@@ -102,13 +104,44 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
   }
 
   const deleteAgent = async (agent: { id: string; name: string }) => {
-    if (!confirm(`Vuoi davvero eliminare l'agente ${agent.name}? Operazione irreversibile.`)) return
-    const res = await fetch("/api/admin/users", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: agent.id }),
-    })
-    if (res.ok) router.refresh()
+    if (!confirm(`⚠️ Vuoi davvero eliminare l'agente ${agent.name}?\n\nL'operazione è irreversibile e l'agente verrà disattivato dal sistema.`)) return
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: agent.id }),
+      })
+      if (res.ok) {
+        toast.success(`${agent.name} eliminato con successo`)
+        // Forza un reload completo della pagina per riflettere la cancellazione
+        window.location.reload()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || "Errore durante l'eliminazione")
+      }
+    } catch (err) {
+      toast.error("Errore di connessione")
+    }
+  }
+
+  const restoreAgent = async (agent: { id: string; name: string }) => {
+    if (!confirm(`Vuoi ripristinare l'agente ${agent.name} nell'organico attivo?`)) return
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: agent.id, action: "restore" }),
+      })
+      if (res.ok) {
+        toast.success(`${agent.name} ripristinato con successo`)
+        window.location.reload()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || "Errore durante il ripristino")
+      }
+    } catch (err) {
+      toast.error("Errore di connessione")
+    }
   }
 
   const addUser = async () => {
@@ -140,12 +173,20 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
             {agents.length} dipendenti registrati nel sistema
           </p>
         </div>
-        <button
-          onClick={() => { setShowAddUser(!showAddUser); setTempMatricola(""); setTempName(""); setTempSquadra(""); setNewPass(""); setTempMassimale(8) }}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-sm transition-all shadow-sm ${showAddUser ? "text-slate-600 bg-slate-200 border border-slate-300" : "text-white bg-blue-600 hover:bg-blue-700 shadow-blue-200"}`}
-        >
-          <Plus size={18} /> {showAddUser ? "Chiudi" : "Nuovo Dipendente"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowArchived(!showArchived)}
+            className={`px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border ${showArchived ? "bg-slate-900 text-white border-slate-900 shadow-lg" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"}`}
+          >
+            {showArchived ? "Torna all'Anagrafica" : "Vedi Archivio"}
+          </button>
+          <button
+            onClick={() => { setShowAddUser(!showAddUser); setTempMatricola(""); setTempName(""); setTempSquadra(""); setNewPass(""); setTempMassimale(8) }}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-sm transition-all shadow-sm ${showAddUser ? "text-slate-600 bg-slate-200 border border-slate-300" : "text-white bg-blue-600 hover:bg-blue-700 shadow-blue-200"}`}
+          >
+            <Plus size={18} /> {showAddUser ? "Chiudi" : "Nuovo Dipendente"}
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -214,92 +255,103 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
       )}
 
       {/* Agents Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap min-w-[1100px]">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Matr.</th>
-                <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Agente</th>
-                <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Squadra / Servizio</th>
-                <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Qualifica</th>
-                <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">REP / Max</th>
-                <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Contatti</th>
-                <th className="px-5 py-3.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Azioni</th>
+            <thead>
+              <tr className="bg-slate-50/50 border-b border-slate-100">
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Matr.</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Operatore</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Assegnazione</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Qualifica</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Target REP</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Contatti</th>
+                <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Gestione</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredAgents.map(agent => (
-                <tr key={agent.id} className={`${editingAgent === agent.id ? "bg-slate-50/90 border-y-2 border-slate-300 shadow-md" : "hover:bg-blue-50/30"} transition-all`}>
+            <tbody className="divide-y divide-slate-50">
+              {filteredAgents.map(agent => {
+                const isEditing = editingAgent === agent.id;
+                const initials = agent.name.split(' ').map(n => n.charAt(0)).join('').substring(0,2) || 'AG';
+                return (
+                <tr key={agent.id} className={`${isEditing ? "bg-slate-50/90 shadow-inner" : "hover:bg-slate-50"} transition-all group`}>
                   {/* Matricola */}
-                  <td className="px-5 py-3.5">
-                    {editingAgent === agent.id ? (
-                      <input type="text" value={tempMatricola} onChange={e => setTempMatricola(e.target.value.toUpperCase())} className="border border-slate-300 rounded-lg px-2 py-1.5 w-24 text-sm font-black outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white text-slate-800" />
+                  <td className="px-6 py-4">
+                    {isEditing ? (
+                      <input type="text" value={tempMatricola} onChange={e => setTempMatricola(e.target.value.toUpperCase())} className="border-2 border-slate-200 rounded-xl px-3 py-2 w-24 text-sm font-black outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 bg-white text-slate-800 transition-all" />
                     ) : (
-                      <span className="text-xs font-mono font-black text-slate-800">{agent.matricola}</span>
+                      <div className="bg-slate-100 text-slate-500 font-mono font-black text-[11px] px-2.5 py-1 rounded inline-block uppercase tracking-widest">{agent.matricola}</div>
                     )}
                   </td>
 
                   {/* Nome */}
-                  <td className="px-5 py-3.5">
-                    {editingAgent === agent.id ? (
-                      <input type="text" value={tempName} onChange={e => setTempName(e.target.value.toUpperCase())} className="border border-slate-300 rounded-lg px-2 py-1.5 w-48 text-sm font-black outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white text-slate-800" />
+                  <td className="px-6 py-4">
+                    {isEditing ? (
+                      <input type="text" value={tempName} onChange={e => setTempName(e.target.value.toUpperCase())} className="border-2 border-slate-200 rounded-xl px-3 py-2 w-56 text-sm font-black outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 bg-white text-slate-800 transition-all" />
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-800">{agent.name}</span>
-                        {agent.isUfficiale && <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-black border border-blue-200">UFF</span>}
+                      <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 shrink-0 rounded-[1rem] flex items-center justify-center text-white text-[11px] font-black uppercase tracking-wider shadow-md ${agent.isUfficiale ? 'bg-gradient-to-br from-indigo-500 to-purple-600 shadow-indigo-200' : 'bg-gradient-to-br from-slate-400 to-slate-600 shadow-slate-200'}`}>
+                          {initials}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-black text-slate-900 text-[15px] tracking-tight">{agent.name}</span>
+                          {agent.isUfficiale ? 
+                            <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Ufficiale</span> : 
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Agente</span>
+                          }
+                        </div>
                       </div>
                     )}
                   </td>
 
                   {/* Squadra / Servizio */}
-                  <td className="px-5 py-3.5">
-                    {editingAgent === agent.id ? (
-                      <div className="flex flex-col gap-2 min-w-[200px]">
-                        <div className="grid grid-cols-2 gap-2">
+                  <td className="px-6 py-4">
+                    {isEditing ? (
+                      <div className="flex flex-col gap-3 min-w-[240px]">
+                        <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-[9px] font-black text-slate-600 uppercase mb-1">Squadra/Turnazione</label>
-                            <select value={tempRotationGroup} onChange={e => setTempRotationGroup(e.target.value)} className="border border-slate-300 rounded-lg px-2 py-1.5 w-full text-xs font-bold outline-none focus:border-blue-500 bg-white text-slate-800 focus:ring-1 focus:ring-blue-500 mb-1">
+                            <label className="block text-[9px] font-black text-slate-600 uppercase mb-1">Squadra</label>
+                            <select value={tempRotationGroup} onChange={e => setTempRotationGroup(e.target.value)} className="w-full border-2 border-slate-200 rounded-xl px-2 py-1.5 text-xs font-bold outline-none focus:border-indigo-400 bg-white text-slate-800 transition-all mb-1">
                               <option value="">(Libera) Text: {agent.squadra || ""}</option>
                               {rotationGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                             </select>
                             {!tempRotationGroup && (
-                               <input type="text" value={tempSquadra} onChange={e => setTempSquadra(e.target.value.toUpperCase())} placeholder="Es. Squadra A" className="border border-slate-300 rounded-lg px-2 py-1.5 w-full text-xs font-bold outline-none focus:border-blue-500 bg-white text-slate-800 focus:ring-1 focus:ring-blue-500" />
+                               <input type="text" value={tempSquadra} onChange={e => setTempSquadra(e.target.value.toUpperCase())} placeholder="Es. Squadra A" className="w-full border-2 border-slate-200 rounded-xl px-2 py-1.5 text-xs font-bold outline-none focus:border-indigo-400 bg-white text-slate-800 transition-all" />
                             )}
                           </div>
                           <div>
-                            <label className="block text-[9px] font-black text-slate-600 uppercase mb-1">Servizio Text</label>
-                            <input type="text" value={tempServizio} onChange={e => setTempServizio(e.target.value)} placeholder="Es. Viabilità" className="border border-slate-300 rounded-lg px-2 py-1.5 w-full text-xs font-bold outline-none focus:border-blue-500 bg-white text-slate-800 focus:ring-1 focus:ring-blue-500" />
+                            <label className="block text-[9px] font-black text-slate-600 uppercase mb-1">Dettaglio Servizio (Ods)</label>
+                            <input type="text" value={tempServizio} onChange={e => setTempServizio(e.target.value)} placeholder="Es. Viabilità" className="w-full border-2 border-slate-200 rounded-xl px-2 py-1.5 text-xs font-bold outline-none focus:border-indigo-400 bg-white text-slate-800 transition-all" />
                           </div>
                         </div>
-                        <div className="pt-2 border-t border-slate-200">
-                          <label className="block text-[9px] font-black text-slate-600 uppercase mb-1">Servizio di Default OdS</label>
-                          <select value={tempDefaultCategoryId} onChange={e => { setTempDefaultCategoryId(e.target.value); setTempDefaultTypeId("") }} className="border border-slate-300 rounded-lg px-2 py-1.5 w-full text-[10px] font-bold mb-1 outline-none bg-white text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                        <div className="pt-2 border-t border-slate-100">
+                          <label className="block text-[9px] font-black text-slate-600 uppercase mb-1">Gruppo OdS (Macro)</label>
+                          <select value={tempDefaultCategoryId} onChange={e => { setTempDefaultCategoryId(e.target.value); setTempDefaultTypeId("") }} className="w-full border-2 border-slate-200 rounded-xl px-2 py-1.5 text-xs font-bold mb-1 outline-none focus:border-indigo-400 bg-white transition-all text-slate-800">
                             <option value="">Nessun Servizio</option>
                             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                           </select>
                           {tempDefaultCategoryId && (
-                            <select value={tempDefaultTypeId} onChange={e => setTempDefaultTypeId(e.target.value)} className="border border-slate-300 rounded-lg px-2 py-1.5 w-full text-[10px] font-bold text-blue-700 outline-none bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-                              <option value="">Generico</option>
+                            <select value={tempDefaultTypeId} onChange={e => setTempDefaultTypeId(e.target.value)} className="w-full border-2 border-indigo-200 rounded-xl px-2 py-1.5 text-[11px] font-bold text-indigo-700 outline-none focus:border-indigo-400 bg-indigo-50 transition-all">
+                              <option value="">Servizio Generico</option>
                               {categories.find(c => c.id === tempDefaultCategoryId)?.types.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                             </select>
                           )}
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-col flex-wrap gap-1 items-start">
-                        <span className="text-[10px] bg-slate-100 text-slate-800 font-black px-2.5 py-1.5 rounded-lg border border-slate-200 inline-block">
-                          {agent.rotationGroup?.name || agent.squadra || "Senza Squadra"}
+                      <div className="flex flex-col flex-wrap gap-2 items-start">
+                        <span className="text-[10px] font-black text-slate-700 bg-slate-100 px-3 py-1 rounded-[0.7rem] border border-slate-200 uppercase tracking-widest">
+                          {agent.rotationGroup?.name || agent.squadra || "Non assegtato"}
                         </span>
                         {agent.servizio && !agent.defaultServiceCategoryId && (
-                           <span className="text-[9px] font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded border border-indigo-200 inline-block">
+                           <span className="text-[10px] font-bold text-pink-700 bg-pink-50 px-3 py-0.5 rounded border border-pink-100">
                              {agent.servizio}
                            </span>
                         )}
                         {agent.defaultServiceCategoryId && (
-                          <span className="text-[9px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-200 inline-block">
+                          <span className="text-[10px] font-bold text-teal-800 bg-teal-50 px-3 py-0.5 rounded border border-teal-100">
                             {categories.find(c => c.id === agent.defaultServiceCategoryId)?.name}
-                            {agent.defaultServiceTypeId && ` ▶ ${categories.find(c => c.id === agent.defaultServiceCategoryId)?.types.find(t => t.id === agent.defaultServiceTypeId)?.name}`}
+                            {agent.defaultServiceTypeId && ` › ${categories.find(c => c.id === agent.defaultServiceCategoryId)?.types.find(t => t.id === agent.defaultServiceTypeId)?.name}`}
                           </span>
                         )}
                       </div>
@@ -307,63 +359,72 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
                   </td>
 
                   {/* Qualifica */}
-                  <td className="px-5 py-3.5">
-                    <span className="font-bold text-slate-700 text-xs">{agent.qualifica || "Agente"}</span>
+                  <td className="px-6 py-4">
+                    <span className="font-bold text-slate-500 text-sm whitespace-nowrap">{agent.qualifica || "Agente"}</span>
                   </td>
 
                   {/* REP / Max */}
-                  <td className="px-5 py-3.5">
-                    {editingAgent === agent.id ? (
-                      <input type="number" value={tempMassimale} onChange={e => setTempMassimale(parseInt(e.target.value))} className="border border-slate-300 rounded-lg px-2 py-1.5 w-16 text-sm font-black outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white text-slate-800" />
+                  <td className="px-6 py-4">
+                    {isEditing ? (
+                      <input type="number" value={tempMassimale} onChange={e => setTempMassimale(parseInt(e.target.value))} className="border-2 border-amber-200 rounded-xl px-3 py-2 w-20 text-sm font-black outline-none focus:border-amber-400 bg-amber-50 text-amber-900 transition-all" />
                     ) : (
-                      <span className="font-black px-2.5 py-1 rounded-lg text-xs border bg-slate-50 text-slate-800 border-slate-200">
-                        {agent.massimale}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-8 h-8 rounded-[0.8rem] bg-indigo-50 text-indigo-700 border border-indigo-100 flex items-center justify-center font-black text-xs shadow-sm">
+                          {agent.massimale}
+                        </span>
+                      </div>
                     )}
                   </td>
 
                   {/* Contatti */}
-                  <td className="px-5 py-3.5">
-                    {editingAgent === agent.id ? (
-                      <div className="flex flex-col gap-2">
-                        <input type="email" value={tempEmail} onChange={e => setTempEmail(e.target.value)} placeholder="Email..." className="border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-bold outline-none w-48 focus:border-blue-500 bg-white text-slate-800 focus:ring-1 focus:ring-blue-500" />
-                        <input type="tel" value={tempPhone} onChange={e => setTempPhone(e.target.value)} placeholder="Telefono..." className="border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-bold outline-none w-40 focus:border-blue-500 bg-white text-slate-800 focus:ring-1 focus:ring-blue-500" />
-                        <div className="flex items-center gap-2 mt-1 pt-2 border-t border-slate-200">
-                          <input type="text" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Nuova Password" className="border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-bold w-32 bg-white text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                  <td className="px-6 py-4">
+                    {isEditing ? (
+                      <div className="flex flex-col gap-2 min-w-[200px]">
+                        <input type="email" value={tempEmail} onChange={e => setTempEmail(e.target.value)} placeholder="Email..." className="border-2 border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-indigo-400 bg-white text-slate-800 transition-all" />
+                        <input type="tel" value={tempPhone} onChange={e => setTempPhone(e.target.value)} placeholder="Telefono..." className="border-2 border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-indigo-400 bg-white text-slate-800 transition-all" />
+                        <div className="flex items-center gap-2 mt-2 pt-3 border-t border-slate-100">
+                          <input type="text" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Nuova Password" className="border-2 border-rose-200 rounded-xl px-3 py-2 text-xs font-bold bg-rose-50 text-rose-800 focus:border-rose-400 transition-all flex-1" />
                           <button onClick={async () => {
                             if (!newPass) return toast.error("Inserisci una password")
                             const res = await fetch("/api/admin/users", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: agent.id, action: "resetPassword", newPassword: newPass }) })
                             if (res.ok) { toast.success("Password aggiornata!"); setNewPass("") }
-                          }} className="text-[10px] font-black text-slate-800 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-200 transition-all">Reset</button>
+                          }} className="text-[10px] font-black text-rose-700 bg-rose-100 px-3 py-2 rounded-xl border border-rose-200 hover:bg-rose-500 hover:text-white hover:border-transparent transition-all uppercase tracking-widest shrink-0">Reset</button>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-col gap-0.5">
-                        <span className={agent.email ? "text-xs font-semibold text-slate-700" : "text-slate-500 italic text-[10px]"}>{agent.email || "No Email"}</span>
-                        <span className="text-[10px] font-semibold text-slate-500">{agent.phone || ""}</span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`text-[11px] font-bold ${agent.email ? "text-slate-600" : "text-slate-400 italic"}`}>{agent.email || "No Email"}</span>
+                        <span className="text-[11px] font-bold text-slate-500">{agent.phone || ""}</span>
                       </div>
                     )}
                   </td>
 
                   {/* Azioni */}
-                  <td className="px-5 py-3.5 text-right">
-                    {editingAgent === agent.id ? (
+                  <td className="px-6 py-4 text-right">
+                    {isEditing ? (
                       <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => setEditingAgent(null)} className="text-xs font-bold text-slate-600 px-4 py-2 bg-slate-100 rounded-xl border border-slate-200 hover:bg-slate-200 transition-all">Annulla</button>
-                        <button onClick={() => saveEdit(agent.id)} className="text-xs font-black text-white px-5 py-2 bg-emerald-600 rounded-xl shadow-md hover:bg-emerald-700 transition-all">Salva</button>
+                        <button onClick={() => setEditingAgent(null)} className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl hover:bg-slate-50 hover:text-slate-700 transition-all active:scale-95">Annulla</button>
+                        <button onClick={() => saveEdit(agent.id)} className="text-[10px] font-black uppercase tracking-widest text-white px-5 py-2.5 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95">Salva</button>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => router.push(`/admin/risorse/${agent.id}`)} className="text-[11px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-100 border border-indigo-200 hover:bg-indigo-600 hover:text-white px-3 py-2.5 rounded-xl transition-all shadow-sm shadow-indigo-100">Fascicolo</button>
-                        <button onClick={() => startEdit(agent)} className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl transition-all shadow-sm">Modifica</button>
-                        <button onClick={() => deleteAgent(agent)} title="Elimina" className="p-2 text-red-500 bg-red-50 hover:bg-red-600 hover:text-white rounded-xl transition-all border border-red-100">
-                          <Trash2 size={14} />
-                        </button>
+                      <div className="flex items-center justify-end gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                        {showArchived ? (
+                          <button onClick={() => restoreAgent(agent)} className="text-[9px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 hover:bg-emerald-600 hover:text-white px-4 py-2 rounded-xl transition-all shadow-sm border border-emerald-100">Ripristina</button>
+                        ) : (
+                          <>
+                            <button onClick={() => router.push(`/admin/risorse/${agent.id}`)} className="text-[9px] font-black uppercase tracking-widest text-white bg-slate-800 hover:bg-black px-4 py-2 rounded-xl transition-all shadow-md">Fascicolo</button>
+                            <button onClick={() => startEdit(agent)} className="text-[9px] font-black uppercase tracking-widest text-indigo-700 bg-indigo-50 hover:bg-indigo-600 hover:text-white px-4 py-2 rounded-xl transition-all shadow-sm border border-indigo-100">Modifica</button>
+                            <button onClick={() => deleteAgent(agent)} title="Elimina defintivamente" className="p-2 text-rose-500 bg-rose-50 hover:bg-rose-600 hover:text-white rounded-xl transition-all border border-rose-100 shadow-sm active:scale-95">
+                              <Trash2 size={16} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>

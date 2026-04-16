@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import NotificationHub from "./NotificationHub"
@@ -112,8 +112,12 @@ export default function AdminSidebar({
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isEnding, setIsEnding] = useState(false)
-
   const isImpersonating = isSuperAdmin && !!currentTenantId
+  
+  // Auto-close sidebar on route change on mobile
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
 
   const handleEndImpersonation = async () => {
     setIsEnding(true)
@@ -137,7 +141,7 @@ export default function AdminSidebar({
       {/* Mobile Burger Button */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-3 bg-slate-900 border border-slate-800 text-blue-400 rounded-2xl shadow-2xl"
+        className={`lg:hidden fixed top-4 left-4 z-50 p-3 bg-slate-900 border border-slate-800 text-blue-400 rounded-2xl shadow-2xl transition-opacity ${mobileOpen ? 'opacity-0' : 'opacity-100'}`}
         title="Apri menu"
       >
         <Menu size={24} />
@@ -146,15 +150,15 @@ export default function AdminSidebar({
       {/* Mobile Overlay */}
       {mobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[60] animate-in fade-in duration-300"
+          className="lg:hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] animate-in fade-in duration-300"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       <aside
         className={`${
-          collapsed ? "w-[80px]" : "w-[300px]"
-        } h-screen flex flex-col bg-[#050914] border-r border-white/5 transition-all duration-500 ease-in-out shrink-0 relative z-[70] 
+          collapsed ? "w-[80px]" : "w-[280px]"
+        } h-screen flex flex-col bg-[#050914] border-r border-white/5 transition-all duration-500 ease-in-out shrink-0 relative z-[110] 
         ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         fixed lg:sticky top-0 left-0`}
       >

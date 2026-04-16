@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { Settings, Mail, X, Save, Eye, EyeOff, AlertCircle, Loader2, BarChart3, Hash } from "lucide-react"
 import StatisticsDashboard from "./StatisticsDashboard"
 import AdminInitialBalances from "./AdminInitialBalances"
+import ServicesSettings from "./ServicesSettings"
 
 type Agent = {
   id: string; name: string; matricola: string; isUfficiale: boolean;
@@ -21,7 +22,8 @@ type SettingsData = {
   permettiConsecutivi: boolean;
 }
 
-type TabType = "algorithm" | "pec" | "stats" | "balances"
+export type TabType = "algorithm" | "pec" | "stats" | "balances" | "services"
+
 
 type PecConfig = {
   host: string; port: string; user: string; pass: string; from: string
@@ -106,7 +108,7 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
   }
 
   const innerContent = (
-      <div className={`bg-white ${embedded ? 'rounded-2xl' : 'rounded-3xl shadow-2xl'} w-full ${embedded ? '' : 'max-w-7xl w-[95vw] max-h-[95vh]'} overflow-hidden flex flex-col`} onClick={e => e.stopPropagation()}
+      <div className={`bg-white ${embedded ? 'rounded-2xl' : 'rounded-3xl shadow-2xl'} w-full ${embedded ? '' : 'max-w-5xl w-[95vw] max-h-[92vh]'} overflow-hidden flex flex-col`} onClick={e => e.stopPropagation()}
         style={embedded ? undefined : { animation: 'fadeInUp 0.3s ease-out' }}
       >
         {/* Header Premium */}
@@ -144,6 +146,7 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
             {[
               { id: "algorithm", label: "Algoritmo", icon: Settings },
               { id: "pec", label: "Email / PEC", icon: Mail },
+              { id: "services", label: "Servizi", icon: Settings },
               { id: "stats", label: "Analisi Dati", icon: BarChart3 },
               { id: "balances", label: "Saldi", icon: Hash }
             ].map(tab => (
@@ -385,6 +388,11 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
               {/* TAB: BALANCES */}
               {activeTab === "balances" && (
                 <AdminInitialBalances allAgents={agents} currentYear={settings.annoCorrente} />
+              )}
+
+              {/* TAB: SERVICES */}
+              {activeTab === "services" && (
+                <ServicesSettings />
               )}
             </>
           )}

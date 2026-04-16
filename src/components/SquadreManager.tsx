@@ -16,13 +16,13 @@ interface RotationGroup {
   pStartTime: string
   pEndTime: string
   startDate: string
-  users: { id: string; name: string; fixedRestDay: number | null }[]
+  users: { id: string; name: string; fixedRestDay: number | null; isActive?: boolean }[]
 }
 
 export default function SquadreManager() {
   const [loading, setLoading] = useState(true)
   const [groups, setGroups] = useState<RotationGroup[]>([])
-  const [allUsers, setAllUsers] = useState<{ id: string; name: string }[]>([])
+  const [allUsers, setAllUsers] = useState<{ id: string; name: string; isActive?: boolean }[]>([])
 
   // Creazione nuovo gruppo
   const [showCreate, setShowCreate] = useState(false)
@@ -57,9 +57,9 @@ export default function SquadreManager() {
 
   useEffect(() => { loadData() }, [])
 
-  // Utenti non ancora assegnati a nessun gruppo
-  const assignedUserIds = new Set(groups.flatMap(g => g.users.map(u => u.id)))
-  const unassignedUsers = allUsers.filter(u => !assignedUserIds.has(u.id))
+  // Utenti non ancora assegnati a nessun gruppo (filtra solo gli attivi)
+  const assignedUserIds = new Set(groups.flatMap(g => (g.users || []).filter(u => u.isActive !== false).map(u => u.id)))
+  const unassignedUsers = allUsers.filter(u => u.isActive !== false && !assignedUserIds.has(u.id))
 
   // --- CRUD Gruppi ---
   const createGroup = async () => {
@@ -95,7 +95,7 @@ export default function SquadreManager() {
   const savePattern = async () => {
     if (!editingPatternId) return
     try {
-      await fetch("/api/admin/rotation-groups", {
+      const res = await fetch("/api/admin/rotation-groups", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -109,10 +109,11 @@ export default function SquadreManager() {
           startDate: editStartDate
         })
       })
+      if (!res.ok) throw new Error()
       toast.success("Sequenza e orari salvati!")
       setEditingPatternId(null)
       loadData()
-    } catch { toast.error("Errore salvataggio") }
+    } catch { toast.error("Errore salvataggio: verifica i dati e i permessi") }
   }
 
   // --- Drag & Drop ---

@@ -24,12 +24,13 @@ export async function sendTelegramMessage(chatId: string, text: string, replyMar
       }),
     });
 
+    const data = await res.json();
     if (!res.ok) {
-      const err = await res.json();
-      console.error("❌ Errore invio messaggio Telegram:", err);
+      console.error("❌ Errore API Telegram:", data);
       return false;
     }
 
+    console.log(`✅ Messaggio Telegram inviato a ${chatId}`);
     return true;
   } catch (error) {
     console.error("❌ Eccezione invio messaggio Telegram:", error);
@@ -106,4 +107,28 @@ export async function broadcastEmergency(tenantId: string, message: string) {
   );
 
   return results.filter(r => r).length;
+}
+
+/**
+ * Invia una notifica di attività amministrativa a un canale di log o all'admin specifico
+ */
+export async function notifyAdminActivity(message: string, tenantId?: string) {
+  const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  
+  // Se abbiamo un tenantId, cerchiamo gli amministratori del tenant
+  if (tenantId) {
+    const admins = await prisma.user.findMany({
+      where: { tenantId, role: "ADMIN", telegramChatId: { not: null } },
+      select: { telegramChatId: true }
+    });
+    
+    for (const admin of admins) {
+      await sendTelegramMessage(admin.telegramChatId!, `⚙️ <b>ATTIVITÀ SISTEMA</b> ⚙️\n\n${message}`);
+    }
+  }
+
+  // Se esiste un canale admin globale configurato via ENV, mandiamolo anche lì
+  if (adminChatId) {
+    await sendTelegramMessage(adminChatId, `🌐 <b>ATTIVITÀ GLOBALE</b> 🌐\n\n${message}`);
+  }
 }

@@ -40,6 +40,12 @@ export default async function Home({
 
   const tenantId = session.user.tenantId
 
+  // Fetch current user's full profile from DB
+  const currentUserDb = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { isUfficiale: true, telegramChatId: true }
+  })
+
   const users = await prisma.user.findMany({
     where: { role: "AGENTE", ...(tenantId ? { tenantId } : {}) },
     orderBy: { name: 'asc' },
@@ -105,7 +111,7 @@ export default async function Home({
       {/* Agent Dashboard */}
       <main className={`flex-1 ${containerClass} py-4 sm:py-6 lg:py-8`}>
         <DynamicAgentDashboard 
-          currentUser={{ id: session?.user?.id || "", matricola: matricola || "", name: name || "" }} 
+          currentUser={{ id: session?.user?.id || "", matricola: matricola || "", name: name || "", isUfficiale: currentUserDb?.isUfficiale || false, telegramChatId: currentUserDb?.telegramChatId || null }} 
           shifts={shifts} 
           allAgents={users as any} 
           currentYear={currentYear} 
