@@ -109,11 +109,12 @@ export function AdminToolbar({
         {/* MONTH NAVIGATOR (Recuperato e stilizzato) */}
         <div className="flex items-center gap-4 bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100 shadow-inner">
           <button 
+            type="button"
             onClick={onPrevMonth}
-            className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all text-slate-400 hover:text-indigo-600 active:scale-90"
+            className="p-4 md:p-2 hover:bg-white hover:shadow-md rounded-xl transition-all text-slate-400 hover:text-indigo-600 active:scale-75 touch-manipulation z-10"
             title="Mese Precedente"
           >
-            <Play className="rotate-180" width={16} height={16} fill="currentColor" />
+            <Play className="rotate-180" width={18} height={18} fill="currentColor" />
           </button>
           
           <div className="flex flex-col items-center min-w-[120px]">
@@ -122,11 +123,12 @@ export function AdminToolbar({
           </div>
 
           <button 
+            type="button"
             onClick={onNextMonth}
-            className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition-all text-slate-400 hover:text-indigo-600 active:scale-90"
+            className="p-4 md:p-2 hover:bg-white hover:shadow-md rounded-xl transition-all text-slate-400 hover:text-indigo-600 active:scale-75 touch-manipulation z-10"
             title="Mese Successivo"
           >
-            <Play width={16} height={16} fill="currentColor" />
+            <Play width={18} height={18} fill="currentColor" />
           </button>
         </div>
 
