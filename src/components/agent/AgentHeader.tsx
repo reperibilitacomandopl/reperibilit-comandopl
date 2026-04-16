@@ -132,27 +132,39 @@ export default function AgentHeader({
             </div>
 
             <div className="mt-10 flex items-center gap-4">
-               <div className="flex bg-white/5 rounded-2xl p-1 border border-white/10">
-                  <button onClick={() => onMonthChange(prevMonth, prevYear)} className="p-3 hover:bg-white/10 rounded-xl transition-all">
-                    <ChevronLeft size={20} />
+                <div className="flex bg-white/10 rounded-2xl p-1 border border-white/20 shadow-inner">
+                  <button 
+                    type="button"
+                    onClick={() => onMonthChange(prevMonth, prevYear)} 
+                    className="p-3 hover:bg-white/20 rounded-xl transition-all active:scale-75 touch-manipulation"
+                    title="Mese Precedente"
+                  >
+                    <ChevronLeft size={24} className="text-white" />
                   </button>
-                  <div className="px-6 flex items-center">
-                    <span className="text-xs font-black uppercase tracking-[0.2em]">{monthNames[currentMonth-1]} {currentYear}</span>
+                  <div className="px-6 flex items-center min-w-[140px] justify-center">
+                    <span className="text-sm font-black uppercase tracking-[0.2em] text-white">
+                      {monthNames[currentMonth-1]} {currentYear}
+                    </span>
                   </div>
-                  <button onClick={() => onMonthChange(nextMonth, nextYear)} className="p-3 hover:bg-white/10 rounded-xl transition-all">
-                    <ChevronRight size={20} />
+                  <button 
+                    type="button"
+                    onClick={() => onMonthChange(nextMonth, nextYear)} 
+                    className="p-3 hover:bg-white/20 rounded-xl transition-all active:scale-75 touch-manipulation"
+                    title="Mese Successivo"
+                  >
+                    <ChevronRight size={24} className="text-white" />
                   </button>
-               </div>
+                </div>
                
-               {/* Telegram Link Button */}
+               {/* Telegram Link Button - Prominent on Mobile */}
                {!currentUser.telegramChatId && (
                  <button 
                   onClick={onGenerateTelegramCode}
                   disabled={telegramLoading}
-                  className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-400/30 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 transition-all active:scale-95"
+                  className="bg-[#0088cc] hover:bg-[#0077b5] text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 transition-all active:scale-95 shadow-lg shadow-blue-500/20"
                  >
-                   {telegramLoading ? <RefreshCw size={14} className="animate-spin" /> : <Smartphone size={14} />}
-                   {telegramCode ? `Codice: ${telegramCode}` : "Collega Telegram"}
+                   {telegramLoading ? <RefreshCw size={16} className="animate-spin" /> : <Send size={16} />}
+                   {telegramCode ? `Codice: ${telegramCode}` : "Telegram"}
                  </button>
                )}
             </div>

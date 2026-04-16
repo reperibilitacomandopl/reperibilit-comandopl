@@ -130,10 +130,10 @@ export default function AgentDashboard({
         nextYear={nextYear}
         monthNames={monthNames}
         onMonthChange={(m: number, y: number) => {
-          window.location.href = `/?view=agent&month=${m}&year=${y}`
+          window.location.href = `/${tenantSlug || ''}?view=agent&month=${m}&year=${y}`
         }}
         onYearChange={(y: number) => {
-          window.location.href = `/?view=agent&month=${currentMonth}&year=${y}`
+          window.location.href = `/${tenantSlug || ''}?view=agent&month=${currentMonth}&year=${y}`
         }}
         signOutAction={signOutAction}
         isClockedIn={admin.isClockedIn}

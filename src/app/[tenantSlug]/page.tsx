@@ -71,25 +71,27 @@ export default async function Home({
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Navbar - Desktop Only (Hidden on Mobile as Dashboard provides its own) */}
-      <header className="hidden lg:block bg-white shadow-sm border-b border-slate-200 sticky top-0 z-50">
+      {/* Navbar - Desktop & Mobile Header */}
+      <header className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-50">
         <div className={`${containerClass} h-16 flex items-center justify-between`}>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-900 rounded-md flex items-center justify-center text-white font-bold text-xs">
+            <div className="w-8 h-8 bg-blue-900 rounded-md flex items-center justify-center text-white font-bold text-xs shrink-0">
               PL
             </div>
-            <div className="hidden sm:block">
-              <h1 className="text-sm font-bold text-slate-800 leading-tight">Polizia Locale {session.user.tenantName ? `di ${session.user.tenantName}` : "Nazionale"}</h1>
-              <p className="text-[10px] text-slate-400 font-medium leading-tight">Gestione Reperibilità</p>
+            <div className="flex flex-col">
+              <h1 className="text-[10px] sm:text-sm font-bold text-slate-800 leading-tight">
+                Polizia Locale {session.user.tenantName ? `di ${session.user.tenantName}` : "di Altamura"}
+              </h1>
+              <p className="text-[9px] sm:text-[10px] text-slate-400 font-medium leading-tight">Gestione Reperibilità</p>
             </div>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <div className="text-right hidden sm:block">
               <p className="text-sm font-semibold text-slate-800">{name}</p>
               <p className="text-xs text-slate-500">Matr. {matricola} • {role}</p>
             </div>
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3 sm:gap-6">
               <NotificationHub userRole={role} />
               <form action={async () => {
                 "use server"

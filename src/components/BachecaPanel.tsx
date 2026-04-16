@@ -33,9 +33,15 @@ export default function BachecaPanel({ isAdmin = false }: { isAdmin?: boolean })
     try {
       const res = await fetch("/api/announcements")
       const data = await res.json()
-      if (res.ok) setAnnouncements(data)
-    } catch {
-      toast.error("Errore caricamento bacheca")
+      if (res.ok) {
+        setAnnouncements(data)
+      } else {
+        console.error("Bacheca API Error:", data.error)
+        toast.error(`Errore Bacheca: ${data.error || "Riprova più tardi"}`)
+      }
+    } catch (err) {
+      console.error("Bacheca Fetch Exception:", err)
+      toast.error("Errore di connessione alla bacheca")
     }
     setLoading(false)
   }
