@@ -162,7 +162,7 @@ function LoginForm() {
           {/* Footer */}
           <div className="border-t border-white/10 px-8 py-4 bg-white/5">
             <p className="text-[10px] text-white/30 text-center font-medium">
-              Accesso riservato al personale autorizzato · v2.1
+              Accesso riservato al personale autorizzato · v2.2
             </p>
           </div>
         </div>
