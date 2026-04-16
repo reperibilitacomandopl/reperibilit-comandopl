@@ -74,9 +74,13 @@ model User {
   telegramLinkCode         String?
   telegramLinkExpires      DateTime?
   dataAssunzione           DateTime?
+  dataDiNascita            DateTime?
   scadenzaPatente          DateTime?
   scadenzaPortoArmi        DateTime?
+  tipoContratto            String?
   noteInterne              String?
+  defaultPartnerIds        String[]
+  fixedServiceDays         String[]
   createdAt                DateTime           @default(now())
   updatedAt                DateTime           @updatedAt
   canConfigureSystem       Boolean            @default(false)

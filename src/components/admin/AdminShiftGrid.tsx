@@ -469,15 +469,26 @@ export default function AdminShiftGrid({
               </button>
             </div>
 
-            {/* Input libero */}
+            {/* Selezione Codice Rigida */}
             <div className="px-5 pt-4 pb-2">
               <div className="relative flex items-center">
-                <input type="text" value={editValue} onChange={e => setEditValue(e.target.value.toUpperCase())}
-                  placeholder="Digita codice..."
-                  className="w-full bg-slate-100 border-2 border-slate-200 rounded-xl pl-4 pr-20 py-3 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
-                  autoFocus />
-                <button onClick={() => handleSave(editValue)}
-                  className="absolute right-1.5 px-4 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-colors">
+                <select value={editValue} onChange={e => setEditValue(e.target.value)}
+                  className="w-full bg-slate-100 border-2 border-slate-200 rounded-xl pl-4 pr-20 py-3 text-sm font-bold text-slate-900 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none hover:bg-slate-50 cursor-pointer transition-colors"
+                  autoFocus>
+                  <option value="">Seleziona codice...</option>
+                  <optgroup label="Tipi di Turno e Riposo">
+                    {["M7", "M8", "P12", "P14", "P15", "P16", "R", "RR", "REP", "REP_I"].map(c => <option key={c} value={c}>{c}</option>)}
+                  </optgroup>
+                  {AGENDA_CATEGORIES.map(cat => (
+                    <optgroup key={cat.group} label={`${cat.emoji} ${cat.group}`}>
+                      {cat.items.map(item => (
+                         <option key={item.shortCode} value={item.shortCode}>{item.shortCode} - {item.label}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <button onClick={() => handleSave(editValue)} disabled={!editValue}
+                  className="absolute right-1.5 px-4 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                   Salva
                 </button>
               </div>

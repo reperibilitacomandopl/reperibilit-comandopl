@@ -38,32 +38,38 @@ export async function POST(req: Request) {
     const nextDate = new Date(targetDate)
     nextDate.setDate(targetDate.getDate() + 1)
 
-    // 1. Fetch all shifts for the target date
-    const shifts = await prisma.shift.findMany({
-      where: { ...tf, date: { gte: targetDate, lt: nextDate } },
-      include: { user: true }
-    })
+    // Abbreviazione giorno per fixedServiceDays (LUN, MAR...)
+    const daysAbr = ["DOM", "LUN", "MAR", "MER", "GIO", "VEN", "SAB"]
+    const currentDayAbr = daysAbr[targetDate.getDay()]
 
-    if (shifts.length === 0) {
-      return NextResponse.json({ success: true, message: "Nessun turno trovato per questa data." })
-    }
-
-    // 2. Fetch all Patrol Templates and Service Categories/Types
-    const [patrolTemplates, serviceCategories] = await Promise.all([
+    // 1. Fetch data
+    const [shifts, patrolTemplates, serviceCategories] = await Promise.all([
+      prisma.shift.findMany({
+        where: { ...tf, date: { gte: targetDate, lt: nextDate } },
+        include: { user: true }
+      }),
       prisma.patrolTemplate.findMany({ where: { ...tf }, include: { members: true } }),
       prisma.serviceCategory.findMany({ where: { ...tf }, include: { types: true } })
     ])
 
-    // Prepare updates
+    if (shifts.length === 0) {
+      return NextResponse.json({ success: true, message: "Nessun turno trovato." })
+    }
+
     const updates: any[] = []
     const processedShiftIds = new Set<string>()
 
-    // 3. Handle Fixed Patrols first
+    // Helper per trovare il primo tipo di servizio di una categoria
+    const getDefaultType = (catId: string) => {
+      const cat = serviceCategories.find(c => c.id === catId)
+      return cat?.types?.[0]?.id || null
+    }
+
+    // --- PRIORITÀ 1: Modelli Pattuglia Fissi (Istituzionali) ---
     for (const patrol of patrolTemplates) {
       const templateMemberIds = patrol.members.map(m => m.id)
       if (templateMemberIds.length < 2) continue
 
-      // Find if these members have a working shift today AND are in the same quadrant
       const membersShiftsToday = shifts.filter(s => 
         templateMemberIds.includes(s.userId) && 
         classifyShift(s.type) !== "OFF" &&
@@ -72,19 +78,17 @@ export async function POST(req: Request) {
 
       if (membersShiftsToday.length < 2) continue
 
-      // Group by quadrant
       const mShifts = membersShiftsToday.filter(s => classifyShift(s.type) === "M")
       const pShifts = membersShiftsToday.filter(s => classifyShift(s.type) === "P")
 
-      let assignedInPatrol = false
-      const processMatched = (matched: any[]) => {
+      const createPatrolUpdates = (matched: any[]) => {
         if (matched.length < 2) return
-        const groupId = `patrol_${patrol.id}_${Date.now()}`
+        const groupId = `template_${patrol.id}_${Date.now()}`
         for (const s of matched) {
           updates.push({
             id: s.id,
             serviceCategoryId: patrol.serviceCategoryId,
-            serviceTypeId: patrol.serviceTypeId,
+            serviceTypeId: patrol.serviceTypeId || getDefaultType(patrol.serviceCategoryId),
             vehicleId: patrol.vehicleId,
             patrolGroupId: groupId,
             timeRange: getTimeRangeFromShiftType(s.type) || s.timeRange,
@@ -92,46 +96,92 @@ export async function POST(req: Request) {
           })
           processedShiftIds.add(s.id)
         }
-        assignedInPatrol = true
       }
 
-      if (patrol.preferredShift === "M" || patrol.preferredShift === "ALL") {
-        processMatched(mShifts)
-      }
-      if (!assignedInPatrol && (patrol.preferredShift === "P" || patrol.preferredShift === "ALL")) {
-        processMatched(pShifts)
+      if (patrol.preferredShift === "M" || patrol.preferredShift === "ALL") createPatrolUpdates(mShifts)
+      if (patrol.preferredShift === "P" || patrol.preferredShift === "ALL") createPatrolUpdates(pShifts)
+    }
+
+    // --- PRIORITÀ 2: Giorni di Servizio Fissi (fixedServiceDays) ---
+    for (const s of shifts) {
+      if (processedShiftIds.has(s.id)) continue
+      if (classifyShift(s.type) === "OFF") continue
+
+      const isFixedDay = s.user.fixedServiceDays?.includes(currentDayAbr)
+      if (isFixedDay && s.user.defaultServiceCategoryId) {
+        updates.push({
+          id: s.id,
+          serviceCategoryId: s.user.defaultServiceCategoryId,
+          serviceTypeId: s.user.defaultServiceTypeId || getDefaultType(s.user.defaultServiceCategoryId),
+          timeRange: getTimeRangeFromShiftType(s.type) || s.timeRange,
+          patrolGroupId: null,
+          serviceDetails: s.user.servizio || null
+        })
+        processedShiftIds.add(s.id)
       }
     }
 
-    // 4. Handle remaining individuals
-    for (const s of shifts) {
-      if (processedShiftIds.has(s.id)) continue
-      const isWorking = classifyShift(s.type) !== "OFF"
-      
-      if (isWorking) {
-        let catId = s.user.defaultServiceCategoryId || s.serviceCategoryId
-        let typeId = s.user.defaultServiceTypeId || s.serviceTypeId
+    // --- PRIORITÀ 3: Matching Compagni Preferiti (defaultPartnerIds) ---
+    const quadrants = ["M", "P"]
+    for (const q of quadrants) {
+      const availableShifts = shifts.filter(s => 
+        classifyShift(s.type) === q && 
+        !processedShiftIds.has(s.id)
+      )
 
-        // Se l'agente appartiene a una macro-sezione ma non ha sottomansione, assegnala in automatico
-        if (catId && !typeId) {
-          const catDef = serviceCategories.find(c => c.id === catId)
-          if (catDef && catDef.types && catDef.types.length > 0) {
-            typeId = catDef.types[0].id
+      for (const s of availableShifts) {
+        if (processedShiftIds.has(s.id)) continue
+        if (!s.user.defaultPartnerIds || s.user.defaultPartnerIds.length === 0) continue
+
+        let matchedPartnerShift = null
+        for (const pId of s.user.defaultPartnerIds) {
+          const partnerShift = availableShifts.find(ps => 
+            ps.userId === pId && 
+            !processedShiftIds.has(ps.id)
+          )
+          if (partnerShift) {
+            matchedPartnerShift = partnerShift
+            break
           }
         }
 
-        updates.push({
-          id: s.id,
-          serviceCategoryId: catId,
-          serviceTypeId: typeId,
-          timeRange: getTimeRangeFromShiftType(s.type) || s.timeRange,
-          patrolGroupId: null, // Reset eventuali vecchi gruppi se rigenerato
-          serviceDetails: s.user.servizio || null // Pre-compila con la sezione di appartenenza!
-        })
+        if (matchedPartnerShift) {
+          const groupId = `partner_${s.id}_${matchedPartnerShift.id}`
+          const commonCatId = s.user.defaultServiceCategoryId || matchedPartnerShift.user.defaultServiceCategoryId || serviceCategories[0]?.id
+          
+          const pair = [s, matchedPartnerShift]
+          for (const member of pair) {
+            updates.push({
+              id: member.id,
+              serviceCategoryId: member.user.defaultServiceCategoryId || commonCatId,
+              serviceTypeId: member.user.defaultServiceTypeId || getDefaultType(member.user.defaultServiceCategoryId || commonCatId),
+              patrolGroupId: groupId,
+              timeRange: getTimeRangeFromShiftType(member.type) || member.timeRange,
+              serviceDetails: member.user.servizio || "Pattuglia"
+            })
+            processedShiftIds.add(member.id)
+          }
+        }
       }
     }
 
-    // 5. Apply all updates to DB
+    // --- PRIORITÀ 4: Individuali Rimanenti ---
+    for (const s of shifts) {
+      if (processedShiftIds.has(s.id)) continue
+      if (classifyShift(s.type) === "OFF") continue
+
+      updates.push({
+        id: s.id,
+        serviceCategoryId: s.user.defaultServiceCategoryId || null,
+        serviceTypeId: s.user.defaultServiceTypeId || (s.user.defaultServiceCategoryId ? getDefaultType(s.user.defaultServiceCategoryId) : null),
+        timeRange: getTimeRangeFromShiftType(s.type) || s.timeRange,
+        patrolGroupId: null,
+        serviceDetails: s.user.servizio || null
+      })
+      processedShiftIds.add(s.id)
+    }
+
+    // 5. Apply updates
     for (const u of updates) {
       await prisma.shift.update({
         where: { id: u.id },

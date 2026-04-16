@@ -12,6 +12,8 @@ interface AdminStateContextType {
   shifts: any[]
   tenantSlug?: string | null
   settings?: any
+  rotationGroups: any[]
+  categories: any[]
   fetchAgentBalances: (userId: string) => Promise<any>
 }
 

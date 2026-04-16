@@ -1,4 +1,5 @@
 "use client"
+import { AdminPersonnelSlideOver } from "./AdminPersonnelSlideOver"
 
 import React, { useState } from "react"
 import { 
@@ -16,7 +17,17 @@ interface AdminPersonnelModalProps {
 }
 
 export function AdminPersonnelModal({ isOpen, onClose }: AdminPersonnelModalProps) {
-  const { allAgents, shifts, currentYear, currentMonth, fetchAgentBalances } = useAdminState()
+  // Dati di sistema per le select dal contesto centralizzato
+  const { 
+    allAgents, 
+    shifts, 
+    currentYear, 
+    currentMonth, 
+    fetchAgentBalances,
+    rotationGroups,
+    categories
+  } = useAdminState()
+  
   const [anagSearchQuery, setAnagSearchQuery] = useState("")
   const [anagSquadraFilter, setAnagSquadraFilter] = useState("ALL")
   const [anagQualificaFilter, setAnagQualificaFilter] = useState("ALL")
@@ -27,20 +38,10 @@ export function AdminPersonnelModal({ isOpen, onClose }: AdminPersonnelModalProp
   const [isLoadingBalances, setIsLoadingBalances] = useState(false)
   const [viewMode, setViewMode] = useState<"TABLE" | "CARDS">("TABLE")
   
-  // Form State for Editing
-  const [tempName, setTempName] = useState("")
-  const [tempMatricola, setTempMatricola] = useState("")
-  const [tempSquadra, setTempSquadra] = useState("")
-  const [tempQualifica, setTempQualifica] = useState("")
-  const [tempMassimale, setTempMassimale] = useState(8)
-  const [tempEmail, setTempEmail] = useState("")
-  const [tempPhone, setTempPhone] = useState("")
-  const [tempDataAssunzione, setTempDataAssunzione] = useState("")
-  const [tempScadenzaPatente, setTempScadenzaPatente] = useState("")
-  const [tempScadenzaPortoArmi, setTempScadenzaPortoArmi] = useState("")
-  const [tempNoteInterne, setTempNoteInterne] = useState("")
-  const [newPass, setNewPass] = useState("")
-  const [isUpdating, setIsUpdating] = useState(false)
+  const activeAgentsForPartners = allAgents.filter(a => a.isActive)
+
+  // Modale Edit - Tab Attivo
+  const [editTab, setEditTab] = useState<"HR" | "TURNO" | "SEZIONE" | "SERVIZIO">("HR")
 
   const router = useRouter()
 
@@ -59,72 +60,7 @@ export function AdminPersonnelModal({ isOpen, onClose }: AdminPersonnelModalProp
 
   if (!isOpen) return null
 
-  const handleOpenEdit = (agent: any) => {
-    setEditingAgent(agent)
-    setTempName(agent.name)
-    setTempMatricola(agent.matricola)
-    setTempSquadra(agent.squadra || "")
-    setTempQualifica(agent.qualifica || "")
-    setTempMassimale(agent.massimale || 8)
-    setTempEmail(agent.email || "")
-    setTempPhone(agent.phone || "")
-    setTempDataAssunzione(agent.dataAssunzione ? new Date(agent.dataAssunzione).toISOString().split('T')[0] : "")
-    setTempScadenzaPatente(agent.scadenzaPatente ? new Date(agent.scadenzaPatente).toISOString().split('T')[0] : "")
-    setTempScadenzaPortoArmi(agent.scadenzaPortoArmi ? new Date(agent.scadenzaPortoArmi).toISOString().split('T')[0] : "")
-    setTempNoteInterne(agent.noteInterne || "")
-    setNewPass("")
-  }
 
-  const handleUpdateAgent = async () => {
-    if (!editingAgent) return
-    setIsUpdating(true)
-    try {
-      const res = await fetch("/api/admin/users", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: editingAgent.id,
-          name: tempName,
-          matricola: tempMatricola,
-          squadra: tempSquadra,
-          qualifica: tempQualifica,
-          massimale: tempMassimale,
-          email: tempEmail,
-          phone: tempPhone,
-          dataAssunzione: tempDataAssunzione ? new Date(tempDataAssunzione).toISOString() : null,
-          scadenzaPatente: tempScadenzaPatente ? new Date(tempScadenzaPatente).toISOString() : null,
-          scadenzaPortoArmi: tempScadenzaPortoArmi ? new Date(tempScadenzaPortoArmi).toISOString() : null,
-          noteInterne: tempNoteInterne
-        })
-      })
-
-      if (res.ok) {
-        // Se è stata inserita una nuova password, inviala separatamente
-        if (newPass) {
-          await fetch("/api/admin/users", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId: editingAgent.id,
-              action: "resetPassword",
-              newPassword: newPass
-            })
-          })
-        }
-        toast.success("Operatore aggiornato con successo")
-        setEditingAgent(null)
-        setNewPass("")
-        router.refresh()
-      } else {
-        const errData = await res.json().catch(() => ({}))
-        toast.error(errData.error || "Errore aggiornamento")
-      }
-    } catch {
-      toast.error("Errore di connessione")
-    } finally {
-      setIsUpdating(false)
-    }
-  }
 
   const handleOpenDetails = async (agent: any) => {
     setSelectedAgentForDetails(agent)
@@ -258,7 +194,7 @@ export function AdminPersonnelModal({ isOpen, onClose }: AdminPersonnelModalProp
                             <Eye width={14} height={14} />
                           </button>
                           <button 
-                            onClick={() => handleOpenEdit(agent)}
+                            onClick={() => setEditingAgent(agent)}
                             className="p-2 bg-slate-100 hover:bg-indigo-100 text-slate-500 hover:text-indigo-600 rounded-lg transition-all"
                             title="Modifica Dati"
                           >
@@ -304,7 +240,7 @@ export function AdminPersonnelModal({ isOpen, onClose }: AdminPersonnelModalProp
                           <Eye width={13} height={13} /> Dettagli
                         </button>
                         <button 
-                          onClick={() => handleOpenEdit(agent)}
+                          onClick={() => setEditingAgent(agent)}
                           className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-slate-900 hover:bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
                         >
                           <Settings2 width={13} height={13} /> Modifica
@@ -374,52 +310,80 @@ export function AdminPersonnelModal({ isOpen, onClose }: AdminPersonnelModalProp
               <div className="flex-1 overflow-y-auto p-8 bg-slate-50 custom-scrollbar">
                  {activeDetailTab === 'ANAGRAFICA' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-5"><Award width={14} height={14} className="text-blue-500" /> Profilo</h3>
-                          <div className="space-y-3">
-                             <div className="flex justify-between"><span className="text-xs font-bold text-slate-400">Squadra</span><span className="text-xs font-black text-slate-800">{selectedAgentForDetails.squadra || '—'}</span></div>
-                             <div className="flex justify-between"><span className="text-xs font-bold text-slate-400">Massimale REP</span><span className="text-xs font-black text-slate-800">{selectedAgentForDetails.massimale || 8}</span></div>
-                             <div className="flex justify-between"><span className="text-xs font-bold text-slate-400">Assunzione</span><span className="text-xs font-black text-slate-800">{selectedAgentForDetails.dataAssunzione ? new Date(selectedAgentForDetails.dataAssunzione).toLocaleDateString('it-IT') : '—'}</span></div>
-                          </div>
-                       </div>
-                       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-5"><Shield width={14} height={14} className="text-rose-500" /> Abilitazioni</h3>
-                          <div className="space-y-3">
-                             <div className="flex justify-between items-center">
-                               <span className="text-xs font-bold text-slate-400">Patente</span>
-                               {(() => {
-                                 const d = selectedAgentForDetails.scadenzaPatente
-                                 const isExpired = d && new Date(d) < new Date()
-                                 return <span className={`text-xs font-black ${isExpired ? 'text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md' : 'text-slate-800'}`}>{d ? new Date(d).toLocaleDateString('it-IT') : '—'} {isExpired ? '⚠️' : ''}</span>
-                               })()}
-                             </div>
-                             <div className="flex justify-between items-center">
-                               <span className="text-xs font-bold text-slate-400">Porto d&apos;Armi</span>
-                               {(() => {
-                                 const d = selectedAgentForDetails.scadenzaPortoArmi
-                                 const isExpired = d && new Date(d) < new Date()
-                                 return <span className={`text-xs font-black ${isExpired ? 'text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md' : 'text-slate-800'}`}>{d ? new Date(d).toLocaleDateString('it-IT') : '—'} {isExpired ? '⚠️' : ''}</span>
-                               })()}
-                             </div>
-                          </div>
-                       </div>
-                       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 md:col-span-2">
-                          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-5"><Mail width={14} height={14} className="text-emerald-500" /> Contatti</h3>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                             <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl">
-                               <Mail width={14} height={14} className="text-slate-400 shrink-0" />
-                               <span className="text-xs font-bold text-slate-600 truncate">{selectedAgentForDetails.email || '—'}</span>
-                             </div>
-                             <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl">
-                               <Phone width={14} height={14} className="text-slate-400 shrink-0" />
-                               <span className="text-xs font-bold text-slate-600">{selectedAgentForDetails.phone || '—'}</span>
-                             </div>
-                             <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl">
-                               <span className="text-sm shrink-0">📱</span>
-                               <span className="text-xs font-bold text-slate-600">{selectedAgentForDetails.telegramChatId ? 'Collegato' : 'Non collegato'}</span>
-                             </div>
-                          </div>
-                       </div>
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                           <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-5"><Award width={14} height={14} className="text-blue-500" /> Profilo</h3>
+                           <div className="space-y-3">
+                              <div className="flex justify-between"><span className="text-xs font-bold text-slate-400">Data di Nascita</span><span className="text-xs font-black text-slate-800">{selectedAgentForDetails.dataDiNascita ? new Date(selectedAgentForDetails.dataDiNascita).toLocaleDateString('it-IT') : '—'}</span></div>
+                              <div className="flex justify-between"><span className="text-xs font-bold text-slate-400">Squadra</span><span className="text-xs font-black text-slate-800">{selectedAgentForDetails.rotationGroup?.name || selectedAgentForDetails.squadra || '—'}</span></div>
+                              <div className="flex justify-between"><span className="text-xs font-bold text-slate-400">Contratto</span><span className="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">{selectedAgentForDetails.tipoContratto || 'FULL-TIME (36h)'}</span></div>
+                              <div className="flex justify-between"><span className="text-xs font-bold text-slate-400">Assunzione</span><span className="text-xs font-black text-slate-800">{selectedAgentForDetails.dataAssunzione ? new Date(selectedAgentForDetails.dataAssunzione).toLocaleDateString('it-IT') : '—'}</span></div>
+                           </div>
+                        </div>
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                           <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-5"><Shield width={14} height={14} className="text-rose-500" /> Abilitazioni & Servizio</h3>
+                           <div className="space-y-3">
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs font-bold text-slate-400">Patente</span>
+                                {(() => {
+                                  const d = selectedAgentForDetails.scadenzaPatente
+                                  const isExpired = d && new Date(d) < new Date()
+                                  return <span className={`text-xs font-black ${isExpired ? 'text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md' : 'text-slate-800'}`}>{d ? new Date(d).toLocaleDateString('it-IT') : '—'} {isExpired ? '⚠️' : ''}</span>
+                                })()}
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs font-bold text-slate-400">Porto d&apos;Armi</span>
+                                {(() => {
+                                  const d = selectedAgentForDetails.scadenzaPortoArmi
+                                  const isExpired = d && new Date(d) < new Date()
+                                  return <span className={`text-xs font-black ${isExpired ? 'text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md' : 'text-slate-800'}`}>{d ? new Date(d).toLocaleDateString('it-IT') : '—'} {isExpired ? '⚠️' : ''}</span>
+                                })()}
+                              </div>
+                              <div className="pt-2 border-t border-slate-50">
+                                 <span className="text-[10px] font-black text-slate-300 uppercase block mb-2">Giorni Fissi:</span>
+                                 <div className="flex gap-1">
+                                    {['LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB', 'DOM'].map(d => {
+                                       const isFixed = selectedAgentForDetails.fixedServiceDays?.includes(d)
+                                       return <span key={d} className={`w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-black ${isFixed ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-300'}`}>{d[0]}</span>
+                                    })}
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 md:col-span-2">
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                              <div>
+                                 <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-5"><Users width={14} height={14} className="text-emerald-500" /> Preferenze Partner (Fallback)</h3>
+                                 <div className="space-y-2">
+                                    {selectedAgentForDetails.defaultPartnerIds && selectedAgentForDetails.defaultPartnerIds.length > 0 ? (
+                                       selectedAgentForDetails.defaultPartnerIds.map((pid: string, idx: number) => {
+                                          const pName = allAgents.find(a => a.id === pid)?.name || 'Sconosciuto'
+                                          return (
+                                             <div key={pid} className="flex items-center gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                                <span className="w-5 h-5 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center text-[9px] font-black">{idx+1}°</span>
+                                                <span className="text-xs font-black text-slate-700">{pName}</span>
+                                             </div>
+                                          )
+                                       })
+                                    ) : (
+                                       <p className="text-xs font-bold text-slate-300 italic">Nessuna preferenza impostata</p>
+                                    )}
+                                 </div>
+                              </div>
+                              <div>
+                                 <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-5"><Mail width={14} height={14} className="text-blue-500" /> Recapiti Operativi</h3>
+                                 <div className="space-y-3">
+                                    <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                      <Mail width={14} height={14} className="text-slate-400 shrink-0" />
+                                      <span className="text-xs font-bold text-slate-600 truncate">{selectedAgentForDetails.email || '—'}</span>
+                                    </div>
+                                    <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                      <Phone width={14} height={14} className="text-slate-400 shrink-0" />
+                                      <span className="text-xs font-bold text-slate-600">{selectedAgentForDetails.phone || '—'}</span>
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
                     </div>
                  )}
                  {activeDetailTab === 'SALDI' && (
@@ -466,75 +430,37 @@ export function AdminPersonnelModal({ isOpen, onClose }: AdminPersonnelModalProp
 
       {/* Slide-over per Modifica Operatore */}
       {editingAgent && (
-        <div className="fixed inset-0 z-[150] flex justify-end bg-slate-900/50 backdrop-blur-sm transition-all" onClick={() => setEditingAgent(null)}>
-          <div className="absolute inset-0" onClick={() => setEditingAgent(null)} />
-          <div className="relative w-full max-w-lg bg-white h-[100dvh] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-200 overflow-hidden" onClick={e => e.stopPropagation()}>
-            
-            {/* Edit Header */}
-            <div className="px-6 py-5 bg-slate-900 text-white flex items-center justify-between shrink-0">
-               <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-white/10 rounded-xl"><FileEdit width={20} height={20} /></div>
-                  <div>
-                    <h3 className="font-black text-lg uppercase tracking-tight">Modifica Operatore</h3>
-                    <p className="text-[10px] text-white/40 font-bold">{editingAgent.name}</p>
-                  </div>
-               </div>
-               <button onClick={() => setEditingAgent(null)} className="w-10 h-10 flex items-center justify-center bg-white/10 rounded-xl hover:bg-white/20 transition-all"><X width={20} height={20} /></button>
-            </div>
-            
-            {/* Edit Form */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 custom-scrollbar">
-               {/* Dati Nucleo */}
-               <div className="space-y-4">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] border-b border-slate-200 pb-2">📋 Dati Nucleo</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Nome</label><input value={tempName} onChange={e => setTempName(e.target.value.toUpperCase())} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-blue-400 focus:ring-2 focus:ring-blue-50 outline-none transition-all" /></div>
-                    <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Matricola</label><input value={tempMatricola} onChange={e => setTempMatricola(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-blue-400 focus:ring-2 focus:ring-blue-50 outline-none transition-all" /></div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Squadra</label><input value={tempSquadra} onChange={e => setTempSquadra(e.target.value.toUpperCase())} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-blue-400 focus:ring-2 focus:ring-blue-50 outline-none transition-all" /></div>
-                    <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Qualifica</label><input value={tempQualifica} onChange={e => setTempQualifica(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-blue-400 focus:ring-2 focus:ring-blue-50 outline-none transition-all" /></div>
-                  </div>
-               </div>
-               
-               {/* Contatti */}
-               <div className="space-y-4">
-                  <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.15em] border-b border-emerald-100 pb-2">📧 Contatti & Sicurezza</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Email</label><input value={tempEmail} onChange={e => setTempEmail(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-blue-400 focus:ring-2 focus:ring-blue-50 outline-none transition-all" /></div>
-                    <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Cellulare</label><input value={tempPhone} onChange={e => setTempPhone(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-blue-400 focus:ring-2 focus:ring-blue-50 outline-none transition-all" /></div>
-                  </div>
-                  <div className="space-y-1"><label className="text-[10px] font-black text-rose-500 uppercase">Password (lascia vuoto per non cambiare)</label><input type="password" value={newPass} onChange={e => setNewPass(e.target.value)} className="w-full bg-white border border-rose-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-rose-400 focus:ring-2 focus:ring-rose-50 outline-none transition-all" placeholder="••••••••" /></div>
-               </div>
-
-               {/* Parametri */}
-               <div className="space-y-4">
-                  <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.15em] border-b border-indigo-100 pb-2">⚙️ Parametri Operativi</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Data Assunzione</label><input type="date" value={tempDataAssunzione} onChange={e => setTempDataAssunzione(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-blue-400 focus:ring-2 focus:ring-blue-50 outline-none transition-all" /></div>
-                    <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Max REP Mensile</label><input type="number" value={tempMassimale} onChange={e => setTempMassimale(parseInt(e.target.value))} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-blue-400 focus:ring-2 focus:ring-blue-50 outline-none transition-all" /></div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Patente</label><input type="date" value={tempScadenzaPatente} onChange={e => setTempScadenzaPatente(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-blue-400 focus:ring-2 focus:ring-blue-50 outline-none transition-all" /></div>
-                    <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Porto Armi</label><input type="date" value={tempScadenzaPortoArmi} onChange={e => setTempScadenzaPortoArmi(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-blue-400 focus:ring-2 focus:ring-blue-50 outline-none transition-all" /></div>
-                  </div>
-                  <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Note Interne</label><textarea value={tempNoteInterne} onChange={e => setTempNoteInterne(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold h-20 resize-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 outline-none transition-all" /></div>
-               </div>
-            </div>
-
-            {/* Actions */}
-            <div className="p-4 border-t border-slate-200 bg-white flex gap-3 shrink-0">
-              <button onClick={async () => {
-                 if(!confirm("Eliminare definitivamente l'agente?")) return;
-                 await fetch('/api/admin/users', { method: 'DELETE', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ userId: editingAgent.id })});
-                 toast.success("Eliminato"); setEditingAgent(null); router.refresh();
-              }} className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all border border-rose-100"><Trash2 width={18} height={18} /></button>
-              <button onClick={handleUpdateAgent} disabled={isUpdating} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-200 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50">
-                {isUpdating ? <RefreshCw width={16} height={16} className="animate-spin" /> : <Save width={16} height={16} />} Salva
-              </button>
-            </div>
-          </div>
-        </div>
+        <AdminPersonnelSlideOver
+          editingAgent={editingAgent}
+          setEditingAgent={setEditingAgent}
+          activeAgentsForPartners={activeAgentsForPartners}
+          categories={categories}
+          rotationGroups={rotationGroups}
+          onSave={async (id, payload) => {
+             const res = await fetch("/api/admin/users", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: id, ...payload })
+             });
+             if (res.ok) {
+                if (payload.action === "resetPassword") {
+                   await fetch("/api/admin/users", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: id, action: "resetPassword", newPassword: payload.newPassword }) });
+                }
+                toast.success("Operatore aggiornato con successo");
+                router.refresh();
+                setEditingAgent(null);
+                return true;
+             } else {
+                toast.error("Errore salvataggio!");
+                return false;
+             }
+          }}
+          onDelete={async (id) => {
+             await fetch("/api/admin/users", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: id }) });
+             toast.success("Agente eliminato");
+             router.refresh();
+          }}
+        />
       )}
     </div>
   )

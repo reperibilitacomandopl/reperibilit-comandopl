@@ -13,7 +13,7 @@ import { Shield, RotateCcw } from "lucide-react"
 type TabType = "personale" | "cicli" | "servizi" | "pattuglie" | "permessi"
 
 interface RisorseTabsProps {
-  agents: { id: string; name: string; rotationGroupId?: string | null }[]
+  agents: any[]
   rotationGroups: { id: string; name: string }[]
   categories: { id: string; name: string; types: { id: string; name: string }[] }[]
 }

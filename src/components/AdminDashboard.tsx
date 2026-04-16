@@ -27,7 +27,9 @@ export default function AdminDashboard({
   currentYear, 
   isPublished, 
   settings, 
-  tenantSlug 
+  tenantSlug,
+  rotationGroups = [],
+  categories = []
 }: any) {
   const router = useRouter()
   
@@ -63,6 +65,8 @@ export default function AdminDashboard({
     shifts,
     tenantSlug,
     settings,
+    rotationGroups,
+    categories,
     fetchAgentBalances: admin.fetchAgentBalances
   }
 

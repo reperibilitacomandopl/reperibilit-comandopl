@@ -67,7 +67,8 @@ export async function PUT(req: Request) {
       userId, email, phone, name, matricola, squadra, servizio, 
       massimale, action, newPassword, defaultServiceCategoryId, 
       defaultServiceTypeId, rotationGroupId, qualifica,
-      dataAssunzione, scadenzaPatente, scadenzaPortoArmi, noteInterne
+      dataAssunzione, scadenzaPatente, scadenzaPortoArmi, noteInterne,
+      dataDiNascita, tipoContratto, defaultPartnerIds, fixedServiceDays
     } = body
     
     if (!userId) return NextResponse.json({ error: "Missing userId" }, { status: 400 })
@@ -148,9 +149,13 @@ export async function PUT(req: Request) {
         qualifica: qualifica === undefined ? undefined : (qualifica || null),
         gradoLivello: qualifica ? getGradoLivello(qualifica) : undefined,
         dataAssunzione: dataAssunzione ? new Date(dataAssunzione) : (dataAssunzione === null ? null : undefined),
+        dataDiNascita: dataDiNascita ? new Date(dataDiNascita) : (dataDiNascita === null ? null : undefined),
         scadenzaPatente: scadenzaPatente ? new Date(scadenzaPatente) : (scadenzaPatente === null ? null : undefined),
         scadenzaPortoArmi: scadenzaPortoArmi ? new Date(scadenzaPortoArmi) : (scadenzaPortoArmi === null ? null : undefined),
-        noteInterne: noteInterne === undefined ? undefined : (noteInterne || null)
+        tipoContratto: tipoContratto === undefined ? undefined : (tipoContratto || null),
+        noteInterne: noteInterne === undefined ? undefined : (noteInterne || null),
+        defaultPartnerIds: defaultPartnerIds === undefined ? undefined : defaultPartnerIds,
+        fixedServiceDays: fixedServiceDays === undefined ? undefined : fixedServiceDays
       }
     })
 
@@ -188,7 +193,8 @@ export async function POST(req: Request) {
   try {
     const { 
       matricola, name, password, isUfficiale, squadra, massimale,
-      qualifica, dataAssunzione, scadenzaPatente, scadenzaPortoArmi
+      qualifica, dataAssunzione, scadenzaPatente, scadenzaPortoArmi,
+      dataDiNascita, tipoContratto, defaultPartnerIds, fixedServiceDays
     } = await req.json()
     if (!matricola || !name || !password) return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
 
@@ -213,8 +219,12 @@ export async function POST(req: Request) {
         qualifica: qualifica || "Agente di P.L.",
         gradoLivello: getGradoLivello(qualifica || "Agente di P.L."),
         dataAssunzione: dataAssunzione ? new Date(dataAssunzione) : null,
+        dataDiNascita: dataDiNascita ? new Date(dataDiNascita) : null,
         scadenzaPatente: scadenzaPatente ? new Date(scadenzaPatente) : null,
-        scadenzaPortoArmi: scadenzaPortoArmi ? new Date(scadenzaPortoArmi) : null
+        scadenzaPortoArmi: scadenzaPortoArmi ? new Date(scadenzaPortoArmi) : null,
+        tipoContratto: tipoContratto || null,
+        defaultPartnerIds: defaultPartnerIds || [],
+        fixedServiceDays: fixedServiceDays || []
       }
     })
 
