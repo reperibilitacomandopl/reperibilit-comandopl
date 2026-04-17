@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Calendar, User, Clock, AlertCircle, RefreshCw } from "lucide-react"
+import { Calendar, User, Clock, AlertCircle, RefreshCw, ChevronRight } from "lucide-react"
 import toast from "react-hot-toast"
 import { storeOfflineRequest } from "../lib/offline-sync"
 
@@ -291,7 +291,6 @@ export default function PlanningMobileView({
         </p>
         <div className="h-[1px] flex-1 bg-slate-200"></div>
       </div>
-    </div>
     </div>
   )
 }
