@@ -167,7 +167,7 @@ export default function PlanningMobileView({
       <div className="flex bg-white mx-3 mb-3 rounded-2xl p-1 border border-slate-200 shadow-sm items-center">
         <Link 
           href={`/${tenantSlug || ''}?view=agent&month=${prevMonth}&year=${prevYear}`}
-          className="p-3 hover:bg-slate-50 text-slate-400 rounded-xl transition-all active:scale-75"
+          className="p-3 hover:bg-slate-100 rounded-2xl transition-all active:scale-75"
         >
           <ChevronLeft size={20} />
         </Link>
@@ -178,7 +178,7 @@ export default function PlanningMobileView({
         </div>
         <Link 
           href={`/${tenantSlug || ''}?view=agent&month=${nextMonth}&year=${nextYear}`}
-          className="p-3 hover:bg-slate-50 text-slate-400 rounded-xl transition-all active:scale-75"
+          className="p-3 hover:bg-slate-100 rounded-2xl transition-all active:scale-75"
         >
           <ChevronRight size={20} />
         </Link>

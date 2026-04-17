@@ -28,7 +28,7 @@ export default function DashboardShell({
   adminData
 }: any) {
   const [activeTab, setActiveTab] = useState('dashboard')
-  const { role, name, matricola } = session.user
+  const { role, name, matricola, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem } = session.user
   const containerClass = "w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
 
   // Calculate Navigation Params
@@ -62,6 +62,15 @@ export default function DashboardShell({
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Matr. {matricola} • {role}</p>
             </div>
             <div className="flex items-center gap-2 sm:gap-6">
+              {(role === 'ADMIN' || canManageShifts) && (
+                <Link 
+                  href={`/${tenantSlug || 'admin'}/admin/pannello`}
+                  className="hidden sm:flex items-center gap-2 p-2.5 text-blue-600 hover:bg-blue-50 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest border border-blue-100"
+                >
+                  <ClipboardList size={18} />
+                  Amministrazione
+                </Link>
+              )}
               <NotificationHub userRole={role} />
               <button 
                 onClick={() => signOut()} 
@@ -105,6 +114,10 @@ export default function DashboardShell({
                   tenantSlug={tenantSlug}
                   agendaEntries={agendaEntries}
                   userRole={role}
+                  canManageShifts={canManageShifts}
+                  canManageUsers={canManageUsers}
+                  canVerifyClockIns={canVerifyClockIns}
+                  canConfigureSystem={canConfigureSystem}
                 />
               </div>
 

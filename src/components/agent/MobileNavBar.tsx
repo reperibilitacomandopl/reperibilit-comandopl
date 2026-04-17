@@ -36,7 +36,7 @@ export default function MobileNavBar({ activeTab, setActiveTab, onSOS, loadingSO
               <div className={`p-2 rounded-xl transition-all ${isActive ? 'bg-blue-50 text-blue-600 scale-110' : ''}`}>
                 <Icon size={24} />
               </div>
-              <span className={`text-[10px] font-black uppercase tracking-tighter ${isActive ? 'opacity-100' : 'opacity-40'}`}>
+              <span className={`text-[10px] font-black uppercase tracking-tighter ${isActive ? 'text-blue-600' : 'text-slate-500'}`}>
                 {tab.label}
               </span>
             </button>

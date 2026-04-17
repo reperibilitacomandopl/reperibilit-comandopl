@@ -98,6 +98,11 @@ export default function AgentShiftsList({
                 dayInfo={dayInfo}
                 currentYear={currentYear}
                 currentMonth={currentMonth}
+                prevMonth={prevMonth}
+                prevYear={prevYear}
+                nextMonth={nextMonth}
+                nextYear={nextYear}
+                tenantSlug={tenantSlug}
                 userRole={userRole}
               />
             </div>
@@ -181,7 +186,7 @@ export default function AgentShiftsList({
                     <span className={`text-[8px] uppercase font-bold tracking-widest ${di.isNextMonth ? "text-slate-300" : (di.isWeekend ? "text-red-400" : "text-slate-400")}`}>{di.name}</span>
                     {badgeEl}
                     {isRep && sType && !di.isNextMonth && (
-                      <span className="text-[7px] font-bold text-emerald-700 mt-0.5">base: {sType}</span>
+                      <span className="text-[7px] font-bold text-emerald-800 mt-0.5">base: {sType}</span>
                     )}
                     {sObj && sType !== "RIPOSO" && !di.isNextMonth && isPublished && (
                       <div 

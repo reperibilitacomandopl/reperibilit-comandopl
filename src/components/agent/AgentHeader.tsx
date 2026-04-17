@@ -70,7 +70,7 @@ export default function AgentHeader({
       )}
 
       {/* Main Premium Hub Card */}
-      <div className="bg-[#0f172a] text-white rounded-[3rem] p-6 sm:p-10 lg:p-12 shadow-2xl relative overflow-hidden border border-white/5">
+      <div className="bg-[#0f172a] text-white rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-10 shadow-2xl relative overflow-hidden border border-white/5 mx-2 sm:mx-0">
         {/* Background Decorative Effects */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px] -mr-64 -mt-64 pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-[100px] -ml-48 -mb-48 pointer-events-none"></div>
@@ -98,7 +98,7 @@ export default function AgentHeader({
                     onClick={() => handleClockAction('IN')}
                     className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-[2rem] font-black text-[11px] uppercase tracking-widest transition-all ${
                       isClockedIn === 'IN'
-                        ? 'bg-transparent text-white/10 cursor-not-allowed'
+                        ? 'bg-white/5 text-white/20 cursor-not-allowed opacity-50'
                         : 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-xl shadow-emerald-900/50 active:scale-95'
                     }`}
                   >
@@ -110,7 +110,7 @@ export default function AgentHeader({
                     onClick={() => handleClockAction('OUT')}
                     className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-[2rem] font-black text-[11px] uppercase tracking-widest transition-all ${
                       isClockedIn !== 'IN'
-                        ? 'bg-transparent text-white/10 cursor-not-allowed'
+                        ? 'bg-white/5 text-white/20 cursor-not-allowed opacity-50'
                         : 'bg-rose-500 hover:bg-rose-400 text-white shadow-xl shadow-rose-900/50 active:scale-95'
                     }`}
                   >
