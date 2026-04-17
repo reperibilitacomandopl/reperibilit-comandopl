@@ -20,20 +20,20 @@ interface AgentSwapBoardProps {
 
 export default function AgentSwapBoard({ currentUserId, swapRequests, swapLoading, handleRespondSwap }: AgentSwapBoardProps) {
   return (
-    <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden">
-      <div className="bg-slate-900 p-6 text-white flex items-center gap-4">
-        <div className="p-3 bg-indigo-500/20 rounded-2xl border border-indigo-400/30">
-          <RefreshCw size={24} className="text-indigo-300" />
+    <div className="bg-slate-900/50 backdrop-blur-xl rounded-[2.5rem] border border-white/10 shadow-2xl overflow-hidden animate-in fade-in duration-700">
+      <div className="bg-gradient-to-r from-blue-900 to-indigo-900 p-6 text-white flex items-center gap-4">
+        <div className="p-3 bg-white/10 rounded-2xl border border-white/20 backdrop-blur-md">
+          <RefreshCw size={24} className="text-cyan-400" />
         </div>
         <div>
-          <h3 className="text-lg font-black uppercase tracking-tighter">Bacheca Scambi</h3>
-          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Gestisci le tue proposte di scambio</p>
+          <h3 className="text-lg font-black uppercase tracking-widest leading-none mb-1">Bacheca Scambi</h3>
+          <p className="text-blue-200 text-[10px] font-bold uppercase tracking-widest">Gestione Proposte Pattuglia</p>
         </div>
       </div>
 
       <div className="p-6">
         {swapRequests.length === 0 ? (
-          <div className="text-center py-10 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+          <div className="text-center py-10 bg-white/5 rounded-2xl border-2 border-dashed border-white/10">
             <p className="text-slate-400 text-sm font-medium italic">Nessuna proposta di scambio attiva.</p>
           </div>
         ) : (
@@ -43,7 +43,7 @@ export default function AgentSwapBoard({ currentUserId, swapRequests, swapLoadin
               const dateStr = new Date(req.shift.date).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })
               
               return (
-                <div key={req.id} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border-2 transition-all ${isIncoming ? 'bg-indigo-50 border-indigo-100 hover:border-indigo-200' : 'bg-slate-50 border-slate-200 hover:border-slate-300'}`}>
+                <div key={req.id} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border transition-all ${isIncoming ? 'bg-blue-900/20 border-blue-500/30 hover:border-blue-500/50' : 'bg-slate-800/50 border-white/5 hover:border-white/10'}`}>
                   <div className="flex items-center gap-4">
                     <div className={`p-3 rounded-xl ${isIncoming ? 'bg-indigo-500/10 text-indigo-600' : 'bg-slate-500/10 text-slate-600'}`}>
                       {isIncoming ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}

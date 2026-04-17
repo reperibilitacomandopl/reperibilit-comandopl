@@ -131,43 +131,84 @@ export default function AgentHeader({
               </div>
             </div>
 
-            <div className="mt-10 flex items-center gap-4">
-                <div className="flex bg-white/10 rounded-2xl p-1 border border-white/20 shadow-inner">
+            <div className="relative overflow-hidden bg-[#0f172a] rounded-[2.5rem] p-6 sm:p-10 shadow-2xl border border-white/10 group mt-10">
+      {/* Decorative Background Elements */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
+      <div className="absolute bottom-0 left-0 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl -ml-10 -mb-10"></div>
+      
+      <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-10">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
+            {/* User Avatar with Ring */}
+            <div className="relative">
+              <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-600 to-cyan-400 p-1 shadow-lg shadow-blue-500/20">
+                <div className="w-full h-full rounded-[1.4rem] bg-slate-900 flex items-center justify-center text-3xl font-black text-white">
+                  {currentUser.name?.charAt(0)}
+                </div>
+              </div>
+              <div className="absolute -bottom-2 -right-2 bg-emerald-500 w-6 h-6 rounded-full border-4 border-[#0f172a] shadow-sm"></div>
+            </div>
+
+            <div className="text-center sm:text-left">
+              <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-none mb-2">
+                {currentUser.name?.split(' ')[0]} <span className="text-blue-400">{currentUser.name?.split(' ')[1] || ''}</span>
+              </h2>
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4">
+                <span className="px-4 py-1.5 bg-white/5 backdrop-blur-md rounded-xl text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400 border border-white/10">
+                  Matr. {currentUser.matricola}
+                </span>
+                <span className="text-slate-500 font-bold">•</span>
+                <span className="text-slate-300 font-black text-[10px] uppercase tracking-widest bg-blue-500/10 px-4 py-1.5 rounded-xl border border-blue-500/20">
+                  {currentUser.qualifica || "Agente Scelto"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+                {/* Month Navigator Glass Card */}
+                <div className="flex bg-white/5 backdrop-blur-xl rounded-[1.5rem] p-1 border border-white/10 shadow-lg">
                   <button 
                     type="button"
                     onClick={() => onMonthChange(prevMonth, prevYear)} 
-                    className="p-3 hover:bg-white/20 rounded-xl transition-all active:scale-75 touch-manipulation"
-                    title="Mese Precedente"
+                    className="p-4 hover:bg-white/10 text-white rounded-2xl transition-all active:scale-75 touch-manipulation"
                   >
-                    <ChevronLeft size={24} className="text-white" />
+                    <ChevronLeft size={24} />
                   </button>
-                  <div className="px-6 flex items-center min-w-[140px] justify-center">
+                  <div className="px-8 flex items-center min-w-[160px] justify-center">
                     <span className="text-sm font-black uppercase tracking-[0.2em] text-white">
-                      {monthNames[currentMonth-1]} {currentYear}
+                      {monthNames[currentMonth-1]} <span className="text-blue-400">{currentYear}</span>
                     </span>
                   </div>
                   <button 
                     type="button"
                     onClick={() => onMonthChange(nextMonth, nextYear)} 
-                    className="p-3 hover:bg-white/20 rounded-xl transition-all active:scale-75 touch-manipulation"
-                    title="Mese Successivo"
+                    className="p-4 hover:bg-white/10 text-white rounded-2xl transition-all active:scale-75 touch-manipulation"
                   >
-                    <ChevronRight size={24} className="text-white" />
+                    <ChevronRight size={24} />
                   </button>
                 </div>
                
-               {/* Telegram Link Button - Prominent on Mobile */}
-               {!currentUser.telegramChatId && (
+               {/* Telegram Status / Link */}
+               {!currentUser.telegramChatId ? (
                  <button 
                   onClick={onGenerateTelegramCode}
                   disabled={telegramLoading}
-                  className="bg-[#0088cc] hover:bg-[#0077b5] text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 transition-all active:scale-95 shadow-lg shadow-blue-500/20"
+                  className="w-full sm:w-auto bg-[#0088cc] hover:bg-[#0077b5] text-white px-8 py-4 rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-blue-500/20 border-b-4 border-blue-800"
                  >
-                   {telegramLoading ? <RefreshCw size={16} className="animate-spin" /> : <Send size={16} />}
-                   {telegramCode ? `Codice: ${telegramCode}` : "Telegram"}
+                   {telegramLoading ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
+                   {telegramCode ? `Codice: ${telegramCode}` : "Attiva Telegram"}
                  </button>
+               ) : (
+                 <div className="flex items-center gap-3 px-6 py-4 bg-emerald-500/10 border border-emerald-500/20 rounded-[1.5rem] text-emerald-400">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Telegram Attivo</span>
+                 </div>
                )}
             </div>
+          </div>
+      </div>
+    </div>
           </div>
           
           <div className="flex flex-col gap-5 lg:w-[400px]">

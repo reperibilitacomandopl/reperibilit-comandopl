@@ -134,101 +134,116 @@ export default function PlanningMobileView({
   return (
     <div className="flex flex-col bg-slate-50 min-h-[400px] rounded-3xl overflow-hidden border border-slate-200 shadow-inner">
 
-      {/* Tab Switcher */}
-      <div className="flex p-2 bg-slate-200/50 backdrop-blur-md">
+      {/* Tab Switcher - Premium Style */}
+      <div className="flex p-1.5 bg-slate-200/40 backdrop-blur-xl border-b border-white/10 m-3 rounded-[1.5rem] shadow-inner">
         <button 
           onClick={() => setViewType('day')}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${viewType === 'day' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500'}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all duration-500 ${viewType === 'day' ? 'bg-[#0f172a] text-cyan-400 shadow-xl scale-[1.02]' : 'text-slate-500 hover:text-slate-800'}`}
         >
           <Calendar size={16} />
           Vista Giorno
         </button>
         <button 
           onClick={() => setViewType('agent')}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${viewType === 'agent' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500'}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all duration-500 ${viewType === 'agent' ? 'bg-[#0f172a] text-indigo-400 shadow-xl scale-[1.02]' : 'text-slate-500 hover:text-slate-800'}`}
         >
           <User size={16} />
           Vista Agente
         </button>
       </div>
 
-      <div className="p-4">
+      <div className="p-4 pt-2">
         {viewType === 'day' ? (
-          <div className="space-y-4">
-            {/* Day Selector Horizontal Scroll */}
-            <div className="flex gap-2 overflow-x-auto pb-4 no-scrollbar">
+          <div className="space-y-6">
+            {/* Day Selector Horizontal Scroll - Modern Look */}
+            <div className="flex gap-3 overflow-x-auto pb-6 pt-2 no-scrollbar scroll-smooth px-2">
               {dayInfo.filter(di => !di.isNextMonth).map(di => (
                 <button
                   key={di.day}
                   onClick={() => setSelectedDay(di.day)}
-                  className={`flex flex-col items-center justify-center min-w-[50px] h-[70px] rounded-2xl transition-all border-2 ${selectedDay === di.day ? 'bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-200 scale-105' : 'bg-white border-slate-100 text-slate-400'}`}
+                  className={`flex flex-col items-center justify-center min-w-[64px] h-[86px] rounded-[1.5rem] transition-all border-2 duration-300 ${selectedDay === di.day ? 'bg-[#0f172a] border-cyan-400 text-white shadow-[0_10px_30px_-10px_rgba(14,165,233,0.5)] scale-110 z-10' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'}`}
                 >
-                  <span className="text-[10px] uppercase font-bold">{di.name.substring(0,3)}</span>
-                  <span className="text-xl font-black">{di.day}</span>
+                  <span className={`text-[9px] uppercase font-black tracking-widest mb-1 ${selectedDay === di.day ? 'text-cyan-400' : 'text-slate-400'}`}>{di.name.substring(0,3)}</span>
+                  <span className="text-2xl font-black">{di.day}</span>
                 </button>
               ))}
             </div>
 
-            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2 px-2">
-              <Clock className="text-blue-500" size={20} />
-              Operativi del {selectedDay} {monthNames[currentMonth-1]}
-            </h3>
-
-            <div className="grid grid-cols-1 gap-3">
-              {agents.map(agent => {
-                const shift = getShiftFor(agent.id, selectedDay)
-                return (
-                  <div 
-                    key={agent.id}
-                    onClick={() => isAdmin && onEditCell && onEditCell(agent.id, agent.name, selectedDay, shift?.repType || shift?.type || "")}
-                    className={`bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between group active:scale-[0.98] transition-all ${isAdmin ? 'cursor-pointer hover:border-blue-300' : ''}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs shadow-inner ${agent.isUfficiale ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
-                        {agent.isUfficiale ? 'UF' : 'AG'}
-                      </div>
-                      <div>
-                        <p className="font-black text-slate-800 text-sm leading-tight">{agent.name}</p>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Matr. {agent.matricola}</p>
-                      </div>
-                    </div>
-                    <div>
-                      {renderBadge(shift)}
-                    </div>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-2">
+                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-cyan-100 flex items-center justify-center">
+                    <Clock size={16} className="text-cyan-600" />
                   </div>
-                )
-              })}
+                  Operativi {selectedDay} {monthNames[currentMonth-1]}
+                </h3>
+                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full uppercase">Altamura</span>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                {agents.map(agent => {
+                  const shift = getShiftFor(agent.id, selectedDay)
+                  return (
+                    <div 
+                      key={agent.id}
+                      onClick={() => isAdmin && onEditCell && onEditCell(agent.id, agent.name, selectedDay, shift?.repType || shift?.type || "")}
+                      className={`bg-white p-5 rounded-[1.8rem] border border-slate-100 shadow-sm flex items-center justify-between group active:scale-[0.97] transition-all duration-200 ${isAdmin ? 'cursor-pointer hover:border-cyan-300 hover:shadow-lg' : ''}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xs shadow-inner transition-colors ${agent.isUfficiale ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-500'}`}>
+                          {agent.isUfficiale ? 'UF' : 'AG'}
+                        </div>
+                        <div>
+                          <p className="font-black text-slate-900 text-[15px] leading-tight mb-1">{agent.name}</p>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest">Matr. {agent.matricola}</span>
+                    {agent.telegramChatId && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" title="Telegram Collegato"></span>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        {renderBadge(shift)}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            {/* Agent Selector */}
-            <select 
-              value={selectedAgentId}
-              onChange={(e) => setSelectedAgentId(e.target.value)}
-              className="w-full p-4 bg-white rounded-2xl border-2 border-slate-100 font-black text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 appearance-none shadow-sm capitalize"
-            >
-              {agents.map(a => <option key={a.id} value={a.id}>{a.name.toLowerCase()} ({a.matricola})</option>)}
-            </select>
+          <div className="space-y-6">
+            {/* Agent Selector - Premium Dropdown */}
+            <div className="relative group">
+              <div className="absolute left-5 top-1/2 -translate-y-1/2">
+                <User size={18} className="text-indigo-500" />
+              </div>
+              <select 
+                value={selectedAgentId}
+                onChange={(e) => setSelectedAgentId(e.target.value)}
+                className="w-full pl-12 pr-6 py-5 bg-white rounded-[1.5rem] border-2 border-slate-100 font-bold text-slate-800 text-sm focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 appearance-none shadow-sm capitalize transition-all"
+              >
+                {agents.map(a => <option key={a.id} value={a.id}>{a.name.toLowerCase()} ({a.matricola})</option>)}
+              </select>
+            </div>
 
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-3">
               {dayInfo.filter(di => !di.isNextMonth).map(di => {
                 const shift = getShiftFor(selectedAgentId, di.day)
-                if (!shift && !isAdmin) return null // Hide empty days for agents unless admin
+                if (!shift && !isAdmin) return null 
                 
                 return (
                   <div 
                     key={di.day}
                     onClick={() => isAdmin && onEditCell && onEditCell(selectedAgentId, agents.find(a=>a.id===selectedAgentId)?.name || "", di.day, shift?.repType || shift?.type || "")}
-                    className={`flex items-center justify-between p-3 rounded-xl border transition-all ${di.isWeekend ? 'bg-rose-50 border-rose-100' : 'bg-white border-slate-100'} ${isAdmin ? 'cursor-pointer hover:border-indigo-300' : ''}`}
+                    className={`flex items-center justify-between p-4 rounded-[1.5rem] border-2 transition-all duration-300 ${di.isWeekend ? 'bg-red-50/50 border-red-50' : 'bg-white border-slate-50'} ${isAdmin ? 'cursor-pointer hover:border-indigo-300 hover:shadow-md active:scale-[0.98]' : ''}`}
                   >
                     <div className="flex items-center gap-4">
-                      <div className={`w-8 h-8 rounded-lg flex flex-col items-center justify-center leading-none ${di.isWeekend ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                        <span className="text-[7px] font-black uppercase">{di.name.substring(0,3)}</span>
-                        <span className="text-xs font-black">{di.day}</span>
+                      <div className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center leading-none shadow-sm ${di.isWeekend ? 'bg-red-600 text-white' : 'bg-slate-900 text-white'}`}>
+                        <span className="text-[8px] font-black uppercase mb-0.5">{di.name.substring(0,3)}</span>
+                        <span className="text-sm font-black">{di.day}</span>
                       </div>
-                      <p className="text-xs font-bold text-slate-700 uppercase tracking-tighter">
-                        {shift?.repType || shift?.type || "---"}
+                      <p className="text-[11px] font-black text-slate-900 uppercase tracking-widest">
+                        {shift?.repType || shift?.type || "RIPOSO"}
                       </p>
                     </div>
                     {renderBadge(shift)}
@@ -240,32 +255,43 @@ export default function PlanningMobileView({
         )}
       </div>
 
-      {/* SOS Quick Action for Terminale di Pattuglia */}
+      {/* SOS Quick Action - Premium Tech Style */}
       {!isAdmin && (
-        <div className="px-4 pb-6">
+        <div className="px-5 pb-8">
           <button 
             onClick={handleSOS}
             disabled={loadingSOS}
-            className="w-full bg-gradient-to-r from-red-600 to-red-700 active:scale-95 text-white rounded-3xl py-5 px-4 flex items-center justify-center gap-4 shadow-xl shadow-red-200 border-b-4 border-red-800 transition-all font-black"
+            className="w-full bg-[#0f172a] active:scale-[0.98] text-white rounded-[2rem] py-6 px-6 flex items-center justify-between gap-4 shadow-2xl shadow-red-200/50 border-b-4 border-red-600 transition-all font-black relative overflow-hidden group"
           >
-            {loadingSOS ? (
-              <RefreshCw className="animate-spin" size={32} />
-            ) : (
-              <AlertCircle size={32} className="animate-pulse" />
-            )}
-            <div className="text-left leading-tight">
-              <p className="text-lg uppercase">SOS EMERGENZA</p>
-              <p className="text-[10px] font-bold opacity-70 uppercase tracking-widest italic">Invia Posizione GPS ora</p>
+            <div className="absolute inset-0 bg-red-600/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="w-14 h-14 bg-red-600 rounded-2xl flex items-center justify-center shadow-lg shadow-red-500/30">
+                {loadingSOS ? (
+                  <RefreshCw className="animate-spin text-white" size={32} />
+                ) : (
+                  <AlertCircle size={32} className="animate-pulse text-white" />
+                )}
+              </div>
+              <div className="text-left leading-none">
+                <p className="text-xl uppercase tracking-tighter mb-1">SOS GPS</p>
+                <p className="text-[10px] font-bold text-red-500 uppercase tracking-[0.2em] italic">Segnale Emergenza</p>
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
+               <ChevronRight className="text-slate-500" />
             </div>
           </button>
         </div>
       )}
 
-      <div className="p-4 bg-slate-100/50 border-t border-slate-200">
-        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] text-center">
-          Sentinel Mobile View v1.0 &middot; Terminale di Pattuglia
+      <div className="py-6 px-6 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-4">
+        <div className="h-[1px] flex-1 bg-slate-200"></div>
+        <p className="text-[9px] text-slate-400 font-black uppercase tracking-[0.3em] whitespace-nowrap">
+          Sentinel Mobile &middot; Altamura
         </p>
+        <div className="h-[1px] flex-1 bg-slate-200"></div>
       </div>
+    </div>
     </div>
   )
 }

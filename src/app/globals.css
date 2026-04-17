@@ -5,6 +5,11 @@
   --background: #ffffff;
   --foreground: #0f172a;
   
+  /* Navy & Azure */
+  --navy: #0f172a;
+  --azure: #38bdf8;
+  --azure-glow: #0ea5e9;
+  
   /* Accent Colors */
   --primary: #4f46e5;      /* Indigo 600 */
   --primary-hover: #4338ca; /* Indigo 700 */

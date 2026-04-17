@@ -1,9 +1,8 @@
-import { auth, signOut } from "@/auth"
-import { LogOut } from "lucide-react"
+import { auth } from "@/auth"
 import { redirect } from "next/navigation"
-import DynamicAgentDashboard from "@/components/DynamicAgentDashboard"
-import NotificationHub from "@/components/NotificationHub"
 import { prisma } from "@/lib/prisma"
+import DashboardShell from "@/components/DashboardShell"
+import { isHoliday } from "@/utils/holidays"
 
 export default async function Home({ 
   params,
@@ -17,38 +16,31 @@ export default async function Home({
   if (!session?.user) redirect('/login')
   if (session.user.forcePasswordChange) redirect('/change-password')
 
-  const { role, name, matricola, tenantSlug: userSlug } = session.user
+  const { role, tenantSlug: userSlug, tenantId } = session.user
   const urlSlug = (await params).tenantSlug
   const view = (await searchParams).view
   const monthStr = (await searchParams).month
   const yearStr = (await searchParams).year
 
-  // Verifica COERENZA SLUG: Se l'utente prova ad accedere a un comando diverso dal suo
+  // Verifica COERENZA SLUG
   if (urlSlug !== userSlug && !session.user.isSuperAdmin) {
     redirect(`/${userSlug}`)
   }
 
-  // Admin users: redirect to the new sidebar layout (unless previewing agent view)
+  // Admin users: redirect to sidebar pannello (unless previewing agent view)
   if (role === "ADMIN" && view !== "agent") {
     redirect(`/${userSlug}/admin/pannello`)
   }
 
-  // Default to current month/year if not specified
   const now = new Date()
   const currentYear = yearStr ? parseInt(yearStr, 10) : now.getFullYear()
   const currentMonth = monthStr ? parseInt(monthStr, 10) : (now.getMonth() + 1)
 
-  const tenantId = session.user.tenantId
-
-  // Fetch current user's full profile from DB
-  const currentUserDb = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { isUfficiale: true, telegramChatId: true }
-  })
-
+  // Data Fetching
   const users = await prisma.user.findMany({
     where: { role: "AGENTE", ...(tenantId ? { tenantId } : {}) },
     orderBy: { name: 'asc' },
+    select: { id: true, name: true, matricola: true, isUfficiale: true, telegramChatId: true }
   })
 
   const shifts = await prisma.shift.findMany({
@@ -58,92 +50,54 @@ export default async function Home({
         gte: new Date(Date.UTC(currentYear, currentMonth - 1, 1)),
         lt: new Date(Date.UTC(currentYear, currentMonth, 2)),
       }
+    },
+    include: { user: { select: { name: true } } }
+  })
+
+  const myShifts = shifts.filter(s => s.userId === session.user.id)
+
+  const agendaEntries = await prisma.agendaEntry.findMany({
+    where: { 
+      userId: session.user.id,
+      date: {
+        gte: new Date(Date.UTC(currentYear, currentMonth - 1, 1)),
+        lt: new Date(Date.UTC(currentYear, currentMonth, 2)),
+      }
     }
   })
 
-// @ts-nocheck
+  // @ts-ignore
   const pubRec = await prisma.monthStatus.findUnique({
     where: { month_year_tenantId: { month: currentMonth, year: currentYear, tenantId: tenantId || "" } }
   })
   const isPublished = pubRec ? pubRec.isPublished : false
 
-  const containerClass = "w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+  const settings = await prisma.globalSettings.findUnique({
+    where: { tenantId: tenantId || "" }
+  })
+
+  // Prepare dayInfo for the shell
+  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate()
+  const dayNames = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"]
+  const dayInfo = Array.from({ length: daysInMonth }, (_, i) => {
+    const d = i + 1
+    const date = new Date(currentYear, currentMonth - 1, d)
+    return { day: d, name: dayNames[date.getDay()], isWeekend: isHoliday(date), isNextMonth: false }
+  })
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Navbar - Desktop & Mobile Header */}
-      <header className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-50">
-        <div className={`${containerClass} h-16 flex items-center justify-between`}>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-900 rounded-md flex items-center justify-center text-white font-bold text-xs shrink-0">
-              PL
-            </div>
-            <div className="flex flex-col">
-              <h1 className="text-[10px] sm:text-sm font-bold text-slate-800 leading-tight">
-                Polizia Locale {session.user.tenantName ? `di ${session.user.tenantName}` : "di Altamura"}
-              </h1>
-              <p className="text-[9px] sm:text-[10px] text-slate-400 font-medium leading-tight">Gestione Reperibilità</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2 sm:gap-4">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold text-slate-800">{name}</p>
-              <p className="text-xs text-slate-500">Matr. {matricola} • {role}</p>
-            </div>
-            <div className="flex items-center gap-3 sm:gap-6">
-              <NotificationHub userRole={role} />
-              <form action={async () => {
-                "use server"
-                await signOut()
-              }}>
-                <button 
-                  type="submit" 
-                  className="p-2 text-slate-500 hover:text-red-600 hover:bg-slate-100 rounded-full transition-colors"
-                  title="Esci"
-                >
-                  <LogOut size={20} />
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Agent Dashboard */}
-      <main className={`flex-1 ${containerClass} py-4 sm:py-6 lg:py-8`}>
-        <DynamicAgentDashboard 
-          currentUser={{ id: session?.user?.id || "", matricola: matricola || "", name: name || "", isUfficiale: currentUserDb?.isUfficiale || false, telegramChatId: currentUserDb?.telegramChatId || null }} 
-          shifts={shifts} 
-          allAgents={users as any} 
-          currentYear={currentYear} 
-          currentMonth={currentMonth} 
-          isPublished={isPublished} 
-          currentView={view} 
-          tenantName={session.user.tenantName}
-          tenantSlug={urlSlug}
-          canManageShifts={session.user.canManageShifts}
-          canManageUsers={session.user.canManageUsers}
-          canVerifyClockIns={session.user.canVerifyClockIns}
-          canConfigureSystem={session.user.canConfigureSystem}
-          userRole={session.user.role}
-          signOutAction={async () => {
-            "use server"
-            await signOut()
-          }}
-        />
-      </main>
-
-      <footer className="border-t border-slate-200 bg-white mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">
-            Comando di Polizia Locale {session.user.tenantName ? `di ${session.user.tenantName}` : ""}
-          </p>
-          <p className="text-[10px] text-slate-300 font-medium">
-            Sistema Reperibilità v2.1
-          </p>
-        </div>
-      </footer>
-    </div>
+    <DashboardShell 
+      session={session}
+      allAgents={users}
+      shifts={shifts}
+      myShifts={myShifts}
+      agendaEntries={agendaEntries}
+      currentMonth={currentMonth}
+      currentYear={currentYear}
+      isPublished={isPublished}
+      settings={settings}
+      tenantSlug={urlSlug}
+      dayInfo={dayInfo}
+    />
   )
 }
