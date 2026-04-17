@@ -26,7 +26,8 @@ export default function AgentShiftsList({
   setAgendaDate,
   setShowAgenda,
   setSelectedShiftForSwap,
-  setShowSwapModal
+  setShowSwapModal,
+  tenantSlug
 }: any) {
   return (
     <div className="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden mb-8">
@@ -51,13 +52,13 @@ export default function AgentShiftsList({
           </button>
 
           <div className="hidden sm:flex bg-slate-100 rounded-lg p-1">
-            <Link href={`/?view=agent&month=${prevMonth}&year=${prevYear}`} className="p-2 text-slate-500 hover:text-slate-900 rounded-md transition-all hover:bg-white">
+            <Link href={`/${tenantSlug || ''}?view=agent&month=${prevMonth}&year=${prevYear}`} className="p-2 text-slate-500 hover:text-slate-900 rounded-md transition-all hover:bg-white">
               <ChevronLeft size={16} />
             </Link>
             <div className="px-3 py-1.5 text-sm font-bold text-slate-700 min-w-[130px] text-center uppercase tracking-wider">
               {currentMonthName} {currentYear}
             </div>
-            <Link href={`/?view=agent&month=${nextMonth}&year=${nextYear}`} className="p-2 text-slate-500 hover:text-slate-900 rounded-md transition-all hover:bg-white">
+            <Link href={`/${tenantSlug || ''}?view=agent&month=${nextMonth}&year=${nextYear}`} className="p-2 text-slate-500 hover:text-slate-900 rounded-md transition-all hover:bg-white">
               <ChevronRight size={16} />
             </Link>
           </div>

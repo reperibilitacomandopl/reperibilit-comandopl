@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { Calendar, User, Clock, AlertCircle, RefreshCw, ChevronRight } from "lucide-react"
+import { Calendar, User, Clock, AlertCircle, RefreshCw, ChevronRight, ChevronLeft } from "lucide-react"
+import Link from "next/link"
 import toast from "react-hot-toast"
 import { storeOfflineRequest } from "../lib/offline-sync"
 
@@ -33,6 +34,11 @@ interface PlanningMobileViewProps {
   dayInfo: DayInfo[]
   currentYear: number
   currentMonth: number
+  prevMonth?: number
+  prevYear?: number
+  nextMonth?: number
+  nextYear?: number
+  tenantSlug?: string
   onEditCell?: (agentId: string, agentName: string, day: number, currentType: string) => void
   isAdmin?: boolean
   userRole?: string
@@ -44,6 +50,11 @@ export default function PlanningMobileView({
   dayInfo, 
   currentYear, 
   currentMonth,
+  prevMonth,
+  prevYear,
+  nextMonth,
+  nextYear,
+  tenantSlug,
   onEditCell,
   isAdmin = false,
   userRole = "AGENT"
@@ -150,6 +161,27 @@ export default function PlanningMobileView({
           <User size={16} />
           Vista Agente
         </button>
+      </div>
+
+      {/* Month Navigator for Mobile */}
+      <div className="flex bg-white mx-3 mb-3 rounded-2xl p-1 border border-slate-200 shadow-sm items-center">
+        <Link 
+          href={`/${tenantSlug || ''}?view=agent&month=${prevMonth}&year=${prevYear}`}
+          className="p-3 hover:bg-slate-50 text-slate-400 rounded-xl transition-all active:scale-75"
+        >
+          <ChevronLeft size={20} />
+        </Link>
+        <div className="flex-1 text-center">
+          <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-800">
+            {monthNames[currentMonth-1]} <span className="text-blue-600 font-black">{currentYear}</span>
+          </span>
+        </div>
+        <Link 
+          href={`/${tenantSlug || ''}?view=agent&month=${nextMonth}&year=${nextYear}`}
+          className="p-3 hover:bg-slate-50 text-slate-400 rounded-xl transition-all active:scale-75"
+        >
+          <ChevronRight size={20} />
+        </Link>
       </div>
 
       <div className="p-4 pt-2">

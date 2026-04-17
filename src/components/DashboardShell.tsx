@@ -29,8 +29,13 @@ export default function DashboardShell({
 }: any) {
   const [activeTab, setActiveTab] = useState('dashboard')
   const { role, name, matricola } = session.user
-
   const containerClass = "w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+
+  // Calculate Navigation Params
+  const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1
+  const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear
+  const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1
+  const nextYear = currentMonth === 12 ? currentYear + 1 : currentYear
 
   return (
     <div className={`min-h-screen bg-[#F8FAFC] flex flex-col ${role !== 'ADMIN' ? 'pb-24 lg:pb-0' : ''}`}>
@@ -113,6 +118,11 @@ export default function DashboardShell({
                       dayInfo={dayInfo}
                       currentYear={currentYear}
                       currentMonth={currentMonth}
+                      prevMonth={prevMonth}
+                      prevYear={prevYear}
+                      nextMonth={nextMonth}
+                      nextYear={nextYear}
+                      tenantSlug={tenantSlug}
                       isAdmin={false}
                       userRole={role}
                     />

@@ -231,6 +231,7 @@ export default function AgentDashboard({
         setShowAgenda={setShowAgenda}
         setSelectedShiftForSwap={setSelectedShiftForSwap}
         setShowSwapModal={setShowSwapModal}
+        tenantSlug={tenantSlug}
       />
 
       {/* BALANCES SECTION */}
