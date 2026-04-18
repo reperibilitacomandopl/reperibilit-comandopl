@@ -14,6 +14,7 @@ import AdminAlertModal from "./admin/AdminAlertModal"
 import SettingsPanel, { TabType } from "./SettingsPanel"
 import ServiceManagerPanel from "./ServiceManagerPanel"
 import ServiceOrderDashboard from "./ServiceOrderDashboard"
+import AdminRegistersPanel from "./admin/AdminRegistersPanel"
 
 // Modals
 import { AdminPersonnelModal } from "./admin/AdminPersonnelModal"
@@ -43,6 +44,7 @@ export default function AdminDashboard({
   const [showSalaOperativa, setShowSalaOperativa] = useState(false)
   const [showAlertModal, setShowAlertModal] = useState(false)
   const [showStampaOds, setShowStampaOds] = useState(false)
+  const [showRegisters, setShowRegisters] = useState(false)
   
   const [isMobileView, setIsMobileView] = useState(false)
 
@@ -82,6 +84,7 @@ export default function AdminDashboard({
           onShowAnagrafica={() => setShowAnagrafica(true)}
           onShowAudit={() => { setShowAuditLog(true); admin.fetchAuditLogs(); }}
           onShowBulkAbsence={() => setShowBulkAbsence(true)}
+          onShowRegisters={() => setShowRegisters(true)}
           onShowSettings={() => setShowSettings(true)}
           onShowVerbatel={() => setShowVerbatelSync(true)}
           onShowSwaps={() => { setShowSwapApprovals(true); admin.fetchPendingApprovals(); }}
@@ -190,6 +193,21 @@ export default function AdminDashboard({
           <div className="fixed inset-0 z-[100] bg-slate-900 p-0 sm:p-4 overflow-auto">
              <div className="max-w-[1600px] mx-auto min-h-full sm:min-h-[calc(100vh-2rem)] shadow-2xl sm:rounded-3xl overflow-hidden bg-slate-50 relative border border-slate-700">
                 <ServiceOrderDashboard onClose={() => setShowStampaOds(false)} tenantName={settings?.tenantName} />
+             </div>
+          </div>
+        )}
+
+        {showRegisters && (
+          <div className="fixed inset-0 z-[90] bg-slate-100/80 backdrop-blur-sm p-4 sm:p-10 overflow-auto flex justify-center">
+             <div className="w-full max-w-6xl relative h-fit bg-transparent">
+                <div className="absolute -top-6 right-0">
+                  <button onClick={() => setShowRegisters(false)} className="bg-white p-3 rounded-2xl shadow-xl text-slate-500 hover:text-rose-600 transition-all font-black text-xs uppercase tracking-widest flex items-center gap-2 border border-slate-200 hover:border-rose-200">
+                     Chiudi Registri
+                  </button>
+                </div>
+                <div className="mt-8">
+                  <AdminRegistersPanel />
+                </div>
              </div>
           </div>
         )}

@@ -18,6 +18,7 @@ interface AdminToolbarProps {
   onShowAnagrafica: () => void
   onShowAudit: () => void
   onShowBulkAbsence: () => void
+  onShowRegisters: () => void
   onShowSettings: () => void
   onShowVerbatel: () => void
   onShowSwaps: () => void
@@ -57,7 +58,7 @@ interface AdminToolbarProps {
 
 export function AdminToolbar({
   currentMonth, currentYear, currentMonthName,
-  isPublished, onPublish, onShowAnagrafica, onShowAudit, onShowBulkAbsence,
+  isPublished, onPublish, onShowAnagrafica, onShowAudit, onShowBulkAbsence, onShowRegisters,
   onShowSettings, onShowVerbatel, onShowSwaps, 
   pendingSwapsCount, pendingRequestsCount,
   onSearch, onRoleFilter, onExportExcel, onExportRepExcel, onExportUfficialiExcel, onExportPDF, onExportRepPDF,
@@ -201,6 +202,9 @@ export function AdminToolbar({
         <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
           <button onClick={onShowAnagrafica} className="flex items-center gap-2 bg-white text-slate-700 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-200 shadow-sm hover:bg-slate-50 transition-all active:scale-95" title="Anagrafica">
             <Users width={16} height={16} /> <span className="hidden lg:inline">Anagrafica</span>
+          </button>
+          <button onClick={onShowRegisters} className="flex items-center gap-2 bg-white text-slate-700 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-200 shadow-sm hover:bg-slate-50 transition-all active:scale-95" title="Registri e Saldi">
+            <ClipboardList width={16} height={16} /> <span className="hidden lg:inline">Registri</span>
           </button>
           <button onClick={onShowBulkAbsence} className="flex items-center gap-2 bg-white text-slate-700 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-200 shadow-sm hover:bg-slate-50 transition-all active:scale-95" title="Assenze Multiple">
             <CalendarIcon width={16} height={16} /> <span className="hidden lg:inline">Assenze</span>

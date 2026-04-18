@@ -23,6 +23,8 @@ import AgentAgendaModal from "./agent/AgentAgendaModal"
 import AgentSyncModal from "./agent/AgentSyncModal"
 import AgentSosModal from "./agent/AgentSosModal"
 import OfficerDutyPanel from "./agent/OfficerDutyPanel"
+import PersonalBalances from "./agent/PersonalBalances"
+import PersonalClockHistory from "./agent/PersonalClockHistory"
 
 import { Shield, CalendarDays, BookOpen, FileDown } from "lucide-react"
 
@@ -208,6 +210,11 @@ export default function AgentDashboard({
       </div>
       
       <OfficerDutyPanel />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <PersonalBalances />
+        <PersonalClockHistory />
+      </div>
 
       <AgentShiftsList 
         isPublished={isPublished}
