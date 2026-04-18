@@ -6,7 +6,8 @@ export const dynamic = "force-dynamic"
 
 export default async function OvertimePage() {
   const session = await auth()
-  if (!session?.user || session.user.role !== "ADMIN") redirect("/login")
+  if (!session?.user) redirect("/login")
+  if (session.user.role !== "ADMIN" && !session.user.isSuperAdmin && !session.user.canConfigureSystem) redirect("/login")
 
   return (
     <div className="p-6 lg:p-8 relative z-10">

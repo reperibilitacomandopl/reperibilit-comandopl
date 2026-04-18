@@ -5,6 +5,7 @@ declare module "next-auth" {
     id: string
     role: string
     matricola: string
+    qualifica?: string | null
     forcePasswordChange: boolean
     tenantId?: string | null
     tenantName?: string | null
@@ -28,6 +29,7 @@ declare module "next-auth/jwt" {
     id: string
     role: string
     matricola: string
+    qualifica?: string | null
     forcePasswordChange: boolean
     tenantId: string | null
     tenantName: string | null

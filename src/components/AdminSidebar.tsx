@@ -203,7 +203,7 @@ export default function AdminSidebar({
       )}
 
       {/* Navigation Items Premium */}
-      <nav className="flex-1 py-10 px-4 space-y-10 overflow-y-auto custom-scrollbar-dark pb-32">
+      <nav className="flex-1 py-10 px-4 space-y-10 overflow-y-auto custom-scrollbar-dark pb-6">
         {NAV_SECTIONS.map((section) => {
           const filteredItems = section.items.filter(item => {
             if (userRole === "ADMIN") return true;
@@ -278,7 +278,7 @@ export default function AdminSidebar({
       </nav>
 
       {/* Fixed Footer Premium */}
-      <div className="absolute bottom-0 left-0 w-full bg-[#050914] border-t border-white/5 p-6 space-y-4">
+      <div className="shrink-0 w-full bg-[#050914] border-t border-white/5 p-6 space-y-4 relative z-20">
         
         {/* User Card */}
         <div className="flex items-center gap-4 bg-white/5 p-4 rounded-3xl border border-white/5 group hover:bg-white/10 transition-colors">

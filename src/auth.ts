@@ -1,9 +1,9 @@
-// @ts-nocheck
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { rateLimit } from "@/lib/rate-limit"
+import { cookies } from "next/headers"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -59,6 +59,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           email: user.email,
           role: user.role,
           matricola: user.matricola,
+          qualifica: user.qualifica,
           forcePasswordChange: user.forcePasswordChange,
           tenantId: user.tenantId || undefined,
           tenantName: tenantName,
@@ -77,9 +78,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       if (user) {
+        // Clear impersonation on fresh login
+        try {
+          const cookieStore = await cookies()
+          cookieStore.delete("superadmin_impersonate")
+        } catch (e) {
+          console.error("Could not delete impersonate cookie on login", e)
+        }
+        
         token.id = user.id
         token.role = user.role as string
         token.matricola = user.matricola as string
+        token.qualifica = (user as any).qualifica as string | undefined
         token.forcePasswordChange = user.forcePasswordChange as boolean
         token.tenantId = (user as any).tenantId as string | undefined
         token.tenantName = (user as any).tenantName as string | undefined
@@ -99,6 +109,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = (token.id as string) || (token.sub as string)
         session.user.role = token.role as string
         session.user.matricola = token.matricola as string
+        session.user.qualifica = token.qualifica as string | undefined
         session.user.forcePasswordChange = token.forcePasswordChange as boolean
         session.user.isSuperAdmin = (token.isSuperAdmin as boolean) || false
         session.user.tenantId = token.tenantId as string
@@ -111,23 +122,33 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.canVerifyClockIns = token.canVerifyClockIns as boolean
         session.user.canConfigureSystem = token.canConfigureSystem as boolean
         
-        // Se è SuperAdmin e non ha un tenantId in sessione, proviamo a recuperarlo
-        if (session.user.isSuperAdmin && !session.user.tenantId && session.user.id) {
+        // Se è SuperAdmin, NON ci fidiamo della cache del token. Leggiamo SEMPRE il DB in tempo reale
+        // per permettere allo switch (impersonification) di funzionare istantaneamente tramite cookie.
+        if (session.user.isSuperAdmin && session.user.id) {
           try {
+            const cookieStore = await cookies()
+            const impersonatedId = cookieStore.get('superadmin_impersonate')?.value
             const dbUser = await prisma.user.findUnique({
               where: { id: session.user.id },
               select: { tenantId: true }
             })
-            if (dbUser?.tenantId) {
-              session.user.tenantId = dbUser.tenantId
+            
+            const targetTenantId = impersonatedId || dbUser?.tenantId || undefined
+            
+            // Sovrascriviamo SEMPRE i dati del tenant
+            session.user.tenantId = targetTenantId
+            if (targetTenantId) {
               const tenant = await prisma.tenant.findUnique({
-                where: { id: dbUser.tenantId },
-                select: { name: true, slug: true }
+                where: { id: targetTenantId },
+                select: { name: true, slug: true, logoUrl: true, primaryColor: true }
               })
               session.user.tenantName = tenant?.name || null
               session.user.tenantSlug = tenant?.slug || null
               session.user.tenantLogo = tenant?.logoUrl || null
               session.user.tenantPrimaryColor = tenant?.primaryColor || null
+            } else {
+              session.user.tenantName = null
+              session.user.tenantSlug = null
             }
           } catch (e) {
             console.error("Error fetching live tenantId for SuperAdmin:", e)

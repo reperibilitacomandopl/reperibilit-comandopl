@@ -3,6 +3,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import AdminDashboard from "@/components/AdminDashboard"
+import { resolveTheoreticalShift } from "@/utils/theoretical-shift"
 
 export const dynamic = "force-dynamic"
 
@@ -58,13 +59,36 @@ export default async function PianificazionePage({ params, searchParams }: { par
     prisma.serviceCategory.findMany({ where: tf, include: { types: true }, orderBy: { orderIndex: "asc" } }),
   ])
 
+  // === INIEZIONE TURNI TEORICI PER IL 1° DEL MESE SUCCESSIVO ===
+  const nextMonthFirst = new Date(Date.UTC(currentYear, currentMonth, 1))
+  const augmentedShifts = [...shifts]
+  
+  users.forEach(user => {
+    const hasNextDay = shifts.some(s => s.userId === user.id && new Date(s.date).getTime() === nextMonthFirst.getTime())
+    if (!hasNextDay) {
+      const theoretical = resolveTheoreticalShift({
+        user: { ...user, rotationGroup: rotationGroups.find(g => g.id === user.rotationGroupId) },
+        date: nextMonthFirst
+      })
+      if (theoretical) {
+        augmentedShifts.push({
+          id: `theoretical-${user.id}`,
+          userId: user.id,
+          date: nextMonthFirst,
+          type: theoretical,
+          isTheoretical: true
+        } as any)
+      }
+    }
+  })
+
   const isPublished = pubRec ? pubRec.isPublished : false
 
   return (
     <div className="p-2 sm:p-4 lg:p-6 relative z-10 h-full">
       <AdminDashboard
         allAgents={users as any}
-        shifts={shifts}
+        shifts={augmentedShifts as any}
         currentYear={currentYear}
         currentMonth={currentMonth}
         isPublished={isPublished}

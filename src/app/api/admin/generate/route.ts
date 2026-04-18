@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { rateLimit } from "@/lib/rate-limit"
 import { z } from "zod"
 import { generateMonthShifts } from "@/utils/generation-engine"
+import { resolveTheoreticalShift } from "@/utils/theoretical-shift"
 import { notifyAdminActivity } from "@/lib/telegram"
 
 const GenerateSchema = z.object({
@@ -42,6 +43,7 @@ export async function POST(req: Request) {
 
     const agents = await prisma.user.findMany({
       where: { role: "AGENTE", isActive: true, ...tf },
+      include: { rotationGroup: true },
       orderBy: { name: "asc" }
     })
 
@@ -57,6 +59,64 @@ export async function POST(req: Request) {
           gte: new Date(Date.UTC(year, month - 1, 1)),
           lt: new Date(Date.UTC(year, month, 2))
         }
+      }
+    })
+
+    const existingAbsences = await prisma.absence.findMany({
+      where: {
+        ...tf,
+        date: {
+          gte: new Date(Date.UTC(year, month - 1, 1)),
+          lt: new Date(Date.UTC(year, month, 2))
+        }
+      }
+    })
+
+    // === GHOST LOOK-AHEAD LOGIC ===
+    // Inietto il 1° del mese successivo se manca, per proteggere l'ultimo giorno del mese corrente
+    const nextMonthFirst = new Date(Date.UTC(year, month, 1))
+    
+    agents.forEach(agent => {
+      // 1. Verifichiamo se l'agente ha già un turno o un'assenza reale salvata per il 1° del mese dopo
+      const hasShiftInDB = existingShifts.some(s => 
+        s.userId === agent.id && 
+        new Date(s.date).getTime() === nextMonthFirst.getTime()
+      )
+      const hasAbsenceInDB = existingAbsences.some(a => 
+        a.userId === agent.id && 
+        new Date(a.date).getTime() === nextMonthFirst.getTime()
+      )
+
+      // 2. Se non ha nulla nel DB, calcoliamo il teorico (Pattern/Riposo Fisso)
+      if (!hasShiftInDB && !hasAbsenceInDB) {
+        const theoretical = resolveTheoreticalShift({
+          user: agent,
+          date: nextMonthFirst,
+          existingShifts: [],
+          existingAbsences: []
+        })
+
+        if (theoretical) {
+          // Lo aggiungiamo agli existingShifts caricati in memoria per l'engine
+          existingShifts.push({
+            userId: agent.id,
+            date: nextMonthFirst,
+            type: theoretical,
+            tenantId: tenantId
+          } as any)
+        }
+      } else if (hasAbsenceInDB && !hasShiftInDB) {
+        // Se ha un'assenza ma non un turno, iniettiamo l'assenza per l'engine
+        const abs = existingAbsences.find(a => 
+          a.userId === agent.id && 
+          new Date(a.date).getTime() === nextMonthFirst.getTime()
+        )
+        existingShifts.push({
+          userId: agent.id,
+          date: nextMonthFirst,
+          type: abs?.code || "ASS",
+          tenantId: tenantId
+        } as any)
       }
     })
 

@@ -60,7 +60,8 @@ export async function GET(request: Request) {
           lt: endDate
         },
         repType: {
-          contains: 'REP'
+          contains: 'REP',
+          mode: 'insensitive'
         },
         ...(unsyncedOnly ? { isSyncedToVerbatel: false } : {})
       },
@@ -74,7 +75,7 @@ export async function GET(request: Request) {
       }
     });
 
-    const agentiMap = new Map<string, { matricola: string, agente: string, giorni: number[], shifts: any[] }>();
+    const agentiMap = new Map<string, { matricola: string, agente: string, giorni: number[], shiftIds: string[], shifts: any[] }>();
 
     for (const a of assignments) {
       const matricola = a.user.matricola || a.user.name || 'SCONOSCIUTO';
@@ -85,10 +86,12 @@ export async function GET(request: Request) {
           matricola: matricola,
           agente: a.user.name || 'Sconosciuto',
           giorni: [],
+          shiftIds: [],
           shifts: []
         });
       }
       agentiMap.get(matricola)!.giorni.push(day);
+      agentiMap.get(matricola)!.shiftIds.push(a.id);
       agentiMap.get(matricola)!.shifts.push({
         id: a.id,
         giorno: day,
@@ -108,7 +111,10 @@ export async function GET(request: Request) {
       details: `Export dati Verbatel per ${month}/${year}. Trovati ${result.length} agenti con reperibilità.`
     });
 
-    return NextResponse.json(result, { headers: corsHeaders });
+    return NextResponse.json({ 
+      data: result,
+      syncToken: "INTERNAL_SYNC_" + tenantId // Placeholder safe token or session-based verification
+    }, { headers: corsHeaders });
 
   } catch (error) {
     console.error('Error exporting verbatel data:', error);

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
+import Link from "next/link"
 import { signOut } from "next-auth/react"
 import { LogOut, ClipboardList, RefreshCw, Smartphone } from "lucide-react"
 import NotificationHub from "@/components/NotificationHub"
@@ -126,7 +127,7 @@ export default function DashboardShell({
                 {activeTab === 'planning' && (
                   <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <PlanningMobileView 
-                      agents={allAgents}
+                      agents={(role === 'ADMIN' || canManageShifts) ? allAgents : allAgents.filter((a: any) => a.id === session.user.id)}
                       shifts={shifts}
                       dayInfo={dayInfo}
                       currentYear={currentYear}

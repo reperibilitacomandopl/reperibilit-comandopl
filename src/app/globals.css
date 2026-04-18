@@ -85,3 +85,12 @@ body {
   border-radius: 999px; 
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
+/* Custom scrollbar dark */
+.custom-scrollbar-dark::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar-dark::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar-dark::-webkit-scrollbar-thumb { 
+  background: rgba(255, 255, 255, 0.05); 
+  border-radius: 999px; 
+}
+.custom-scrollbar-dark::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }

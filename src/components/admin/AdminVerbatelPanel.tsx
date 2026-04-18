@@ -1,5 +1,5 @@
 "use client"
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { RefreshCw, X, Play, ClipboardList, UploadCloud, ChevronRight } from "lucide-react"
 import toast from "react-hot-toast"
 
@@ -8,9 +8,11 @@ interface AdminVerbatelPanelProps {
   onClose: () => void;
   script: string;
   isLoading: boolean;
-  onGenerate: () => Promise<void>;
+  onFetch: () => Promise<void>;
+  onGenerate: (selectedMatricole: string[]) => void;
   testMode: boolean;
   onToggleTestMode: (val: boolean) => void;
+  agents: { agente: string; matricola: string; giorni: number[] }[];
 }
 
 export default function AdminVerbatelPanel({ 
@@ -18,14 +20,28 @@ export default function AdminVerbatelPanel({
   onClose, 
   script, 
   isLoading, 
+  onFetch,
   onGenerate, 
   testMode, 
-  onToggleTestMode 
+  onToggleTestMode,
+  agents = []
 }: AdminVerbatelPanelProps) {
+  const [isMounted, setIsMounted] = useState(false);
+  const [selectedMatricole, setSelectedMatricole] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
+  // Update selection when agents are fetched
+  useEffect(() => {
+    if (agents.length > 0 && selectedMatricole.length === 0) {
+      setSelectedMatricole(agents.map(a => a.matricola));
+    }
+  }, [agents]);
 
-  if (!isOpen) return null
+  if (!isMounted || !isOpen) return null
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
@@ -75,34 +91,106 @@ export default function AdminVerbatelPanel({
           </div>
 
           <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl space-y-6">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pb-6 border-b border-slate-50">
-              <div className="flex flex-col gap-1">
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <div className="relative">
-                    <input type="checkbox" checked={testMode} onChange={(e) => onToggleTestMode(e.target.checked)} className="peer sr-only" />
-                    <div className="w-11 h-6 bg-slate-200 peer-focus:ring-2 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
-                  </div>
-                  <span className="font-black text-[12px] text-slate-700 uppercase tracking-tight">Esegui Test di Sicurezza (1 Agente)</span>
-                </label>
-                <p className="text-[9px] text-slate-400 font-bold uppercase pl-14">Consigliato prima del caricamento massivo</p>
+            <div className="flex flex-col gap-6 pb-6 border-b border-slate-50">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+                <div className="flex flex-col gap-1">
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <div className="relative">
+                      <input type="checkbox" checked={testMode} onChange={(e) => onToggleTestMode(e.target.checked)} className="peer sr-only" />
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:ring-2 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"></div>
+                    </div>
+                    <span className="font-black text-[12px] text-slate-700 uppercase tracking-tight">Esegui Test di Sicurezza (1 Agente)</span>
+                  </label>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase pl-14">Consigliato prima del caricamento massivo</p>
+                </div>
+
+                <div className="flex gap-3">
+                  {!agents.length ? (
+                    <button 
+                      onClick={onFetch}
+                      disabled={isLoading}
+                      className="bg-slate-900 hover:bg-orange-600 text-white px-8 py-4 rounded-2xl font-black flex items-center justify-center gap-3 shadow-lg shadow-slate-200 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      {isLoading ? <RefreshCw className="animate-spin" width={20} height={20} /> : <UploadCloud width={20} height={20} />}
+                      <span className="uppercase tracking-widest text-[11px]">Carica Dati Unsynced</span>
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => onGenerate(selectedMatricole)}
+                      disabled={isLoading || selectedMatricole.length === 0}
+                      className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-4 rounded-2xl font-black flex items-center justify-center gap-3 shadow-lg shadow-orange-200 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      <Play width={20} height={20} />
+                      <span className="uppercase tracking-widest text-[11px]">Genera Script ({selectedMatricole.length})</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <button 
-                onClick={onGenerate}
-                disabled={isLoading}
-                className="w-full sm:w-auto bg-slate-900 hover:bg-orange-600 text-white px-8 py-4 rounded-2xl font-black flex items-center justify-center gap-3 shadow-lg shadow-slate-200 active:scale-95 transition-all disabled:opacity-50"
-              >
-                {isLoading ? <RefreshCw className="animate-spin" width={20} height={20} /> : <Play width={20} height={20} />}
-                <span className="uppercase tracking-widest text-[11px]">Avvia Generazione Script</span>
-              </button>
+              {agents.length > 0 && (
+                <div className="space-y-4 pt-4 border-t border-slate-50">
+                  <div className="flex items-center justify-between">
+                    <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Selezione Agenti da Sincronizzare</h5>
+                    <div className="flex gap-4">
+                      <button 
+                         onClick={() => setSelectedMatricole(agents.map(a => a.matricola))}
+                         className="text-[9px] font-black text-orange-600 uppercase hover:underline"
+                      >
+                         Seleziona Tutti
+                      </button>
+                      <button 
+                         onClick={() => setSelectedMatricole([])}
+                         className="text-[9px] font-black text-slate-400 uppercase hover:underline"
+                      >
+                         Deseleziona
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                    {agents.map((a, i) => (
+                      <label 
+                        key={a.matricola} 
+                        className={`flex items-center gap-2 p-3 rounded-xl border transition-all cursor-pointer ${
+                          selectedMatricole.includes(a.matricola) 
+                            ? "bg-orange-50 border-orange-200 ring-1 ring-orange-200" 
+                            : "bg-white border-slate-100 opacity-60 grayscale"
+                        }`}
+                      >
+                        <input 
+                          type="checkbox" 
+                          checked={selectedMatricole.includes(a.matricola)}
+                          onChange={(e) => {
+                            if (e.target.checked) setSelectedMatricole([...selectedMatricole, a.matricola]);
+                            else setSelectedMatricole(selectedMatricole.filter(m => m !== a.matricola));
+                          }}
+                          className="w-3 h-3 text-orange-600 rounded border-slate-300 focus:ring-orange-500"
+                        />
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[10px] font-black text-slate-900 truncate uppercase">{a.agente}</span>
+                          <span className="text-[9px] text-slate-400 font-bold">{a.giorni.length} giorni</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {script ? (
               <div className="space-y-4 animate-in slide-in-from-bottom-5 duration-500">
                 <div className="flex items-center justify-between px-2">
                    <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dna dello Script Generato</h5>
-                   <span className="text-[9px] text-emerald-500 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">PRONTO PER IL COPIA-INCOLLA</span>
+                   <div className="flex items-center gap-2">
+                     <span className="text-[9px] text-orange-600 font-bold bg-orange-50 px-2 py-0.5 rounded border border-orange-100 uppercase tracking-tighter">
+                       {selectedMatricole.length} agenti inclusi
+                     </span>
+                     <span className="text-[9px] text-emerald-500 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase tracking-tighter">
+                       Auto-Sync Attivo
+                     </span>
+                   </div>
                 </div>
+
                 <div className="relative group">
                   <textarea 
                     readOnly 

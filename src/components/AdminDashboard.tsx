@@ -97,7 +97,7 @@ export default function AdminDashboard({
           onPrevMonth={admin.handlePrevMonth}
           onNextMonth={admin.handleNextMonth}
           onClear={admin.handleClear}
-          onSyncVerbatel={admin.handleVerbatelSync}
+          onSyncVerbatel={admin.handleFetchVerbatelData}
           onAIResolve={admin.handleAIResolve}
           onSendPec={admin.handlePecSend}
           onSendAlert={() => setShowAlertModal(true)}
@@ -164,9 +164,11 @@ export default function AdminDashboard({
           onClose={() => setShowVerbatelSync(false)} 
           script={admin.verbatelScript}
           isLoading={admin.isLoadingVerbatel}
-          onGenerate={admin.handleVerbatelSync}
+          onFetch={admin.handleFetchVerbatelData}
+          onGenerate={admin.handleGenerateVerbatelScript}
           testMode={admin.verbatelTestMode}
           onToggleTestMode={admin.setVerbatelTestMode}
+          agents={admin.verbatelAgents}
         />
 
         <AdminSwapApprovals 
@@ -197,23 +199,7 @@ export default function AdminDashboard({
             onClose={() => setShowAlertModal(false)}
             isSending={admin.isSendingAlert}
             onSend={admin.handleSendAlert}
-            recipients={(() => {
-              const now = new Date()
-              const todayStr = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Rome' }).format(now)
-              const seen = new Set<string>()
-              return shifts
-                .filter((s: any) => {
-                  if (!s.repType) return false
-                  const dateStr = typeof s.date === 'string' ? s.date.slice(0, 10) : new Date(s.date).toISOString().slice(0, 10)
-                  return dateStr === todayStr
-                })
-                .filter((s: any) => {
-                  if (seen.has(s.userId)) return false
-                  seen.add(s.userId)
-                  return true
-                })
-                .map((s: any) => ({ id: s.userId, name: s.user?.name || allAgents.find((a: any) => a.id === s.userId)?.name || 'N/D' }))
-            })()}
+            recipients={admin.todayReperibili}
           />
         )}
 

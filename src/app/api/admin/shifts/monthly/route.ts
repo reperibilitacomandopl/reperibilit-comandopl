@@ -12,7 +12,7 @@ export async function GET(request: Request) {
 
   try {
     const startDate = new Date(Date.UTC(year, month - 1, 1))
-    const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59))
+    const endDate = new Date(Date.UTC(year, month, 1, 23, 59, 59)) // Include il 1° del mese dopo
 
     const users = await prisma.user.findMany({ 
       where: { tenantId: session.user.tenantId, role: "AGENTE" },
@@ -24,10 +24,31 @@ export async function GET(request: Request) {
         tenantId: session.user.tenantId,
         date: { gte: startDate, lte: endDate } 
       },
-      select: { id: true, userId: true, date: true, type: true, timeRange: true, isSyncedToVerbatel: true }
+      select: { id: true, userId: true, date: true, type: true, timeRange: true, isSyncedToVerbatel: true, repType: true }
     })
 
-    return NextResponse.json({ users, shifts })
+    // === INIEZIONE TURNI TEORICI ===
+    const nextMonthFirst = new Date(Date.UTC(year, month, 1))
+    const augmentedShifts = [...shifts]
+    const { resolveTheoreticalShift } = await import("@/utils/theoretical-shift")
+
+    users.forEach(user => {
+      const hasNextDay = shifts.some(s => s.userId === user.id && new Date(s.date).getTime() === nextMonthFirst.getTime())
+      if (!hasNextDay) {
+        const theoretical = resolveTheoreticalShift({ user, date: nextMonthFirst })
+        if (theoretical) {
+          augmentedShifts.push({
+            id: `theoretical-${user.id}`,
+            userId: user.id,
+            date: nextMonthFirst,
+            type: theoretical,
+            isTheoretical: true
+          } as any)
+        }
+      }
+    })
+
+    return NextResponse.json({ users, shifts: augmentedShifts })
   } catch (error) {
     return NextResponse.json({ error: "Internal Error" }, { status: 500 })
   }

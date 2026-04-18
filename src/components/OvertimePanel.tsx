@@ -47,11 +47,14 @@ export default function OvertimePanel() {
     try {
       const [entriesRes, agentsRes] = await Promise.all([
         fetch(`/api/admin/overtime?year=${year}&month=${month}`),
-        fetch("/api/admin/agents")
+        fetch("/api/admin/users")
       ])
       
       if (entriesRes.ok) setEntries(await entriesRes.json())
-      if (agentsRes.ok) setAgents(await agentsRes.json())
+      if (agentsRes.ok) {
+        const data = await agentsRes.json()
+        setAgents(data.users || [])
+      }
     } catch {
       toast.error("Errore caricamento dati straordinari")
     }

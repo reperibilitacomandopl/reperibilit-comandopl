@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useMemo } from "react"
+import React, { useState, useMemo, useCallback, useEffect } from "react"
 import toast from "react-hot-toast"
 import { useRouter } from "next/navigation"
 import { isHoliday } from "@/utils/holidays"
@@ -96,6 +96,21 @@ export function useAdminData(
   const [verbatelScript, setVerbatelScript] = useState("")
   const [isLoadingVerbatel, setIsLoadingVerbatel] = useState(false)
   const [verbatelTestMode, setVerbatelTestMode] = useState(true)
+  const [verbatelAgents, setVerbatelAgents] = useState<{agente: string, matricola: string, giorni: number[], shiftIds: string[]}[]>([])
+  const [verbatelRawData, setVerbatelRawData] = useState<any>(null)
+  const [verbatelSyncToken, setVerbatelSyncToken] = useState<string>("")
+
+  // Reset Verbatel state when month/year change to avoid cross-month data confusion
+  useEffect(() => {
+    setVerbatelAgents([]);
+    setVerbatelRawData(null);
+    setVerbatelScript("");
+  }, [currentMonth, currentYear]);
+
+  // Sync shifts state when initialShifts prop changes (e.g. after navigation)
+  useEffect(() => {
+    setShifts(initialShifts);
+  }, [initialShifts]);
 
   // Memoized Helpers
   const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
@@ -114,11 +129,9 @@ export function useAdminData(
         isNextMonth: false 
       }
     })
-    // Add 2 days of next month for context
+    // Add 1 day of next month for context
     const nextMonth1 = new Date(currentYear, currentMonth, 1)
-    const nextMonth2 = new Date(currentYear, currentMonth, 2)
     info.push({ day: 1, name: dayNames[nextMonth1.getDay()], isWeekend: isHoliday(nextMonth1), isNextMonth: true })
-    info.push({ day: 2, name: dayNames[nextMonth2.getDay()], isWeekend: isHoliday(nextMonth2), isNextMonth: true })
     return info
   }, [currentYear, currentMonth])
 
@@ -180,6 +193,31 @@ export function useAdminData(
       })
   }, [allAgents, searchQuery, roleFilter, sortConfig, shifts, currentMonth])
 
+  // Hydration-safe logic for today's reperibili
+  const [todayReperibili, setTodayReperibili] = useState<{id: string, name: string}[]>([])
+  useEffect(() => {
+    const now = new Date()
+    // Use Europe/Rome as per comandos production
+    const todayStr = new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Rome' }).format(now)
+    const seen = new Set<string>()
+    const found = shifts
+      .filter((s: any) => {
+        if (!s.repType) return false
+        const dateStr = typeof s.date === 'string' ? s.date.slice(0, 10) : new Date(s.date).toISOString().slice(0, 10)
+        return dateStr === todayStr
+      })
+      .filter((s: any) => {
+        if (seen.has(s.userId)) return false
+        seen.add(s.userId)
+        return true
+      })
+      .map((s: any) => ({ 
+        id: s.userId, 
+        name: s.user?.name || allAgents.find((a: any) => a.id === s.userId)?.name || 'N/D' 
+      }))
+    setTodayReperibili(found)
+  }, [shifts, allAgents])
+
   // Handlers
   const handleToggleUff = async (userId: string) => {
     setIsTogglingUff(userId)
@@ -212,6 +250,7 @@ export function useAdminData(
 
     const valueUpper = finalValue.toUpperCase()
     const isRep = valueUpper.includes("REP")
+    const targetDateIso = new Date(Date.UTC(currentYear, currentMonth - 1, day)).toISOString()
     
     try {
       const res = await fetch('/api/admin/edit-shift', {
@@ -219,14 +258,38 @@ export function useAdminData(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: agentId,
-          date: new Date(Date.UTC(currentYear, currentMonth - 1, day)).toISOString(),
+          date: targetDateIso,
           type: isRep ? "rep_m" : finalValue
         })
       })
       if (!res.ok) throw new Error()
+      
+      // Aggiornamento ottimistico locale per evitare il "blink" visivo
+      setShifts(prevShifts => {
+        const next = [...prevShifts]
+        const idx = next.findIndex(s => s.userId === agentId && (typeof s.date === 'string' ? s.date === targetDateIso : new Date(s.date).toISOString() === targetDateIso))
+        
+        if (idx !== -1) {
+          if (isRep) next[idx] = { ...next[idx], repType: finalValue }
+          else next[idx] = { ...next[idx], type: finalValue, repType: null }
+        } else {
+          // Se il turno non esisteva, lo creiamo in locale provvisoriamente
+          next.push({
+            id: `temp-${Date.now()}`,
+            userId: agentId,
+            date: targetDateIso,
+            type: isRep ? "rep_m" : finalValue,
+            repType: isRep ? finalValue : null
+          })
+        }
+        return next
+      })
+
       setEditingCell(null)
       toast.success("Turno aggiornato")
-      window.location.reload()
+      
+      // Chiamata soft a Next.js per allineare il server senza ricaricare il browser
+      router.refresh()
     } catch {
       toast.error("Errore nel salvataggio")
     } finally {
@@ -251,25 +314,48 @@ export function useAdminData(
       setRecalcAgent(null)
     }
   }
-
-  const handleVerbatelSync = async () => {
+  const handleFetchVerbatelData = async () => {
     setIsLoadingVerbatel(true)
     setVerbatelScript("")
     try {
       const res = await fetch(`/api/admin/verbatel-export?mese=${currentMonth}&anno=${currentYear}`)
-      const data = await res.json()
+      const resultObj = await res.json()
       if (!res.ok) throw new Error()
       
+      const { data, syncToken } = resultObj;
       if (!Array.isArray(data)) throw new Error("Errore API Verbatel export")
 
-      const turni = verbatelTestMode && data.length > 0 ? [data[0]] : data;
+      setVerbatelRawData(data);
+      setVerbatelSyncToken(syncToken);
+      setVerbatelAgents(data);
+      toast.success(`${data.length} agenti caricati`)
+    } catch (error) {
+      console.error("Verbatel Export Error:", error)
+      toast.error("Errore caricamento dati Verbatel")
+    } finally {
+      setIsLoadingVerbatel(false)
+    }
+  }
+
+  const handleGenerateVerbatelScript = (selectedMatricole: string[]) => {
+    if (!verbatelRawData || !verbatelSyncToken) return;
+
+    try {
+      const filteredData = verbatelRawData.filter((a: any) => selectedMatricole.includes(a.matricola));
+      const turni = verbatelTestMode && filteredData.length > 0 ? [filteredData[0]] : filteredData;
+      const portalUrl = window.location.origin;
 
       const scriptCode = `(async function() {
     const turniDaInserire = ${JSON.stringify(turni)};
+    const syncToken = "${verbatelSyncToken}";
+    const portalUrl = "${portalUrl}";
     const table = document.getElementById('tableProspetto');
+    
     if(!table) return alert('Tabella Verbatel non trovata! Assicurati di essere nella pagina corretta (Prospetto Reperibilità).');
     
-    // Mappatura Colonne -> Giorni
+    console.log("%c🚀 AVVIO SINCRONIZZAZIONE VERBATEL 2.0", "color: #ff6600; font-size: 16px; font-weight: bold;");
+    console.log("%cModalità: " + (${verbatelTestMode} ? "TEST (1 Agente)" : "MASSIVA (" + turniDaInserire.length + " Agenti)"), "color: #666; font-style: italic;");
+
     const ths = table.querySelectorAll('thead tr th');
     const columnToDayMap = {};
     ths.forEach((th, index) => {
@@ -280,6 +366,7 @@ export function useAdminData(
     });
 
     const sleep = ms => new Promise(res => setTimeout(res, ms));
+    
     function simulateClick(el, x = 0, y = 0) {
         ['mousedown', 'mouseup', 'click'].forEach(type => {
             el.dispatchEvent(new MouseEvent(type, { 
@@ -289,10 +376,13 @@ export function useAdminData(
         });
     }
 
-    let modificheFatte = 0;
+    let modificheTotali = 0;
+    const reportFinal = [];
     const rows = table.querySelectorAll('tbody tr');
 
-    for(const turno of turniDaInserire) {
+    for(const [index, turno] of turniDaInserire.entries()) {
+        console.log("%c\\n[" + (index+1) + "/" + turniDaInserire.length + "] Elaborazione: " + turno.agente, "color: #2196f3; font-weight: bold;");
+        
         let row = null;
         for(let r of rows) {
             const nomCell = r.querySelector('th.nominativo');
@@ -300,8 +390,14 @@ export function useAdminData(
                 row = r; break;
             }
         }
-        if(!row) { console.warn('Agente non trovato in griglia Verbatel: ' + turno.agente); continue; }
 
+        if(!row) { 
+            console.warn("   ❌ Agente non trovato in griglia Verbatel: " + turno.matricola); 
+            reportFinal.push({ agente: turno.agente, stato: "ERRORE: Non trovato in griglia" });
+            continue; 
+        }
+
+        let agentModifications = 0;
         for(const giorno of turno.giorni) {
             let targetColIndex = -1;
             for(let c in columnToDayMap) {
@@ -316,31 +412,22 @@ export function useAdminData(
                 continue;
             }
 
-            const originalBg = cell.style.backgroundColor;
-            cell.style.border = '2px solid red';
-            
-            // Per ingannare jQuery ContextMenu, servono coordinate precise
+            cell.style.border = '2px solid #ff6600';
             const rect = cell.getBoundingClientRect();
             const cx = rect.left + (rect.width / 2);
             const cy = rect.top + (rect.height / 2);
-            
-            const mouseOpts = { 
-                bubbles: true, cancelable: true, view: window, 
-                clientX: cx, clientY: cy, screenX: cx, screenY: cy 
-            };
+            const mouseOpts = { bubbles: true, cancelable: true, view: window, clientX: cx, clientY: cy, screenX: cx, screenY: cy };
             
             cell.dispatchEvent(new MouseEvent('mouseover', mouseOpts));
-            cell.dispatchEvent(new MouseEvent('mouseenter', mouseOpts));
-            await sleep(100);
+            await sleep(150);
             
             cell.dispatchEvent(new MouseEvent('mousedown', { ...mouseOpts, button: 0, buttons: 1 }));
             cell.dispatchEvent(new MouseEvent('mouseup', { ...mouseOpts, button: 0, buttons: 0 }));
             cell.dispatchEvent(new MouseEvent('click', { ...mouseOpts, button: 0, buttons: 0 }));
-            await sleep(200);
+            await sleep(150);
 
-            // Simula Tasto Destro con coordinate per aprire il ContextMenu
             cell.dispatchEvent(new MouseEvent('contextmenu', { ...mouseOpts, button: 2, buttons: 2 }));
-            await sleep(600); // aspetta tempo extra per caricamento menu jQuery
+            await sleep(650); 
 
             let btn = null;
             const xpath = "//a[normalize-space(text())='Reperibile'] | //span[normalize-space(text())='Reperibile']";
@@ -358,22 +445,47 @@ export function useAdminData(
             if(btn) {
                 const btnRect = btn.getBoundingClientRect();
                 simulateClick(btn, btnRect.left + 5, btnRect.top + 5);
-                modificheFatte++;
-                await sleep(600);
+                agentModifications++;
+                modificheTotali++;
+                await sleep(500);
             } else {
-                console.error("Tasto 'Reperibile' non trovato per " + turno.agente);
+                console.error("   ⚠️ Tasto 'Reperibile' non trovato per giorno " + giorno);
                 cell.style.border = '';
             }
         }
+
+        if (agentModifications > 0) {
+            console.log("   ✅ " + agentModifications + " turni inseriti. Sincronizzazione portale...");
+            try {
+                const syncRes = await fetch(portalUrl + "/api/admin/verbatel-sync", {
+                   method: "POST",
+                   headers: { 
+                     "Content-Type": "application/json",
+                     "x-api-key": syncToken 
+                   },
+                   body: JSON.stringify({ shiftIds: turno.shiftIds, status: true })
+                });
+                if (syncRes.ok) console.log("   🔗 Portale aggiornato con successo.");
+                else console.warn("   🚨 Errore aggiornamento portale.");
+            } catch (e) { console.warn("   🚨 Errore di rete con il portale."); }
+            reportFinal.push({ agente: turno.agente, stato: "OK: " + agentModifications + " giorni inseriti" });
+        } else {
+            console.log("   ⚪ Nessuna modifica necessaria per questo agente.");
+            reportFinal.push({ agente: turno.agente, stato: "SKIP: Già aggiornato o nessun turno" });
+        }
+
+        await sleep(2000);
     }
-    alert('Sincronizzazione Compiuta! Turni inseriti: ' + modificheFatte);
+
+    console.log("%c\\n🏁 SINCRONIZZAZIONE TERMINATA!", "color: #4caf50; font-size: 16px; font-weight: bold;");
+    console.table(reportFinal);
+    alert('Sincronizzazione Compiuta! Turni totali inseriti: ' + modificheTotali + '. Controlla la tabella in console per il riepilogo.');
 })();`;
       setVerbatelScript(scriptCode)
       toast.success("Script Verbatel generato")
-    } catch {
-      toast.error("Errore Verbatel")
-    } finally {
-      setIsLoadingVerbatel(false)
+    } catch (error) {
+      console.error("Verbatel Generate Error:", error)
+      toast.error("Errore generazione script")
     }
   }
 
@@ -530,17 +642,27 @@ export function useAdminData(
           })
           if (agentColIndex === -1) agentColIndex = 0
 
-          const dayColMap: { col: number, day: number }[] = []
+          const dayColMap: { col: number, date: Date }[] = []
+          let lastDaySeen = 0
+          let currentMIndex = currentMonth - 1
           headerData.forEach((val, idx) => {
             const s = String(val || "").trim()
             const dayMatch = s.match(/(?:^|\D)(0?[1-9]|[12][0-9]|3[01])(?:\/|\D|$)/)
             if (dayMatch) {
-              dayColMap.push({ col: idx, day: parseInt(dayMatch[1], 10) })
+              const d = parseInt(dayMatch[1], 10)
+              // Se troviamo un "1" dopo giorni alti (28-31), passiamo al mese successivo
+              if (d === 1 && lastDaySeen >= 28) {
+                currentMIndex++
+              }
+              dayColMap.push({ col: idx, date: new Date(Date.UTC(currentYear, currentMIndex, d)) })
+              lastDaySeen = d
             }
           })
 
           if (dayColMap.length === 0) {
-            for (let d = 1; d <= 31; d++) dayColMap.push({ col: d + 3, day: d })
+            for (let d = 1; d <= 31; d++) {
+              dayColMap.push({ col: d + 3, date: new Date(Date.UTC(currentYear, currentMonth - 1, d)) })
+            }
           }
 
           for (let r = headerRowIndex + 1; r < data.length; r++) {
@@ -554,17 +676,14 @@ export function useAdminData(
             dayColMap.forEach(mapping => {
               const shiftType = rowData[mapping.col]?.toString().trim()
               if (shiftType) {
-                const dateObj = new Date(Date.UTC(currentYear, currentMonth - 1, mapping.day))
-                if (dateObj.getUTCMonth() === currentMonth - 1) {
-                  shiftsData.push({
-                    name: rawName,
-                    matricola: rowData[agentColIndex + 1]?.toString().trim() || "",
-                    qualifica: rowData[agentColIndex + 2]?.toString().trim() || "",
-                    squadra: rowData[agentColIndex + 3]?.toString().trim() || "",
-                    date: dateObj.toISOString(),
-                    type: shiftType
-                  })
-                }
+                shiftsData.push({
+                  name: rawName,
+                  matricola: rowData[agentColIndex + 1]?.toString().trim() || "",
+                  qualifica: rowData[agentColIndex + 2]?.toString().trim() || "",
+                  squadra: rowData[agentColIndex + 3]?.toString().trim() || "",
+                  date: mapping.date.toISOString(),
+                  type: shiftType
+                })
               }
             })
           }
@@ -900,6 +1019,7 @@ export function useAdminData(
     isLoadingVerbatel,
     verbatelTestMode,
     setVerbatelTestMode,
+    verbatelAgents,
     
     // Handlers
     handleGenerateMonth,
@@ -916,7 +1036,8 @@ export function useAdminData(
     fetchPendingApprovals,
     fetchAgentBalances,
     fetchAuditLogs,
-    handleVerbatelSync,
+    handleFetchVerbatelData,
+    handleGenerateVerbatelScript,
     handleAIResolve,
     handlePecSend,
     handlePublish,
@@ -926,6 +1047,7 @@ export function useAdminData(
     handleImportShifts,
     handleSendAlert,
     setEditingCell,
+    todayReperibili,
     
     // UI Helpers
     monthNames,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { cookies } from "next/headers"
 
 // GET/POST: Switch impersonation
 export async function POST(req: Request) {
@@ -18,11 +19,12 @@ export async function POST(req: Request) {
   try {
     const { tenantId } = await req.json()
     
-    // Se tenantId è null, resettiamo l'impersonificazione
-    await prisma.user.update({
-      where: { id: dbUser.id },
-      data: { tenantId: tenantId || null }
-    })
+    const cookieStore = await cookies()
+    if (tenantId) {
+      cookieStore.set("superadmin_impersonate", tenantId, { path: "/", secure: true, maxAge: 86400 })
+    } else {
+      cookieStore.delete("superadmin_impersonate")
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

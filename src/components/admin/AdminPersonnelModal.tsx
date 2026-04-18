@@ -9,7 +9,7 @@ import {
 } from "lucide-react"
 import { useAdminState } from "./AdminStateContext"
 import toast from "react-hot-toast"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 
 interface AdminPersonnelModalProps {
   isOpen: boolean
@@ -40,10 +40,9 @@ export function AdminPersonnelModal({ isOpen, onClose }: AdminPersonnelModalProp
   
   const activeAgentsForPartners = allAgents.filter(a => a.isActive)
 
-  // Modale Edit - Tab Attivo
-  const [editTab, setEditTab] = useState<"HR" | "TURNO" | "SEZIONE" | "SERVIZIO">("HR")
-
   const router = useRouter()
+  const params = useParams()
+  const tenantSlug = params?.tenantSlug as string
 
   const uniqueSquadre = Array.from(new Set(allAgents.map(a => a.squadra).filter(Boolean))) as string[]
 
@@ -59,8 +58,6 @@ export function AdminPersonnelModal({ isOpen, onClose }: AdminPersonnelModalProp
   }
 
   if (!isOpen) return null
-
-
 
   const handleOpenDetails = async (agent: any) => {
     setSelectedAgentForDetails(agent)
@@ -294,13 +291,13 @@ export function AdminPersonnelModal({ isOpen, onClose }: AdminPersonnelModalProp
                  
                  {/* Tabs */}
                  <div className="flex gap-2 mt-8 overflow-x-auto no-scrollbar">
-                    {['ANAGRAFICA', 'SALDI', 'NOTE'].map(tab => (
+                    {['ANAGRAFICA', 'SALDI', 'STORICO', 'NOTE'].map(tab => (
                        <button 
                          key={tab} 
                          onClick={() => setActiveDetailTab(tab as any)}
                          className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeDetailTab === tab ? 'bg-white text-slate-900 shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60'}`}
                        >
-                         {tab === 'ANAGRAFICA' ? '📋 Profilo' : tab === 'SALDI' ? '📊 Saldi' : '📝 Note'}
+                         {tab === 'ANAGRAFICA' ? '📋 Profilo' : tab === 'SALDI' ? '📊 Saldi' : tab === 'STORICO' ? '🕒 Storico' : '📝 Note'}
                        </button>
                     ))}
                  </div>
@@ -384,6 +381,24 @@ export function AdminPersonnelModal({ isOpen, onClose }: AdminPersonnelModalProp
                               </div>
                            </div>
                         </div>
+                    </div>
+                 )}
+                 {activeDetailTab === 'STORICO' && (
+                    <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center min-h-[300px] text-center">
+                       <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-4">
+                          <FileText width={32} height={32} />
+                       </div>
+                       <h3 className="text-lg font-black text-slate-800 mb-2">Dossier Completo Servizi</h3>
+                       <p className="text-sm text-slate-500 mb-6 max-w-sm font-medium">Visualizza lo storico completo delle richieste e delle assegnazioni operative in una pagina dedicata.</p>
+                       <button 
+                         onClick={() => {
+                            setSelectedAgentForDetails(null);
+                            router.push(`/${tenantSlug}/admin/risorse/${selectedAgentForDetails.id}`);
+                         }}
+                         className="px-8 py-3 bg-blue-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
+                       >
+                          Apri Fascicolo Storico
+                       </button>
                     </div>
                  )}
                  {activeDetailTab === 'SALDI' && (

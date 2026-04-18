@@ -12,6 +12,14 @@ interface AdminPersonnelSlideOverProps {
   activeAgentsForPartners: any[]
 }
 
+const RANKS = [
+  "DIRIGENTE GENERALE", "DIRIGENTE SUPERIORE", "DIRIGENTE", "COMANDANTE",
+  "COMMISSARIO SUPERIORE", "COMMISSARIO CAPO", "COMMISSARIO", "VICE COMMISSARIO",
+  "ISPETTORE SUPERIORE", "ISPETTORE CAPO", "ISPETTORE", "VICE ISPETTORE",
+  "SOVRINTENDENTE CAPO", "SOVRINTENDENTE", "VICE SOVRINTENDENTE",
+  "ASSISTENTE CAPO", "ASSISTENTE", "AGENTE SCELTO", "AGENTE DI P.L.", "AGENTE"
+];
+
 export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave, onDelete, rotationGroups, categories, activeAgentsForPartners }: AdminPersonnelSlideOverProps) {
   const [editTab, setEditTab] = useState<"HR" | "TURNO" | "SEZIONE" | "SERVIZIO">("HR")
   const [tempName, setTempName] = useState("")
@@ -96,7 +104,7 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
   return (
     <div className="fixed inset-0 z-[150] flex justify-end bg-slate-900/50 backdrop-blur-sm transition-all" onClick={() => setEditingAgent(null)}>
       <div className="absolute inset-0" onClick={() => setEditingAgent(null)} />
-      <div className="relative w-full max-w-lg bg-white h-[100dvh] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-200 overflow-hidden" onClick={e => e.stopPropagation()}>
+      <div className="relative w-full max-w-xl bg-white h-[100dvh] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-200 overflow-hidden" onClick={e => e.stopPropagation()}>
         
         {/* Header */}
         <div className="px-6 py-5 bg-slate-900 text-white flex flex-col shrink-0">
@@ -136,26 +144,46 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
              <div className="space-y-6 animate-in fade-in duration-300">
                 <div className="space-y-4">
                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] border-b border-slate-200 pb-2">📋 Anagrafica Base</h4>
-                   <div className="grid grid-cols-2 gap-3">
-                     <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Nome</label><input value={tempName} onChange={e => setTempName(e.target.value.toUpperCase())} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-blue-400 outline-none transition-all" /></div>
-                     <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Data di Nascita</label><input type="date" value={tempDataDiNascita} onChange={e => setTempDataDiNascita(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-blue-400 outline-none transition-all" /></div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Nome</label><input value={tempName} onChange={e => setTempName(e.target.value.toUpperCase())} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-blue-400 outline-none transition-all" /></div>
+                      <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Data di Nascita</label><input type="date" value={tempDataDiNascita} onChange={e => setTempDataDiNascita(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-blue-400 outline-none transition-all" /></div>
+                      <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Ruolo / Squadra</label>
+                        <input value={tempSquadra} onChange={e => setTempSquadra(e.target.value.toUpperCase())} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-blue-400 outline-none" placeholder="Es. VIABILITA" />
+                      </div>
                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Matricola</label><input value={tempMatricola} onChange={e => setTempMatricola(e.target.value.toUpperCase())} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-blue-400 outline-none" /></div>
+                   
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="space-y-1 md:col-span-2">
+                         <label className="text-[10px] font-black text-slate-500 uppercase">Qualifica & Grado</label>
+                         <select value={tempQualifica} onChange={e => setTempQualifica(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-blue-400 outline-none cursor-pointer">
+                           <option value="">Seleziona Grado...</option>
+                           {RANKS.map(r => <option key={r} value={r}>{r}</option>)}
+                           {tempQualifica && !RANKS.includes(tempQualifica) && <option value={tempQualifica}>{tempQualifica}</option>}
+                         </select>
+                      </div>
                       <div className="space-y-1">
-                         <label className="text-[10px] font-black text-slate-500 uppercase">Qualifica & Ruolo</label>
-                         <div className="flex gap-2">
-                            <input value={tempQualifica} onChange={e => setTempQualifica(e.target.value)} className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-blue-400 outline-none" />
-                            <button 
-                              onClick={() => setTempIsUfficiale(!tempIsUfficiale)}
-                              className={`px-3 rounded-xl border-2 transition-all flex items-center justify-center ${tempIsUfficiale ? 'bg-indigo-600 border-indigo-700 text-white' : 'bg-white border-slate-200 text-slate-300'}`}
-                              title="Segna come Ufficiale"
-                            >
-                               <Star width={16} height={16} className={tempIsUfficiale ? 'fill-white' : ''} />
-                            </button>
+                         <label className="text-[10px] font-black text-slate-500 uppercase">Status</label>
+                         <button 
+                            onClick={() => setTempIsUfficiale(!tempIsUfficiale)}
+                            className={`w-full h-[42px] rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${tempIsUfficiale ? 'bg-indigo-600 border-indigo-700 text-white shadow-md' : 'bg-white border-slate-200 text-slate-400'}`}
+                         >
+                            <Star width={16} height={16} className={tempIsUfficiale ? 'fill-white' : ''} />
+                            <span className="text-[10px] font-black uppercase">{tempIsUfficiale ? 'Ufficiale' : 'Agente'}</span>
+                         </button>
+                      </div>
+                   </div>
+
+                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Matricola</label><input value={tempMatricola} onChange={e => setTempMatricola(e.target.value.toUpperCase())} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-blue-400 outline-none" /></div>
+                      <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Max REP</label>
+                         <input type="number" value={tempMassimale} onChange={e => setTempMassimale(parseInt(e.target.value))} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black focus:border-blue-400 outline-none" />
+                      </div>
+                      <div className="space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Inquadramento</label>
+                         <div className="h-[42px] flex items-center px-3 bg-slate-100 rounded-xl text-[10px] font-black text-slate-400 uppercase tracking-widest border border-slate-200 overflow-hidden text-ellipsis whitespace-nowrap">
+                            {tempRotationGroupId ? rotationGroups.find(g => g.id === tempRotationGroupId)?.name : "DINAMICO"}
                          </div>
                       </div>
-                    </div>
+                   </div>
                 </div>
                 
                 <div className="space-y-4">
@@ -220,12 +248,12 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
                      {categories.map((c:any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                    </select>
                 </div>
-                {tempSquadra && (
+                {editingAgent.squadra && (
                     <div className="bg-slate-100 p-4 rounded-xl border border-slate-200 space-y-2 opacity-60">
                        <h4 className="text-[10px] font-black text-slate-500 uppercase">Nota Storica da Excel</h4>
                        <div className="flex justify-between items-center bg-white px-3 py-2 rounded-lg border border-slate-200">
                           <span className="text-xs font-bold text-slate-400">Ex "Squadra" di testo:</span>
-                          <span className="text-xs font-black text-slate-700 uppercase">{tempSquadra}</span>
+                          <span className="text-xs font-black text-slate-700 uppercase">{editingAgent.squadra}</span>
                        </div>
                        <p className="text-[9px] font-bold text-slate-400">Questo dato è conservato per compatibilità ma l'assegnazione reale segue ora la selezione in alto.</p>
                     </div>

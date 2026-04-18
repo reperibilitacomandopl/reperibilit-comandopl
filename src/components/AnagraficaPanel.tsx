@@ -9,6 +9,7 @@ import {
   AlertCircle, Calendar, ChevronRight, UserCheck, 
   FileText, Briefcase, Mail, Phone, Award, Shield, X
 } from "lucide-react"
+import { useParams } from "next/navigation"
 
 interface AnagraficaPanelProps {
   agents: {
@@ -29,6 +30,8 @@ interface AnagraficaPanelProps {
 
 export default function AnagraficaPanel({ agents, rotationGroups, categories }: AnagraficaPanelProps) {
   const router = useRouter()
+  const params = useParams()
+  const tenantSlug = params?.tenantSlug as string
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("")
@@ -292,7 +295,7 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
 
                   <td className="px-8 py-6 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0" onClick={e => e.stopPropagation()}>
-                       <button onClick={() => router.push(`/admin/risorse/${agent.id}`)} className="p-3 bg-white text-slate-400 hover:text-slate-900 border border-slate-200 rounded-2xl hover:shadow-xl transition-all" title="Storico Servizi"><FileText width={16} height={16} /></button>
+                       <button onClick={() => router.push(`/${tenantSlug}/admin/risorse/${agent.id}`)} className="p-3 bg-white text-slate-400 hover:text-slate-900 border border-slate-200 rounded-2xl hover:shadow-xl transition-all" title="Storico Servizi"><FileText width={16} height={16} /></button>
                        <button onClick={() => setEditingAgent(agent)} className="px-5 py-3 bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-blue-600 transition-all shadow-xl shadow-slate-200">Fascicolo</button>
                     </div>
                   </td>

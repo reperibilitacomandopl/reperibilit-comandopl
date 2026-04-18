@@ -19,10 +19,24 @@ export default function AgentSosModal({ onClose, onSendSos }: AgentSosModalProps
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const isPressingRef = useRef(false)
 
-  const startRecording = async () => {
+  const startRecording = async (e?: any) => {
+    if (e && e.cancelable) e.preventDefault() // prevent double firing on mobile
+    if (isPressingRef.current) return
+    isPressingRef.current = true
+    setIsRecording(true) // UI feedback immediately
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      
+      // If user released button while asking for permissions!
+      if (!isPressingRef.current) {
+        stream.getTracks().forEach(track => track.stop())
+        setIsRecording(false)
+        return
+      }
+
       const recorder = new MediaRecorder(stream)
       mediaRecorderRef.current = recorder
       chunksRef.current = []
@@ -38,21 +52,26 @@ export default function AgentSosModal({ onClose, onSendSos }: AgentSosModalProps
       }
 
       recorder.start()
-      setIsRecording(true)
       setRecordingDuration(0)
+      if (timerRef.current) clearInterval(timerRef.current)
       timerRef.current = setInterval(() => {
         setRecordingDuration(prev => prev + 1)
       }, 1000)
     } catch {
       toast.error("Impossibile accedere al microfono.")
+      setIsRecording(false)
+      isPressingRef.current = false
     }
   }
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
+  const stopRecording = (e?: any) => {
+    if (e && e.cancelable) e.preventDefault()
+    isPressingRef.current = false
+    setIsRecording(false)
+    if (timerRef.current) clearInterval(timerRef.current)
+    
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.stop()
-      setIsRecording(false)
-      if (timerRef.current) clearInterval(timerRef.current)
     }
   }
 

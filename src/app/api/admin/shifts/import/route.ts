@@ -3,6 +3,8 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { notifyAdminActivity } from "@/lib/telegram"
+import { resolveTheoreticalShift } from "@/utils/theoretical-shift"
+import { isAssenza } from "@/utils/shift-logic"
 
 function getGradoLivello(qualifica: string): number {
   const q = (qualifica || "").toUpperCase()
@@ -116,14 +118,45 @@ export async function POST(req: Request) {
           data: { repType: null }
         })
 
+        // Carichiamo dati aggiuntivi degli agenti per il controllo pattern stacchi
+        const agentsFull = await prisma.user.findMany({
+          where: { id: { in: affectedUserIds }, tenantId },
+          include: { rotationGroup: true }
+        })
+        const agentsMap = new Map<string, any>()
+        agentsFull.forEach(a => agentsMap.set(a.id, a))
+
+        // Carichiamo anche eventuali assenze già presenti nel DB per il giorno dopo l'ultimo importato
+        const nextDayBufferMin = new Date(minDate); nextDayBufferMin.setUTCDate(nextDayBufferMin.getUTCDate() + 1);
+        const nextDayBufferMax = new Date(maxDate); nextDayBufferMax.setUTCDate(nextDayBufferMax.getUTCDate() + 1);
+        const bufferAbsences = await prisma.absence.findMany({
+          where: { userId: { in: affectedUserIds }, date: { gte: nextDayBufferMin, lte: nextDayBufferMax }, tenantId }
+        })
+
         // Upsert per ogni turno: preserva 'type' (M, P, etc) se esiste, crea se nuovo
         for (const op of resolvedOps) {
+          // --- LOGICA DI PROTEZIONE STACCO (LOOK-AHEAD) ---
+          const tomorrow = new Date(op.date)
+          tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
+          
+          const tomorrowStatus = resolveTheoreticalShift({
+            user: agentsMap.get(op.userId),
+            date: tomorrow,
+            existingShifts: resolvedOps, // Controlla anche quello che stiamo importando ora (es. se importa tutto il mese)
+            existingAbsences: bufferAbsences
+          })
+
+          // Se domani l'agente è a riposo/assente, NON importiamo la reperibilità per oggi
+          if (isAssenza(tomorrowStatus)) {
+            continue 
+          }
+
           await tx.shift.upsert({
             where: {
               userId_date_tenantId: {
                 userId: op.userId,
                 date: op.date,
-                tenantId: tenantId as any // Cast per bypassare limiti TS su indici composti nullable
+                tenantId: tenantId as any 
               }
             },
             update: {
