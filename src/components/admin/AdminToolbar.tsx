@@ -4,7 +4,7 @@ import React, { useState, useRef } from "react"
 import { 
   UploadCloud, HelpCircle, Trash2, CalendarIcon, Users, ClipboardList, 
   Printer, RefreshCw, Settings, Hash, EyeOff, Eye, Mail, Play, Shield, 
-  Wand2, FileDown, Smartphone, Radio, Car, LayoutGrid, FileText
+  Wand2, FileDown, Smartphone, Radio, Car, LayoutGrid, FileText, Megaphone
 } from "lucide-react"
 import toast from "react-hot-toast"
 import { useRouter } from "next/navigation"
@@ -22,6 +22,7 @@ interface AdminToolbarProps {
   onShowSettings: () => void
   onShowVerbatel: () => void
   onShowSwaps: () => void
+  onShowBacheca: () => void
   pendingSwapsCount: number
   pendingRequestsCount: number
   onShowSalaOperativa: () => void
@@ -59,7 +60,7 @@ interface AdminToolbarProps {
 export function AdminToolbar({
   currentMonth, currentYear, currentMonthName,
   isPublished, onPublish, onShowAnagrafica, onShowAudit, onShowBulkAbsence, onShowRegisters,
-  onShowSettings, onShowVerbatel, onShowSwaps, 
+  onShowSettings, onShowVerbatel, onShowSwaps, onShowBacheca,
   pendingSwapsCount, pendingRequestsCount,
   onSearch, onRoleFilter, onExportExcel, onExportRepExcel, onExportUfficialiExcel, onExportPDF, onExportRepPDF,
   onPrevMonth, onNextMonth, onClear, onSyncVerbatel, onAIResolve, onSendPec, onSendAlert,
@@ -248,6 +249,13 @@ export function AdminToolbar({
 
         {/* COMMUNICATION TOOLS (The real power) */}
         <div className="flex bg-slate-900 p-1 rounded-2xl gap-1">
+          <button 
+            onClick={onShowBacheca} 
+            className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all active:scale-95 shadow-md shadow-indigo-500/20"
+            title="Gestisci Comunicazioni e Bacheca"
+          >
+            <Megaphone width={16} height={16} /> Bacheca
+          </button>
           <button 
             disabled={isSendingPec || !isPublished} 
             onClick={onSendPec} 

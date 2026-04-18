@@ -227,27 +227,42 @@ function AgentDossierCartellino({ userId, currentYear }: { userId: string, curre
 function AgentDossierSaldi({ userId, balancesData, currentYear }: { userId: string, balancesData: any, currentYear: number }) {
   const [saving, setSaving] = useState(false)
   
-  if (!balancesData) return null
+  const configTypes = [
+     { code: '0015', label: 'Ferie Ordinarie', typeMatch: ['0015', 'FERIE'], fallback: '32', unit: 'DAYS' },
+     { code: '0016', label: 'Ferie Anni Precedenti', typeMatch: ['0016', 'FERIE_AP'], fallback: '0', unit: 'DAYS' },
+     { code: '0010', label: 'Festività Soppresse', typeMatch: ['0010', 'FESTIVITA'], fallback: '4', unit: 'DAYS' }
+  ]
 
-  const agentIndex = balancesData.agents?.findIndex((a:any) => a.id === userId)
-  const agentBalance = balancesData.balances?.find((b:any) => b.userId === userId)
-  
-  const detailFerie = agentBalance?.details?.find((bd:any) => bd.code === '0015' || bd.code === 'FERIE')
-  
-  const [ferieSpettanti, setFerieSpettanti] = useState(detailFerie ? detailFerie.initialValue.toString() : "32")
+  const agentBalance = balancesData?.balances?.find((b:any) => b.userId === userId)
+  const shiftsCount = balancesData?.usage?.shiftsCount || []
 
-  const ferieUsate = balancesData.usage?.shiftsCount?.filter((s:any) => s.userId === userId && (s.type === '0015' || s.type === 'FERIE')).reduce((acc:any, curr:any) => acc + curr._count._all, 0) || 0
-  const ferieResidue = Math.max(0, parseFloat(ferieSpettanti || "0") - ferieUsate)
+  // Initialize editable states
+  const [editable, setEditable] = useState<Record<string, string>>(() => {
+     const init: Record<string, string> = {}
+     configTypes.forEach(ct => {
+        const detail = agentBalance?.details?.find((bd:any) => ct.typeMatch.includes(bd.code))
+        init[ct.code] = detail ? detail.initialValue.toString() : ct.fallback
+     })
+     return init
+  })
+
+  // Calculations for display
+  const calculations = configTypes.map(ct => {
+     const used = shiftsCount.filter((s:any) => s.userId === userId && ct.typeMatch.includes(s.type)).reduce((acc:any, curr:any) => acc + curr._count._all, 0) || 0
+     const initial = parseFloat(editable[ct.code] || "0")
+     const residue = Math.max(0, initial - used)
+     return { ...ct, used, residue, initial }
+  })
 
   const handleSave = async () => {
     setSaving(true)
-    const updates = [{
+    const updates = configTypes.map(ct => ({
        userId: userId,
-       code: "0015",
-       label: "Ferie Ordinarie",
-       initialValue: parseFloat(ferieSpettanti || "0"),
-       unit: "DAYS"
-    }]
+       code: ct.code,
+       label: ct.label,
+       initialValue: parseFloat(editable[ct.code] || "0"),
+       unit: ct.unit
+    }))
 
     await fetch("/api/admin/balances", {
        method: "PUT",
@@ -256,72 +271,88 @@ function AgentDossierSaldi({ userId, balancesData, currentYear }: { userId: stri
     })
 
     setSaving(false)
-    alert("Saldo salvato nel DB!")
+    alert("Saldi aggiornati nel DB!")
   }
 
-  const straordinariTot = balancesData.usage?.overtimeSums?.filter((s:any)=>s.userId === userId).reduce((acc:any, curr:any) => acc + curr._sum.overtimeHours, 0) || 0
-  const recuperiCount = balancesData.usage?.agendaSums?.filter((s:any)=>s.userId === userId && (s.code === '0009' || s.code === '0067' || s.code === '0081')).reduce((acc:any, curr:any) => acc + curr._count._all, 0) || 0
+  const straordinariTot = balancesData?.usage?.overtimeSums?.filter((s:any)=>s.userId === userId).reduce((acc:any, curr:any) => acc + curr._sum.overtimeHours, 0) || 0
+  const recuperiCount = balancesData?.usage?.agendaSums?.filter((s:any)=>s.userId === userId && (s.code === '0009' || s.code === '0067' || s.code === '0081')).reduce((acc:any, curr:any) => acc + curr._count._all, 0) || 0
 
   return (
-    <div className="space-y-8 max-w-3xl mx-auto">
-       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
-          <div className="p-6 md:p-8 bg-slate-900 text-white relative overflow-hidden">
-             <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-             <h3 className="text-2xl font-black relative z-10">Configurazione Base Ferie {currentYear}</h3>
-             <p className="text-slate-400 text-sm mt-2 relative z-10 pr-12">Imposta il numero di giorni totali spettanti all'agente per l'anno in corso. I giorni consumati vengono letti e scalati in automatico dai turni caricati.</p>
+    <div className="space-y-6 max-w-4xl mx-auto">
+       <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden">
+          <div className="p-6 md:p-8 bg-slate-900 text-white relative overflow-hidden flex justify-between items-center">
+             <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+             <div className="relative z-10">
+                <h3 className="text-2xl font-black">Spettanze Annuali {currentYear}</h3>
+                <p className="text-slate-400 text-sm mt-1 max-w-xl">Imposta i massimali (spettanze base) per questo agente. Il sistema calcolerà autonomamente e in tempo reale il residuo in base ai turni inseriti a sistema.</p>
+             </div>
+             <button 
+                onClick={handleSave}
+                disabled={saving}
+                className="hidden md:flex relative z-10 items-center justify-center gap-2 bg-indigo-500 hover:bg-indigo-400 text-white px-6 py-3 rounded-xl font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20 transition-all active:scale-95 disabled:opacity-50"
+             >
+               {saving ? <Activity size={18} className="animate-spin" /> : <Save size={18} />} 
+               Salva Modifiche
+             </button>
           </div>
           
-          <div className="p-6 md:p-8 space-y-8 bg-slate-50">
-             
-             <div className="flex flex-col sm:flex-row items-center gap-6 p-6 bg-white rounded-2xl border border-slate-100 shadow-sm relative z-10">
-                <div className="flex-1 text-center sm:text-left">
-                   <p className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-400 mb-2">Spettanti (Modificabile)</p>
-                   <input 
-                      type="number"
-                      value={ferieSpettanti}
-                      onChange={e => setFerieSpettanti(e.target.value)}
-                      className="w-full sm:w-32 text-center sm:text-left text-3xl font-black bg-slate-50 border-2 border-indigo-100 rounded-xl px-4 py-2 focus:outline-none focus:border-indigo-500 focus:bg-white text-indigo-900 transition-all shadow-inner"
-                   />
-                </div>
-                
-                <div className="w-px h-16 bg-slate-100 hidden sm:block"></div>
-
-                <div className="flex-1 text-center">
-                   <p className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-400 mb-2">Consumate</p>
-                   <p className="text-3xl font-black text-rose-600">{ferieUsate} <span className="text-sm font-medium text-rose-400">g</span></p>
-                </div>
-
-                <div className="w-px h-16 bg-slate-100 hidden sm:block"></div>
-
-                <div className="flex-1 text-center sm:text-right">
-                   <p className="text-[10px] uppercase tracking-[0.2em] font-black text-indigo-400 mb-2">Residuo Netto</p>
-                   <p className="text-4xl font-black text-indigo-600">{ferieResidue}</p>
-                </div>
+          <div className="p-6 md:p-8 bg-slate-50 space-y-4">
+             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {calculations.map(calc => (
+                   <div key={calc.code} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500 rounded-l-2xl"></div>
+                      <p className="text-xs font-black uppercase tracking-widest text-slate-800 mb-4">{calc.label}</p>
+                      
+                      <div className="space-y-4">
+                         <div>
+                            <p className="text-[9px] uppercase tracking-widest text-slate-400 mb-1 font-bold">Spettanti (Modificabile)</p>
+                            <input 
+                               type="number"
+                               value={editable[calc.code]}
+                               onChange={e => setEditable({...editable, [calc.code]: e.target.value})}
+                               className="w-full text-2xl font-black bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 focus:outline-none focus:border-indigo-500 focus:bg-white text-indigo-900 transition-all shadow-inner"
+                            />
+                         </div>
+                         <div className="flex gap-4 pt-4 border-t border-slate-100">
+                            <div className="flex-1">
+                               <p className="text-[9px] uppercase tracking-widest text-slate-400 font-bold">Consumate</p>
+                               <p className="text-xl font-black text-rose-500">{calc.used}</p>
+                            </div>
+                            <div className="w-px bg-slate-100"></div>
+                            <div className="flex-1 text-right">
+                               <p className="text-[9px] uppercase tracking-widest text-indigo-400 font-bold">Residuo</p>
+                               <p className="text-2xl font-black text-indigo-600">{calc.residue}</p>
+                            </div>
+                         </div>
+                      </div>
+                   </div>
+                ))}
              </div>
 
              <button 
                 onClick={handleSave}
                 disabled={saving}
-                className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-4 rounded-xl font-black uppercase tracking-widest shadow-xl shadow-indigo-200 transition-all hover:-translate-y-0.5 disabled:opacity-50"
+                className="flex md:hidden w-full relative z-10 items-center justify-center gap-2 bg-indigo-500 hover:bg-indigo-400 text-white px-6 py-4 rounded-xl font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20 transition-all active:scale-95 disabled:opacity-50 mt-4"
              >
-               {saving ? <Activity size={20} className="animate-spin" /> : <Save size={20} />} 
-               CONFERMA E SALVA NEL DB
+               {saving ? <Activity size={18} className="animate-spin" /> : <Save size={18} />} 
+               Salva Modifiche
              </button>
           </div>
        </div>
 
+       {/* INFORMATIVE BLOCKS */}
        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-4 opacity-5"><Clock size={100} /></div>
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm relative overflow-hidden group hover:border-emerald-200 transition-colors">
+             <div className="absolute -top-4 -right-4 p-4 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-all"><Clock size={140} /></div>
              <p className="text-[10px] uppercase tracking-widest font-black text-slate-400 mb-2">Banca Ore / Straordinari {currentYear}</p>
-             <h4 className="text-4xl font-black text-emerald-600 mb-2">{straordinariTot} <span className="text-base text-emerald-400">ore</span></h4>
-             <p className="text-[10px] font-bold text-slate-500">Ore maturate oltre il turno base secondo il registro presenze validato dal Comando.</p>
+             <h4 className="text-5xl font-black text-emerald-600 mb-2">{straordinariTot} <span className="text-base text-emerald-400 font-bold uppercase tracking-widest">ore maturate</span></h4>
+             <p className="text-xs font-medium text-slate-500 max-w-[200px] leading-relaxed">Conteggio delle ore extra valide effettuate oltre il normale orario di servizio.</p>
           </div>
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-4 opacity-5"><WalletCards size={100} /></div>
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm relative overflow-hidden group hover:border-amber-200 transition-colors">
+             <div className="absolute -top-4 -right-4 p-4 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-all"><WalletCards size={140} /></div>
              <p className="text-[10px] uppercase tracking-widest font-black text-slate-400 mb-2">Riposi / Recupero Compensativo</p>
-             <h4 className="text-4xl font-black text-slate-800 mb-2">{recuperiCount} <span className="text-base text-slate-400">eventi</span></h4>
-             <p className="text-[10px] font-bold text-slate-500">Volte in cui l'operatore ha consumato permessi o riposi compensativi nell'anno in corso.</p>
+             <h4 className="text-5xl font-black text-slate-800 mb-2">{recuperiCount} <span className="text-base text-slate-400 font-bold uppercase tracking-widest">eventi sfruttati</span></h4>
+             <p className="text-xs font-medium text-slate-500 max-w-[200px] leading-relaxed">Volte in cui l'operatore ha consumato permessi o riposi compensativi nell'anno in corso.</p>
           </div>
        </div>
     </div>
