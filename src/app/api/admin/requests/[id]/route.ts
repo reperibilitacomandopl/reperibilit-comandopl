@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { sendPushNotification } from "@/lib/push-notifications"
+import { getLabel, getShortCode } from "@/utils/agenda-codes"
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -47,7 +48,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (status === "APPROVED") {
         const start = new Date(agentRequest.date)
         const end = agentRequest.endDate ? new Date(agentRequest.endDate) : start
-        const isAbsence = ["F", "FERIE", "MALATTIA", "M", "104", "CONG_PAT", "CONG_PAR"].includes(agentRequest.code.toUpperCase())
+        // Codici assenza: numerici ministeriali + shortCode legacy
+        const ABSENCE_CODES = [
+          "0015", "0016", "0010",           // Ferie e Festività
+          "F", "FERIE", "FERIE_AP", "FEST_SOP",
+          "MALATTIA", "M", "0018", "0019",  // Malattia
+          "0031", "0038", "104", "104_1", "104_2", // L.104
+          "0112", "0111", "0110", "0098", "0095", "0097", "0096", // Congedi
+          "CONG_PAT", "CONG_PAR",
+          "0032", "0054", "0003", "0035",    // Salute
+          "0014", "0004", "0005", "0002",    // Permessi
+          "BR"                                // Blocco Rep
+        ]
+        const isAbsence = ABSENCE_CODES.includes(agentRequest.code) || ABSENCE_CODES.includes(agentRequest.code.toUpperCase())
         
         // Calcolo dei giorni tra start e end
         const dates: Date[] = []
@@ -93,7 +106,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                  userId: agentRequest.userId,
                  date: targetDate,
                  code: agentRequest.code,
-                 label: agentRequest.code,
+                 label: getLabel(agentRequest.code),
                  hours: agentRequest.hours,
                  note: agentRequest.notes
                }
@@ -110,29 +123,30 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
               }
             },
             update: {
-              type: agentRequest.code.toUpperCase(),
+              type: getShortCode(agentRequest.code),
               repType: null, // Rimuoviamo eventuale reperibilità se c'è un'assenza/richiesta approvata
-              serviceDetails: `Approvato: ${agentRequest.code}`
+              serviceDetails: `Approvato: ${getLabel(agentRequest.code)}`
             },
             create: {
               tenantId: agentRequest.tenantId,
               userId: agentRequest.userId,
               date: targetDate,
-              type: agentRequest.code.toUpperCase(),
+              type: getShortCode(agentRequest.code),
               repType: null,
-              serviceDetails: `Approvato: ${agentRequest.code}`
+              serviceDetails: `Approvato: ${getLabel(agentRequest.code)}`
             }
           })
         }
       }
 
-      // 3. Creiamo la notifica per l'agente
+      // 3. Creiamo la notifica per l'agente con label leggibile
+      const labelLeggibile = getLabel(agentRequest.code)
       await (tx as any).notification.create({
         data: {
           tenantId: agentRequest.tenantId,
           userId: agentRequest.userId,
           title: "Esito Richiesta",
-          message: `La tua richiesta per il ${new Date(agentRequest.date).toLocaleDateString("it-IT")} è stata ${status === "APPROVED" ? "APPROVATA" : "RIFIUTATA"} da ${session.user.name}.`,
+          message: `La tua richiesta di ${labelLeggibile} per il ${new Date(agentRequest.date).toLocaleDateString("it-IT")} è stata ${status === "APPROVED" ? "APPROVATA ✅" : "RIFIUTATA ❌"} da ${session.user.name}.`,
           type: status === "APPROVED" ? "SUCCESS" : "ALERT",
           link: "/?view=agent"
         }
@@ -143,10 +157,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     // Invia Notifica Push fuori dal pacchetto transazionale per evitare ritardi DB
     try {
-      const statusText = status === "APPROVED" ? "APPROVATA" : "RIFIUTATA"
+      const statusText = status === "APPROVED" ? "APPROVATA ✅" : "RIFIUTATA ❌"
+      const pushLabel = getLabel(agentRequest.code)
       await sendPushNotification(agentRequest.userId, {
         title: "Esito Richiesta",
-        body: `La tua richiesta per il ${new Date(agentRequest.date).toLocaleDateString("it-IT")} è stata ${statusText}.`,
+        body: `La tua richiesta di ${pushLabel} per il ${new Date(agentRequest.date).toLocaleDateString("it-IT")} è stata ${statusText}.`,
         url: "/dashboard"
       })
     } catch (pushErr) {

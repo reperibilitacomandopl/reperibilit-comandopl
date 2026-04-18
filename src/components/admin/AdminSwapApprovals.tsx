@@ -2,6 +2,7 @@
 
 import React from "react"
 import { RefreshCw, X, CheckCircle2, AlertCircle } from "lucide-react"
+import { getCategoryForCode } from "@/utils/constants"
 
 interface PendingRequest {
   id: string;
@@ -99,7 +100,7 @@ export default function AdminSwapApprovals({
                              <div>
                                 <h5 className="font-black text-slate-900 text-lg uppercase leading-tight tracking-tight mb-1">{req.user.name}</h5>
                                 <div className="flex flex-wrap items-center gap-3">
-                                   <span className="px-3 py-1 bg-amber-50 text-amber-700 text-[10px] font-black rounded-lg border border-amber-100 uppercase">{req.code}</span>
+                                   <span className="px-3 py-1 bg-amber-50 text-amber-700 text-[10px] font-black rounded-lg border border-amber-100 uppercase">{getCategoryForCode(req.code)?.items.find(i => i.code === req.code)?.label || req.code}</span>
                                    {req.startTime && <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1"><RefreshCw width={10}/> {req.startTime} • {req.endTime}</span>}
                                 </div>
                                 {req.notes && <p className="mt-3 text-xs text-slate-500 italic font-medium bg-slate-50 p-2 rounded-xl group-hover:bg-amber-50/50 transition-colors">&ldquo;{req.notes}&rdquo;</p>}

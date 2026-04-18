@@ -1,7 +1,7 @@
-// @ts-nocheck
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
+import { getLabel } from '@/utils/agenda-codes'
 
 export async function POST(req: Request) {
   const session = await auth()
@@ -59,12 +59,14 @@ export async function POST(req: Request) {
       })
 
       if (admins.length > 0) {
+        const label = getLabel(code)
+
         await (prisma as any).notification.createMany({
           data: admins.map(admin => ({
             tenantId: tenantId || null,
             userId: admin.id,
             title: "Nuova Richiesta",
-            message: `${session.user.name} ha richiesto ${code} per il ${new Date(date).toLocaleDateString("it-IT")}.`,
+            message: `${session.user.name} ha richiesto ${label} per il ${new Date(date).toLocaleDateString("it-IT")}.`,
             type: "REQUEST",
             link: `/admin/richieste`,
             metadata: JSON.stringify({ requestId: request.id })
