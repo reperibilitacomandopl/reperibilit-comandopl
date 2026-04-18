@@ -1,222 +1,416 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Clock, WalletCards, LogIn, LogOut, Search, Activity, CheckCircle2, Save } from "lucide-react"
+import { Clock, WalletCards, Search, LogIn, LogOut, Activity, ArrowLeft, Save, Briefcase, CalendarClock, MessageCircleWarning, Info, FileStack, CheckCircle2, XCircle } from "lucide-react"
 
-export default function AdminRegistersPanel() {
-  const [activeTab, setActiveTab] = useState('clock') // 'clock' | 'balances'
+export default function AdminRegistersPanel({ allAgents, currentYear, currentMonth, settings }: any) {
+  const [search, setSearch] = useState('')
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
   
-  return (
-    <div className="space-y-6">
-       <div className="flex bg-white rounded-2xl p-1 shadow-sm border border-slate-200 w-full sm:w-fit">
-          <button 
-             onClick={() => setActiveTab('clock')}
-             className={`flex-1 sm:px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'clock' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
-          >
-             <div className="flex items-center justify-center gap-2"><Clock size={16} /> Cartellini</div>
-          </button>
-          <button 
-             onClick={() => setActiveTab('balances')}
-             className={`flex-1 sm:px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'balances' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
-          >
-             <div className="flex items-center justify-center gap-2"><WalletCards size={16} /> Saldi Ferie</div>
-          </button>
-       </div>
+  // Data for all agents
+  const [balancesData, setBalancesData] = useState<any>(null)
+  const [loadingContext, setLoadingContext] = useState(true)
 
-       {activeTab === 'clock' ? <AdminClockMonitor /> : <AdminBalancesPanel />}
+  const [activeTab, setActiveTab] = useState('cartellino') // 'cartellino', 'saldi', 'richieste'
+
+  useEffect(() => {
+    fetch(`/api/admin/balances?year=${currentYear}`)
+      .then(res => res.json())
+      .then(d => {
+        if (!d.error) setBalancesData(d)
+      })
+      .finally(() => setLoadingContext(false))
+  }, [currentYear])
+
+  const filteredAgents = allAgents?.filter((a: any) => 
+     a.name.toLowerCase().includes(search.toLowerCase()) || 
+     a.matricola.includes(search)
+  )
+
+  const selectedAgent = allAgents?.find((a: any) => a.id === selectedAgentId)
+
+  return (
+    <div className="bg-white rounded-[2rem] border border-slate-200 shadow-2xl flex flex-col md:flex-row overflow-hidden w-full h-[85vh]">
+      
+      {/* SIDEBAR: Lista Agenti */}
+      <div className={`${selectedAgentId ? 'hidden md:flex' : 'flex'} w-full md:w-[350px] lg:w-[400px] flex-col border-r border-slate-100 bg-slate-50 shrink-0`}>
+         <div className="p-6 border-b border-slate-200 bg-white shadow-sm z-10 relative">
+            <h3 className="text-xl font-black text-slate-800 mb-4 bg-gradient-to-r from-slate-900 to-indigo-900 bg-clip-text text-transparent">Fascicoli Personali</h3>
+            <div className="relative">
+               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+               <input 
+                 type="text" 
+                 placeholder="Cerca agente o matricola..." 
+                 value={search}
+                 onChange={e => setSearch(e.target.value)}
+                 className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-bold placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:bg-white transition-all shadow-inner"
+               />
+            </div>
+         </div>
+         
+         <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
+            {!filteredAgents?.length ? (
+               <p className="text-center text-slate-400 text-xs font-bold uppercase tracking-widest mt-10">Nessun operatore</p>
+            ) : filteredAgents.map((agent: any) => (
+               <button 
+                  key={agent.id}
+                  onClick={() => {
+                     setSelectedAgentId(agent.id)
+                     setActiveTab('cartellino')
+                  }}
+                  className={`w-full text-left p-4 rounded-2xl transition-all border ${selectedAgentId === agent.id ? 'bg-indigo-600 border-indigo-700 shadow-lg shadow-indigo-200 text-white translate-x-1' : 'bg-white border-slate-100 text-slate-700 hover:border-indigo-200 hover:shadow-md'}`}
+               >
+                  <p className="font-black truncate">{agent.name}</p>
+                  <p className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${selectedAgentId === agent.id ? 'text-indigo-200' : 'text-slate-400'}`}>
+                    Matr. {agent.matricola}
+                  </p>
+               </button>
+            ))}
+         </div>
+      </div>
+
+      {/* DETAIL VIEW */}
+      <div className={`${!selectedAgentId ? 'hidden md:flex' : 'flex'} flex-1 flex-col bg-white relative`}>
+         {!selectedAgentId ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-slate-300 p-8 text-center bg-slate-50/50">
+               <Briefcase size={80} className="mb-6 opacity-50" />
+               <h3 className="text-2xl font-black text-slate-400">Seleziona un Operatore</h3>
+               <p className="font-bold text-slate-400 text-sm mt-2 max-w-sm">Apri il fascicolo personale per gestire i cartellini, configurare i saldi ferie e revisionare le richieste.</p>
+            </div>
+         ) : (
+            <>
+               <div className="p-6 md:p-8 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-slate-50">
+                  <div className="w-full md:w-auto">
+                     <button onClick={() => setSelectedAgentId(null)} className="md:hidden flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200 mb-4 shadow-sm">
+                        <ArrowLeft size={14} /> Indietro
+                     </button>
+                     <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg border border-indigo-700/50">
+                           {selectedAgent.name.charAt(0)}
+                        </div>
+                        <div>
+                           <h2 className="text-3xl font-black text-slate-900 tracking-tight leading-none mb-2">{selectedAgent.name}</h2>
+                           <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
+                             <span className="w-2 h-2 bg-emerald-500 rounded-full inline-block"></span>
+                             {selectedAgent.isUfficiale ? 'Ufficiale' : 'Agente'} • {selectedAgent.matricola}
+                           </p>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="w-full md:w-auto p-1 bg-slate-200 rounded-xl flex gap-1 shadow-inner">
+                     <button 
+                        onClick={() => setActiveTab('cartellino')}
+                        className={`flex-1 md:flex-none px-4 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'cartellino' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:bg-slate-300'}`}
+                     >
+                        <Clock size={16} className="inline mr-2" /> Cartellino
+                     </button>
+                     <button 
+                        onClick={() => setActiveTab('saldi')}
+                        className={`flex-1 md:flex-none px-4 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'saldi' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:bg-slate-300'}`}
+                     >
+                        <WalletCards size={16} className="inline mr-2" /> Saldi Ferie
+                     </button>
+                     <button 
+                        onClick={() => setActiveTab('richieste')}
+                        className={`flex-1 md:flex-none px-4 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'richieste' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:bg-slate-300'}`}
+                     >
+                        <FileStack size={16} className="inline mr-2" /> Richieste Pendenze
+                     </button>
+                  </div>
+               </div>
+
+               <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-8 bg-white relative">
+                  {loadingContext ? (
+                     <div className="flex justify-center py-20"><Activity className="animate-spin text-indigo-400" size={32} /></div>
+                  ) : (
+                     <>
+                        {activeTab === 'cartellino' && <AgentDossierCartellino userId={selectedAgentId} currentYear={currentYear} />}
+                        {activeTab === 'saldi' && <AgentDossierSaldi userId={selectedAgentId} balancesData={balancesData} currentYear={currentYear} />}
+                        {activeTab === 'richieste' && <AgentDossierRichieste userId={selectedAgentId} currentYear={currentYear} />}
+                     </>
+                  )}
+               </div>
+            </>
+         )}
+      </div>
     </div>
   )
 }
 
-function AdminClockMonitor() {
+function AgentDossierCartellino({ userId, currentYear }: { userId: string, currentYear: number }) {
   const [records, setRecords] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
 
   useEffect(() => {
-    fetch("/api/admin/clock-records")
+    setLoading(true)
+    fetch(`/api/admin/clock-records?userId=${userId}&limit=100`)
       .then(res => res.json())
       .then(data => {
         if (data.records) setRecords(data.records)
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [userId])
 
-  const filteredRecords = records.filter((r: any) => 
-     r.user?.name.toLowerCase().includes(search.toLowerCase()) || 
-     r.user?.matricola.includes(search)
-  )
+  const groupedByDay = records.reduce((acc: any, r: any) => {
+    const d = new Date(r.timestamp).toLocaleDateString('it-IT')
+    if (!acc[d]) acc[d] = []
+    acc[d].push(r)
+    return acc
+  }, {})
+
+  if (loading) return <div className="flex justify-center py-12"><Activity className="animate-spin text-indigo-400" size={24} /></div>
+
+  if (records.length === 0) {
+     return (
+        <div className="text-center py-24 text-slate-400">
+           <CalendarClock size={48} className="mx-auto mb-4 opacity-30" />
+           <p className="font-bold uppercase tracking-widest text-sm">Nessuna timbratura registrata.</p>
+        </div>
+     )
+  }
 
   return (
-    <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden p-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-6 border-b border-slate-100">
-         <div>
-            <h3 className="text-xl font-black text-slate-800">Monitoraggio Cartellini Oggi</h3>
-            <p className="text-sm font-medium text-slate-500">Ultime registrazioni GPS e manuali</p>
-         </div>
-         <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Cerca agente o matricola..." 
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
-            />
-         </div>
-      </div>
+    <div className="space-y-6 max-w-3xl mx-auto">
+       <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex items-start gap-4 mb-8">
+          <Info className="text-indigo-500 shrink-0 mt-0.5" size={20} />
+          <div>
+            <h4 className="font-bold text-indigo-900 text-sm">Storico Timbrature Recenti</h4>
+            <p className="text-xs text-indigo-700/70 mt-1 font-medium">Visualizzazione cronologica degli ultimi 100 eventi di Entrata e Uscita dell'agente. Utile per verifiche incrociate in caso di anomalie.</p>
+          </div>
+       </div>
 
-      {loading ? (
-        <div className="flex justify-center items-center py-12"><Activity className="animate-spin text-slate-300" size={32} /></div>
-      ) : filteredRecords.length === 0 ? (
-        <div className="text-center py-12 text-slate-400 font-bold uppercase tracking-widest text-sm">Nessuna timbratura registrata oggi.</div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-           {filteredRecords.map((r: any) => {
-              const isEnter = r.type === "SCENDI_IN_STRADA" || r.type === "INIZIO_TURNO"
-              return (
-                 <div key={r.id} className="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex items-start gap-4 hover:shadow-md transition-all">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner ${isEnter ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
-                       {isEnter ? <LogIn size={24} /> : <LogOut size={24} />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                       <h4 className="font-black text-slate-800 truncate">{r.user?.name}</h4>
-                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Matr. {r.user?.matricola}</p>
-                       <div className="flex items-center justify-between">
-                          <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${isEnter ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                            {isEnter ? 'Entrato' : 'Uscito'}
-                          </span>
-                          <span className="text-sm font-black text-slate-900">
-                             {new Date(r.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                       </div>
-                    </div>
-                 </div>
-              )
-           })}
-        </div>
-      )}
+       {Object.keys(groupedByDay).map(date => {
+          const dayRecords = groupedByDay[date]
+          return (
+            <div key={date} className="bg-white rounded-3xl border border-slate-100 shadow-sm p-4 sm:p-5 relative overflow-hidden group hover:border-slate-300 transition-colors">
+               <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-50">
+                  <span className="text-sm font-black text-slate-800 bg-slate-100 px-3 py-1 rounded-full">{date}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{dayRecords.length} Eventi</span>
+               </div>
+               <div className="space-y-3">
+                  {dayRecords.map((r: any) => {
+                     const isEnter = r.type === "SCENDI_IN_STRADA" || r.type === "INIZIO_TURNO"
+                     return (
+                        <div key={r.id} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200">
+                           <div className="flex items-center gap-4">
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-inner ${isEnter ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                                 {isEnter ? <LogIn size={18} /> : <LogOut size={18} />}
+                              </div>
+                              <div>
+                                 <p className="text-lg font-black text-slate-900 leading-none">{new Date(r.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</p>
+                                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">{isEnter ? "Entrata" : "Uscita"}</p>
+                              </div>
+                           </div>
+                           <div className="text-right">
+                              {r.isVerified ? (
+                                 <span className="inline-flex items-center gap-1 text-[9px] font-black text-emerald-700 bg-emerald-100 px-2 py-1 rounded-md uppercase tracking-widest">
+                                    <CheckCircle2 size={12} /> Rilevato GPS
+                                 </span>
+                              ) : (
+                                 <span className="inline-flex items-center gap-1 text-[9px] font-black text-amber-700 bg-amber-100 px-2 py-1 rounded-md uppercase tracking-widest">
+                                    <MessageCircleWarning size={12} /> Mod. Manuale
+                                 </span>
+                              )}
+                           </div>
+                        </div>
+                     )
+                  })}
+               </div>
+            </div>
+          )
+       })}
     </div>
   )
 }
 
-function AdminBalancesPanel() {
-  const [data, setData] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+function AgentDossierSaldi({ userId, balancesData, currentYear }: { userId: string, balancesData: any, currentYear: number }) {
   const [saving, setSaving] = useState(false)
   
-  // Local state for edits
-  const [editableFer, setEditableFer] = useState<{[key:string]: string}>({})
+  if (!balancesData) return null
 
-  const year = new Date().getFullYear()
+  const agentIndex = balancesData.agents?.findIndex((a:any) => a.id === userId)
+  const agentBalance = balancesData.balances?.find((b:any) => b.userId === userId)
+  
+  const detailFerie = agentBalance?.details?.find((bd:any) => bd.code === '0015' || bd.code === 'FERIE')
+  
+  const [ferieSpettanti, setFerieSpettanti] = useState(detailFerie ? detailFerie.initialValue.toString() : "32")
 
-  useEffect(() => {
-    fetch(`/api/admin/balances?year=${year}`)
-      .then(res => res.json())
-      .then(d => {
-        if (!d.error) {
-           setData(d)
-           const newFer: any = {}
-           d.agents.forEach((agent: any) => {
-              const balance = d.balances.find((b:any) => b.userId === agent.id)
-              const detail = balance?.details.find((bd:any) => bd.code === '0015' || bd.code === 'FERIE')
-              newFer[agent.id] = detail ? detail.initialValue.toString() : "32"
-           })
-           setEditableFer(newFer)
-        }
-      })
-      .finally(() => setLoading(false))
-  }, [year])
+  const ferieUsate = balancesData.usage?.shiftsCount?.filter((s:any) => s.userId === userId && (s.type === '0015' || s.type === 'FERIE')).reduce((acc:any, curr:any) => acc + curr._count._all, 0) || 0
+  const ferieResidue = Math.max(0, parseFloat(ferieSpettanti || "0") - ferieUsate)
 
-  const handleSaveAll = async () => {
+  const handleSave = async () => {
     setSaving(true)
-    const updates = []
-    
-    for (const agent of data.agents) {
-       updates.push({
-          userId: agent.id,
-          code: "0015",
-          label: "Ferie Ordinarie",
-          initialValue: parseFloat(editableFer[agent.id] || "0"),
-          unit: "DAYS"
-       })
-    }
+    const updates = [{
+       userId: userId,
+       code: "0015",
+       label: "Ferie Ordinarie",
+       initialValue: parseFloat(ferieSpettanti || "0"),
+       unit: "DAYS"
+    }]
 
     await fetch("/api/admin/balances", {
        method: "PUT",
        headers: { "Content-Type": "application/json" },
-       body: JSON.stringify({ year, updates })
+       body: JSON.stringify({ year: currentYear, updates })
     })
 
     setSaving(false)
-    alert("Saldi aggiornati con successo!")
+    alert("Saldo salvato nel DB!")
   }
 
-  if (loading) return <div className="flex justify-center py-12"><Activity className="animate-spin text-slate-300" size={32} /></div>
+  const straordinariTot = balancesData.usage?.overtimeSums?.filter((s:any)=>s.userId === userId).reduce((acc:any, curr:any) => acc + curr._sum.overtimeHours, 0) || 0
+  const recuperiCount = balancesData.usage?.agendaSums?.filter((s:any)=>s.userId === userId && (s.code === '0009' || s.code === '0067' || s.code === '0081')).reduce((acc:any, curr:any) => acc + curr._count._all, 0) || 0
 
   return (
-    <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden">
-      <div className="p-6 md:p-8 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/50">
-         <div>
-            <h3 className="text-2xl font-black text-slate-800">Saldi Ferie {year}</h3>
-            <p className="text-sm font-medium text-slate-500">Configura le spettanze base per gli agenti. (I consumi vengono scalati in automatico dai turni approvati).</p>
-         </div>
-         <button 
-           onClick={handleSaveAll}
-           disabled={saving}
-           className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-200 disabled:opacity-50 transition-all w-full md:w-auto"
-         >
-           {saving ? <Activity size={16} className="animate-spin" /> : <Save size={16} />}
-           Salva Tutti i Saldi
-         </button>
-      </div>
+    <div className="space-y-8 max-w-3xl mx-auto">
+       <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
+          <div className="p-6 md:p-8 bg-slate-900 text-white relative overflow-hidden">
+             <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+             <h3 className="text-2xl font-black relative z-10">Configurazione Base Ferie {currentYear}</h3>
+             <p className="text-slate-400 text-sm mt-2 relative z-10 pr-12">Imposta il numero di giorni totali spettanti all'agente per l'anno in corso. I giorni consumati vengono letti e scalati in automatico dai turni caricati.</p>
+          </div>
+          
+          <div className="p-6 md:p-8 space-y-8 bg-slate-50">
+             
+             <div className="flex flex-col sm:flex-row items-center gap-6 p-6 bg-white rounded-2xl border border-slate-100 shadow-sm relative z-10">
+                <div className="flex-1 text-center sm:text-left">
+                   <p className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-400 mb-2">Spettanti (Modificabile)</p>
+                   <input 
+                      type="number"
+                      value={ferieSpettanti}
+                      onChange={e => setFerieSpettanti(e.target.value)}
+                      className="w-full sm:w-32 text-center sm:text-left text-3xl font-black bg-slate-50 border-2 border-indigo-100 rounded-xl px-4 py-2 focus:outline-none focus:border-indigo-500 focus:bg-white text-indigo-900 transition-all shadow-inner"
+                   />
+                </div>
+                
+                <div className="w-px h-16 bg-slate-100 hidden sm:block"></div>
 
-      <div className="overflow-x-auto custom-scrollbar">
-         <table className="w-full text-left border-collapse">
-            <thead>
-               <tr>
-                  <th className="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-500 p-4 border-b border-slate-200">Agente</th>
-                  <th className="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-500 p-4 border-b border-slate-200 text-center">Ferie Spettanti</th>
-                  <th className="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-500 p-4 border-b border-slate-200 text-center">Ferie Consumate</th>
-                  <th className="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-500 p-4 border-b border-slate-200 text-center">Residuo</th>
-               </tr>
-            </thead>
-            <tbody>
-               {data.agents.map((agent: any) => {
-                  const used = data.usage?.shiftsCount?.filter((s:any) => s.userId === agent.id && (s.type === '0015' || s.type === 'FERIE')).reduce((acc:any, curr:any) => acc + curr._count._all, 0) || 0
-                  const initial = parseFloat(editableFer[agent.id] || "0")
-                  const residue = Math.max(0, initial - used)
+                <div className="flex-1 text-center">
+                   <p className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-400 mb-2">Consumate</p>
+                   <p className="text-3xl font-black text-rose-600">{ferieUsate} <span className="text-sm font-medium text-rose-400">g</span></p>
+                </div>
 
-                  return (
-                     <tr key={agent.id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100 last:border-0">
-                        <td className="p-4">
-                           <p className="font-black text-slate-800 text-sm">{agent.name}</p>
-                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Matr. {agent.matricola}</p>
-                        </td>
-                        <td className="p-4 text-center">
-                           <input 
-                             type="number"
-                             value={editableFer[agent.id] || ''}
-                             onChange={e => setEditableFer({...editableFer, [agent.id]: e.target.value})}
-                             className="w-20 text-center bg-white border border-slate-200 rounded-lg py-2 text-sm font-black focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                           />
-                        </td>
-                        <td className="p-4 text-center">
-                           <span className="inline-flex items-center justify-center min-w-[2rem] h-8 bg-slate-100 rounded-lg font-black text-slate-600 text-sm">
-                             {used}
-                           </span>
-                        </td>
-                        <td className="p-4 text-center">
-                           <span className={`inline-flex items-center justify-center min-w-[2.5rem] h-8 rounded-lg font-black text-sm px-2 ${residue === 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                             {residue} g
-                           </span>
-                        </td>
-                     </tr>
-                  )
-               })}
-            </tbody>
-         </table>
-      </div>
+                <div className="w-px h-16 bg-slate-100 hidden sm:block"></div>
+
+                <div className="flex-1 text-center sm:text-right">
+                   <p className="text-[10px] uppercase tracking-[0.2em] font-black text-indigo-400 mb-2">Residuo Netto</p>
+                   <p className="text-4xl font-black text-indigo-600">{ferieResidue}</p>
+                </div>
+             </div>
+
+             <button 
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-4 rounded-xl font-black uppercase tracking-widest shadow-xl shadow-indigo-200 transition-all hover:-translate-y-0.5 disabled:opacity-50"
+             >
+               {saving ? <Activity size={20} className="animate-spin" /> : <Save size={20} />} 
+               CONFERMA E SALVA NEL DB
+             </button>
+          </div>
+       </div>
+
+       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
+             <div className="absolute top-0 right-0 p-4 opacity-5"><Clock size={100} /></div>
+             <p className="text-[10px] uppercase tracking-widest font-black text-slate-400 mb-2">Banca Ore / Straordinari {currentYear}</p>
+             <h4 className="text-4xl font-black text-emerald-600 mb-2">{straordinariTot} <span className="text-base text-emerald-400">ore</span></h4>
+             <p className="text-[10px] font-bold text-slate-500">Ore maturate oltre il turno base secondo il registro presenze validato dal Comando.</p>
+          </div>
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
+             <div className="absolute top-0 right-0 p-4 opacity-5"><WalletCards size={100} /></div>
+             <p className="text-[10px] uppercase tracking-widest font-black text-slate-400 mb-2">Riposi / Recupero Compensativo</p>
+             <h4 className="text-4xl font-black text-slate-800 mb-2">{recuperiCount} <span className="text-base text-slate-400">eventi</span></h4>
+             <p className="text-[10px] font-bold text-slate-500">Volte in cui l'operatore ha consumato permessi o riposi compensativi nell'anno in corso.</p>
+          </div>
+       </div>
     </div>
   )
 }
+
+function AgentDossierRichieste({ userId, currentYear }: { userId: string, currentYear: number }) {
+  const [requests, setRequests] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // Re-use an existing endpoint if possible. We have global requests if we fetch /api/swaps and /api/requests?
+    // Wait, the easiest way is to use the /api/admin/balances, or let's create a quick fetch inside `routes.ts` or just fetch /api/requests
+    // Actually, Admin has an endpoint: GET /api/requests
+    Promise.all([
+      fetch(`/api/requests?userId=${userId}`).then(r => r.json()).catch(() => ({ requests: [] })),
+      fetch(`/api/swaps?userId=${userId}`).then(r => r.json()).catch(() => ({ swaps: [] }))
+    ]).then(([reqData, swapData]) => {
+      // Unify requests and swaps for this user
+      // Note: we'll filter them correctly
+      let combined: any[] = []
+      
+      if (reqData && reqData.requests) {
+        combined = [...combined, ...reqData.requests.filter((r:any) => r.userId === userId).map((r:any) => ({ ...r, __type: 'absence' }))]
+      }
+      if (swapData && swapData.swaps) {
+        // Swaps involving this user
+        combined = [...combined, ...swapData.swaps.filter((s:any) => s.requesterId === userId || s.receiverId === userId).map((s:any) => ({ ...s, __type: 'swap' }))]
+      }
+      
+      // Sort by date created or handled
+      combined.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      setRequests(combined)
+    }).finally(() => setLoading(false))
+  }, [userId])
+
+  if (loading) return <div className="flex justify-center py-12"><Activity className="animate-spin text-indigo-400" size={24} /></div>
+
+  if (requests.length === 0) {
+    return (
+       <div className="text-center py-24 text-slate-400">
+          <FileStack size={48} className="mx-auto mb-4 opacity-30" />
+          <p className="font-bold uppercase tracking-widest text-sm">Nessuna richiesta o scambio.</p>
+       </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6 max-w-3xl mx-auto">
+       <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex items-start gap-4 mb-8">
+          <Info className="text-indigo-500 shrink-0 mt-0.5" size={20} />
+          <div>
+            <h4 className="font-bold text-indigo-900 text-sm">Registro Richieste</h4>
+            <p className="text-xs text-indigo-700/70 mt-1 font-medium">Archivio delle richieste di assenza e proposte di cambio turno effettuate o ricevute dall'operatore.</p>
+          </div>
+       </div>
+
+       <div className="space-y-4">
+          {requests.map(req => {
+            const isSwap = req.__type === 'swap'
+            const isRequester = isSwap && req.requesterId === userId
+            const title = isSwap ? (isRequester ? "Scambio Inviato" : "Scambio Ricevuto") : "Richiesta Assenza"
+            const statusLabel = 
+               req.status === 'PENDING' ? 'IN ATTESA' :
+               req.status === 'APPROVED' ? 'APPROVATA' :
+               req.status === 'REJECTED' ? 'RIFIUTATA' : 'ANNULLATA'
+
+            const statusColors = 
+               req.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
+               req.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' :
+               req.status === 'REJECTED' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-500'
+
+            return (
+               <div key={req.id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all">
+                  <div className="flex justify-between items-start mb-3">
+                     <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">{title}</p>
+                     <p className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${statusColors}`}>
+                        {statusLabel}
+                     </p>
+                  </div>
+                  <div>
+                     <p className="font-bold text-slate-800 text-sm mb-1">Data Creazione: {new Date(req.createdAt).toLocaleDateString('it-IT')}</p>
+                     <p className="text-sm font-medium text-slate-500 italic">"{req.reason || 'Senza nota'}"</p>
+                  </div>
+               </div>
+            )
+          })}
+       </div>
+    </div>
+  )
+}
+

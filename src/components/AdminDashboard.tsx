@@ -205,8 +205,13 @@ export default function AdminDashboard({
                      Chiudi Registri
                   </button>
                 </div>
-                <div className="mt-8">
-                  <AdminRegistersPanel />
+                <div className="mt-8 h-full min-h-[500px]">
+                  <AdminRegistersPanel 
+                    allAgents={admin.sortedAgents}
+                    currentYear={currentYear}
+                    currentMonth={currentMonth}
+                    settings={settings}
+                  />
                 </div>
              </div>
           </div>

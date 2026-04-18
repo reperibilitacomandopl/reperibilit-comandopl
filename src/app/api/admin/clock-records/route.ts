@@ -10,6 +10,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const dateStr = searchParams.get("date") // format: YYYY-MM-DD
   const limit = parseInt(searchParams.get("limit") || "200")
+  const targetUserId = searchParams.get("userId")
 
   try {
     const tenantId = session.user.tenantId
@@ -20,8 +21,8 @@ export async function GET(req: Request) {
         const start = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
         const end = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59))
         dateFilter = { timestamp: { gte: start, lte: end } }
-    } else {
-        // Just today
+    } else if (!targetUserId) {
+        // If no user specified and no date, just show today globally
         const now = new Date()
         const start = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
         const end = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59))
@@ -31,6 +32,7 @@ export async function GET(req: Request) {
     const records = await prisma.clockRecord.findMany({
       where: { 
         tenantId: tenantId || null,
+        ...(targetUserId ? { userId: targetUserId } : {}),
         ...dateFilter
       },
       orderBy: { timestamp: "desc" },
