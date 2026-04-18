@@ -7,6 +7,7 @@ import { DashboardShift } from "@/types/dashboard"
 // Utils & Helpers
 import { isHoliday } from "@/utils/holidays"
 import { AGENDA_CATEGORIES, CAT_COLORS, paramsToColor } from "@/utils/constants"
+import { getLabel } from "@/utils/agenda-codes"
 
 // Components
 import AgentHeader from "./agent/AgentHeader"
@@ -303,8 +304,7 @@ export default function AgentDashboard({
                 
                 const tableData = admin.agendaEntries.map(e => [
                   new Date(e.date).toLocaleDateString('it-IT'),
-                  e.code,
-                  e.label,
+                  getLabel(e.code),
                   e.hours ? `${e.hours}h` : '-',
                   e.note || '-'
                 ])
@@ -312,14 +312,13 @@ export default function AgentDashboard({
                 // @ts-ignore
                 autoTable(doc, {
                   startY: tableStartY + 5,
-                  head: [['Data', 'Cod.', 'Descrizione', 'Ore', 'Note']],
+                  head: [['Data', 'Descrizione', 'Ore', 'Note']],
                   body: tableData,
                   theme: 'grid',
                   headStyles: { fillColor: [51, 65, 85] },
                   columnStyles: {
                     0: { cellWidth: 25 },
-                    1: { cellWidth: 15 },
-                    3: { cellWidth: 15 },
+                    2: { cellWidth: 15 },
                   }
                 })
 

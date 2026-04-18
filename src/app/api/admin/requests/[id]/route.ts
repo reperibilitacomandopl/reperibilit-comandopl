@@ -141,12 +141,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
       // 3. Creiamo la notifica per l'agente con label leggibile
       const labelLeggibile = getLabel(agentRequest.code)
+      const dateStartStr = new Date(agentRequest.date).toLocaleDateString("it-IT")
+      const periodStr = agentRequest.endDate 
+        ? `dal ${dateStartStr} al ${new Date(agentRequest.endDate).toLocaleDateString("it-IT")}` 
+        : `per il ${dateStartStr}`
       await (tx as any).notification.create({
         data: {
           tenantId: agentRequest.tenantId,
           userId: agentRequest.userId,
           title: "Esito Richiesta",
-          message: `La tua richiesta di ${labelLeggibile} per il ${new Date(agentRequest.date).toLocaleDateString("it-IT")} è stata ${status === "APPROVED" ? "APPROVATA ✅" : "RIFIUTATA ❌"} da ${session.user.name}.`,
+          message: `La tua richiesta di ${labelLeggibile} ${periodStr} è stata ${status === "APPROVED" ? "APPROVATA ✅" : "RIFIUTATA ❌"} da ${session.user.name}.`,
           type: status === "APPROVED" ? "SUCCESS" : "ALERT",
           link: "/?view=agent"
         }
@@ -159,9 +163,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     try {
       const statusText = status === "APPROVED" ? "APPROVATA ✅" : "RIFIUTATA ❌"
       const pushLabel = getLabel(agentRequest.code)
+      const pushStartStr = new Date(agentRequest.date).toLocaleDateString("it-IT")
+      const pushPeriodStr = agentRequest.endDate 
+        ? `dal ${pushStartStr} al ${new Date(agentRequest.endDate).toLocaleDateString("it-IT")}` 
+        : `per il ${pushStartStr}`
       await sendPushNotification(agentRequest.userId, {
         title: "Esito Richiesta",
-        body: `La tua richiesta di ${pushLabel} per il ${new Date(agentRequest.date).toLocaleDateString("it-IT")} è stata ${statusText}.`,
+        body: `La tua richiesta di ${pushLabel} ${pushPeriodStr} è stata ${statusText}.`,
         url: "/dashboard"
       })
     } catch (pushErr) {

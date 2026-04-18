@@ -7,6 +7,7 @@ import { getCategoryForCode } from "@/utils/constants"
 interface PendingRequest {
   id: string;
   date: string | Date;
+  endDate?: string | Date | null;
   user: { name: string };
   code: string;
   startTime?: string | null;
@@ -96,6 +97,15 @@ export default function AdminSwapApprovals({
                                 <span className="text-[10px] font-black uppercase opacity-60 leading-none mb-1">{new Date(req.date).toLocaleDateString('it-IT', { month: 'short' })}</span>
                                 <span className="text-2xl font-black leading-none">{new Date(req.date).getDate()}</span>
                              </div>
+                             {req.endDate && new Date(req.endDate).getTime() !== new Date(req.date).getTime() && (
+                               <>
+                                 <span className="text-slate-300 font-black text-lg">→</span>
+                                 <div className="w-16 h-16 bg-indigo-600 text-white rounded-[1.2rem] flex flex-col items-center justify-center shadow-xl shadow-indigo-200 shrink-0">
+                                    <span className="text-[10px] font-black uppercase opacity-60 leading-none mb-1">{new Date(req.endDate).toLocaleDateString('it-IT', { month: 'short' })}</span>
+                                    <span className="text-2xl font-black leading-none">{new Date(req.endDate).getDate()}</span>
+                                 </div>
+                               </>
+                             )}
                              
                              <div>
                                 <h5 className="font-black text-slate-900 text-lg uppercase leading-tight tracking-tight mb-1">{req.user.name}</h5>

@@ -45,6 +45,7 @@ export interface AuditLog {
 export interface PendingRequest {
   id: string;
   date: string | Date;
+  endDate?: string | Date | null;
   user: { name: string };
   code: string;
   startTime?: string | null;

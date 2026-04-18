@@ -60,13 +60,17 @@ export async function POST(req: Request) {
 
       if (admins.length > 0) {
         const label = getLabel(code)
+        const startStr = new Date(date).toLocaleDateString("it-IT")
+        const periodStr = endDate 
+          ? `dal ${startStr} al ${new Date(endDate).toLocaleDateString("it-IT")}` 
+          : `per il ${startStr}`
 
         await (prisma as any).notification.createMany({
           data: admins.map(admin => ({
             tenantId: tenantId || null,
             userId: admin.id,
             title: "Nuova Richiesta",
-            message: `${session.user.name} ha richiesto ${label} per il ${new Date(date).toLocaleDateString("it-IT")}.`,
+            message: `${session.user.name} ha richiesto ${label} ${periodStr}.`,
             type: "REQUEST",
             link: `/admin/richieste`,
             metadata: JSON.stringify({ requestId: request.id })

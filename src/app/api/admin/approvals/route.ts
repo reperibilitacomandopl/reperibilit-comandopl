@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import { getLabel, getShortCode } from '@/utils/agenda-codes'
 
 export async function GET() {
   try {
@@ -60,21 +61,26 @@ export async function POST(req: Request) {
       if (newStatus === "APPROVED") {
         await prisma.shift.upsert({
           where: { userId_date_tenantId: { userId: updated.userId, date: updated.date, tenantId: tenantId || "" } },
-          update: { type: updated.code },
-          create: { tenantId: tenantId || null, userId: updated.userId, date: updated.date, type: updated.code }
+          update: { type: getShortCode(updated.code) },
+          create: { tenantId: tenantId || null, userId: updated.userId, date: updated.date, type: getShortCode(updated.code) }
         })
       }
 
       // --- NOTIFICA PER L'AGENTE ---
       try {
+        const leaveLabel = getLabel(updated.code)
+        const leaveStartStr = new Date(updated.date).toLocaleDateString("it-IT")
+        const leavePeriodStr = updated.endDate 
+          ? `dal ${leaveStartStr} al ${new Date(updated.endDate).toLocaleDateString("it-IT")}` 
+          : `per il ${leaveStartStr}`
         await (prisma as any).notification.create({
           data: {
             tenantId: tenantId || null,
             userId: updated.userId,
             title: newStatus === "APPROVED" ? "Richiesta Approvata" : "Richiesta Rifiutata",
-            message: `La tua richiesta di ${updated.code} per il ${new Date(updated.date).toLocaleDateString("it-IT")} è stata ${newStatus === "APPROVED" ? "approvata" : "rifiutata"}.`,
+            message: `La tua richiesta di ${leaveLabel} ${leavePeriodStr} è stata ${newStatus === "APPROVED" ? "approvata ✅" : "rifiutata ❌"}.`,
             type: newStatus === "APPROVED" ? "SUCCESS" : "ALERT",
-            link: "/?view=agent" // O la pagina specifica se esiste
+            link: "/?view=agent"
           }
         })
       } catch (notifyError) {
