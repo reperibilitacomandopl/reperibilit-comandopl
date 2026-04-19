@@ -462,10 +462,28 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
                           </div>
                           <div className="flex-1 p-4 bg-white/5 rounded-2xl border border-white/5">
                              <Calendar className="text-indigo-400 mb-2" width={16} height={16} />
-                             <p className="text-sm font-black text-white">{new Date(detailData.date).toLocaleDateString('it-IT')}</p>
+                             <p className="text-sm font-black text-white">
+                                {new Date(detailData.date).toLocaleDateString('it-IT')} 
+                                {detailData.endDate && new Date(detailData.endDate).getTime() !== new Date(detailData.date).getTime() 
+                                   ? ` al ${new Date(detailData.endDate).toLocaleDateString('it-IT')}` 
+                                   : ''}
+                             </p>
                              <p className="text-[10px] text-slate-500">Motivo: {getLabel(detailData.code)}</p>
                           </div>
                        </div>
+                       
+                       {/* Mostra Data Elaborazione e Stato (se non è in attesa) */}
+                       {detailData.status !== 'PENDING' && (
+                         <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                            <p className="text-[9px] font-black uppercase text-slate-500 mb-1">Stato Pratica</p>
+                            <p className={`text-sm font-black ${detailData.status === 'APPROVED' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                               {detailData.status === 'APPROVED' ? 'APPROVATA' : 'RIFIUTATA'}
+                            </p>
+                            <p className="text-[10px] text-slate-500 mt-1">
+                               Aggiornata il: {new Date(detailData.updatedAt || detailData.createdAt).toLocaleDateString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                         </div>
+                       )}
                     </div>
                   )}
 

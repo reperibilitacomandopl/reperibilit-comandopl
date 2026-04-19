@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Clock, WalletCards, Search, LogIn, LogOut, Activity, ArrowLeft, Save, Briefcase, CalendarClock, MessageCircleWarning, Info, FileStack, CheckCircle2, XCircle } from "lucide-react"
+import { Clock, WalletCards, Search, LogIn, LogOut, Activity, ArrowLeft, Save, Briefcase, CalendarClock, MessageCircleWarning, Info, FileStack, CheckCircle2, XCircle, X } from "lucide-react"
 
-export default function AdminRegistersPanel({ allAgents, currentYear, currentMonth, settings }: any) {
+export default function AdminRegistersPanel({ allAgents, currentYear, currentMonth, settings, onClose }: any) {
   const [search, setSearch] = useState('')
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
   
@@ -13,13 +13,18 @@ export default function AdminRegistersPanel({ allAgents, currentYear, currentMon
 
   const [activeTab, setActiveTab] = useState('cartellino') // 'cartellino', 'saldi', 'richieste'
 
-  useEffect(() => {
-    fetch(`/api/admin/balances?year=${currentYear}`)
+  const fetchBalances = () => {
+    setLoadingContext(true)
+    fetch(`/api/admin/balances?year=${currentYear}`, { cache: 'no-store' })
       .then(res => res.json())
       .then(d => {
         if (!d.error) setBalancesData(d)
       })
       .finally(() => setLoadingContext(false))
+  }
+
+  useEffect(() => {
+    fetchBalances()
   }, [currentYear])
 
   const filteredAgents = allAgents?.filter((a: any) => 
@@ -30,11 +35,18 @@ export default function AdminRegistersPanel({ allAgents, currentYear, currentMon
   const selectedAgent = allAgents?.find((a: any) => a.id === selectedAgentId)
 
   return (
-    <div className="bg-white rounded-[2rem] border border-slate-200 shadow-2xl flex flex-col md:flex-row overflow-hidden w-full h-[85vh]">
+    <div className="bg-white md:rounded-[2rem] border-0 md:border border-slate-200 shadow-2xl flex flex-col md:flex-row overflow-hidden w-full h-full relative p-0">
       
+      {/* Tasto Chiudi Mobile & Desktop */}
+      <div className="absolute top-4 right-4 z-50">
+        <button onClick={onClose} className="bg-slate-900/5 hover:bg-rose-500 hover:text-white p-2.5 rounded-xl shadow-sm text-slate-500 transition-all font-black text-xs">
+           <X size={20} />
+        </button>
+      </div>
+
       {/* SIDEBAR: Lista Agenti */}
       <div className={`${selectedAgentId ? 'hidden md:flex' : 'flex'} w-full md:w-[350px] lg:w-[400px] flex-col border-r border-slate-100 bg-slate-50 shrink-0`}>
-         <div className="p-6 border-b border-slate-200 bg-white shadow-sm z-10 relative">
+         <div className="p-6 border-b border-slate-200 bg-white shadow-sm z-10 pr-16 relative">
             <h3 className="text-xl font-black text-slate-800 mb-4 bg-gradient-to-r from-slate-900 to-indigo-900 bg-clip-text text-transparent">Fascicoli Personali</h3>
             <div className="relative">
                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -126,7 +138,7 @@ export default function AdminRegistersPanel({ allAgents, currentYear, currentMon
                   ) : (
                      <>
                         {activeTab === 'cartellino' && <AgentDossierCartellino userId={selectedAgentId} currentYear={currentYear} />}
-                        {activeTab === 'saldi' && <AgentDossierSaldi userId={selectedAgentId} balancesData={balancesData} currentYear={currentYear} />}
+                        {activeTab === 'saldi' && <AgentDossierSaldi key={selectedAgentId} userId={selectedAgentId} balancesData={balancesData} currentYear={currentYear} onRefresh={fetchBalances} />}
                         {activeTab === 'richieste' && <AgentDossierRichieste userId={selectedAgentId} currentYear={currentYear} />}
                      </>
                   )}
@@ -224,13 +236,19 @@ function AgentDossierCartellino({ userId, currentYear }: { userId: string, curre
   )
 }
 
-function AgentDossierSaldi({ userId, balancesData, currentYear }: { userId: string, balancesData: any, currentYear: number }) {
+function AgentDossierSaldi({ userId, balancesData, currentYear, onRefresh }: { userId: string, balancesData: any, currentYear: number, onRefresh: () => void }) {
   const [saving, setSaving] = useState(false)
   
   const configTypes = [
      { code: '0015', label: 'Ferie Ordinarie', typeMatch: ['0015', 'FERIE'], fallback: '32', unit: 'DAYS' },
      { code: '0016', label: 'Ferie Anni Precedenti', typeMatch: ['0016', 'FERIE_AP'], fallback: '0', unit: 'DAYS' },
-     { code: '0010', label: 'Festività Soppresse', typeMatch: ['0010', 'FESTIVITA'], fallback: '4', unit: 'DAYS' }
+     { code: '0010', label: 'Festività Soppresse', typeMatch: ['0010', 'FESTIVITA', 'FEST_SOP'], fallback: '4', unit: 'DAYS' },
+     { code: '0031', label: 'Permessi L.104', typeMatch: ['0031', '0038', '104_1', '104_2'], fallback: '3', unit: 'DAYS' },
+     { code: 'MALATTIA', label: 'Malattia', typeMatch: ['MALATTIA', 'MAL_FIGLIO', '0018'], fallback: '0', unit: 'DAYS' },
+     { code: '0112', label: 'Congedi', typeMatch: ['0112', 'CONG_PAT', '0111', '0110', '0098', '0095', '0097', '0096', 'CONG_PAR_100_1', 'CONG_PAR_100_2', 'CONG_PAR_80_1', 'CONG_PAR_80_2', 'CONG_PAR_30_1', 'CONG_PAR_30_2'], fallback: '0', unit: 'DAYS' },
+     { code: '0014', label: 'Motivi Personali / Familiari', typeMatch: ['0014', 'MOT_PERS'], fallback: '3', unit: 'DAYS' },
+     { code: '0037', label: 'Riposi Compensativi (RR)', typeMatch: ['0037', 'RR'], fallback: '0', unit: 'DAYS' },
+     { code: '10004', label: 'Corsi Formazione', typeMatch: ['10004', 'CORSO'], fallback: '0', unit: 'DAYS' }
   ]
 
   const agentBalance = balancesData?.balances?.find((b:any) => b.userId === userId)
@@ -240,7 +258,9 @@ function AgentDossierSaldi({ userId, balancesData, currentYear }: { userId: stri
   const [editable, setEditable] = useState<Record<string, string>>(() => {
      const init: Record<string, string> = {}
      configTypes.forEach(ct => {
-        const detail = agentBalance?.details?.find((bd:any) => ct.typeMatch.includes(bd.code))
+        // Find exact match first, then fallback to typeMatch
+        const detail = agentBalance?.details?.find((bd:any) => bd.code === ct.code) || 
+                       agentBalance?.details?.find((bd:any) => ct.typeMatch.includes(bd.code))
         init[ct.code] = detail ? detail.initialValue.toString() : ct.fallback
      })
      return init
@@ -264,14 +284,25 @@ function AgentDossierSaldi({ userId, balancesData, currentYear }: { userId: stri
        unit: ct.unit
     }))
 
-    await fetch("/api/admin/balances", {
-       method: "PUT",
-       headers: { "Content-Type": "application/json" },
-       body: JSON.stringify({ year: currentYear, updates })
-    })
+    try {
+      const res = await fetch("/api/admin/balances", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ year: currentYear, updates })
+      })
 
-    setSaving(false)
-    alert("Saldi aggiornati nel DB!")
+      if (!res.ok) throw new Error("Errore nel salvataggio")
+      
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error || "Errore sconosciuto")
+
+      alert("Saldi aggiornati correttamente!")
+      onRefresh()
+    } catch (err: any) {
+      alert("Errore: " + err.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const straordinariTot = balancesData?.usage?.overtimeSums?.filter((s:any)=>s.userId === userId).reduce((acc:any, curr:any) => acc + curr._sum.overtimeHours, 0) || 0

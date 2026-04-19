@@ -201,21 +201,15 @@ export default function AdminDashboard({
         )}
 
         {showRegisters && (
-          <div className="fixed inset-0 z-[90] bg-slate-100/80 backdrop-blur-sm p-4 sm:p-10 overflow-auto flex justify-center">
-             <div className="w-full max-w-6xl relative h-fit bg-transparent">
-                <div className="absolute -top-6 right-0">
-                  <button onClick={() => setShowRegisters(false)} className="bg-white p-3 rounded-2xl shadow-xl text-slate-500 hover:text-rose-600 transition-all font-black text-xs uppercase tracking-widest flex items-center gap-2 border border-slate-200 hover:border-rose-200">
-                     Chiudi Registri
-                  </button>
-                </div>
-                <div className="mt-8 h-full min-h-[500px]">
-                  <AdminRegistersPanel 
-                    allAgents={admin.sortedAgents}
-                    currentYear={currentYear}
-                    currentMonth={currentMonth}
-                    settings={settings}
-                  />
-                </div>
+          <div className="fixed inset-0 z-[9999] bg-slate-900/50 backdrop-blur-sm overflow-auto flex items-center justify-center p-0 md:p-6">
+             <div className="w-full h-full md:w-[98vw] md:h-[95vh] max-w-7xl">
+                <AdminRegistersPanel 
+                  allAgents={admin.sortedAgents}
+                  currentYear={currentYear}
+                  currentMonth={currentMonth}
+                  settings={settings}
+                  onClose={() => setShowRegisters(false)}
+                />
              </div>
           </div>
         )}

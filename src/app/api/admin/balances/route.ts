@@ -68,8 +68,12 @@ export async function PUT(req: Request) {
       const { userId, code, label, initialValue, unit } = update
 
       // 1. Get or create the AgentBalance for user/year
-      let balance = await prisma.agentBalance.findUnique({
-        where: { userId_year_tenantId: { userId, year, tenantId: tenantId || "" } }
+      let balance = await prisma.agentBalance.findFirst({
+        where: { 
+          userId, 
+          year, 
+          ...(tenantId ? { tenantId } : { tenantId: null }) 
+        }
       })
 
       if (!balance) {
@@ -79,11 +83,20 @@ export async function PUT(req: Request) {
       }
 
       // 2. Upsert the BalanceDetail
-      await prisma.balanceDetail.upsert({
-        where: { balanceId_code: { balanceId: balance.id, code } },
-        update: { initialValue, unit, label },
-        create: { balanceId: balance.id, code, label, initialValue, unit }
+      const existingDetail = await prisma.balanceDetail.findFirst({
+         where: { balanceId: balance.id, code }
       })
+      
+      if (existingDetail) {
+         await prisma.balanceDetail.update({
+            where: { id: existingDetail.id },
+            data: { initialValue, unit, label }
+         })
+      } else {
+         await prisma.balanceDetail.create({
+            data: { balanceId: balance.id, code, label, initialValue, unit }
+         })
+      }
     }
 
     return NextResponse.json({ success: true })
