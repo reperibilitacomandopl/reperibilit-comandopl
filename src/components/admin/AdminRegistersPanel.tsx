@@ -294,8 +294,9 @@ function AgentDossierSaldi({ userId, agent, balancesData, currentYear, onRefresh
   const [editable, setEditable] = useState<Record<string, string>>(() => {
      const init: Record<string, string> = {}
      configTypes.forEach(ct => {
+        const typeMatch = [ct.code, ct.shortCode];
         const detail = agentBalance?.details?.find((bd:any) => bd.code === ct.code) || 
-                       agentBalance?.details?.find((bd:any) => ct.typeMatch.includes(bd.code))
+                       agentBalance?.details?.find((bd:any) => typeMatch.includes(bd.code))
         init[ct.code] = detail ? detail.initialValue.toString() : ct.fallback
      })
      return init
