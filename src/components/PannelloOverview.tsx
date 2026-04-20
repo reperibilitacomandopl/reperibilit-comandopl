@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { ChevronDown, ChevronUp } from "lucide-react"
+import { getLabel } from "@/utils/agenda-codes"
 import {
   Shield,
   AlertTriangle,
@@ -118,7 +119,7 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
                 <Activity width={18} height={18} />
              </div>
-             <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Sentinel Command Dashboard</span>
+             <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Sentinel Command Dashboard</span>
           </div>
           <h1 className="text-5xl font-black text-slate-900 tracking-tighter uppercase leading-none">Pannello <span className="text-blue-600">Overview</span></h1>
           <p className="text-sm text-slate-500 mt-4 font-bold flex items-center gap-3">
@@ -126,7 +127,7 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
                {currentTime.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" })}
              </span>
              <span className="w-1.5 h-1.5 bg-slate-200 rounded-full"></span>
-             <span className="text-slate-400 font-black tracking-widest">{currentTime.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}</span>
+             <span className="text-slate-500 font-black tracking-widest">{currentTime.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}</span>
           </p>
         </div>
 
@@ -156,7 +157,7 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
                   <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${card.color} flex items-center justify-center text-white shadow-xl shadow-slate-200 group-hover:scale-110 transition-transform duration-500`}>
                     <Icon size={24} />
                   </div>
-                  <span className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] group-hover:text-slate-500 transition-colors">Sentinel Kpi 0{idx+1}</span>
+                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] group-hover:text-slate-700 transition-colors">Sentinel Kpi 0{idx+1}</span>
                 </div>
                 
                 <div className="mb-2">
@@ -428,7 +429,7 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
                         <div className="flex-1">
                            <p className="text-sm font-black text-slate-800 uppercase leading-snug">{s.user.name}</p>
                            <p className={`text-[9px] font-black uppercase tracking-wider ${isMalattia(s.type) ? 'text-rose-600' : 'text-amber-600'}`}>
-                              {isMalattia(s.type) ? 'Stato: Malattia' : `Stato: ${s.type}`}
+                              {isMalattia(s.type) ? 'Stato: Malattia' : `Stato: ${getLabel(s.type)} (${s.type})`}
                            </p>
                         </div>
                      </div>

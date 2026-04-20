@@ -337,10 +337,9 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
 
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center justify-between gap-2">
-                           <h4 className="text-xs font-black text-white leading-tight">{n.title}</h4>
-                           <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter whitespace-nowrap">{getTimeAgo(n.createdAt)}</span>
+                           <h4 className="text-xs font-black text-white leading-tight">{n.title}</h4>                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter whitespace-nowrap">{getTimeAgo(n.createdAt)}</span>
                         </div>
-                        <p className="text-[11px] text-slate-400 font-medium leading-relaxed">{n.message}</p>
+                        <p className="text-[11px] text-slate-300 font-medium leading-relaxed">{n.message}</p>
 
                         <div className="flex items-center gap-2 mt-4">
                           <button 
@@ -352,12 +351,12 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
                           
                           <div className="ml-auto flex items-center gap-3">
                              {activeTab !== 'ARCHIVED' && (
-                               <button onClick={() => handleArchive(n.id)} className="text-[9px] font-bold text-slate-600 hover:text-indigo-400 uppercase tracking-widest transition-colors">
+                               <button onClick={() => handleArchive(n.id)} className="text-[9px] font-bold text-slate-400 hover:text-indigo-400 uppercase tracking-widest transition-colors">
                                  Archivia
                                </button>
                              )}
                              {!n.isRead && (
-                               <button onClick={() => markAsRead(n.id)} className="text-[9px] font-black text-emerald-500 hover:text-emerald-400 uppercase tracking-widest">
+                               <button onClick={() => markAsRead(n.id)} className="text-[9px] font-black text-emerald-400 hover:text-emerald-300 uppercase tracking-widest">
                                  Letta
                                </button>
                              )}

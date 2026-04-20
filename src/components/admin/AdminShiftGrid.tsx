@@ -26,12 +26,15 @@ const CELL_COLORS: Record<string, { bg: string; badge: string }> = {
   "rep":   { bg: "bg-orange-100",  badge: "bg-orange-500 text-white" }, // Legacy/Importata fallback
   // Ferie & Festività
   "FERIE":    { bg: "bg-yellow-100", badge: "bg-yellow-500 text-white" },
+  "FERIE_":   { bg: "bg-yellow-100", badge: "bg-yellow-600 text-white" },
   "FERIE_AP": { bg: "bg-yellow-100", badge: "bg-yellow-600 text-white" },
+  "FEST_S":   { bg: "bg-amber-100",  badge: "bg-amber-500 text-white" },
   "FEST_SOP": { bg: "bg-amber-100",  badge: "bg-amber-500 text-white" },
   "F":        { bg: "bg-yellow-100", badge: "bg-yellow-500 text-white" },
   // Blocco
   "BR": { bg: "bg-gray-200", badge: "bg-gray-800 text-white" },
   // Congedi
+  "CONG_P":   { bg: "bg-pink-100", badge: "bg-pink-500 text-white" },
   "CONG_PAT": { bg: "bg-pink-100", badge: "bg-pink-500 text-white" },
   "CONG_PAR": { bg: "bg-pink-100", badge: "bg-pink-500 text-white" },
   "CONGEDO":  { bg: "bg-pink-100", badge: "bg-pink-500 text-white" },
@@ -39,15 +42,22 @@ const CELL_COLORS: Record<string, { bg: string; badge: string }> = {
   "104":      { bg: "bg-sky-100",    badge: "bg-sky-600 text-white" },
   "104_1":    { bg: "bg-sky-100",    badge: "bg-sky-600 text-white" },
   "104_2":    { bg: "bg-sky-100",    badge: "bg-sky-600 text-white" },
-  "MOT_PERS": { bg: "bg-sky-50",    badge: "bg-sky-500 text-white" },
+  "MOT_PE":   { bg: "bg-sky-50",     badge: "bg-sky-500 text-white" },
+  "MOT_PERS": { bg: "bg-sky-50",     badge: "bg-sky-500 text-white" },
   "ELETT":    { bg: "bg-sky-50",     badge: "bg-sky-500 text-white" },
+  "INST_N":   { bg: "bg-sky-50",     badge: "bg-sky-400 text-white" },
+  "INST_NR":  { bg: "bg-sky-50",     badge: "bg-sky-400 text-white" },
+  "INST_R":   { bg: "bg-sky-50",     badge: "bg-sky-400 text-white" },
   // Malattia
+  "MALATT":     { bg: "bg-red-100",  badge: "bg-red-600 text-white" },
   "MALATTIA":   { bg: "bg-red-100",  badge: "bg-red-600 text-white" },
   "MAL":        { bg: "bg-red-100",  badge: "bg-red-600 text-white" },
   "M":          { bg: "bg-red-100",  badge: "bg-red-600 text-white" },
+  "MAL_FI":     { bg: "bg-red-100",  badge: "bg-red-500 text-white" },
   "MAL_FIGLIO": { bg: "bg-red-100",  badge: "bg-red-500 text-white" },
   "VISITA":     { bg: "bg-red-50",   badge: "bg-red-500 text-white" },
   "ALLATT":     { bg: "bg-red-50",   badge: "bg-red-400 text-white" },
+  "DON_SA":     { bg: "bg-red-50",   badge: "bg-red-400 text-white" },
   "DON_SANGUE": { bg: "bg-red-50",   badge: "bg-red-400 text-white" },
   // Recupero
   "RR":  { bg: "bg-teal-100", badge: "bg-teal-600 text-white" },
@@ -56,6 +66,7 @@ const CELL_COLORS: Record<string, { bg: string; badge: string }> = {
   // Altro
   "CORSO":    { bg: "bg-indigo-100", badge: "bg-indigo-500 text-white" },
   "SMART":    { bg: "bg-indigo-50",  badge: "bg-indigo-500 text-white" },
+  "MISSIO":   { bg: "bg-indigo-100", badge: "bg-indigo-600 text-white" },
   "MISSIONE": { bg: "bg-indigo-100", badge: "bg-indigo-600 text-white" },
 }
 

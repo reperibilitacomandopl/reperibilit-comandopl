@@ -88,6 +88,13 @@ model User {
   canManageUsers           Boolean            @default(false)
   canVerifyClockIns        Boolean            @default(false)
   isActive                 Boolean            @default(true)
+  
+  // Diritti & Agevolazioni
+  hasL104                  Boolean            @default(false)
+  l104Assistiti            Int                @default(1)
+  hasStudyLeave            Boolean            @default(false)
+  hasParentalLeave         Boolean            @default(false)
+  hasChildSicknessLeave    Boolean            @default(false)
   absences                 Absence[]
   agendaEntries            AgendaEntry[]      @relation("agendaEntries")
   agentBalances            AgentBalance[]     @relation("AgentBalances")

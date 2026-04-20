@@ -16,7 +16,16 @@ export async function GET(req: Request) {
 
     const agents = await prisma.user.findMany({
       where: { role: "AGENTE", ...tf },
-      select: { id: true, name: true, matricola: true },
+      select: { 
+        id: true, 
+        name: true, 
+        matricola: true,
+        hasL104: true,
+        l104Assistiti: true,
+        hasStudyLeave: true,
+        hasParentalLeave: true,
+        hasChildSicknessLeave: true
+      },
       orderBy: { name: "asc" }
     })
 
@@ -25,22 +34,33 @@ export async function GET(req: Request) {
       include: { details: true }
     })
 
-    // Pre-calculate usage for this year (simplified: count shifts for each code)
+    // Pre-calculate usage for this year
     const startDate = new Date(Date.UTC(year, 0, 1))
     const endDate = new Date(Date.UTC(year, 11, 31, 23, 59, 59))
     
+    // Grouped counts for main display
     const shiftsCount = await prisma.shift.groupBy({
       by: ['userId', 'type'],
       where: { date: { gte: startDate, lte: endDate }, ...tf },
       _count: { _all: true }
     })
 
-    // Also check AgendaEntry if used for hours or more granular details
     const agendaSums = await prisma.agendaEntry.groupBy({
       by: ['userId', 'code'],
       where: { date: { gte: startDate, lte: endDate }, ...tf },
       _sum: { hours: true },
       _count: { _all: true }
+    })
+
+    // Raw data for monthly breakdown on client-side
+    const monthlyShifts = await prisma.shift.findMany({
+      where: { date: { gte: startDate, lte: endDate }, ...tf },
+      select: { userId: true, type: true, date: true }
+    })
+
+    const monthlyAgenda = await prisma.agendaEntry.findMany({
+      where: { date: { gte: startDate, lte: endDate }, ...tf },
+      select: { userId: true, code: true, date: true, hours: true }
     })
 
     const overtimeSums = await prisma.shift.groupBy({
@@ -49,7 +69,17 @@ export async function GET(req: Request) {
       _sum: { overtimeHours: true }
     })
 
-    return NextResponse.json({ agents, balances, usage: { shiftsCount, agendaSums, overtimeSums } })
+    return NextResponse.json({ 
+      agents, 
+      balances, 
+      usage: { 
+        shiftsCount, 
+        agendaSums, 
+        overtimeSums, 
+        monthlyShifts, 
+        monthlyAgenda 
+      } 
+    })
   } catch (error) {
     console.error("[BALANCES GET]", error)
     return NextResponse.json({ error: "Errore caricamento saldi" }, { status: 500 })

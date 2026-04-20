@@ -62,14 +62,14 @@ export async function PUT(req: Request) {
   }
 
   try {
-    const body = await req.json()
     const { 
       userId, email, phone, name, matricola, squadra, servizio, 
       massimale, action, newPassword, defaultServiceCategoryId, 
       defaultServiceTypeId, rotationGroupId, qualifica,
       dataAssunzione, scadenzaPatente, scadenzaPortoArmi, noteInterne,
-      dataDiNascita, tipoContratto, defaultPartnerIds, fixedServiceDays
-    } = body
+      dataDiNascita, tipoContratto, defaultPartnerIds, fixedServiceDays,
+      hasL104, l104Assistiti, hasStudyLeave, hasParentalLeave, hasChildSicknessLeave
+    } = await req.json()
     
     if (!userId) return NextResponse.json({ error: "Missing userId" }, { status: 400 })
     const tenantId = session.user.tenantId
@@ -155,7 +155,12 @@ export async function PUT(req: Request) {
         tipoContratto: tipoContratto === undefined ? undefined : (tipoContratto || null),
         noteInterne: noteInterne === undefined ? undefined : (noteInterne || null),
         defaultPartnerIds: defaultPartnerIds === undefined ? undefined : defaultPartnerIds,
-        fixedServiceDays: fixedServiceDays === undefined ? undefined : fixedServiceDays
+        fixedServiceDays: fixedServiceDays === undefined ? undefined : fixedServiceDays,
+        hasL104: hasL104 === undefined ? undefined : hasL104,
+        l104Assistiti: l104Assistiti === undefined ? undefined : parseInt(l104Assistiti, 10),
+        hasStudyLeave: hasStudyLeave === undefined ? undefined : hasStudyLeave,
+        hasParentalLeave: hasParentalLeave === undefined ? undefined : hasParentalLeave,
+        hasChildSicknessLeave: hasChildSicknessLeave === undefined ? undefined : hasChildSicknessLeave
       }
     })
 
@@ -194,7 +199,8 @@ export async function POST(req: Request) {
     const { 
       matricola, name, password, isUfficiale, squadra, massimale,
       qualifica, dataAssunzione, scadenzaPatente, scadenzaPortoArmi,
-      dataDiNascita, tipoContratto, defaultPartnerIds, fixedServiceDays
+      dataDiNascita, tipoContratto, defaultPartnerIds, fixedServiceDays,
+      hasL104, l104Assistiti, hasStudyLeave, hasParentalLeave, hasChildSicknessLeave
     } = await req.json()
     if (!matricola || !name || !password) return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
 
@@ -224,7 +230,12 @@ export async function POST(req: Request) {
         scadenzaPortoArmi: scadenzaPortoArmi ? new Date(scadenzaPortoArmi) : null,
         tipoContratto: tipoContratto || null,
         defaultPartnerIds: defaultPartnerIds || [],
-        fixedServiceDays: fixedServiceDays || []
+        fixedServiceDays: fixedServiceDays || [],
+        hasL104: hasL104 || false,
+        l104Assistiti: l104Assistiti ? parseInt(l104Assistiti, 10) : 1,
+        hasStudyLeave: hasStudyLeave || false,
+        hasParentalLeave: hasParentalLeave || false,
+        hasChildSicknessLeave: hasChildSicknessLeave || false
       }
     })
 

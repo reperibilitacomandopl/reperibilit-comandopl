@@ -7,13 +7,16 @@ export default function PersonalBalances() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
+  const [entitlements, setEntitlements] = useState<any>(null)
+
   useEffect(() => {
-    fetch("/api/agent/balances")
-      .then(res => res.json())
-      .then(d => {
-        if (!d.error) setData(d)
-      })
-      .finally(() => setLoading(false))
+    Promise.all([
+      fetch("/api/agent/balances").then(res => res.json()),
+      fetch("/api/agent/entitlements").then(res => res.json())
+    ]).then(([balancesData, entitlementsData]) => {
+      if (!balancesData.error) setData(balancesData)
+      if (!entitlementsData.error) setEntitlements(entitlementsData.status)
+    }).finally(() => setLoading(false))
   }, [])
 
   if (loading) {
@@ -88,7 +91,7 @@ export default function PersonalBalances() {
           <div className="flex justify-between items-start mb-6">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400 mb-1">Ferie Ordinarie</p>
-              <h4 className="text-2xl font-black">{ferieResidue} <span className="text-sm text-slate-400">/ {initialFerie}</span></h4>
+              <h4 className="text-2xl font-black">{ferieResidue} <span className="text-sm text-slate-500">/ {initialFerie}</span></h4>
             </div>
             <div className="w-12 h-12 rounded-full border-4 border-slate-800 flex items-center justify-center font-black text-[10px] relative">
                <svg className="absolute inset-0 w-full h-full -rotate-90">
@@ -101,7 +104,7 @@ export default function PersonalBalances() {
 
           <div className="flex items-center gap-4 text-xs font-bold bg-white/5 rounded-xl p-3">
              <div className="flex-1">
-               <span className="text-slate-400 block text-[9px] uppercase tracking-widest">Spettanti</span>
+               <span className="text-slate-500 block text-[9px] uppercase tracking-widest">Spettanti</span>
                <span className="text-white">{initialFerie} g</span>
              </div>
              <div className="w-[1px] h-8 bg-white/10"></div>
@@ -121,7 +124,7 @@ export default function PersonalBalances() {
         <div className="bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors rounded-[1.5rem] p-6 shadow-sm flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
              <div>
-               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Ferie Anni Prec.</p>
+               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Ferie Anni Prec.</p>
                <h4 className="text-xl font-black text-slate-800">{ferieAPResidue} <span className="text-sm text-slate-400 font-medium tracking-tight">giorni residui</span></h4>
              </div>
              <div className="p-2 bg-slate-200 rounded-xl">
@@ -170,6 +173,63 @@ export default function PersonalBalances() {
         </div>
 
       </div>
+
+      {/* Diritti Speciali (L.104, Studio) */}
+      {(entitlements?.hasL104 || entitlements?.hasStudyLeave) && (
+        <div className="p-4 sm:p-6 pt-0 grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
+           {entitlements?.hasL104 && (
+             <div className="bg-blue-50 border border-blue-200 rounded-[1.5rem] p-6 shadow-sm flex flex-col justify-between">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 mb-1">Legge 104 / 92 (Mese Corrente)</p>
+                    <h4 className="text-xl font-black text-blue-900">
+                      {entitlements.l104Limit - entitlements.l104Used} 
+                      <span className="text-sm text-blue-400 font-medium tracking-tight ml-1">{entitlements.l104Mode === 'HOURS' ? 'ore residue' : 'giorni residue'}</span>
+                    </h4>
+                  </div>
+                  <div className="p-2 bg-blue-600 rounded-xl shadow-md">
+                    <CheckCircle2 size={18} className="text-white" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                   <div className="flex justify-between text-[10px] font-black uppercase text-blue-400">
+                      <span>Utilizzati: {entitlements.l104Used} / {entitlements.l104Limit}</span>
+                      <span>{entitlements.l104Limit > 0 ? Math.round((entitlements.l104Used / entitlements.l104Limit) * 100) : 0}%</span>
+                   </div>
+                   <div className="h-1.5 w-full bg-blue-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-600" style={{ width: `${(entitlements.l104Used / Math.max(1, entitlements.l104Limit)) * 100}%` }}></div>
+                   </div>
+                </div>
+             </div>
+           )}
+
+           {entitlements?.hasStudyLeave && (
+             <div className="bg-indigo-50 border border-indigo-200 rounded-[1.5rem] p-6 shadow-sm flex flex-col justify-between">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500 mb-1">Diritto allo Studio (Anno Corrente)</p>
+                    <h4 className="text-xl font-black text-indigo-900">
+                      {entitlements.studyLeaveLimit - entitlements.studyLeaveUsed} 
+                      <span className="text-sm text-indigo-400 font-medium tracking-tight ml-1">ore residue</span>
+                    </h4>
+                  </div>
+                  <div className="p-2 bg-indigo-600 rounded-xl shadow-md">
+                    <TrendingUp size={18} className="text-white" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                   <div className="flex justify-between text-[10px] font-black uppercase text-indigo-400">
+                      <span>Utilizzate: {entitlements.studyLeaveUsed} / {entitlements.studyLeaveLimit}</span>
+                      <span>{Math.round((entitlements.studyLeaveUsed / entitlements.studyLeaveLimit) * 100)}%</span>
+                   </div>
+                   <div className="h-1.5 w-full bg-indigo-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-indigo-600" style={{ width: `${(entitlements.studyLeaveUsed / entitlements.studyLeaveLimit) * 100}%` }}></div>
+                   </div>
+                </div>
+             </div>
+           )}
+        </div>
+      )}
     </div>
   )
 }

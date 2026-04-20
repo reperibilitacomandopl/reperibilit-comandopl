@@ -2,7 +2,10 @@
 import React, { useState } from "react"
 import { CalendarDays, X, ChevronDown, Send } from "lucide-react"
 import { AGENDA_CATEGORIES } from "@/utils/constants"
+import { PERMESSI_104_CODES, CONGEDO_CODES } from "@/utils/agenda-codes"
 import { toast } from "react-hot-toast"
+import { useSearchParams } from "next/navigation"
+import { useEffect } from "react"
 
 import { BalanceData } from "@/types/dashboard"
 
@@ -21,6 +24,29 @@ export default function AgentRequestForm({ balances, onClose }: AgentRequestForm
   const [reqStartTime, setReqStartTime] = useState("")
   const [reqEndTime, setReqEndTime] = useState("")
   const [reqHours, setReqHours] = useState<string | number>("")
+  const [entitlements, setEntitlements] = useState<any>(null)
+
+  const searchParams = useSearchParams()
+  const month = parseInt(searchParams.get("month") || String(new Date().getMonth() + 1))
+  const year = parseInt(searchParams.get("year") || String(new Date().getFullYear()))
+
+  useEffect(() => {
+    fetch(`/api/agent/entitlements?month=${month}&year=${year}`)
+      .then(res => res.json())
+      .then(d => {
+        if (!d.error) setEntitlements(d.status)
+      })
+  }, [month, year])
+
+  // Sticky Logic for L.104
+  useEffect(() => {
+    if (PERMESSI_104_CODES.includes(reqCode) && entitlements) {
+      const isH = reqCode.endsWith('H')
+      if (entitlements.l104Mode === "DAYS") setIsHourlyRequest(false)
+      else if (entitlements.l104Mode === "HOURS") setIsHourlyRequest(true)
+      else setIsHourlyRequest(isH)
+    }
+  }, [reqCode, entitlements])
 
   const handleSubmit = async () => {
     if (!reqDate || !reqCode) {
@@ -108,16 +134,36 @@ export default function AgentRequestForm({ balances, onClose }: AgentRequestForm
               <div className="relative">
                 <select value={reqCode} onChange={e => setReqCode(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 transition-all outline-none appearance-none pr-10">
                   <option value="">Seleziona tipo di assenza...</option>
-                  {AGENDA_CATEGORIES.map(cat => (
-                    <optgroup key={cat.group} label={cat.group}>
-                      {cat.items.map(item => (
-                        <option key={item.code} value={item.code}>{cat.emoji} {item.label} ({item.code})</option>
-                      ))}
-                    </optgroup>
-                  ))}
+                  {AGENDA_CATEGORIES.map(cat => {
+                    const filteredItems = cat.items.filter(item => {
+                      if (PERMESSI_104_CODES.includes(item.code)) return entitlements?.hasL104
+                      if (item.code === "0150") return entitlements?.hasStudyLeave
+                      if (CONGEDO_CODES.includes(item.code)) return entitlements?.hasParentalLeave
+                      if (item.code === "0018") return entitlements?.hasChildSicknessLeave
+                      return true
+                    })
+                    if (filteredItems.length === 0) return null
+                    return (
+                      <optgroup key={cat.group} label={cat.group}>
+                        {filteredItems.map(item => (
+                          <option key={item.code} value={item.code}>{cat.emoji} {item.label} ({item.code})</option>
+                        ))}
+                      </optgroup>
+                    )
+                  })}
                 </select>
                 <ChevronDown size={16} className="absolute top-1/2 right-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
+              
+              {/* Entitlement Feedback */}
+              {reqCode && (PERMESSI_104_CODES.includes(reqCode) || reqCode === "0150") && entitlements && (
+                <div className="mt-2 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg animate-in slide-in-from-top-1">
+                   <p className="text-[10px] font-black text-blue-700 uppercase flex justify-between items-center">
+                     <span>{reqCode === "0150" ? "Budget Studio 150h" : "Budget L.104"}</span>
+                     <span>Residuo: {reqCode === "0150" ? (150 - entitlements.studyLeaveUsed) + "h" : (entitlements.l104Limit - entitlements.l104Used) + (entitlements.l104Mode === "HOURS" ? "h" : "gg")}</span>
+                   </p>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2 px-1">

@@ -20,8 +20,8 @@ export const AGENDA_CATEGORIES: AgendaCategory[] = [
     color: "amber",
     items: [
       { code: "0015", shortCode: "FERIE", label: "Ferie Anno Corrente", unit: "DAYS" },
-      { code: "0016", shortCode: "FERIE_AP", label: "Ferie Anni Precedenti", unit: "DAYS" },
-      { code: "0010", shortCode: "FEST_SOP", label: "Festività Soppresse", unit: "DAYS" },
+      { code: "0016", shortCode: "FERIE_", label: "Ferie Anni Precedenti", unit: "DAYS" },
+      { code: "0010", shortCode: "FEST_S", label: "Festività Soppresse", unit: "DAYS" },
       { code: "BR", shortCode: "BR", label: "Blocco Reperibilità", unit: "DAYS" },
     ]
   },
@@ -30,13 +30,13 @@ export const AGENDA_CATEGORIES: AgendaCategory[] = [
     emoji: "👶",
     color: "rose",
     items: [
-      { code: "0112", shortCode: "CONG_PAT", label: "Congedo di Paternità", unit: "DAYS" },
-      { code: "0111", shortCode: "CONG_PAR_100_1", label: "Congedo Parentale 100% Figlio 1", unit: "DAYS" },
-      { code: "0110", shortCode: "CONG_PAR_100_2", label: "Congedo Parentale 100% Figlio 2", unit: "DAYS" },
-      { code: "0098", shortCode: "CONG_PAR_80_1", label: "Congedo Parentale 80% Figlio 1", unit: "DAYS" },
-      { code: "0095", shortCode: "CONG_PAR_80_2", label: "Congedo Parentale 80% Figlio 2", unit: "DAYS" },
-      { code: "0097", shortCode: "CONG_PAR_30_1", label: "Congedo Parentale 30% Figlio 1", unit: "DAYS" },
-      { code: "0096", shortCode: "CONG_PAR_30_2", label: "Congedo Parentale 30% Figlio 2", unit: "DAYS" },
+      { code: "0112", shortCode: "CONG_P", label: "Congedo di Paternità", unit: "DAYS" },
+      { code: "0111", shortCode: "CONG_P", label: "Congedo Parentale 100% Figlio 1", unit: "DAYS" },
+      { code: "0110", shortCode: "CONG_P", label: "Congedo Parentale 100% Figlio 2", unit: "DAYS" },
+      { code: "0098", shortCode: "CONG_P", label: "Congedo Parentale 80% Figlio 1", unit: "DAYS" },
+      { code: "0095", shortCode: "CONG_P", label: "Congedo Parentale 80% Figlio 2", unit: "DAYS" },
+      { code: "0097", shortCode: "CONG_P", label: "Congedo Parentale 30% Figlio 1", unit: "DAYS" },
+      { code: "0096", shortCode: "CONG_P", label: "Congedo Parentale 30% Figlio 2", unit: "DAYS" },
     ]
   },
   {
@@ -44,11 +44,13 @@ export const AGENDA_CATEGORIES: AgendaCategory[] = [
     emoji: "📋",
     color: "blue",
     items: [
-      { code: "0031", shortCode: "104_1", label: "Permessi L.104/92 Assistito 1", unit: "DAYS" },
-      { code: "0038", shortCode: "104_2", label: "Permessi L.104/92 Assistito 2", unit: "DAYS" },
-      { code: "0014", shortCode: "MOT_PERS", label: "Particolari Motivi Personali/Familiari", unit: "DAYS" },
+      { code: "0031", shortCode: "104_1", label: "Permessi L.104/92 Assistito 1 (Giorni)", unit: "DAYS" },
+      { code: "104_1H", shortCode: "104_1H", label: "Permessi L.104/92 Assistito 1 (Ore)", unit: "HOURS" },
+      { code: "0038", shortCode: "104_2", label: "Permessi L.104/92 Assistito 2 (Giorni)", unit: "DAYS" },
+      { code: "104_2H", shortCode: "104_2H", label: "Permessi L.104/92 Assistito 2 (Ore)", unit: "HOURS" },
+      { code: "0014", shortCode: "MOT_PE", label: "Particolari Motivi Personali/Familiari", unit: "DAYS" },
       { code: "0002", shortCode: "ELETT", label: "Esercizio Funzioni Elettorali", unit: "DAYS" },
-      { code: "0004", shortCode: "INST_NR", label: "Permessi Ist. Non Retribuiti", unit: "HOURS" },
+      { code: "0004", shortCode: "INST_N", label: "Permessi Ist. Non Retribuiti", unit: "HOURS" },
       { code: "0005", shortCode: "INST_R", label: "Permessi Ist. Retribuiti", unit: "HOURS" },
     ]
   },
@@ -57,11 +59,11 @@ export const AGENDA_CATEGORIES: AgendaCategory[] = [
     emoji: "🏥",
     color: "red",
     items: [
-      { code: "MALATTIA", shortCode: "MALATTIA", label: "Malattia Standard", unit: "DAYS" },
-      { code: "0018", shortCode: "MAL_FIGLIO", label: "Malattia Figlio 0-3 Anni", unit: "DAYS" },
+      { code: "MALATTIA", shortCode: "MALATT", label: "Malattia Standard", unit: "DAYS" },
+      { code: "0018", shortCode: "MAL_FI", label: "Malattia Figlio 0-3 Anni", unit: "DAYS" },
       { code: "0032", shortCode: "VISITA", label: "Visite e Prestazioni Specialistiche", unit: "DAYS" },
       { code: "0003", shortCode: "ALLATT", label: "Allattamento", unit: "DAYS" },
-      { code: "0035", shortCode: "DON_SANGUE", label: "Donazione Sangue", unit: "DAYS" },
+      { code: "0035", shortCode: "DON_SA", label: "Donazione Sangue", unit: "DAYS" },
     ]
   },
   {
@@ -79,8 +81,9 @@ export const AGENDA_CATEGORIES: AgendaCategory[] = [
     color: "indigo",
     items: [
       { code: "10004", shortCode: "CORSO", label: "Corso di Formazione", unit: "DAYS" },
+      { code: "0150", shortCode: "STUDIO", label: "Diritto allo Studio (150 Ore)", unit: "HOURS" },
       { code: "0131", shortCode: "SMART", label: "Lavoro Agile", unit: "DAYS" },
-      { code: "0068", shortCode: "MISSIONE", label: "Missione", unit: "DAYS" },
+      { code: "0068", shortCode: "MISSIO", label: "Missione", unit: "DAYS" },
     ]
   },
 ]
@@ -123,7 +126,7 @@ export function getUnit(codeOrShortCode: string): "DAYS" | "HOURS" {
 }
 
 export const FERIE_CODES = ["FERIE", "FERIE_AP"]
-export const PERMESSI_104_CODES = ["104_1", "104_2"]
+export const PERMESSI_104_CODES = ["104_1", "104_2", "104_1H", "104_2H"]
 export const FESTIVITA_CODES = ["FEST_SOP"]
 export const MALATTIA_CODES = ["MALATTIA", "MAL_FIGLIO"]
 export const RECUPERO_CODES = ["RR", "RP"]

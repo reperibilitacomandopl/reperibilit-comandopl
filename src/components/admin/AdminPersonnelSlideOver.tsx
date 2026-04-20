@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect } from "react"
-import { Users, Clock, Briefcase, Shield, X, FileEdit, Save, Trash2, Star } from "lucide-react"
+import { Users, Clock, Briefcase, Shield, X, FileEdit, Save, Trash2, Star, ShieldCheck } from "lucide-react"
 
 interface AdminPersonnelSlideOverProps {
   editingAgent: any
@@ -21,7 +21,7 @@ const RANKS = [
 ];
 
 export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave, onDelete, rotationGroups, categories, activeAgentsForPartners }: AdminPersonnelSlideOverProps) {
-  const [editTab, setEditTab] = useState<"HR" | "TURNO" | "SEZIONE" | "SERVIZIO">("HR")
+  const [editTab, setEditTab] = useState<"HR" | "TURNO" | "SEZIONE" | "SERVIZIO" | "DIRITTI">("HR")
   const [tempName, setTempName] = useState("")
   const [tempMatricola, setTempMatricola] = useState("")
   const [tempSquadra, setTempSquadra] = useState("")
@@ -41,6 +41,11 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
   const [tempDefaultCategoryId, setTempDefaultCategoryId] = useState("")
   const [tempDefaultTypeId, setTempDefaultTypeId] = useState("")
   const [tempIsUfficiale, setTempIsUfficiale] = useState(false)
+  const [tempHasL104, setTempHasL104] = useState(false)
+  const [tempL104Assistiti, setTempL104Assistiti] = useState(1)
+  const [tempHasStudyLeave, setTempHasStudyLeave] = useState(false)
+  const [tempHasParentalLeave, setTempHasParentalLeave] = useState(false)
+  const [tempHasChildSicknessLeave, setTempHasChildSicknessLeave] = useState(false)
   const [newPass, setNewPass] = useState("")
   const [isUpdating, setIsUpdating] = useState(false)
 
@@ -65,6 +70,11 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
       setTempDefaultCategoryId(editingAgent.defaultServiceCategoryId || "")
       setTempDefaultTypeId(editingAgent.defaultServiceTypeId || "")
       setTempIsUfficiale(editingAgent.isUfficiale || false)
+      setTempHasL104(editingAgent.hasL104 || false)
+      setTempL104Assistiti(editingAgent.l104Assistiti || 1)
+      setTempHasStudyLeave(editingAgent.hasStudyLeave || false)
+      setTempHasParentalLeave(editingAgent.hasParentalLeave || false)
+      setTempHasChildSicknessLeave(editingAgent.hasChildSicknessLeave || false)
       setNewPass("")
       setEditTab("HR")
     }
@@ -94,6 +104,11 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
       defaultServiceCategoryId: tempDefaultCategoryId || null,
       defaultServiceTypeId: tempDefaultTypeId || null,
       isUfficiale: tempIsUfficiale,
+      hasL104: tempHasL104,
+      l104Assistiti: tempL104Assistiti,
+      hasStudyLeave: tempHasStudyLeave,
+      hasParentalLeave: tempHasParentalLeave,
+      hasChildSicknessLeave: tempHasChildSicknessLeave,
       newPassword: newPass || undefined, // Used internally to identify if a reset is requested
       action: newPass ? "resetPassword" : undefined
     }
@@ -124,7 +139,8 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
                 { id: "HR", icon: Users, label: "Personale" },
                 { id: "TURNO", icon: Clock, label: "Ciclo Turni" },
                 { id: "SEZIONE", icon: Briefcase, label: "Sezione" },
-                { id: "SERVIZIO", icon: Shield, label: "Servizio & Pattuglia" }
+                { id: "SERVIZIO", icon: Shield, label: "Servizio & Pattuglia" },
+                { id: "DIRITTI", icon: ShieldCheck, label: "Diritti" }
               ].map(tab => (
                  <button 
                    key={tab.id}
@@ -258,8 +274,8 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
                        <p className="text-[9px] font-bold text-slate-400">Questo dato è conservato per compatibilità ma l'assegnazione reale segue ora la selezione in alto.</p>
                     </div>
                 )}
-             </div>
-           )}
+              </div>
+            )}
 
            {/* SCHEDA 4: SERVIZIO E PATTUGLIA */}
            {editTab === "SERVIZIO" && (
@@ -292,7 +308,7 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
                                   <option value="">Seleziona...</option>
                                   {activeAgentsForPartners.filter(a => a.id !== editingAgent.id).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                                </select>
-                               <button onClick={() => setTempDefaultPartnerIds(tempDefaultPartnerIds.filter((_, i) => i !== idx))} className="w-8 h-8 flex items-center justify-center bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all"><X width={14} height={14} /></button>
+                               <button onClick={() => setTempDefaultPartnerIds(tempDefaultPartnerIds.filter((_, i) => i !== idx))} className="w-8 h-8 flex items-center justify-center bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-500 hover:text-white transition-all"><X width={14} height={14} /></button>
                             </div>
                          ))}
                          <button onClick={() => setTempDefaultPartnerIds([...tempDefaultPartnerIds, ""])} className="text-[10px] font-black bg-emerald-100 text-emerald-700 hover:bg-emerald-600 hover:text-white px-3 py-2 rounded-lg transition-all self-start mt-1">+ Aggiungi Fallback</button>
@@ -318,6 +334,85 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
                    </div>
                 </div>
              </div>
+           )}
+
+           {/* SCHEDA 5: DIRITTI E AGEVOLAZIONI */}
+           {editTab === "DIRITTI" && (
+             <div className="space-y-6 animate-in fade-in duration-300">
+               <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-200/50 space-y-6">
+                  <div className="flex items-center justify-between">
+                     <div className="space-y-1">
+                        <h4 className="text-sm font-black text-blue-700 uppercase">Legge 104 / 92</h4>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Abilitazione permessi mensili (3gg o 18h)</p>
+                     </div>
+                     <button 
+                       onClick={() => setTempHasL104(!tempHasL104)}
+                       className={`w-12 h-6 rounded-full transition-all relative ${tempHasL104 ? 'bg-blue-600 shadow-inner' : 'bg-slate-200'}`}
+                     >
+                        <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all ${tempHasL104 ? 'translate-x-6' : ''}`} />
+                     </button>
+                  </div>
+
+                  {tempHasL104 && (
+                    <div className="p-4 bg-white rounded-xl border border-blue-100 animate-in slide-in-from-top-2 duration-200">
+                       <label className="text-[10px] font-black text-slate-400 uppercase mb-3 block">Numero Assistiti (Budget Raddoppiato se 2)</label>
+                       <div className="flex gap-2">
+                          {[1, 2].map(n => (
+                             <button 
+                                key={n}
+                                onClick={() => setTempL104Assistiti(n)}
+                                className={`flex-1 py-2 rounded-lg text-xs font-black transition-all border ${tempL104Assistiti === n ? 'bg-blue-600 border-blue-700 text-white shadow-md' : 'bg-slate-50 border-slate-200 text-slate-400'}`}
+                             >
+                                {n} {n === 1 ? 'Assistito' : 'Assistiti'}
+                             </button>
+                          ))}
+                       </div>
+                       <p className="text-[9px] text-blue-500 mt-2 font-bold italic text-center uppercase tracking-tight">Budget: {tempL104Assistiti * 3} Giorni / {tempL104Assistiti * 18} Ore Mensili</p>
+                    </div>
+                  )}
+               </div>
+
+               <div className="grid grid-cols-1 gap-4">
+                  <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-200/50 flex items-center justify-between">
+                     <div className="space-y-1">
+                        <h4 className="text-sm font-black text-indigo-700 uppercase">Diritto allo Studio</h4>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">150 ore annuali</p>
+                     </div>
+                     <button 
+                       onClick={() => setTempHasStudyLeave(!tempHasStudyLeave)}
+                       className={`w-12 h-6 rounded-full transition-all relative ${tempHasStudyLeave ? 'bg-indigo-600 shadow-inner' : 'bg-slate-200'}`}
+                     >
+                        <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all ${tempHasStudyLeave ? 'translate-x-6' : ''}`} />
+                     </button>
+                  </div>
+
+                  <div className="bg-rose-50/50 p-5 rounded-2xl border border-rose-200/50 flex items-center justify-between">
+                     <div className="space-y-1">
+                       <h4 className="text-sm font-black text-rose-700 uppercase">Congedi Parentali</h4>
+                       <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Diritto ai congedi per figli</p>
+                     </div>
+                     <button 
+                       onClick={() => setTempHasParentalLeave(!tempHasParentalLeave)}
+                       className={`w-12 h-6 rounded-full transition-all relative ${tempHasParentalLeave ? 'bg-rose-600 shadow-inner' : 'bg-slate-200'}`}
+                     >
+                        <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all ${tempHasParentalLeave ? 'translate-x-6' : ''}`} />
+                     </button>
+                  </div>
+
+                  <div className="bg-rose-50/50 p-5 rounded-2xl border border-rose-200/50 flex items-center justify-between">
+                     <div className="space-y-1">
+                       <h4 className="text-sm font-black text-rose-700 uppercase">Malattia Figlio</h4>
+                       <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Assenze per malattia prole</p>
+                     </div>
+                     <button 
+                       onClick={() => setTempHasChildSicknessLeave(!tempHasChildSicknessLeave)}
+                       className={`w-12 h-6 rounded-full transition-all relative ${tempHasChildSicknessLeave ? 'bg-rose-600 shadow-inner' : 'bg-slate-200'}`}
+                     >
+                        <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all ${tempHasChildSicknessLeave ? 'translate-x-6' : ''}`} />
+                     </button>
+                  </div>
+               </div>
+  </div>
            )}
         </div>
 

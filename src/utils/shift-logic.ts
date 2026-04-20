@@ -16,15 +16,16 @@
 export const isMalattia = (code: string | null | undefined): boolean => {
   if (!code) return false;
   const c = code.toUpperCase().trim();
-  return c === "M" || c === "MAL" || c === "MALATTIA" || c === "MAL_FIGLIO" 
-    || c === "VISITA" || c === "ALLATT" || c === "DON_SANGUE"
+  return c === "M" || c === "MAL" || c === "MALATT" || c === "MALATTIA" 
+    || c === "MAL_FI" || c === "MAL_FIGLIO" 
+    || c === "VISITA" || c === "ALLATT" || c === "DON_SA" || c === "DON_SANGUE"
     || c === "0018" || c === "0032" || c === "0003" || c === "0035";
 };
 
 export const isMattina = (code: string | null | undefined): boolean => {
   if (!code) return false;
   const c = code.toUpperCase().trim();
-  // È un turno di mattina se inizia con "M" ma NON è malattia (es. "M7")
+  // È un turno di mattina se inizia con "M" ma NON è malattia (es. "M7", "MALATT" inizierebbe con "M" ma la check isMalattia lo filtra)
   return c.startsWith("M") && !isMalattia(c);
 };
 
@@ -41,11 +42,11 @@ export const isAssenza = (code: string | null | undefined): boolean => {
   // Tutti i codici di assenza (shortCode + storici)
   const assenze = [
     // Ferie
-    "F", "FERIE", "FERIE_AP", "FEST_SOP",
+    "F", "FERIE", "FERIE_", "FERIE_AP", "FEST_S", "FEST_SOP",
     // Permessi
-    "104", "104_1", "104_2", "MOT_PERS", "ELETT",
+    "104", "104_1", "104_2", "MOT_PE", "MOT_PERS", "ELETT", "INST_N", "INST_NR", "INST_R",
     // Congedi
-    "CONG_PAT", "CONG_PAR", "CONGEDO",
+    "CONG_P", "CONG_PAT", "CONG_PAR", "CONGEDO",
     // Riposo
     "R", "RIP", "RIPOSO", "RIPC",
     // Recupero
@@ -53,7 +54,7 @@ export const isAssenza = (code: string | null | undefined): boolean => {
     // Blocco
     "BR",
     // Altro
-    "CORSO", "SMART", "MISSIONE",
+    "CORSO", "STUDIO", "SMART", "MISSIO", "MISSIONE",
     // Storici
     "ASS", "INFR", "CS", "PNR", "SD", "RF", "AM", "AP"
   ];
