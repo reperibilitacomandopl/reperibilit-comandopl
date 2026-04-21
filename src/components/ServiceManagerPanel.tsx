@@ -512,12 +512,12 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                     const isEmpty = agentiInCategoria.length === 0
 
                     return (
-                    <div key={cat.id} className={`bg-white rounded-xl shadow-sm border overflow-hidden transition-all ${isEmpty ? 'border-red-200' : 'border-slate-200'}`}>
+                    <div key={cat.id} className={`bg-white rounded-xl shadow-sm border transition-all relative ${isEmpty ? 'border-red-200' : 'border-slate-200'}`}>
                         <div 
                             onDragOver={handleDragOver}
                             onDrop={e => handleDropToCategory(e, filtroTurni[0], cat.id)}
                             onClick={() => toggleCatCollapse(cat.id)}
-                            className={`px-3 py-2 text-xs font-black uppercase tracking-wider flex items-center justify-between cursor-pointer transition-colors group ${isEmpty ? 'bg-red-700 text-white hover:bg-red-600' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
+                            className={`px-3 py-2 text-xs font-black uppercase tracking-wider flex items-center justify-between cursor-pointer transition-colors group ${isCollapsed ? 'rounded-xl' : 'rounded-t-xl'} ${isEmpty ? 'bg-red-700 text-white hover:bg-red-600' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
                         >
                             <span className="flex items-center gap-2">
                                 {isEmpty && <AlertTriangle width={14} height={14} className="animate-pulse" />}
@@ -540,8 +540,8 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                                 const agentiGen = agentiInCategoria.filter(s => !s.serviceTypeId)
                                 if (agentiGen.length === 0) return null
                                 return (
-                                <div className="border border-red-200 rounded-lg overflow-hidden transition-all bg-red-50">
-                                    <div className="bg-red-100 px-3 py-2 text-xs font-black text-red-800 border-b border-red-200 flex justify-between items-center">
+                                <div className="border border-red-200 rounded-lg transition-all relative bg-red-50">
+                                    <div className="bg-red-100 px-3 py-2 rounded-t-lg text-xs font-black text-red-800 border-b border-red-200 flex justify-between items-center">
                                         <div className="flex items-center gap-2">
                                             <AlertTriangle width={14} height={14} className="text-red-600" />
                                             GENERICO (Assegna Sotto-Servizio)
@@ -565,11 +565,11 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                                 });
                                 
                                 return (
-                                <div key={tipo.id} className="border border-slate-200 rounded-lg overflow-hidden transition-all">
+                                <div key={tipo.id} className="border border-slate-200 rounded-lg transition-all relative">
                                     <div 
                                         onDragOver={handleDragOver} 
                                         onDrop={e => handleDropToService(e, filtroTurni[0], cat.id, tipo.id)}
-                                        className="bg-slate-50 px-3 py-2 text-xs font-black text-slate-800 border-b border-slate-200 flex justify-between items-center"
+                                        className="bg-slate-50 px-3 py-2 rounded-t-lg text-xs font-black text-slate-800 border-b border-slate-200 flex justify-between items-center"
                                     >
                                         <div className="flex items-center gap-2">
                                             <Shield width={14} height={14} className="text-blue-600" />
@@ -682,7 +682,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                                  <button className={`p-1 rounded ${isDark ? 'text-amber-400 hover:bg-white/10' : 'text-amber-600 hover:bg-amber-50'}`} title="Abbina Scuola Manualmente">
                                     <GraduationCap width={12} height={12} />
                                  </button>
-                                 <div className="absolute right-0 top-full mt-1 hidden group-hover/schools:block z-[100] bg-white border border-slate-200 shadow-2xl rounded-xl p-2 w-48 animate-in fade-in zoom-in-95 duration-200">
+                                 <div className="absolute right-0 top-full mt-1 hidden group-hover/schools:block z-[100] bg-white border border-slate-200 shadow-2xl rounded-xl p-2 w-72 animate-in fade-in zoom-in-95 duration-200">
                                     <p className="text-[9px] font-black text-slate-400 uppercase mb-2 px-1 tracking-widest border-b border-slate-50">Seleziona Plesso</p>
                                     <div className="max-h-40 overflow-y-auto custom-scrollbar space-y-1">
                                        {schools.map(s => {
@@ -693,6 +693,12 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                                             ? `${sched?.entranceTime || "07:45-08:30"} ENTRATA / ${sched?.exitTime || "13:00-14:00"} USCITA ${s.name}`
                                             : `${sched?.afternoonExitTime || "14:15"} USCITA ${s.name}`
 
+                                          const assignedAgents = users.filter(usr => shifts.some(sh => sh.userId === usr.id && sh.serviceDetails?.includes(s.name)))
+                                          const assignedNames = assignedAgents.map(a => {
+                                            const parts = a.name.split(' ');
+                                            return parts.length > 1 ? parts[0].substring(0, 8) + '.' : a.name.substring(0, 8) + '.';
+                                          }).join(', ')
+
                                           return (
                                              <button 
                                                 key={s.id}
@@ -700,9 +706,10 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                                                    assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, timeRangeStr, noteText)
                                                    toast.success(`Abbinato: ${s.name}`)
                                                 }}
-                                                className="w-full text-left px-2 py-1.5 hover:bg-amber-50 rounded text-[10px] font-bold text-slate-700 truncate"
+                                                className="w-full flex items-center justify-between text-left px-2 py-1.5 hover:bg-amber-50 rounded text-[10px] font-bold text-slate-700 transition-colors"
                                              >
-                                                {s.name}
+                                                <span className="truncate">{s.name}</span>
+                                                {assignedNames && <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded ml-2 shrink-0">{assignedNames}</span>}
                                              </button>
                                           )
                                        })}

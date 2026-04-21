@@ -222,13 +222,8 @@ export default function AdminDashboard({
          {showBacheca && (
            <div className="fixed inset-0 z-[90] bg-slate-100/80 backdrop-blur-sm p-4 sm:p-10 overflow-auto flex justify-center">
               <div className="w-full max-w-4xl relative h-fit bg-transparent">
-                 <div className="absolute -top-6 right-0">
-                   <button onClick={() => setShowBacheca(false)} className="bg-white p-3 rounded-2xl shadow-xl text-slate-500 hover:text-rose-600 transition-all font-black text-xs uppercase tracking-widest flex items-center gap-2 border border-slate-200 hover:border-rose-200">
-                      Chiudi Bacheca
-                   </button>
-                 </div>
                  <div className="mt-8 h-[700px] overflow-hidden rounded-2xl">
-                   <BachecaPanel isAdmin={true} />
+                   <BachecaPanel isAdmin={true} onClose={() => setShowBacheca(false)} />
                  </div>
               </div>
            </div>

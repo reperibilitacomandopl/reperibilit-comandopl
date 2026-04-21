@@ -135,21 +135,22 @@ export async function POST(req: Request) {
 
         // Upsert per ogni turno: preserva 'type' (M, P, etc) se esiste, crea se nuovo
         for (const op of resolvedOps) {
-          // --- LOGICA DI PROTEZIONE STACCO (LOOK-AHEAD) ---
+          // Logica di protezione stacco rimossa per import manuale Excel
+          /*
           const tomorrow = new Date(op.date)
           tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
           
           const tomorrowStatus = resolveTheoreticalShift({
             user: agentsMap.get(op.userId),
             date: tomorrow,
-            existingShifts: resolvedOps, // Controlla anche quello che stiamo importando ora (es. se importa tutto il mese)
+            existingShifts: resolvedOps, 
             existingAbsences: bufferAbsences
           })
 
-          // Se domani l'agente è a riposo/assente, NON importiamo la reperibilità per oggi
           if (isAssenza(tomorrowStatus)) {
             continue 
           }
+          */
 
           await tx.shift.upsert({
             where: {

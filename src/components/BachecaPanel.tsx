@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Pin, AlertTriangle, Info, CheckCircle2, Megaphone, Plus, X, Send, Clock } from "lucide-react"
+import { Pin, AlertTriangle, Info, CheckCircle2, Megaphone, Plus, X, Send, Clock, Trash2 } from "lucide-react"
 import toast from "react-hot-toast"
 
 interface Announcement {
@@ -16,7 +16,7 @@ interface Announcement {
   hasRead?: boolean
 }
 
-export default function BachecaPanel({ isAdmin = false }: { isAdmin?: boolean }) {
+export default function BachecaPanel({ isAdmin = false, onClose }: { isAdmin?: boolean, onClose?: () => void }) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [loading, setLoading] = useState(true)
   const [showConfig, setShowConfig] = useState(false)
@@ -96,6 +96,21 @@ export default function BachecaPanel({ isAdmin = false }: { isAdmin?: boolean })
     return <div className="p-8 text-center text-slate-400 text-sm font-medium animate-pulse">Caricamento comunicazioni...</div>
   }
 
+  const handleDelete = async (id: string) => {
+    if (!confirm("Sei sicuro di voler eliminare questa comunicazione?")) return
+    try {
+      const res = await fetch(`/api/announcements/${id}`, { method: "DELETE" })
+      if (res.ok) {
+        setAnnouncements(prev => prev.filter(a => a.id !== id))
+        toast.success("Avviso eliminato")
+      } else {
+        toast.error("Errore eliminazione")
+      }
+    } catch {
+      toast.error("Errore di rete")
+    }
+  }
+
   return (
     <div className="bg-white border flex flex-col h-full border-slate-200 rounded-2xl shadow-sm overflow-hidden">
       <div className="bg-slate-50 border-b border-slate-100 p-5 flex items-center justify-between">
@@ -108,11 +123,18 @@ export default function BachecaPanel({ isAdmin = false }: { isAdmin?: boolean })
             <p className="text-xs text-slate-500 font-medium mt-0.5">Avvisi e Ordini del Giorno</p>
           </div>
         </div>
-        {isAdmin && !showConfig && (
-          <button onClick={() => setShowConfig(true)} className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-bold">
-            <Plus className="w-4 h-4" /> Nuovo
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {isAdmin && !showConfig && (
+            <button onClick={() => setShowConfig(true)} className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-bold">
+              <Plus className="w-4 h-4" /> Nuovo
+            </button>
+          )}
+          {onClose && (
+            <button onClick={onClose} className="p-2 hover:bg-rose-100 text-slate-400 hover:text-rose-600 rounded-lg transition-colors" title="Chiudi">
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {isAdmin && showConfig && (
@@ -191,6 +213,11 @@ export default function BachecaPanel({ isAdmin = false }: { isAdmin?: boolean })
                      }`}
                    >
                       <CheckCircle2 className="w-3.5 h-3.5" /> {ann.hasRead ? "Già Letto" : "Conferma Lettura"}
+                   </button>
+                )}
+                {isAdmin && (
+                   <button onClick={() => handleDelete(ann.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all bg-white text-rose-500 border border-slate-200 hover:border-rose-300 hover:bg-rose-50 shadow-sm active:scale-95">
+                      <Trash2 className="w-3.5 h-3.5" /> Elimina
                    </button>
                 )}
              </div>

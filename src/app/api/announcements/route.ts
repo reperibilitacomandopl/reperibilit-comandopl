@@ -11,6 +11,19 @@ export async function GET(request: Request) {
     const tenantId = session.user.tenantId
     const userId = session.user.id
 
+    // Auto-delete announcements older than 10 days
+    const tenDaysAgo = new Date();
+    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+    
+    await prisma.announcement.deleteMany({
+      where: {
+        ...(tenantId ? { tenantId } : {}),
+        createdAt: {
+          lt: tenDaysAgo
+        }
+      }
+    });
+
     // Fetch announcements
     const announcements = await prisma.announcement.findMany({
       where: tenantId ? { tenantId } : {},

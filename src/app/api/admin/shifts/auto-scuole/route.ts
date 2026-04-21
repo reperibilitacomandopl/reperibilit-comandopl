@@ -31,13 +31,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Nessuna scuola censita per questo giorno o in generale." }, { status: 400 })
     }
 
-    // 2. Fetch all morning (M*) and afternoon (P*) shifts for this date
+    // 2. Fetch all morning (M*) and afternoon (P*) shifts for this date, excluding Ufficiali
     const shifts = await prisma.shift.findMany({
       where: {
         tenantId,
         date: {
           gte: new Date(targetDate),
           lte: new Date(new Date(targetDate).setUTCHours(23, 59, 59, 999))
+        },
+        user: {
+          isUfficiale: false
         },
         AND: [
           {

@@ -50,26 +50,26 @@ model Tenant {
 }
 
 model User {
-  id                       String             @id @default(uuid())
+  id                       String    @id @default(uuid())
   tenantId                 String?
   matricola                String
   name                     String
-  isSuperAdmin             Boolean            @default(false)
-  email                    String?            @unique
+  isSuperAdmin             Boolean   @default(false)
+  email                    String?   @unique
   phone                    String?
   password                 String
-  role                     String             @default("AGENTE")
-  isUfficiale              Boolean            @default(false)
-  qualifica                String?            @default("Agente di P.L.")
-  gradoLivello             Int                @default(13)
-  massimale                Int                @default(8)
+  role                     String    @default("AGENTE")
+  isUfficiale              Boolean   @default(false)
+  qualifica                String?   @default("Agente di P.L.")
+  gradoLivello             Int       @default(13)
+  massimale                Int       @default(8)
   squadra                  String?
   servizio                 String?
   rotationGroupId          String?
   defaultServiceCategoryId String?
   defaultServiceTypeId     String?
   fixedRestDay             Int?
-  forcePasswordChange      Boolean            @default(true)
+  forcePasswordChange      Boolean   @default(true)
   telegramChatId           String?
   telegramLinkCode         String?
   telegramLinkExpires      DateTime?
@@ -81,37 +81,37 @@ model User {
   noteInterne              String?
   defaultPartnerIds        String[]
   fixedServiceDays         String[]
-  createdAt                DateTime           @default(now())
-  updatedAt                DateTime           @updatedAt
-  canConfigureSystem       Boolean            @default(false)
-  canManageShifts          Boolean            @default(false)
-  canManageUsers           Boolean            @default(false)
-  canVerifyClockIns        Boolean            @default(false)
-  isActive                 Boolean            @default(true)
-  
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+  canConfigureSystem       Boolean   @default(false)
+  canManageShifts          Boolean   @default(false)
+  canManageUsers           Boolean   @default(false)
+  canVerifyClockIns        Boolean   @default(false)
+  isActive                 Boolean   @default(true)
+
   // Diritti & Agevolazioni
-  hasL104                  Boolean            @default(false)
-  l104Assistiti            Int                @default(1)
-  hasStudyLeave            Boolean            @default(false)
-  hasParentalLeave         Boolean            @default(false)
-  hasChildSicknessLeave    Boolean            @default(false)
-  absences                 Absence[]
-  agendaEntries            AgendaEntry[]      @relation("agendaEntries")
-  agentBalances            AgentBalance[]     @relation("AgentBalances")
-  agentRequests            AgentRequest[]     @relation("AgentRequests")
-  receivedAlerts           AlertRecipient[]   @relation("AlertRecipientUser")
-  clockRecords             ClockRecord[]
-  adminAlerts              EmergencyAlert[]   @relation("AdminAlerts")
-  notifications            Notification[]
-  pushSubscriptions        PushSubscription[]
-  shifts                   Shift[]
-  sentSwaps                ShiftSwapRequest[] @relation("SentSwaps")
-  receivedSwaps            ShiftSwapRequest[] @relation("ReceivedSwaps")
-  defaultServiceCategory   ServiceCategory?   @relation("DefaultCategory", fields: [defaultServiceCategoryId], references: [id])
-  defaultServiceType       ServiceType?       @relation("DefaultType", fields: [defaultServiceTypeId], references: [id])
-  rotationGroup            RotationGroup?     @relation(fields: [rotationGroupId], references: [id])
-  tenant                   Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  patrolTemplates          PatrolTemplate[]   @relation("PatrolMembers")
+  hasL104                Boolean            @default(false)
+  l104Assistiti          Int                @default(1)
+  hasStudyLeave          Boolean            @default(false)
+  hasParentalLeave       Boolean            @default(false)
+  hasChildSicknessLeave  Boolean            @default(false)
+  absences               Absence[]
+  agendaEntries          AgendaEntry[]      @relation("agendaEntries")
+  agentBalances          AgentBalance[]     @relation("AgentBalances")
+  agentRequests          AgentRequest[]     @relation("AgentRequests")
+  receivedAlerts         AlertRecipient[]   @relation("AlertRecipientUser")
+  clockRecords           ClockRecord[]
+  adminAlerts            EmergencyAlert[]   @relation("AdminAlerts")
+  notifications          Notification[]
+  pushSubscriptions      PushSubscription[]
+  shifts                 Shift[]
+  sentSwaps              ShiftSwapRequest[] @relation("SentSwaps")
+  receivedSwaps          ShiftSwapRequest[] @relation("ReceivedSwaps")
+  defaultServiceCategory ServiceCategory?   @relation("DefaultCategory", fields: [defaultServiceCategoryId], references: [id])
+  defaultServiceType     ServiceType?       @relation("DefaultType", fields: [defaultServiceTypeId], references: [id])
+  rotationGroup          RotationGroup?     @relation(fields: [rotationGroupId], references: [id])
+  tenant                 Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patrolTemplates        PatrolTemplate[]   @relation("PatrolMembers")
 
   @@unique([tenantId, matricola])
 }
@@ -247,13 +247,13 @@ model GlobalSettings {
   massimaleUfficiale  Int     @default(8)
   distaccoMinimo      Int     @default(2)
   permettiConsecutivi Boolean @default(false)
-  
-  bpTurnoContinuato   Float   @default(7.0)
-  bpStaccoMinTurno1   Float   @default(6.0)
-  bpStaccoMaxPausa    Float   @default(2.0)
-  bpStaccoMinTurno2   Float   @default(2.0)
 
-  tenant              Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bpTurnoContinuato Float @default(7.0)
+  bpStaccoMinTurno1 Float @default(6.0)
+  bpStaccoMaxPausa  Float @default(2.0)
+  bpStaccoMinTurno2 Float @default(2.0)
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model MonthStatus {
