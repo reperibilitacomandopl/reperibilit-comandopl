@@ -1,7 +1,7 @@
 "use client"
 import React, { useState } from "react"
 import { CalendarDays, X, ChevronDown, Send } from "lucide-react"
-import { AGENDA_CATEGORIES } from "@/utils/constants"
+import { AGENDA_CATEGORIES } from "@/utils/agenda-codes"
 import { PERMESSI_104_CODES, CONGEDO_CODES } from "@/utils/agenda-codes"
 import { toast } from "react-hot-toast"
 import { useSearchParams } from "next/navigation"
@@ -217,3 +217,4 @@ export default function AgentRequestForm({ balances, onClose }: AgentRequestForm
     </div>
   )
 }
+

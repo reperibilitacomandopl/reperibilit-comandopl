@@ -14,7 +14,9 @@ interface AdminToolbarProps {
   currentYear: number
   currentMonthName: string
   isPublished: boolean
+  isLocked?: boolean
   onPublish: () => void
+  onLock?: () => void
   onShowAnagrafica: () => void
   onShowAudit: () => void
   onShowBulkAbsence: () => void
@@ -34,6 +36,7 @@ interface AdminToolbarProps {
   onExportExcel: () => void
   onExportRepExcel: () => void
   onExportUfficialiExcel: () => void
+  onExportPayroll: () => void
   onExportPDF: () => void
   onExportRepPDF: () => void
   onPrevMonth: () => void
@@ -59,10 +62,10 @@ interface AdminToolbarProps {
 
 export function AdminToolbar({
   currentMonth, currentYear, currentMonthName,
-  isPublished, onPublish, onShowAnagrafica, onShowAudit, onShowBulkAbsence, onShowRegisters,
+  isPublished, isLocked, onPublish, onLock, onShowAnagrafica, onShowAudit, onShowBulkAbsence, onShowRegisters,
   onShowSettings, onShowVerbatel, onShowSwaps, onShowBacheca,
   pendingSwapsCount, pendingRequestsCount,
-  onSearch, onRoleFilter, onExportExcel, onExportRepExcel, onExportUfficialiExcel, onExportPDF, onExportRepPDF,
+  onSearch, onRoleFilter, onExportExcel, onExportRepExcel, onExportUfficialiExcel, onExportPayroll, onExportPDF, onExportRepPDF,
   onPrevMonth, onNextMonth, onClear, onSyncVerbatel, onAIResolve, onSendPec, onSendAlert,
   onImportShifts, onGenerateMonth, isGenerating, isResolving, isSendingPec, isSendingAlert, 
   isExportingPDF, isPublishing, isClearing, uploadStatus,
@@ -314,6 +317,9 @@ export function AdminToolbar({
            <button onClick={onExportRepExcel} className="flex items-center gap-2 bg-violet-600 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-violet-500 transition-all active:scale-95" title="Esporta Solo Reperibilità in Excel">
               <FileDown width={16} height={16} /> <span className="hidden sm:inline">Excel REP</span>
            </button>
+           <button onClick={onExportPayroll} className="flex items-center gap-2 bg-pink-600 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-pink-500 transition-all active:scale-95" title="Esporta Riepilogo Mensile per Ufficio Paghe (Excel/CSV)">
+              <FileDown width={16} height={16} /> <span className="hidden sm:inline">Export Paghe</span>
+           </button>
         </div>
 
         {/* SYSTEM TOOLS */}
@@ -334,6 +340,16 @@ export function AdminToolbar({
             className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl ${isPublished ? "bg-amber-100 text-amber-700 border border-amber-200" : "bg-emerald-600 text-white shadow-emerald-500/20"}`}
           >
             {isPublished ? <><EyeOff width={16} height={16} /> Nascondi</> : <><Eye width={16} height={16} /> Pubblica</>}
+          </button>
+          
+          <button 
+            disabled={isPublishing} 
+            onClick={onLock} 
+            className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl ${isLocked ? "bg-red-600 text-white shadow-red-500/20" : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"}`}
+            title={isLocked ? "Sblocca Mese" : "Congela Mese (Blocca modifiche ai turni)"}
+          >
+            <Shield width={16} height={16} className={isLocked ? "fill-white" : "fill-slate-400"} /> 
+            {isLocked ? "Mese Chiuso" : "Mese Aperto"}
           </button>
         </div>
       </div>

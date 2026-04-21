@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import { X, BookOpen, Search, Plus, Trash2 } from "lucide-react"
-import { AGENDA_CATEGORIES, CAT_COLORS, getCategoryForCode } from "@/utils/constants"
+import { CAT_COLORS } from "@/utils/constants"
+import { AGENDA_CATEGORIES, getCategoryForCode } from "@/utils/agenda-codes"
 import { AgendaItem } from "@/types/dashboard"
 
 interface AgentAgendaModalProps {
@@ -273,3 +274,4 @@ export default function AgentAgendaModal({
     </div>
   )
 }
+

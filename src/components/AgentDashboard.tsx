@@ -6,7 +6,8 @@ import { DashboardShift } from "@/types/dashboard"
 
 // Utils & Helpers
 import { isHoliday } from "@/utils/holidays"
-import { AGENDA_CATEGORIES, CAT_COLORS, paramsToColor } from "@/utils/constants"
+import { CAT_COLORS, paramsToColor } from "@/utils/constants"
+import { AGENDA_CATEGORIES } from "@/utils/agenda-codes"
 import { getLabel } from "@/utils/agenda-codes"
 
 // Components
@@ -443,3 +444,4 @@ export default function AgentDashboard({
     </div>
   )
 }
+

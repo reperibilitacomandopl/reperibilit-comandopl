@@ -28,6 +28,7 @@ export default function AdminDashboard({
   currentMonth, 
   currentYear, 
   isPublished, 
+  isLocked,
   settings, 
   tenantSlug,
   rotationGroups = [],
@@ -65,6 +66,7 @@ export default function AdminDashboard({
     currentMonth,
     currentMonthName: admin.currentMonthName,
     isPublished,
+    isLocked,
     allAgents,
     shifts,
     tenantSlug,
@@ -82,7 +84,9 @@ export default function AdminDashboard({
           currentYear={currentYear} 
           currentMonthName={admin.currentMonthName}
           isPublished={isPublished}
+          isLocked={isLocked}
           onPublish={() => admin.handlePublish(isPublished)}
+          onLock={() => admin.handleLock(isLocked)}
           onShowAnagrafica={() => setShowAnagrafica(true)}
           onShowAudit={() => { setShowAuditLog(true); admin.fetchAuditLogs(); }}
           onShowBulkAbsence={() => setShowBulkAbsence(true)}
@@ -98,6 +102,7 @@ export default function AdminDashboard({
           onExportExcel={admin.handleExportExcel}
           onExportRepExcel={admin.handleExportRepExcel}
           onExportUfficialiExcel={admin.handleExportUfficialiExcel}
+          onExportPayroll={admin.handleExportPayroll}
           onExportPDF={admin.handleExportPDF}
           onExportRepPDF={admin.handleExportRepPDF}
           onPrevMonth={admin.handlePrevMonth}

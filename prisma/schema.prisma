@@ -247,6 +247,12 @@ model GlobalSettings {
   massimaleUfficiale  Int     @default(8)
   distaccoMinimo      Int     @default(2)
   permettiConsecutivi Boolean @default(false)
+  
+  bpTurnoContinuato   Float   @default(7.0)
+  bpStaccoMinTurno1   Float   @default(6.0)
+  bpStaccoMaxPausa    Float   @default(2.0)
+  bpStaccoMinTurno2   Float   @default(2.0)
+
   tenant              Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
@@ -256,6 +262,7 @@ model MonthStatus {
   month       Int
   year        Int
   isPublished Boolean @default(false)
+  isLocked    Boolean @default(false)
   tenant      Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([month, year, tenantId])

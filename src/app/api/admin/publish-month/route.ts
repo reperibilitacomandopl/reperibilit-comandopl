@@ -13,31 +13,44 @@ export async function POST(req: Request) {
 
   try {
     const tenantId = session.user.tenantId
-    const { month, year, isPublished } = await req.json()
+    const { month, year, isPublished, isLocked } = await req.json()
     
     const result = await prisma.monthStatus.upsert({
       where: {
         month_year_tenantId: { month, year, tenantId: tenantId || "" }
       },
       update: {
-        isPublished
+        ...(isPublished !== undefined && { isPublished }),
+        ...(isLocked !== undefined && { isLocked })
       },
       create: {
         month: month,
         year: year,
-        isPublished: isPublished,
+        isPublished: isPublished ?? false,
+        isLocked: isLocked ?? false,
         tenantId: tenantId || null
       }
     })
 
-    await logAudit({
-      tenantId: tenantId || null,
-      adminId: session.user.id!,
-      adminName: session.user.name!,
-      action: isPublished ? "PUBLISH_MONTH" : "UNPUBLISH_MONTH",
-      details: `${isPublished ? 'Pubblicati' : 'Ritirati'} turni per il periodo ${month}/${year}`
-    })
+    if (isPublished !== undefined) {
+      await logAudit({
+        tenantId: tenantId || null,
+        adminId: session.user.id!,
+        adminName: session.user.name!,
+        action: isPublished ? "PUBLISH_MONTH" : "UNPUBLISH_MONTH",
+        details: `${isPublished ? 'Pubblicati' : 'Ritirati'} turni per il periodo ${month}/${year}`
+      })
+    }
 
+    if (isLocked !== undefined) {
+      await logAudit({
+        tenantId: tenantId || null,
+        adminId: session.user.id!,
+        adminName: session.user.name!,
+        action: isLocked ? "LOCK_MONTH" : "UNLOCK_MONTH",
+        details: `${isLocked ? 'Congelati' : 'Sbloccati'} dati per il periodo ${month}/${year}`
+      })
+    }
     // NOTIFICA BROADCAST TELEGRAM
     if (isPublished) {
       const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
@@ -81,7 +94,7 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, isPublished: result.isPublished })
+    return NextResponse.json({ success: true, isPublished: result.isPublished, isLocked: result.isLocked })
   } catch (error) {
     console.error("[PUBLISH MONTH ERROR]", error)
     return NextResponse.json({ error: "Internal Error" }, { status: 500 })

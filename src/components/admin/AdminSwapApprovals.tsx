@@ -2,7 +2,7 @@
 
 import React from "react"
 import { RefreshCw, X, CheckCircle2, AlertCircle } from "lucide-react"
-import { getCategoryForCode } from "@/utils/constants"
+import { getCategoryForCode } from "@/utils/agenda-codes"
 
 interface PendingRequest {
   id: string;
@@ -179,3 +179,4 @@ export default function AdminSwapApprovals({
     </div>
   )
 }
+

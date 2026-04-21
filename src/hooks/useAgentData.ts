@@ -16,7 +16,7 @@ import {
   OdsData, 
   AgendaItem 
 } from "@/types/dashboard"
-import { AGENDA_CATEGORIES } from "@/utils/constants"
+import { AGENDA_CATEGORIES } from "@/utils/agenda-codes"
 
 interface UseAgentDataProps {
   currentUser: any
@@ -362,4 +362,5 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts }:
     fetchAgenda
   }
 }
+
 

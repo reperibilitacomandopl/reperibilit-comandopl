@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { Clock, WalletCards, Search, LogIn, LogOut, Activity, ArrowLeft, Save, Briefcase, CalendarClock, MessageCircleWarning, Info, FileStack, CheckCircle2, XCircle, X } from "lucide-react"
 import { getLabel, AGENDA_CATEGORIES, getUnit } from "@/utils/agenda-codes"
+import { toast } from "react-hot-toast"
 
 export default function AdminRegistersPanel({ allAgents, currentYear, currentMonth, settings, onClose }: any) {
   const [search, setSearch] = useState('')
@@ -240,6 +241,19 @@ function AgentDossierCartellino({ userId, currentYear }: { userId: string, curre
 function AgentDossierSaldi({ userId, agent, balancesData, currentYear, onRefresh }: { userId: string, agent: any, balancesData: any, currentYear: number, onRefresh: () => void }) {
   const [saving, setSaving] = useState(false)
   const [detailTarget, setDetailTarget] = useState<any>(null)
+  const [monthlyDetailData, setMonthlyDetailData] = useState<any>(null)
+  const [loadingDetail, setLoadingDetail] = useState(false)
+
+  const openDetail = async (ct: any) => {
+    setDetailTarget(ct);
+    setLoadingDetail(true);
+    try {
+      const res = await fetch(`/api/admin/balances/detail?year=${currentYear}&userId=${userId}`);
+      const data = await res.json();
+      setMonthlyDetailData(data);
+    } catch(e) { console.error(e); }
+    setLoadingDetail(false);
+  }
   
   // ─── CONFIGURAZIONE DINAMICA SCHEDE ───
   const configTypes = useMemo(() => {
@@ -340,10 +354,10 @@ function AgentDossierSaldi({ userId, agent, balancesData, currentYear, onRefresh
       if (!res.ok) throw new Error("Errore nel salvataggio")
       const data = await res.json()
       if (!data.success) throw new Error(data.error || "Errore sconosciuto")
-      alert("Saldi aggiornati correttamente!")
+      toast.success("Saldi aggiornati correttamente!")
       onRefresh()
     } catch (err: any) {
-      alert("Errore: " + err.message)
+      toast.error("Errore: " + err.message)
     } finally {
       setSaving(false)
     }
@@ -351,12 +365,13 @@ function AgentDossierSaldi({ userId, agent, balancesData, currentYear, onRefresh
 
   // ─── LOGICA DETTAGLIO MENSILE ───
   const renderMonthlyDetail = () => {
+    if (loadingDetail) return <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4"><Activity className="text-white animate-spin" size={32} /></div>
     if (!detailTarget) return null
 
     const months = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
     const monthlyData = months.map((m, idx) => {
-      const monthShifts = balancesData?.usage?.monthlyShifts?.filter((s:any) => s.userId === userId && detailTarget.typeMatch.includes(s.type) && new Date(s.date).getMonth() === idx) || []
-      const monthAgenda = balancesData?.usage?.monthlyAgenda?.filter((s:any) => s.userId === userId && detailTarget.typeMatch.includes(s.code) && new Date(s.date).getMonth() === idx) || []
+      const monthShifts = monthlyDetailData?.monthlyShifts?.filter((s:any) => detailTarget.typeMatch.includes(s.type) && new Date(s.date).getMonth() === idx) || []
+      const monthAgenda = monthlyDetailData?.monthlyAgenda?.filter((s:any) => detailTarget.typeMatch.includes(s.code) && new Date(s.date).getMonth() === idx) || []
       
       const count = monthShifts.length
       const hours = monthAgenda.reduce((acc:any, curr:any) => acc + (curr.hours || 0), 0)
@@ -490,7 +505,7 @@ function AgentDossierSaldi({ userId, agent, balancesData, currentYear, onRefresh
                                       <div className="w-full text-2xl font-black bg-slate-100/50 border border-transparent rounded-xl px-4 py-2 text-slate-500 opacity-60">0</div>
                                    ) : (
                                       <input 
-                                         type="number"
+                                         type="number" min="0"
                                          value={editable[calc.code]}
                                          onChange={e => setEditable({...editable, [calc.code]: e.target.value})}
                                          className="w-full text-2xl font-black bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 focus:outline-none focus:border-indigo-500 focus:bg-white text-indigo-900 transition-all shadow-inner"

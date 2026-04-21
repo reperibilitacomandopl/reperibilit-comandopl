@@ -533,6 +533,21 @@ export function useAdminData(
     finally { setIsPublishing(false) }
   }
 
+  const handleLock = async (isCurrentlyLocked: boolean) => {
+    setIsPublishing(true)
+    try {
+      const res = await fetch("/api/admin/publish-month", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ month: currentMonth, year: currentYear, isLocked: !isCurrentlyLocked })
+      })
+      if (res.ok) {
+        toast.success(!isCurrentlyLocked ? "Mese Congelato" : "Mese Sbloccato")
+        window.location.reload()
+      }
+    } catch { toast.error("Errore modifica stato lock") }
+    finally { setIsPublishing(false) }
+  }
+
   const handleClear = async (type: "all" | "base" | "rep") => {
     if (!confirm(`Vuoi svuotare ${type}?`)) return
     setIsClearing(true)
@@ -579,6 +594,10 @@ export function useAdminData(
 
   const handleSendFullSos = async (note: string, audioBlob: Blob | null) => {
     // Implementazione aggiuntiva se necessaria per admin
+  }
+
+  const handleExportPayroll = async () => {
+    window.open(`/api/admin/reports/monthly-export?year=${currentYear}&month=${currentMonth}`, '_blank');
   }
 
   const handlePrevMonth = () => {
@@ -1042,7 +1061,9 @@ export function useAdminData(
     handleAIResolve,
     handlePecSend,
     handlePublish,
+    handleLock,
     handleClear,
+    handleExportPayroll,
     handlePrevMonth,
     handleNextMonth,
     handleImportShifts,

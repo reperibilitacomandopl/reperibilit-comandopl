@@ -70,7 +70,7 @@ export default function PersonalBalances() {
     <div className="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden relative">
       <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
       
-      <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+      <div className="p-6 border-b border-slate-100 bg-slate-100/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-cyan-100 rounded-2xl">
             <WalletCards size={24} className="text-cyan-600" />
@@ -109,7 +109,7 @@ export default function PersonalBalances() {
              </div>
              <div className="w-[1px] h-8 bg-white/10"></div>
              <div className="flex-1">
-               <span className="text-slate-400 block text-[9px] uppercase tracking-widest">Godute</span>
+               <span className="text-slate-500 block text-[9px] uppercase tracking-widest">Godute</span>
                <span className="text-white">{ferieUtilizzate} g</span>
              </div>
              <div className="w-[1px] h-8 bg-white/10"></div>
@@ -121,11 +121,11 @@ export default function PersonalBalances() {
         </div>
 
         {/* Ferie Anni Precedenti */}
-        <div className="bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors rounded-[1.5rem] p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-slate-100 border border-slate-200 hover:border-slate-300 transition-colors rounded-[1.5rem] p-6 shadow-sm flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
              <div>
                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Ferie Anni Prec.</p>
-               <h4 className="text-xl font-black text-slate-800">{ferieAPResidue} <span className="text-sm text-slate-400 font-medium tracking-tight">giorni residui</span></h4>
+               <h4 className="text-xl font-black text-slate-800">{ferieAPResidue} <span className="text-sm text-slate-500 font-medium tracking-tight">giorni residui</span></h4>
              </div>
              <div className="p-2 bg-slate-200 rounded-xl">
                <CheckCircle2 size={18} className="text-slate-500" />
@@ -137,11 +137,11 @@ export default function PersonalBalances() {
         </div>
 
         {/* Ore Straordinario */}
-        <div className="bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors rounded-[1.5rem] p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-slate-100 border border-slate-200 hover:border-slate-300 transition-colors rounded-[1.5rem] p-6 shadow-sm flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
              <div>
-               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Straordinari Totali</p>
-               <h4 className="text-xl font-black text-emerald-600">{data.usage?.overtimeSums?._sum?.overtimeHours || 0} <span className="text-sm text-slate-400 font-medium tracking-tight">ore</span></h4>
+               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Straordinari Totali</p>
+               <h4 className="text-xl font-black text-emerald-600">{data.usage?.overtimeSums?._sum?.overtimeHours || 0} <span className="text-sm text-slate-500 font-medium tracking-tight">ore</span></h4>
              </div>
              <div className="p-2 bg-emerald-100 rounded-xl">
                <TrendingUp size={18} className="text-emerald-600" />
@@ -153,11 +153,11 @@ export default function PersonalBalances() {
         </div>
 
         {/* Altri totalizzatori (Agenda, es: recuperi, 104) */}
-        <div className="bg-slate-50 border border-slate-200 hover:border-slate-300 transition-colors rounded-[1.5rem] p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-slate-100 border border-slate-200 hover:border-slate-300 transition-colors rounded-[1.5rem] p-6 shadow-sm flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
              <div>
-               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Assenze e Permessi</p>
-               <h4 className="text-xl font-black text-slate-800">{data.usage?.agendaSums?.reduce((a:any, b:any) => a + (b._count?._all || 0), 0) || 0} <span className="text-sm text-slate-400 font-medium tracking-tight">eventi</span></h4>
+               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Assenze e Permessi</p>
+               <h4 className="text-xl font-black text-slate-800">{data.usage?.agendaSums?.reduce((a:any, b:any) => a + (b._count?._all || 0), 0) || 0} <span className="text-sm text-slate-500 font-medium tracking-tight">eventi</span></h4>
              </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -167,7 +167,7 @@ export default function PersonalBalances() {
                 </div>
              ))}
              {data.usage?.agendaSums?.length === 0 && (
-                <span className="text-[10px] font-bold text-slate-400">Nessun permesso registrato quest'anno.</span>
+                <span className="text-[10px] font-bold text-slate-500">Nessun permesso registrato quest'anno.</span>
              )}
           </div>
         </div>
@@ -233,3 +233,4 @@ export default function PersonalBalances() {
     </div>
   )
 }
+

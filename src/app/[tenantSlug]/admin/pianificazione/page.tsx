@@ -83,6 +83,7 @@ export default async function PianificazionePage({ params, searchParams }: { par
   })
 
   const isPublished = pubRec ? pubRec.isPublished : false
+  const isLocked = pubRec ? pubRec.isLocked : false
 
   return (
     <div className="p-2 sm:p-4 lg:p-6 relative z-10 h-full">
@@ -92,6 +93,7 @@ export default async function PianificazionePage({ params, searchParams }: { par
         currentYear={currentYear}
         currentMonth={currentMonth}
         isPublished={isPublished}
+        isLocked={isLocked}
         settings={settings as any}
         rotationGroups={rotationGroups}
         categories={categories}

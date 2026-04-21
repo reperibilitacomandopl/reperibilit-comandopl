@@ -20,6 +20,10 @@ type SettingsData = {
   massimaleUfficiale: number;
   distaccoMinimo: number;
   permettiConsecutivi: boolean;
+  bpTurnoContinuato: number;
+  bpStaccoMinTurno1: number;
+  bpStaccoMaxPausa: number;
+  bpStaccoMinTurno2: number;
 }
 
 export type TabType = "algorithm" | "pec" | "stats" | "balances" | "services"
@@ -41,7 +45,11 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
     massimaleAgente: 5,
     massimaleUfficiale: 6,
     distaccoMinimo: 2,
-    permettiConsecutivi: false
+    permettiConsecutivi: false,
+    bpTurnoContinuato: 7,
+    bpStaccoMinTurno1: 6,
+    bpStaccoMaxPausa: 2,
+    bpStaccoMinTurno2: 2
   })
   const [agents, setAgents] = useState<Agent[]>([])
   const [pec, setPec] = useState<PecConfig>({ host: "", port: "465", user: "", pass: "", from: "" })
@@ -62,7 +70,11 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
           massimaleAgente: data.settings.massimaleAgente || 5,
           massimaleUfficiale: data.settings.massimaleUfficiale || 6,
           distaccoMinimo: data.settings.distaccoMinimo ?? 2,
-          permettiConsecutivi: data.settings.permettiConsecutivi || false
+          permettiConsecutivi: data.settings.permettiConsecutivi || false,
+          bpTurnoContinuato: data.settings.bpTurnoContinuato ?? 7,
+          bpStaccoMinTurno1: data.settings.bpStaccoMinTurno1 ?? 6,
+          bpStaccoMaxPausa: data.settings.bpStaccoMaxPausa ?? 2,
+          bpStaccoMinTurno2: data.settings.bpStaccoMinTurno2 ?? 2
         })
         setAgents(data.agents)
         setPec(data.pecConfig)
@@ -292,6 +304,56 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
                           <div className={`w-5 h-5 bg-white rounded-full shadow-md absolute top-1 transition-all ${settings.permettiConsecutivi ? 'left-6' : 'left-1'}`}></div>
                         </div>
                       </label>
+                    </div>
+
+                    {/* ─── BUONI PASTO ─── */}
+                    <div className="pt-6 border-t border-slate-200">
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="w-1.5 h-8 bg-emerald-600 rounded-full"></div>
+                        <div>
+                          <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Regole Buoni Pasto</h3>
+                          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Parametri personalizzabili per ogni Comando</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-100">
+                          <p className="text-sm font-bold text-emerald-900 mb-1">Soglia Turno Continuato</p>
+                          <p className="text-[10px] text-emerald-600 mb-3">Ore minime senza pausa per maturare il ticket</p>
+                          <input type="number" step="0.5" min="4" max="12"
+                            value={settings.bpTurnoContinuato}
+                            onChange={e => setSettings(s => ({ ...s, bpTurnoContinuato: parseFloat(e.target.value) }))}
+                            className="w-full bg-white border-2 border-emerald-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-emerald-400"
+                          />
+                        </div>
+                        <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-100">
+                          <p className="text-sm font-bold text-emerald-900 mb-1">Min. Ore Turno 1</p>
+                          <p className="text-[10px] text-emerald-600 mb-3">Blocco mattina prima della pausa pranzo</p>
+                          <input type="number" step="0.5" min="2" max="10"
+                            value={settings.bpStaccoMinTurno1}
+                            onChange={e => setSettings(s => ({ ...s, bpStaccoMinTurno1: parseFloat(e.target.value) }))}
+                            className="w-full bg-white border-2 border-emerald-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-emerald-400"
+                          />
+                        </div>
+                        <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-100">
+                          <p className="text-sm font-bold text-emerald-900 mb-1">Pausa Max Consentita</p>
+                          <p className="text-[10px] text-emerald-600 mb-3">Tempo massimo di stacco tra i due blocchi</p>
+                          <input type="number" step="0.5" min="0.5" max="4"
+                            value={settings.bpStaccoMaxPausa}
+                            onChange={e => setSettings(s => ({ ...s, bpStaccoMaxPausa: parseFloat(e.target.value) }))}
+                            className="w-full bg-white border-2 border-emerald-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-emerald-400"
+                          />
+                        </div>
+                        <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-100">
+                          <p className="text-sm font-bold text-emerald-900 mb-1">Min. Ore Rientro</p>
+                          <p className="text-[10px] text-emerald-600 mb-3">Blocco pomeridiano minimo dopo la pausa</p>
+                          <input type="number" step="0.5" min="1" max="6"
+                            value={settings.bpStaccoMinTurno2}
+                            onChange={e => setSettings(s => ({ ...s, bpStaccoMinTurno2: parseFloat(e.target.value) }))}
+                            className="w-full bg-white border-2 border-emerald-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-emerald-400"
+                          />
+                        </div>
+                      </div>
                     </div>
 
                     <div className="bg-amber-50 rounded-2xl p-5 border border-amber-100">

@@ -1,7 +1,7 @@
-// @ts-nocheck
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { logAudit } from "@/lib/audit"
 
 export async function GET(req: Request) {
   const session = await auth()
@@ -52,17 +52,6 @@ export async function GET(req: Request) {
       _count: { _all: true }
     })
 
-    // Raw data for monthly breakdown on client-side
-    const monthlyShifts = await prisma.shift.findMany({
-      where: { date: { gte: startDate, lte: endDate }, ...tf },
-      select: { userId: true, type: true, date: true }
-    })
-
-    const monthlyAgenda = await prisma.agendaEntry.findMany({
-      where: { date: { gte: startDate, lte: endDate }, ...tf },
-      select: { userId: true, code: true, date: true, hours: true }
-    })
-
     const overtimeSums = await prisma.shift.groupBy({
       by: ['userId'],
       where: { date: { gte: startDate, lte: endDate }, overtimeHours: { gt: 0 }, ...tf },
@@ -75,9 +64,7 @@ export async function GET(req: Request) {
       usage: { 
         shiftsCount, 
         agendaSums, 
-        overtimeSums, 
-        monthlyShifts, 
-        monthlyAgenda 
+        overtimeSums 
       } 
     })
   } catch (error) {
@@ -118,6 +105,16 @@ export async function PUT(req: Request) {
       })
       
       if (existingDetail) {
+         if (existingDetail.initialValue !== initialValue) {
+             await logAudit({
+                tenantId,
+                adminId: session.user.id,
+                adminName: session.user.name || undefined,
+                action: "MODIFICA_SALDO",
+                targetId: userId,
+                details: `Modificato saldo ${code} da ${existingDetail.initialValue} a ${initialValue}`
+             })
+         }
          await prisma.balanceDetail.update({
             where: { id: existingDetail.id },
             data: { initialValue, unit, label }
@@ -167,7 +164,7 @@ export async function POST(req: Request) {
       const ferieDetail = ob.details.find(d => d.code === "0015" || d.code === "FERIE")
       if (!ferieDetail) continue
 
-      const userUsage = shiftsCount.find(s => s.userId === ob.userId && (s.type === "0015" || s.type === "FERIE"))?._count._all || 0
+      const userUsage = shiftsCount.find((s:any) => s.userId === ob.userId && (s.type === "0015" || s.type === "FERIE"))?._count._all || 0
       const residue = Math.max(0, ferieDetail.initialValue - userUsage)
 
       if (residue > 0) {

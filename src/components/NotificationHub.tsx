@@ -261,7 +261,7 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
 
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`relative p-2.5 rounded-2xl transition-all duration-300 group ${isOpen ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+        className={`relative p-2.5 rounded-2xl transition-all duration-300 group ${isOpen ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-white/5 hover:text-white'}`}
       >
         <Bell width={22} height={22} className={`${unreadCount > 0 ? "animate-swing" : ""}`} />
         {unreadCount > 0 && (
@@ -280,7 +280,7 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
                 <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] mb-0.5">Sentinel Hub</h3>
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Centro Operativo Notifiche</p>
               </div>
-              <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-white/5 rounded-xl text-slate-400 transition-colors sm:hidden">
+              <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-white/5 rounded-xl text-slate-500 transition-colors sm:hidden">
                 <X width={18} height={18} />
               </button>
             </div>
@@ -337,7 +337,7 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
 
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center justify-between gap-2">
-                           <h4 className="text-xs font-black text-white leading-tight">{n.title}</h4>                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter whitespace-nowrap">{getTimeAgo(n.createdAt)}</span>
+                           <h4 className="text-xs font-black text-white leading-tight">{n.title}</h4>                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter whitespace-nowrap">{getTimeAgo(n.createdAt)}</span>
                         </div>
                         <p className="text-[11px] text-slate-300 font-medium leading-relaxed">{n.message}</p>
 
@@ -351,7 +351,7 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
                           
                           <div className="ml-auto flex items-center gap-3">
                              {activeTab !== 'ARCHIVED' && (
-                               <button onClick={() => handleArchive(n.id)} className="text-[9px] font-bold text-slate-400 hover:text-indigo-400 uppercase tracking-widest transition-colors">
+                               <button onClick={() => handleArchive(n.id)} className="text-[9px] font-bold text-slate-500 hover:text-indigo-400 uppercase tracking-widest transition-colors">
                                  Archivia
                                </button>
                              )}
@@ -371,7 +371,7 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
           </div>
 
           <div className="p-4 bg-white/5 border-t border-white/5 flex gap-4">
-             <button onClick={() => markAsRead()} className="flex-1 bg-white/5 hover:bg-white/10 text-slate-400 py-3 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] transition-all">
+             <button onClick={() => markAsRead()} className="flex-1 bg-white/5 hover:bg-white/10 text-slate-500 py-3 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] transition-all">
                 Lette tutte
              </button>
              <button onClick={() => handleArchive()} className="flex-1 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 py-3 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] transition-all">
@@ -439,7 +439,7 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
                           <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
                              <p className="text-[9px] font-black uppercase text-indigo-400 mb-1">Richiedente</p>
                              <p className="text-sm font-black text-white">{detailData.requester.name}</p>
-                             <p className="text-[10px] text-slate-400">{getLabel(detailData.shift.type)}</p>
+                             <p className="text-[10px] text-slate-500">{getLabel(detailData.shift.type)}</p>
                           </div>
                           <div className="p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/20">
                              <p className="text-[9px] font-black uppercase text-indigo-400 mb-1">Ricevente</p>
@@ -496,7 +496,7 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
                           </div>
                        ) : (
                           <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                             <p className="text-[9px] font-black uppercase text-slate-400 text-center">Nessun file audio allegato all&apos;emergenza</p>
+                             <p className="text-[9px] font-black uppercase text-slate-500 text-center">Nessun file audio allegato all&apos;emergenza</p>
                           </div>
                        )}
                        {detailData.lat && detailData.lng && (
@@ -525,3 +525,4 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
     </div>
   )
 }
+

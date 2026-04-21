@@ -1,6 +1,6 @@
 import React from "react"
 import { BookOpen, Plus } from "lucide-react"
-import { AGENDA_CATEGORIES } from "@/utils/constants"
+import { AGENDA_CATEGORIES } from "@/utils/agenda-codes"
 
 interface AgentPersonalAgendaProps {
   currentMonthName: string
@@ -69,3 +69,4 @@ export default function AgentPersonalAgenda({
     </div>
   )
 }
+

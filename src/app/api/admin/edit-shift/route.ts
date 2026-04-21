@@ -22,6 +22,18 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "userId and date are required" }, { status: 400 })
     }
 
+    const shiftDate = new Date(date)
+    const month = shiftDate.getMonth() + 1
+    const year = shiftDate.getFullYear()
+
+    const monthStatus = await prisma.monthStatus.findUnique({
+      where: { month_year_tenantId: { month, year, tenantId: tenantId || "" } }
+    })
+
+    if (monthStatus?.isLocked) {
+      return NextResponse.json({ error: "Mese bloccato. Le modifiche ai turni non sono consentite per questo periodo." }, { status: 403 })
+    }
+
     const targetUser = await prisma.user.findFirst({ 
       where: { id: userId, tenantId: tenantId || null }, 
       select: { name: true } 

@@ -79,7 +79,7 @@ export default async function AgentDossierPage({ params }: { params: Promise<{ i
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-6">
          <div className="flex items-center gap-4">
-            <Link href={`/${tenantSlug}/admin/risorse`} className="p-3 bg-white border border-slate-200 hover:bg-slate-50 transition-colors rounded-xl text-slate-500">
+            <Link href={`/${tenantSlug}/admin/risorse`} className="p-3 bg-white border border-slate-200 hover:bg-slate-100 transition-colors rounded-xl text-slate-500">
                <ArrowLeft size={20} />
             </Link>
             <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600">
@@ -152,7 +152,7 @@ export default async function AgentDossierPage({ params }: { params: Promise<{ i
          {/* Storico Richieste */}
          <div className="lg:col-span-2">
             <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
-               <div className="p-6 flex items-center justify-between border-b border-slate-100 bg-slate-50/50">
+               <div className="p-6 flex items-center justify-between border-b border-slate-100 bg-slate-100/50">
                   <div className="flex items-center gap-4">
                      <div className="bg-emerald-50 text-emerald-600 p-3 rounded-2xl">
                         <CalendarDays size={24} />
@@ -166,7 +166,7 @@ export default async function AgentDossierPage({ params }: { params: Promise<{ i
                <div className="p-6">
                   {agentRequests.length === 0 ? (
                      <div className="text-center py-10">
-                        <p className="text-slate-400 font-medium">Nessuna richiesta insoluta o passata.</p>
+                        <p className="text-slate-500 font-medium">Nessuna richiesta insoluta o passata.</p>
                      </div>
                   ) : (
                      <div className="space-y-3">
@@ -174,13 +174,13 @@ export default async function AgentDossierPage({ params }: { params: Promise<{ i
                            const isPending = req.status === "PENDING"
                            const isApp = req.status === "APPROVED"
                            return (
-                              <div key={req.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-slate-200 rounded-2xl hover:bg-slate-50 transition-colors gap-4">
+                              <div key={req.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-slate-200 rounded-2xl hover:bg-slate-100 transition-colors gap-4">
                                  <div>
                                     <div className="flex gap-2 items-center mb-1">
                                        <span className={`px-2 py-0.5 text-[10px] font-black uppercase tracking-widest rounded ${isPending ? 'bg-amber-100 text-amber-700' : isApp ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                                           {isPending ? 'IN ATTESA' : isApp ? 'APPROVATA' : 'RIFIUTATA'}
                                        </span>
-                                       <span className="text-sm font-bold text-slate-800">{getLabel(req.code)} <span className="text-slate-400 font-medium ml-1">({req.code})</span></span>
+                                       <span className="text-sm font-bold text-slate-800">{getLabel(req.code)} <span className="text-slate-500 font-medium ml-1">({req.code})</span></span>
                                     </div>
                                     <p className="text-xs text-slate-500 font-bold">{new Date(req.date).toLocaleDateString("it-IT")} {req.endDate && `- ${new Date(req.endDate).toLocaleDateString("it-IT")}`}</p>
                                     {req.notes && <p className="text-xs text-slate-600 mt-2 bg-slate-100 p-2 rounded-lg italic">&quot;{req.notes}&quot;</p>}
@@ -201,3 +201,4 @@ export default async function AgentDossierPage({ params }: { params: Promise<{ i
     </div>
   )
 }
+

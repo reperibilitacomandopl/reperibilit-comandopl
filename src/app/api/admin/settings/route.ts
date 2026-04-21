@@ -76,7 +76,11 @@ export async function PUT(req: Request) {
           massimaleAgente: body.massimaleAgente ?? undefined,
           massimaleUfficiale: body.massimaleUfficiale ?? undefined,
           distaccoMinimo: body.distaccoMinimo ?? undefined,
-          permettiConsecutivi: body.permettiConsecutivi ?? undefined
+          permettiConsecutivi: body.permettiConsecutivi ?? undefined,
+          bpTurnoContinuato: body.bpTurnoContinuato ?? undefined,
+          bpStaccoMinTurno1: body.bpStaccoMinTurno1 ?? undefined,
+          bpStaccoMaxPausa: body.bpStaccoMaxPausa ?? undefined,
+          bpStaccoMinTurno2: body.bpStaccoMinTurno2 ?? undefined
         },
         create: { 
           tenantId: tenantId || null,
@@ -87,7 +91,11 @@ export async function PUT(req: Request) {
           massimaleAgente: body.massimaleAgente ?? 5,
           massimaleUfficiale: body.massimaleUfficiale ?? 6,
           distaccoMinimo: body.distaccoMinimo ?? 2,
-          permettiConsecutivi: body.permettiConsecutivi ?? false
+          permettiConsecutivi: body.permettiConsecutivi ?? false,
+          bpTurnoContinuato: body.bpTurnoContinuato ?? 7.0,
+          bpStaccoMinTurno1: body.bpStaccoMinTurno1 ?? 6.0,
+          bpStaccoMaxPausa: body.bpStaccoMaxPausa ?? 2.0,
+          bpStaccoMinTurno2: body.bpStaccoMinTurno2 ?? 2.0
         }
       })
 
