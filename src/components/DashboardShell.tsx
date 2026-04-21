@@ -11,6 +11,7 @@ import MobileNavBar from "./agent/MobileNavBar"
 import PlanningMobileView from "@/components/PlanningMobileView"
 import AgentRequestForm from "./agent/AgentRequestForm"
 import AgentSwapBoard from "./agent/AgentSwapBoard"
+import FloatingSosButton from "./agent/FloatingSosButton"
 
 export default function DashboardShell({ 
   session, 
@@ -196,11 +197,14 @@ export default function DashboardShell({
             <div className="flex gap-10 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
               <a href="#" className="hover:text-blue-600 transition-colors">Privacy</a>
               <a href="#" className="hover:text-blue-600 transition-colors">Supporto</a>
-              <a href="#" className="hover:text-blue-600 transition-colors">Altamura</a>
+              <a href="#" className="hover:text-blue-600 transition-colors">{session.user.tenantName || 'Comando'}</a>
             </div>
           </div>
         </div>
       </footer>
+
+      {/* Floating SOS Button — always accessible for non-admin users */}
+      {role !== "ADMIN" && <FloatingSosButton />}
 
       {/* Mobile Bottom Navigation */}
       {role !== "ADMIN" && (

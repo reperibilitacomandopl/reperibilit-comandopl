@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Pin, AlertTriangle, Info, CheckCircle2, Megaphone, Plus, X, Send, Clock, Trash2 } from "lucide-react"
 import toast from "react-hot-toast"
+import ConfirmModal from "./ui/ConfirmModal"
 
 interface Announcement {
   id: string
@@ -28,6 +29,7 @@ export default function BachecaPanel({ isAdmin = false, onClose }: { isAdmin?: b
   const [newPriority, setNewPriority] = useState("NORMAL")
   const [newRequiresRead, setNewRequiresRead] = useState(false)
   const [newIsPinned, setNewIsPinned] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
   const loadAnnouncements = async () => {
     try {
@@ -97,7 +99,6 @@ export default function BachecaPanel({ isAdmin = false, onClose }: { isAdmin?: b
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Sei sicuro di voler eliminare questa comunicazione?")) return
     try {
       const res = await fetch(`/api/announcements/${id}`, { method: "DELETE" })
       if (res.ok) {
@@ -109,9 +110,11 @@ export default function BachecaPanel({ isAdmin = false, onClose }: { isAdmin?: b
     } catch {
       toast.error("Errore di rete")
     }
+    setDeleteTarget(null)
   }
 
   return (
+    <>
     <div className="bg-white border flex flex-col h-full border-slate-200 rounded-2xl shadow-sm overflow-hidden">
       <div className="bg-slate-50 border-b border-slate-100 p-5 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -179,7 +182,14 @@ export default function BachecaPanel({ isAdmin = false, onClose }: { isAdmin?: b
            </div>
         )}
 
-        {announcements.map((ann) => (
+        {/* Sorted: Pinned first, then by priority (URGENT > HIGH > NORMAL), then by date */}
+        {[...announcements].sort((a, b) => {
+          if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1
+          const pOrder: Record<string, number> = { URGENT: 0, HIGH: 1, NORMAL: 2 }
+          const pDiff = (pOrder[a.priority] ?? 2) - (pOrder[b.priority] ?? 2)
+          if (pDiff !== 0) return pDiff
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        }).map((ann) => (
           <div key={ann.id} className={`p-4 bg-white border rounded-xl shadow-sm relative ${ann.priority === 'URGENT' ? 'border-rose-300 bg-rose-50/10' : ann.priority === 'HIGH' ? 'border-amber-300' : 'border-slate-200'}`}>
              
              {ann.isPinned && (
@@ -190,7 +200,14 @@ export default function BachecaPanel({ isAdmin = false, onClose }: { isAdmin?: b
 
              <div className="flex items-center gap-2 mb-2">
                 {ann.priority === "URGENT" ? <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0"/> : ann.priority === "HIGH" ? <Info className="w-4 h-4 text-amber-500 shrink-0"/> : null}
-                <h4 className="text-sm font-bold text-slate-800">{ann.title}</h4>
+                <h4 className="text-sm font-bold text-slate-800 flex-1">{ann.title}</h4>
+                {/* Priority Badge */}
+                {ann.priority === "URGENT" && (
+                  <span className="text-[9px] font-black uppercase tracking-widest bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full border border-rose-200 animate-pulse">Urgente</span>
+                )}
+                {ann.priority === "HIGH" && (
+                  <span className="text-[9px] font-black uppercase tracking-widest bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">Priorità</span>
+                )}
              </div>
              
              <p className="text-xs text-slate-600 whitespace-pre-wrap leading-relaxed mb-4">{ann.body}</p>
@@ -216,7 +233,7 @@ export default function BachecaPanel({ isAdmin = false, onClose }: { isAdmin?: b
                    </button>
                 )}
                 {isAdmin && (
-                   <button onClick={() => handleDelete(ann.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all bg-white text-rose-500 border border-slate-200 hover:border-rose-300 hover:bg-rose-50 shadow-sm active:scale-95">
+                   <button onClick={() => setDeleteTarget(ann.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all bg-white text-rose-500 border border-slate-200 hover:border-rose-300 hover:bg-rose-50 shadow-sm active:scale-95">
                       <Trash2 className="w-3.5 h-3.5" /> Elimina
                    </button>
                 )}
@@ -225,5 +242,16 @@ export default function BachecaPanel({ isAdmin = false, onClose }: { isAdmin?: b
         ))}
       </div>
     </div>
+
+    <ConfirmModal
+      isOpen={!!deleteTarget}
+      onClose={() => setDeleteTarget(null)}
+      onConfirm={() => { if (deleteTarget) handleDelete(deleteTarget) }}
+      title="Elimina Comunicazione"
+      message="Sei sicuro di voler eliminare questa comunicazione? L'azione è irreversibile."
+      destructive
+      confirmLabel="Elimina"
+    />
+    </>
   )
 }

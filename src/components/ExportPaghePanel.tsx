@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Download, FileSpreadsheet, ChevronLeft, ChevronRight, Loader2, Info, Coffee, Moon, Sun, Shield, Clock } from "lucide-react"
+import { Download, FileSpreadsheet, ChevronLeft, ChevronRight, Loader2, Info, Coffee, Moon, Sun, Shield, Clock, TrendingUp, TrendingDown } from "lucide-react"
 import toast from "react-hot-toast"
 import * as XLSX from "xlsx"
 
@@ -40,6 +40,7 @@ export default function ExportPaghePanel() {
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<PayrollData[]>([])
+  const [prevData, setPrevData] = useState<PayrollData[]>([])
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -53,7 +54,18 @@ export default function ExportPaghePanel() {
     setLoading(false)
   }, [year, month])
 
-  useEffect(() => { loadData() }, [loadData])
+  // Load previous month data for comparison
+  const loadPrevMonth = useCallback(async () => {
+    let pm = month - 1, py = year
+    if (pm < 1) { pm = 12; py-- }
+    try {
+      const res = await fetch(`/api/admin/export-paghe?year=${py}&month=${pm}`)
+      if (res.ok) setPrevData(await res.json())
+      else setPrevData([])
+    } catch { setPrevData([]) }
+  }, [year, month])
+
+  useEffect(() => { loadData(); loadPrevMonth() }, [loadData, loadPrevMonth])
 
   const changeMonth = (delta: number) => {
     let m = month + delta
@@ -146,6 +158,16 @@ export default function ExportPaghePanel() {
     repFestiva: Math.round(data.reduce((s, d) => s + d.repFestiva, 0) * 100) / 100,
   }
 
+  // Previous month totals for comparison
+  const prevTotals = {
+    oreDiurne: Math.round(prevData.reduce((s, d) => s + d.oreDiurne, 0) * 100) / 100,
+    oreNotturne: Math.round(prevData.reduce((s, d) => s + d.oreNotturne, 0) * 100) / 100,
+    buoniPasto: prevData.reduce((s, d) => s + d.buoniPasto, 0),
+    straordinario: Math.round(prevData.reduce((s, d) => s + d.straordinario, 0) * 100) / 100,
+    repFeriale: Math.round(prevData.reduce((s, d) => s + d.repFeriale, 0) * 100) / 100,
+    repFestiva: Math.round(prevData.reduce((s, d) => s + d.repFestiva, 0) * 100) / 100,
+  }
+
   return (
     <div className="space-y-6 max-w-[1800px] mx-auto">
       {/* HEADER */}
@@ -205,12 +227,59 @@ export default function ExportPaghePanel() {
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{col.label}</span>
                 </div>
                 <p className={`text-2xl font-black text-${col.color}-600`}>{val}</p>
-                <p className="text-[10px] text-slate-400 mt-1 font-bold">TOTALE COMANDO</p>
+                {/* Delta vs previous month */}
+                {prevData.length > 0 && (() => {
+                  const prev = prevTotals[col.key as keyof typeof prevTotals]
+                  const delta = val - prev
+                  if (delta === 0) return <p className="text-[10px] text-slate-400 mt-1 font-bold">=  vs mese prec.</p>
+                  const pct = prev > 0 ? Math.round((delta / prev) * 100) : 0
+                  return (
+                    <p className={`text-[10px] mt-1 font-bold flex items-center gap-1 ${delta > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      {delta > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                      {delta > 0 ? '+' : ''}{delta.toFixed(1)} ({pct > 0 ? '+' : ''}{pct}%)
+                    </p>
+                  )
+                })()}
               </div>
             )
           })}
         </div>
       )}
+
+      {/* ANOMALY DETECTION */}
+      {!loading && data.length > 0 && (() => {
+        const anomalies: { agent: string; issue: string; severity: 'warning' | 'error' }[] = []
+        data.forEach(d => {
+          if (d.straordinario > 40) anomalies.push({ agent: d.nome, issue: `Straordinario eccessivo: ${d.straordinario}h (max consigliato: 40h)`, severity: 'error' })
+          if (d.buoniPasto > 26) anomalies.push({ agent: d.nome, issue: `Buoni pasto anomali: ${d.buoniPasto} (max giorni lavorativi: ~22)`, severity: 'warning' })
+          if (d.oreDiurne === 0 && d.oreNotturne === 0 && d.repFeriale === 0 && d.repFestiva === 0) {
+            anomalies.push({ agent: d.nome, issue: 'Nessuna ora registrata nel mese', severity: 'warning' })
+          }
+          if (d.oreDiurne + d.oreNotturne > 220) anomalies.push({ agent: d.nome, issue: `Ore totali anomale: ${(d.oreDiurne + d.oreNotturne).toFixed(1)}h`, severity: 'error' })
+        })
+        if (anomalies.length === 0) return null
+        return (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-amber-100 rounded-xl">
+                <Info className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-amber-900 uppercase tracking-wider">⚠ Anomalie Rilevate ({anomalies.length})</h3>
+                <p className="text-[10px] text-amber-600 font-bold">Verificare prima dell&apos;export alla Ragioneria</p>
+              </div>
+            </div>
+            <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+              {anomalies.map((a, i) => (
+                <div key={i} className={`flex items-start gap-3 px-4 py-2.5 rounded-xl text-xs font-bold ${a.severity === 'error' ? 'bg-red-50 text-red-800 border border-red-100' : 'bg-amber-100/50 text-amber-800 border border-amber-100'}`}>
+                  <span className="shrink-0">{a.severity === 'error' ? '🔴' : '🟡'}</span>
+                  <span><strong>{a.agent}</strong> — {a.issue}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* TABLE */}
       <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">

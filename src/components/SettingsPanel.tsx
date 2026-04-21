@@ -5,6 +5,7 @@ import { Settings, Mail, X, Save, Eye, EyeOff, AlertCircle, Loader2, BarChart3, 
 import StatisticsDashboard from "./StatisticsDashboard"
 import AdminInitialBalances from "./AdminInitialBalances"
 import ServicesSettings from "./ServicesSettings"
+import HelpTooltip from "./ui/HelpTooltip"
 
 type Agent = {
   id: string; name: string; matricola: string; isUfficiale: boolean;
@@ -79,7 +80,7 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
         setAgents(data.agents)
         setPec(data.pecConfig)
       }
-    } catch { /* */ }
+    } catch { showFeedback("❌ Errore caricamento impostazioni") }
     setLoading(false)
   }, [])
 
@@ -224,7 +225,7 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
                     <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
                       <label className="flex items-center justify-between cursor-pointer">
                         <div>
-                          <p className="text-sm font-bold text-slate-800">Proporzionalità Assenze</p>
+                          <p className="text-sm font-bold text-slate-800">Proporzionalità Assenze <HelpTooltip text="Se attivo, l'algoritmo riduce il numero di turni di reperibilità assegnati agli agenti che hanno più assenze (ferie, malattia) nel mese, distribuendo in modo più equo." title="Proporzionalità" /></p>
                           <p className="text-xs text-slate-400 mt-0.5">Riduce il target REP per chi ha più assenze nel mese</p>
                         </div>
                         <div className={`w-12 h-7 rounded-full transition-colors relative ${settings.usaProporzionale ? 'bg-blue-600' : 'bg-slate-300'}`}
@@ -236,7 +237,7 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
                     </div>
 
                     <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
-                      <p className="text-sm font-bold text-slate-800 mb-1">Min. Ufficiali per Giorno</p>
+                      <p className="text-sm font-bold text-slate-800 mb-1">Min. Ufficiali per Giorno <HelpTooltip text="Imposta il numero minimo di ufficiali che devono essere reperibili ogni giorno. L'algoritmo garantirà sempre questa soglia." title="Soglia Ufficiali" /></p>
                       <p className="text-xs text-slate-400 mb-3">Numero minimo di ufficiali reperibili ogni giorno</p>
                       <select 
                         value={settings.minUfficiali} 
@@ -273,7 +274,7 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
                     </div>
 
                     <div className="bg-indigo-50 rounded-2xl p-5 border border-indigo-100">
-                      <p className="text-sm font-bold text-indigo-900 mb-1">Distanza Minima tra Turni</p>
+                      <p className="text-sm font-bold text-indigo-900 mb-1">Distanza Minima tra Turni <HelpTooltip text="Giorni di riposo obbligatorio tra due turni di reperibilità consecutivi. Se la copertura non è possibile con 2 giorni, il sistema scenderà automaticamente a 1 o 0." title="Distacco" /></p>
                       <p className="text-xs text-indigo-600 mb-4">Garantisce il riposo tra due reperibilità consecutive</p>
                       <div className="flex items-center gap-4">
                         {[0, 1, 2].map(days => (

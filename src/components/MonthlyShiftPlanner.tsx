@@ -5,6 +5,8 @@ import { Loader2, ChevronLeft, ChevronRight, Save, Trash2, CalendarClock, Rotate
 import toast from "react-hot-toast"
 import Link from "next/link"
 import { formatShiftCode, isAssenza, isMalattia, isMattina, isPomeriggio } from "@/utils/shift-logic"
+import ShiftCodeLegend from "@/components/ui/ShiftCodeLegend"
+import ConfirmModal from "@/components/ui/ConfirmModal"
 
 export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: string }) {
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -120,9 +122,10 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
     setSaving(false)
   }
 
+  const [confirmResetTarget, setConfirmResetTarget] = useState<string | null | 'all'>(null)
+
   const handleResetMonth = async (specificUserId?: string) => {
-    const targetName = specificUserId ? "questo agente" : "tutto il mese"
-    if (!confirm(`Sei sicuro di voler resettare tutti i turni di ${targetName} per ${currentDate.toLocaleDateString("it-IT", { month: "long", year: "numeric" })}? Le assenze (Ferie, Malattia) non verranno eliminate.`)) return
+    setConfirmResetTarget(null)
     
     setIsResetting(true)
     try {
@@ -141,8 +144,9 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
   }
 
   const [isPublishing, setIsPublishing] = useState(false)
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false)
   const publishToTelegram = async () => {
-    if (!confirm(`Vuoi inviare una notifica Push su Telegram a tutti gli agenti per avvisarli che i turni di ${currentDate.toLocaleDateString("it-IT", { month: "long", year: "numeric" })} sono online?`)) return
+    setShowPublishConfirm(false)
     
     setIsPublishing(true)
     try {
@@ -163,19 +167,10 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
     setIsPublishing(false)
   }
 
+  const [showBulkResetConfirm, setShowBulkResetConfirm] = useState(false)
+
   const handleGeneralReset = async () => {
-    if (selectedMonths.length === 0) {
-      toast.error("Seleziona almeno un mese")
-      return
-    }
-
-    const monthsStr = selectedMonths
-      .sort((a, b) => a - b)
-      .map(m => new Date(year, m - 1, 1).toLocaleDateString("it-IT", { month: "long" }))
-      .join(", ")
-
-    if (!confirm(`⚠ ATTENZIONE: Stai per resettare i turni di ${selectedMonths.length} mesi (${monthsStr}) dell'anno ${year}.\n\nLe assenze protette (Ferie, Malattia, 104, etc.) VERRANNO PRESERVATE.\n\nVuoi procedere?`)) return
-    if (!confirm(`CONFERMA FINALE: Procedere con il reset massivo di ${selectedMonths.length} mesi?`)) return
+    setShowBulkResetConfirm(false)
 
     setIsExecutingGeneralReset(true)
     try {
@@ -199,8 +194,10 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
     setIsExecutingGeneralReset(false)
   }
 
+  const [showAnnualConfirm, setShowAnnualConfirm] = useState(false)
+
   const applyAnnualGeneration = async () => {
-    if (!confirm(`Stai per generare i turni per TUTTO L'ANNO ${year}. Questa operazione potrebbe richiedere alcuni secondi e non sovrascriverà le assenze già caricate. Procedere?`)) return
+    setShowAnnualConfirm(false)
     
     setIsGeneratingAnnual(true)
     try {
@@ -372,6 +369,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
     : users
 
   return (
+    <>
     <div className="flex flex-col h-full bg-slate-50 relative animate-in fade-in duration-300">
       {/* Header */}
       <div className="bg-[#1e293b] text-white p-3 flex flex-col sm:flex-row sm:items-center justify-between shrink-0 shadow-md">
@@ -394,7 +392,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
           </button>
           
           <button 
-            onClick={() => handleResetMonth()}
+            onClick={() => setConfirmResetTarget('all')}
             disabled={isResetting}
             className="px-4 py-2 bg-slate-700 hover:bg-rose-800 text-white rounded-lg text-sm font-bold flex items-center gap-2 border border-slate-600 transition-colors"
           >
@@ -418,7 +416,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
           </button>
           
           <button 
-            onClick={publishToTelegram} disabled={isPublishing}
+            onClick={() => setShowPublishConfirm(true)} disabled={isPublishing}
             className="px-4 py-2 bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-md shadow-sky-500/20"
           >
             {isPublishing ? <Loader2 className="animate-spin" width={16} height={16}/> : <span>🚀 Invia Telegram</span>}
@@ -491,7 +489,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
             </button>
 
             <button 
-              onClick={applyAnnualGeneration}
+              onClick={() => setShowAnnualConfirm(true)}
               disabled={isGeneratingAnnual}
               className="px-8 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shadow-lg transition-all active:scale-95 text-sm flex items-center gap-2"
             >
@@ -530,6 +528,11 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
               <button onClick={() => setFilterText("")} className="text-xs text-slate-500 hover:text-slate-800 font-bold">✕ Reset</button>
             )}
             <span className="text-xs text-slate-500 ml-2">{filteredUsers.length} agenti</span>
+          </div>
+
+          {/* Legenda Codici */}
+          <div className="mb-2">
+            <ShiftCodeLegend />
           </div>
 
           <div className="bg-white rounded-lg shadow-lg border-2 border-slate-300 inline-block min-w-full">
@@ -677,7 +680,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
 
               <div className="flex flex-col gap-3">
                 <button
-                  onClick={handleGeneralReset}
+                  onClick={() => { if (selectedMonths.length === 0) { toast.error('Seleziona almeno un mese'); return; } setShowBulkResetConfirm(true) }}
                   disabled={isExecutingGeneralReset || selectedMonths.length === 0}
                   className="w-full py-4 bg-rose-700 hover:bg-rose-800 text-white font-black rounded-2xl shadow-xl shadow-rose-200 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 text-sm uppercase tracking-widest"
                 >
@@ -701,5 +704,50 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
         </div>
       )}
     </div>
+
+    {/* Confirm Modals */}
+    <ConfirmModal
+      isOpen={!!confirmResetTarget}
+      onClose={() => setConfirmResetTarget(null)}
+      onConfirm={() => handleResetMonth(confirmResetTarget === 'all' ? undefined : confirmResetTarget || undefined)}
+      title="Reset Turni Mese"
+      message={`Tutti i turni per ${currentDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })} verranno eliminati. Le assenze (Ferie, Malattia) NON verranno toccate.`}
+      destructive
+      delaySeconds={3}
+      confirmLabel="Reset Turni"
+    />
+
+    <ConfirmModal
+      isOpen={showPublishConfirm}
+      onClose={() => setShowPublishConfirm(false)}
+      onConfirm={publishToTelegram}
+      title="Pubblica su Telegram"
+      message={`Verrà inviata una notifica Push a tutti gli agenti per avvisarli che i turni di ${currentDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })} sono online.`}
+      confirmLabel="Invia Notifica"
+      isLoading={isPublishing}
+    />
+
+    <ConfirmModal
+      isOpen={showBulkResetConfirm}
+      onClose={() => setShowBulkResetConfirm(false)}
+      onConfirm={handleGeneralReset}
+      title="Reset Massivo"
+      message={`ATTENZIONE: Stai per resettare i turni di ${selectedMonths.length} mesi dell'anno ${year}. Le assenze protette (Ferie, Malattia, 104) VERRANNO PRESERVATE.`}
+      count={selectedMonths.length}
+      destructive
+      delaySeconds={5}
+      confirmLabel="Conferma Reset Massivo"
+    />
+
+    <ConfirmModal
+      isOpen={showAnnualConfirm}
+      onClose={() => setShowAnnualConfirm(false)}
+      onConfirm={applyAnnualGeneration}
+      title="Generazione Annuale"
+      message={`Stai per generare i turni per TUTTO L'ANNO ${year}. Le assenze già caricate non verranno sovrascritte.`}
+      confirmLabel="Genera Anno"
+      isLoading={isGeneratingAnnual}
+    />
+    </>
   )
 }

@@ -86,7 +86,7 @@ export default function AgentHeader({
               <h2 className="text-4xl sm:text-6xl font-black tracking-tighter leading-none">
                 Ciao, {currentUser?.name?.split(" ")[0]}! 👋
               </h2>
-              <p className="text-slate-400 font-bold uppercase tracking-widest text-[11px] opacity-70">Postazione operativa digitale &middot; Comando Altamura</p>
+              <p className="text-slate-400 font-bold uppercase tracking-widest text-[11px] opacity-70">Postazione operativa digitale &middot; Sentinel Hub</p>
             </div>
 
             {/* 2. Primary Controls: Clocking & Navigation */}

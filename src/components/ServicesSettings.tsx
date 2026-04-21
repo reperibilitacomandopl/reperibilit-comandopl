@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Trash2, Plus, Loader2, Car, Layers, X } from "lucide-react"
+import toast from "react-hot-toast"
 
 type ServiceType = { id: string; name: string; categoryId: string }
 type ServiceCategory = { id: string; name: string; types: ServiceType[] }
@@ -28,7 +29,7 @@ export default function ServicesSettings() {
       const dataVeh = await resVeh.json()
       if (dataCat.categories) setCategories(dataCat.categories)
       if (dataVeh.vehicles) setVehicles(dataVeh.vehicles)
-    } catch { }
+    } catch { toast.error("Errore caricamento servizi") }
     setLoading(false)
   }, [])
 

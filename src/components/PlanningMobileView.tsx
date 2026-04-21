@@ -209,7 +209,7 @@ export default function PlanningMobileView({
                   </div>
                   Operativi {selectedDay} {monthNames[currentMonth-1]}
                 </h3>
-                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full uppercase">Altamura</span>
+                <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full uppercase">{tenantSlug || 'Comando'}</span>
               </div>
 
               <div className="grid grid-cols-1 gap-4">
@@ -319,7 +319,7 @@ export default function PlanningMobileView({
       <div className="py-6 px-6 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-4">
         <div className="h-[1px] flex-1 bg-slate-200"></div>
         <p className="text-[9px] text-slate-400 font-black uppercase tracking-[0.3em] whitespace-nowrap">
-          Sentinel Mobile &middot; Altamura
+          Sentinel Mobile
         </p>
         <div className="h-[1px] flex-1 bg-slate-200"></div>
       </div>

@@ -267,7 +267,7 @@ export default function AgentDashboard({
                 
                 doc.setFontSize(10)
                 doc.setTextColor(100, 116, 139)
-                doc.text(`Polizia Locale di Altamura`, 14, 30)
+                doc.text(`Polizia Locale · ${tenantSlug || 'Comando'}`, 14, 30)
                 doc.text(`Generato il: ${new Date().toLocaleDateString('it-IT')} alle ${new Date().toLocaleTimeString('it-IT')}`, 14, 35)
                 
                 doc.setFontSize(12)
@@ -396,7 +396,7 @@ export default function AgentDashboard({
       </div>
 
       <footer className="text-center py-12 border-t border-slate-100 text-[10px] text-slate-400 font-bold uppercase tracking-[0.3em]">
-          Comando Polizia Locale di Altamura · Sentinel Hub v2.0
+          Sentinel Command Suite · v2.0
       </footer>
 
       {showAbsenceModal && <AgentRequestForm balances={admin.balances} onClose={() => setShowAbsenceModal(false)} />}

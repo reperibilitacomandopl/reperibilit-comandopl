@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Trash2, Plus, Clock, Save, ChevronDown, ChevronUp, GraduationCap } from "lucide-react"
 import toast from "react-hot-toast"
+import ConfirmModal from "./ui/ConfirmModal"
 
 interface SchoolSchedule {
   dayOfWeek: number;
@@ -58,8 +59,9 @@ export default function SchoolsManager() {
     }
   }
 
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+
   const handleDelete = async (id: string) => {
-    if (!confirm("Sei sicuro di voler eliminare questa scuola?")) return
     try {
       const res = await fetch(`/api/admin/schools/${id}`, { method: "DELETE" })
       if (res.ok) {
@@ -90,6 +92,7 @@ export default function SchoolsManager() {
   const dayLabels = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"]
 
   return (
+    <>
     <div className="space-y-8 p-4">
       {/* Input Nuova Scuola */}
       <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm flex flex-col md:flex-row items-end gap-6 border-t-4 border-t-indigo-600">
@@ -145,7 +148,7 @@ export default function SchoolsManager() {
                     {expandedId === school.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />} Configura Orari
                   </button>
                   <button 
-                    onClick={() => handleDelete(school.id)}
+                    onClick={() => setDeleteTarget(school.id)}
                     className="p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
                   >
                     <Trash2 size={18} />
@@ -236,5 +239,16 @@ export default function SchoolsManager() {
         )}
       </div>
     </div>
+
+    <ConfirmModal
+      isOpen={!!deleteTarget}
+      onClose={() => setDeleteTarget(null)}
+      onConfirm={() => { if (deleteTarget) handleDelete(deleteTarget) }}
+      title="Elimina Scuola"
+      message="Sei sicuro di voler eliminare questa scuola e tutti i suoi orari configurati? L'azione è irreversibile."
+      destructive
+      confirmLabel="Elimina Scuola"
+    />
+    </>
   )
 }

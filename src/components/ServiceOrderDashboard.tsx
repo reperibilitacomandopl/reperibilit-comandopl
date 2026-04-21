@@ -48,7 +48,7 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
       const data = await res.json()
       if (data.users) setUsers(data.users)
       if (data.shifts) setShifts(data.shifts)
-    } catch {}
+    } catch { toast.error("Errore caricamento dati OdS") }
     setLoading(false)
   }, [currentDate])
 
@@ -122,7 +122,7 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
         toast.error(data.error || "Nessun potenziale assegnamento trovato")
       }
     } catch {
-      toast.error("Errore durante l'automazione")
+      toast.error("Errore durante l'automazione scuole")
     }
     setIsAutoAssigning(false)
   }
@@ -251,7 +251,7 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
         date: currentDate,
         users: users as DashboardUser[],
         shifts: shifts as DashboardShift[],
-        tenantName: tenantName || "Comando Polizia Locale Altamura"
+        tenantName: tenantName || "Comando Polizia Locale"
       })
 
       // 2. Registriamo la certificazione sul database tramite API

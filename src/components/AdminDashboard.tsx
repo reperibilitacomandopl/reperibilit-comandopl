@@ -16,6 +16,7 @@ import ServiceManagerPanel from "./ServiceManagerPanel"
 import ServiceOrderDashboard from "./ServiceOrderDashboard"
 import AdminRegistersPanel from "./admin/AdminRegistersPanel"
 import BachecaPanel from "./BachecaPanel"
+import WelcomeTour from "./admin/WelcomeTour"
 
 // Modals
 import { AdminPersonnelModal } from "./admin/AdminPersonnelModal"
@@ -79,6 +80,16 @@ export default function AdminDashboard({
   return (
     <AdminStateProvider value={stateValue}>
       <div className="space-y-6">
+        {/* Welcome Tour for new admins */}
+        <WelcomeTour 
+          tenantSlug={tenantSlug}
+          hasAgents={allAgents.length > 0}
+          hasGroups={rotationGroups.length > 0}
+          hasSchools={false}
+          hasCategories={categories.length > 0}
+          hasPecConfig={!!settings?.pecHost}
+        />
+
         <AdminToolbar 
           currentMonth={currentMonth} 
           currentYear={currentYear} 
