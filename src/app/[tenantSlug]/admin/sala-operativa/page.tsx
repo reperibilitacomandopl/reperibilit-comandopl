@@ -1,9 +1,9 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
-import nextDynamic from "next/dynamic"
+import dynamicImport from "next/dynamic"
 import Script from "next/script"
 
-const ControlRoomMap = nextDynamic(() => import("@/components/ControlRoomMap"), { 
+const ControlRoomMap = dynamicImport(() => import("@/components/ControlRoomMap"), { 
   ssr: false,
   loading: () => (
     <div className="flex flex-col h-[calc(100vh-120px)] bg-slate-950 rounded-[2.5rem] border border-white/5 animate-pulse items-center justify-center">
