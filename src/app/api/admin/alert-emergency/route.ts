@@ -92,7 +92,7 @@ export async function POST(req: Request) {
 
       const notificationPromises = alertRecipients.map(async (recipient) => {
         try {
-          await sendPushNotification(recipient.id, pushPayload);
+          // 1. Crea la notifica nel DB (Priorità per polling UI)
           await prisma.notification.create({
             data: {
               tenantId: tenantId || null,
@@ -104,8 +104,13 @@ export async function POST(req: Request) {
               metadata: JSON.stringify({ lat, lng, note, audio })
             }
           });
+
+          // 2. Invia Push (Asincrono, può essere lento)
+          await sendPushNotification(recipient.id, pushPayload);
         } catch (e) { console.error(`❌ Errore notifica per ${recipient.name}:`, e); }
       });
+      
+      console.log(`[SOS] Alert inviato a ${alertRecipients.length} destinatari.`);
  
       // 4. Gestione Telegram
       const telegramPromises = [];

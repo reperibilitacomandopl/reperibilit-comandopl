@@ -43,10 +43,15 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
         setNotifications(data.notifications)
         setUnreadCount(data.unreadCount)
 
-        // Se c'è una nuova notifica di tipo ALERT, suona l'allarme
+        // Se c'è una nuova notifica di tipo ALERT, suona l'allarme e mostra un toast
         const newest = data.notifications[0]
         if (newest && newest.id !== lastNotificationId && newest.type === "ALERT" && !newest.isRead) {
           playAlertSound()
+          toast.error(`🚨 EMERGENZA SOS: ${newest.message}`, { 
+            duration: 10000,
+            position: 'top-center',
+            style: { border: '2px solid #ef4444', padding: '16px', fontWeight: 'bold' }
+          })
         }
         if (newest) setLastNotificationId(newest.id)
       }
@@ -208,7 +213,7 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
 
   useEffect(() => {
     fetchNotifications()
-    const interval = setInterval(fetchNotifications, 30000) // Poll more frequently for Sentinel
+    const interval = setInterval(fetchNotifications, 10000) // Poll more frequently for Sentinel
     return () => clearInterval(interval)
   }, [fetchNotifications])
 
