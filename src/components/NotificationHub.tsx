@@ -201,7 +201,7 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
         const res = await fetch(`/api/admin/absence-requests/${metadata.requestId}`)
         const data = await res.json()
         if (data.success) setDetailData({ type: 'REQUEST', ...data.request })
-      } else if (metadata?.alertId) {
+      } else if (metadata?.alertId || notification.type === 'ALERT') {
         setDetailData({ type: 'ALERT', ...metadata })
       }
     } catch (err) {
