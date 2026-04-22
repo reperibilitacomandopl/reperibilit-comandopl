@@ -40,6 +40,7 @@ interface PlanningMobileViewProps {
   nextYear?: number
   tenantSlug?: string
   onEditCell?: (agentId: string, agentName: string, day: number, currentType: string) => void
+  onShowSosModal?: () => void
   isAdmin?: boolean
   userRole?: string
 }
@@ -56,6 +57,7 @@ export default function PlanningMobileView({
   nextYear,
   tenantSlug,
   onEditCell,
+  onShowSosModal,
   isAdmin = false,
   userRole = "AGENT"
 }: PlanningMobileViewProps) {
@@ -98,67 +100,12 @@ export default function PlanningMobileView({
   }
 
   const handleSOS = () => {
-    if (!confirm("🚨 INVIARE SOS GPS ALLA CENTRALE? La tua posizione attuale verrà trasmessa immediatamente.")) return
-    
-    setLoadingSOS(true)
-    const toastId = toast.loading("Invio segnale SOS geolocalizzato...")
-
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const res = await fetch('/api/admin/alert-emergency', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              type: 'SOS',
-              message: `🆘 SOS GPS! Richiesta intervento immediato dal Terminale Mobile.`,
-              lat: pos.coords.latitude,
-              lng: pos.coords.longitude
-            })
-          })
-          if (res.ok) {
-            toast.success("🚨 SEGNALE SOS INVIATO! Resta in attesa.", { id: toastId })
-          } else {
-            throw new Error("API SOS failed")
-          }
-        } catch {
-          console.warn("[PWA] Errore API, archiviazione locale SOS...")
-          await storeOfflineRequest('/api/admin/alert-emergency', 'POST', {
-            type: 'SOS',
-            message: `🆘 SOS GPS (OFFLINE)! Richiesta intervento dal Terminale Mobile.`,
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude
-          })
-          toast.success("🚨 SOS ARCHIVIATO! Verrà inviato appena torna il segnale.", { id: toastId, duration: 8000 })
-        } finally {
-          setLoadingSOS(false)
-        }
-      },
-      async (err) => {
-        // Fallback: Invio SOS senza GPS se fallisce
-        console.warn("GPS fallito, invio SOS senza coordinate", err)
-        try {
-          const res = await fetch('/api/admin/alert-emergency', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              type: 'SOS',
-              message: `🆘 SOS! Intervento immediato (Posizione GPS non disponibile).`
-            })
-          })
-          if (res.ok) {
-            toast.success("🚨 SEGNALE SOS INVIATO (Senza GPS)!", { id: toastId })
-          } else {
-            throw new Error("API SOS failed")
-          }
-        } catch {
-          toast.error("Impossibile inviare SOS. Errore di rete.", { id: toastId })
-        } finally {
-          setLoadingSOS(false)
-        }
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    )
+    if (onShowSosModal) {
+      onShowSosModal()
+    } else {
+      // Fallback per casi in cui il prop non sia passato (es. vista admin)
+      toast.error("Servizio SOS non disponibile in questa vista")
+    }
   }
 
   return (

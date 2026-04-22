@@ -247,6 +247,7 @@ export default function AgentDashboard({
         setShowAgenda={setShowAgenda}
         setSelectedShiftForSwap={setSelectedShiftForSwap}
         setShowSwapModal={setShowSwapModal}
+        onShowSosModal={() => setShowSosModal(true)}
         tenantSlug={tenantSlug}
       />
 

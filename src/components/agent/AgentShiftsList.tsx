@@ -27,6 +27,7 @@ export default function AgentShiftsList({
   setShowAgenda,
   setSelectedShiftForSwap,
   setShowSwapModal,
+  onShowSosModal,
   tenantSlug
 }: any) {
   return (
@@ -87,6 +88,7 @@ export default function AgentShiftsList({
                 dayInfo={dayInfo}
                 currentYear={currentYear}
                 currentMonth={currentMonth}
+                onShowSosModal={onShowSosModal}
                 userRole={userRole}
               />
             </div>
@@ -103,6 +105,7 @@ export default function AgentShiftsList({
                 nextMonth={nextMonth}
                 nextYear={nextYear}
                 tenantSlug={tenantSlug}
+                onShowSosModal={onShowSosModal}
                 userRole={userRole}
               />
             </div>
