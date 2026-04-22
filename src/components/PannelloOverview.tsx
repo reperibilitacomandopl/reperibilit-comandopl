@@ -12,7 +12,8 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  CarFront
+  CarFront,
+  Wand2
 } from "lucide-react"
 import Link from "next/link"
 import { isAssenza, isMalattia } from "@/utils/shift-logic"
@@ -259,6 +260,82 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
                     <span className="text-slate-500 text-[10px] font-black mb-1">/ {targetUfficiali}</span>
                  </div>
               </div>
+           </div>
+        </div>
+      </div>
+
+      {/* Sentinel AI Insights Premium */}
+      <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 delay-600">
+        <h2 className="text-[12px] font-black text-slate-400 mb-6 flex items-center gap-3 uppercase tracking-[0.2em]">
+          <Wand2 size={18} className="text-purple-500" />
+          Sentinel AI Intelligence Insights
+        </h2>
+        <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950 rounded-[3rem] p-10 shadow-2xl relative overflow-hidden border border-white/10 group">
+           <div className="absolute top-0 right-0 w-1/2 h-full bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.15),transparent)] pointer-events-none group-hover:scale-110 transition-transform duration-1000"></div>
+           
+           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 relative z-10">
+              {/* Analisi Copertura */}
+              <div className="space-y-4">
+                 <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white/5 rounded-2xl flex items-center justify-center text-indigo-400 border border-white/10">
+                       <Shield size={20} />
+                    </div>
+                    <h4 className="text-xs font-black text-white uppercase tracking-widest">Rating Sicurezza</h4>
+                 </div>
+                 <p className="text-3xl font-black text-white tracking-tighter italic">
+                    {ufficialiStatusOk ? "Massima Operatività" : "Attenzione Requisiti"}
+                 </p>
+                 <p className="text-slate-400 text-[11px] leading-relaxed font-medium">
+                    {ufficialiStatusOk 
+                      ? "La presenza degli ufficiali garantisce la piena capacità decisionale e legale per tutti gli interventi esterni."
+                      : `Il comando opera attualmente sotto il target minimo di ${targetUfficiali} ufficiali. Valutare il richiamo in servizio.`}
+                 </p>
+              </div>
+
+              {/* Efficienza Mezzi */}
+              <div className="space-y-4">
+                 <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white/5 rounded-2xl flex items-center justify-center text-emerald-400 border border-white/10">
+                       <CarFront size={20} />
+                    </div>
+                    <h4 className="text-xs font-black text-white uppercase tracking-widest">Efficienza Autoparco</h4>
+                 </div>
+                 <p className="text-3xl font-black text-white tracking-tighter italic">
+                    {veicoliInUsoCount > totalVehicles * 0.8 ? "Impiego Intensivo" : "Disponibilità Ottimale"}
+                 </p>
+                 <p className="text-slate-400 text-[11px] leading-relaxed font-medium">
+                    {veicoliInUsoCount > totalVehicles * 0.8
+                      ? "Elevato carico sui veicoli del comando. Si consiglia di monitorare le scadenze manutentive e i livelli di carburante."
+                      : "Il parco auto presenta un'ottima rotazione. Veicoli di riserva pronti per eventuali emergenze o guasti improvvisi."}
+                 </p>
+              </div>
+
+              {/* Rischio Operativo */}
+              <div className="space-y-4">
+                 <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white/5 rounded-2xl flex items-center justify-center text-rose-400 border border-white/10">
+                       <AlertTriangle size={20} />
+                    </div>
+                    <h4 className="text-xs font-black text-white uppercase tracking-widest">Indice di Rischio</h4>
+                 </div>
+                 <p className="text-3xl font-black text-white tracking-tighter italic">
+                    {assentiOggi > totalAgents * 0.3 ? "Rischio Critico" : (assentiOggi > 0 ? "Rischio Controllato" : "Rischio Minimo")}
+                 </p>
+                 <p className="text-slate-400 text-[11px] leading-relaxed font-medium">
+                    {assentiOggi > totalAgents * 0.3
+                      ? "L'alto tasso di assenza mette a dura prova la pianificazione. Valutare lo stato di allerta e la priorità degli interventi."
+                      : (assentiOggi > 0 ? "Assenze gestite correttamente tramite la bacheca scambi e le rotazioni pianificate." : "Forza lavoro al completo. Condizione ideale per attività di controllo massivo sul territorio.")}
+                 </p>
+              </div>
+           </div>
+
+           {/* Footer AI Branding */}
+           <div className="mt-12 pt-8 border-t border-white/10 flex items-center justify-between opacity-50">
+              <div className="flex items-center gap-2">
+                 <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse"></div>
+                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Sentinel AI Engine v2.0 Active</span>
+              </div>
+              <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Analisi generata in tempo reale basata sui KPI correnti</span>
            </div>
         </div>
       </div>
