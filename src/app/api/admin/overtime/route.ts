@@ -41,6 +41,8 @@ export async function GET(request: Request) {
   }
 }
 
+import { logAudit } from "@/lib/audit"
+
 export async function POST(request: Request) {
   try {
     const session = await auth()
@@ -49,29 +51,47 @@ export async function POST(request: Request) {
     const tenantId = session.user.tenantId
     const { userId, date, code, hours, note, label } = await request.json()
 
-    if (!userId || !date || !code || !hours) return NextResponse.json({ error: "Dati mancanti" }, { status: 400 })
+    if (!userId || !date || !code || hours === undefined) {
+      return NextResponse.json({ error: "Dati mancanti" }, { status: 400 })
+    }
+
+    const parsedHours = parseFloat(hours)
+    if (isNaN(parsedHours)) {
+      return NextResponse.json({ error: "Ore non valide" }, { status: 400 })
+    }
 
     const parsedDate = new Date(date)
-
     const entry = await prisma.agendaEntry.upsert({
       where: {
         userId_date_code_tenantId: {
           userId,
           date: parsedDate,
           code,
-          tenantId: tenantId ?? ""
+          tenantId: tenantId as string
         }
       },
-      update: { hours: parseFloat(hours), note, label },
+      update: { hours: parsedHours, note, label },
       create: {
         tenantId,
         userId,
         date: parsedDate,
         code,
         label: label || "Straordinario",
-        hours: parseFloat(hours),
+        hours: parsedHours,
         note
       }
+    })
+
+    // Log Audit
+    const targetUser = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } })
+    await logAudit({
+      tenantId,
+      adminId: session.user.id!,
+      adminName: session.user.name!,
+      action: "REGISTER_OVERTIME",
+      targetId: userId,
+      targetName: targetUser?.name,
+      details: `Registrato straordinario per ${targetUser?.name}: ${parsedHours}h (Cod. ${code})`
     })
 
     return NextResponse.json(entry)
@@ -92,11 +112,27 @@ export async function DELETE(request: Request) {
     if (!id) return NextResponse.json({ error: "ID mancante" }, { status: 400 })
 
     const tenantId = session.user.tenantId
+    
+    const entry = await prisma.agendaEntry.findFirst({
+      where: { id, tenantId }
+    })
+
+    if (!entry) return NextResponse.json({ error: "Record non trovato" }, { status: 404 })
+
     await prisma.agendaEntry.delete({
-      where: { 
-        id,
-        tenantId: tenantId || null
-      }
+      where: { id }
+    })
+
+    // Log Audit
+    const targetUser = await prisma.user.findUnique({ where: { id: entry.userId }, select: { name: true } })
+    await logAudit({
+      tenantId,
+      adminId: session.user.id!,
+      adminName: session.user.name!,
+      action: "DELETE_OVERTIME",
+      targetId: entry.id,
+      targetName: targetUser?.name,
+      details: `Eliminato straordinario per ${targetUser?.name} del ${entry.date.toLocaleDateString()}`
     })
 
     return NextResponse.json({ success: true })
@@ -105,3 +141,4 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Errore eliminazione" }, { status: 500 })
   }
 }
+

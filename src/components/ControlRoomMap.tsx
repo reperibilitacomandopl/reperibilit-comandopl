@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useState, useRef } from "react"
-import { Shield, Users, MapPin, Navigation, Clock, RefreshCw } from "lucide-react"
+import { Shield, Users, MapPin, Navigation, Clock, RefreshCw, AlertTriangle } from "lucide-react"
 
 interface AgentLocation {
   id: string
@@ -17,25 +17,25 @@ export default function ControlRoomMap() {
   const [agents, setAgents] = useState<AgentLocation[]>([])
   const [loading, setLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
+  const [mapError, setMapError] = useState(false)
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
   const markersRef = useRef<Record<string, any>>({})
 
-  // Caricamento Leaflet da CDN
+  // Inizializzazione Mappa
   useEffect(() => {
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
-    document.head.appendChild(link)
+    if (typeof window === 'undefined') return;
 
-    const script = document.createElement('script')
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
-    script.async = true
-    script.onload = () => {
-      if (mapContainerRef.current && !mapRef.current) {
-        // @ts-ignore
-        const L = window.L
-        // Inizializza mappa (Centrata su Altamura come default, o l'Italia)
+    const initMap = () => {
+      // @ts-ignore
+      const L = window.L
+      if (!L) {
+        setMapError(true)
+        return
+      }
+      if (!mapContainerRef.current || mapRef.current) return
+
+      try {
         mapRef.current = L.map(mapContainerRef.current).setView([40.8277, 16.5539], 14)
         
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -43,9 +43,33 @@ export default function ControlRoomMap() {
           subdomains: 'abcd',
           maxZoom: 20
         }).addTo(mapRef.current)
+        
+        // Carica posizioni iniziali
+        fetchLocations()
+      } catch (e) {
+        console.error("Map init error:", e)
+        setMapError(true)
       }
     }
-    document.head.appendChild(script)
+
+    // @ts-ignore
+    if (window.L) {
+      initMap()
+    } else {
+      let attempts = 0
+      const checkL = setInterval(() => {
+        attempts++
+        // @ts-ignore
+        if (window.L) {
+          initMap()
+          clearInterval(checkL)
+        } else if (attempts > 50) { // Smetti dopo 5 secondi
+          setMapError(true)
+          clearInterval(checkL)
+        }
+      }, 100)
+      return () => clearInterval(checkL)
+    }
 
     return () => {
       if (mapRef.current) {
@@ -132,6 +156,19 @@ export default function ControlRoomMap() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] bg-slate-950 rounded-[2.5rem] border border-white/5 overflow-hidden shadow-2xl relative">
+      {mapError && (
+        <div className="absolute inset-0 z-[2000] bg-slate-950/90 flex flex-col items-center justify-center p-8 text-center">
+          <AlertTriangle size={48} className="text-amber-500 mb-4" />
+          <h3 className="text-xl font-black text-white uppercase tracking-tighter">Errore Caricamento Mappa</h3>
+          <p className="text-slate-400 text-sm mt-2 max-w-md">Impossibile caricare le librerie cartografiche. Controlla la tua connessione o riprova più tardi.</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-6 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl shadow-xl transition-all"
+          >
+            Ricarica Pagina
+          </button>
+        </div>
+      )}
       
       {/* Header Overlay */}
       <div className="absolute top-6 left-6 right-6 z-[1000] flex flex-col md:flex-row gap-4 pointer-events-none">

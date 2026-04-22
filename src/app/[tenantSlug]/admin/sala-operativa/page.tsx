@@ -1,6 +1,7 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import ControlRoomMap from "@/components/ControlRoomMap"
+import Script from "next/script"
 
 export const dynamic = "force-dynamic"
 
@@ -17,6 +18,15 @@ export default async function SalaOperativaPage({ params }: { params: Promise<{ 
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
+      <Script 
+        src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        strategy="beforeInteractive"
+      />
+      <link 
+        rel="stylesheet" 
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      />
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div>
           <div className="flex items-center gap-3 mb-2">
