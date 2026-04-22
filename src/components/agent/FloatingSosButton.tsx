@@ -19,15 +19,26 @@ export default function FloatingSosButton({ onSendSos }: FloatingSosButtonProps)
     // Fallback: direct GPS SOS
     return new Promise<boolean>((resolve) => {
       const toastId = toast.loading("Invio segnale SOS geolocalizzato...")
+      
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
           try {
+            let audioBase64 = ""
+            if (audioBlob) {
+              const reader = new FileReader()
+              audioBase64 = await new Promise((res) => {
+                reader.onloadend = () => res(reader.result as string)
+                reader.readAsDataURL(audioBlob)
+              })
+            }
+
             const res = await fetch('/api/admin/alert-emergency', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 type: 'SOS',
                 message: `🆘 SOS GPS! ${note || 'Richiesta intervento immediato.'}`,
+                audio: audioBase64,
                 lat: pos.coords.latitude,
                 lng: pos.coords.longitude
               })
@@ -47,12 +58,22 @@ export default function FloatingSosButton({ onSendSos }: FloatingSosButtonProps)
         async () => {
           // Fallback se il GPS fallisce o l'utente nega i permessi
           try {
+            let audioBase64 = ""
+            if (audioBlob) {
+              const reader = new FileReader()
+              audioBase64 = await new Promise((res) => {
+                reader.onloadend = () => res(reader.result as string)
+                reader.readAsDataURL(audioBlob)
+              })
+            }
+
             const res = await fetch('/api/admin/alert-emergency', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 type: 'SOS',
-                message: `🆘 SOS! ${note || 'Richiesta intervento (Posizione GPS non disponibile).'}`
+                message: `🆘 SOS! ${note || 'Richiesta intervento (Posizione GPS non disponibile).'}`,
+                audio: audioBase64
               })
             })
             if (res.ok) {
