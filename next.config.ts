@@ -26,6 +26,22 @@ const nextConfig: NextConfig = {
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" },
+          { 
+            key: "Content-Security-Policy", 
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://unpkg.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com",
+              "font-src 'self' https://fonts.gstatic.com data:",
+              "img-src 'self' data: blob: https:",
+              "connect-src 'self' https://*.supabase.co https://api.telegram.org wss://*.supabase.co https://*.basemaps.cartocdn.com",
+              "media-src 'self' https://assets.mixkit.co",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "worker-src 'self' blob:",
+            ].join("; ")
+          },
         ],
       },
     ];

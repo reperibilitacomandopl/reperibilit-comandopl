@@ -11,7 +11,8 @@ const OVERTIME_CODES = [
 export async function GET(request: Request) {
   try {
     const session = await auth()
-    if (!session?.user || session.user.role !== "ADMIN") return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
+    const hasAccess = session?.user?.role === "ADMIN" || session?.user?.isSuperAdmin || session?.user?.canManageShifts
+    if (!hasAccess) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
 
     const tenantId = session.user.tenantId
     const { searchParams } = new URL(request.url)
@@ -46,7 +47,8 @@ import { logAudit } from "@/lib/audit"
 export async function POST(request: Request) {
   try {
     const session = await auth()
-    if (!session?.user || session.user.role !== "ADMIN") return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
+    const hasAccess = session?.user?.role === "ADMIN" || session?.user?.isSuperAdmin || session?.user?.canManageShifts
+    if (!hasAccess) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
     
     const tenantId = session.user.tenantId
     const { userId, date, code, hours, note, label } = await request.json()
@@ -104,7 +106,8 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const session = await auth()
-    if (!session?.user || session.user.role !== "ADMIN") return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
+    const hasAccess = session?.user?.role === "ADMIN" || session?.user?.isSuperAdmin || session?.user?.canManageShifts
+    if (!hasAccess) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
     
     const { searchParams } = new URL(request.url)
     const id = searchParams.get("id")

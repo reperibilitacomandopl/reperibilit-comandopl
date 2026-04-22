@@ -142,34 +142,6 @@ export default auth((req) => {
  * CSP (Content Security Policy) è il principale header anti-XSS.
  */
 function addSecurityHeaders(response: NextResponse, isPublic: boolean = false): NextResponse {
-  // Content Security Policy — restringe le origini dei contenuti caricabili
-  response.headers.set(
-    "Content-Security-Policy",
-    [
-      "default-src 'self'",
-      // Script: self + inline necessari per Next.js + eval per dev mode + Leaflet
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://unpkg.com",
-      // Stili: self + inline (necessari per Tailwind e styled-jsx) + Leaflet
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com",
-      // Font: self + Google Fonts
-      "font-src 'self' https://fonts.gstatic.com data:",
-      // Immagini: self + data URI + blob (per QR code) + qualsiasi HTTPS
-      "img-src 'self' data: blob: https:",
-      // Connessioni API: self + Supabase + Telegram + Mappe
-      "connect-src 'self' https://*.supabase.co https://api.telegram.org wss://*.supabase.co https://*.basemaps.cartocdn.com",
-      // Media: assets esterni (Mixkit)
-      "media-src 'self' https://assets.mixkit.co",
-      // Frame: nessuno (già gestito da X-Frame-Options: DENY)
-      "frame-ancestors 'none'",
-      // Base: self
-      "base-uri 'self'",
-      // Form: self
-      "form-action 'self'",
-      // Worker: self + blob (per service worker PWA)
-      "worker-src 'self' blob:",
-    ].join("; ")
-  )
-
   // Previene il caching delle pagine protette per garantire che il logout sia immediato 
   // e che premendo "Indietro" non si vedano dati sensibili.
   if (!isPublic) {
