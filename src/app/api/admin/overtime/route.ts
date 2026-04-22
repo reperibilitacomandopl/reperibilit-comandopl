@@ -91,8 +91,12 @@ export async function DELETE(request: Request) {
     
     if (!id) return NextResponse.json({ error: "ID mancante" }, { status: 400 })
 
+    const tenantId = session.user.tenantId
     await prisma.agendaEntry.delete({
-      where: { id }
+      where: { 
+        id,
+        tenantId: tenantId || null
+      }
     })
 
     return NextResponse.json({ success: true })

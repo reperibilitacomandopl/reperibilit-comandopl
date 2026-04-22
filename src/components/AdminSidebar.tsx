@@ -24,7 +24,8 @@ import {
   Key,
   GraduationCap,
   BarChart3,
-  Server
+  Server,
+  Navigation
 } from "lucide-react"
 
 type NavSection = {
@@ -38,6 +39,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Centro Operativo",
     accent: "text-blue-400",
     items: [
+      { label: "Centrale Operativa", href: "/admin/sala-operativa", icon: Navigation, description: "Mappa GPS in Tempo Reale" },
       { label: "Overview & KPI", href: "/admin/pannello", icon: LayoutDashboard, description: "Pannello di controllo globale" },
       { label: "Pianificazione Mensile", href: "/admin/pianificazione", icon: CalendarDays, description: "Griglia Turni e Reperibilità" },
       { label: "Ordine di Servizio", href: "/admin/ods", icon: FileText, description: "Gestione Assegnazioni Giornaliere" },
@@ -295,10 +297,14 @@ export default function AdminSidebar({
               </p>
             </div>
           )}
-          <form action={signOutAction}>
+          <form action={async () => {
+            if (confirm("Confermi la disconnessione amministrativa?")) {
+              await signOutAction();
+            }
+          }}>
             <button
               type="submit"
-              className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-rose-600 text-white/40 hover:text-white rounded-xl transition-all"
+              className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-rose-600 text-white/40 hover:text-white rounded-xl transition-all shadow-lg hover:shadow-rose-900/20"
               title="Disconnetti Sessione"
             >
               <LogOut size={16} />

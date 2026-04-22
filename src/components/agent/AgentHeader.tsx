@@ -1,7 +1,7 @@
 "use client"
 import React from "react"
 import Link from "next/link"
-import { ShieldCheck, CalendarDays, Clock, Users, ArrowRightLeft, MapPin, RefreshCw, ChevronLeft, ChevronRight, CheckCircle2, X, Shield, Smartphone, Send } from "lucide-react"
+import { ShieldCheck, CalendarDays, Clock, Users, ArrowRightLeft, MapPin, RefreshCw, ChevronLeft, ChevronRight, CheckCircle2, X, Shield, Smartphone, Send, LogOut } from "lucide-react"
 
 export default function AgentHeader({
   currentUser,
@@ -30,7 +30,8 @@ export default function AgentHeader({
   setShowSosModal,
   telegramCode,
   onGenerateTelegramCode,
-  telegramLoading
+  telegramLoading,
+  signOutAction
 }: any) {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-700">
@@ -119,27 +120,44 @@ export default function AgentHeader({
                   </button>
                </div>
 
-               {/* Month Navigator */}
-               <div className="flex bg-white/5 backdrop-blur-xl rounded-[2.5rem] p-1.5 border border-white/10 shadow-lg items-center">
-                  <button 
-                    type="button"
-                    onClick={() => onMonthChange(prevMonth, prevYear)} 
-                    className="p-3.5 hover:bg-white/10 text-white rounded-3xl transition-all active:scale-75"
-                  >
-                    <ChevronLeft size={22} />
-                  </button>
-                  <div className="flex-1 text-center">
-                    <span className="text-xs font-black uppercase tracking-[0.2em] text-white">
-                      {monthNames[currentMonth-1]} <span className="text-cyan-400">{currentYear}</span>
-                    </span>
+               {/* Month Navigator & Logout */}
+               <div className="flex gap-2">
+                  <div className="flex-1 flex bg-white/5 backdrop-blur-xl rounded-[2.5rem] p-1.5 border border-white/10 shadow-lg items-center">
+                    <button 
+                      type="button"
+                      onClick={() => onMonthChange(prevMonth, prevYear)} 
+                      className="p-3.5 hover:bg-white/10 text-white rounded-3xl transition-all active:scale-75"
+                    >
+                      <ChevronLeft size={22} />
+                    </button>
+                    <div className="flex-1 text-center">
+                      <span className="text-xs font-black uppercase tracking-[0.2em] text-white">
+                        {monthNames[currentMonth-1]} <span className="text-cyan-400">{currentYear}</span>
+                      </span>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => onMonthChange(nextMonth, nextYear)} 
+                      className="p-3.5 hover:bg-white/10 text-white rounded-3xl transition-all active:scale-75"
+                    >
+                      <ChevronRight size={22} />
+                    </button>
                   </div>
-                  <button 
-                    type="button"
-                    onClick={() => onMonthChange(nextMonth, nextYear)} 
-                    className="p-3.5 hover:bg-white/10 text-white rounded-3xl transition-all active:scale-75"
-                  >
-                    <ChevronRight size={22} />
-                  </button>
+
+                  {/* REAL LOGOUT BUTTON */}
+                  <form action={async () => {
+                    if (confirm("Vuoi davvero disconnetterti dal sistema?")) {
+                      await signOutAction();
+                    }
+                  }} className="shrink-0">
+                    <button
+                      type="submit"
+                      className="h-full px-6 flex items-center justify-center bg-white/5 hover:bg-rose-600 border border-white/10 text-white/40 hover:text-white rounded-[2rem] transition-all group"
+                      title="Disconnetti Sessione (Logout)"
+                    >
+                      <LogOut size={20} className="group-hover:scale-110 transition-transform" />
+                    </button>
+                  </form>
                </div>
             </div>
 

@@ -89,6 +89,11 @@ model User {
   canVerifyClockIns        Boolean   @default(false)
   isActive                 Boolean   @default(true)
 
+  // GPS Real-time (solo durante il servizio)
+  lastLat                  Float?
+  lastLng                  Float?
+  lastSeenAt               DateTime?
+
   // Diritti & Agevolazioni
   hasL104                Boolean            @default(false)
   l104Assistiti          Int                @default(1)

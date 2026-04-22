@@ -30,6 +30,7 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
   const [currentDate, setCurrentDate] = useState(new Date())
   const [loading, setLoading] = useState(true)
   const [isAutoAssigning, setIsAutoAssigning] = useState(false)
+  const [isCertified, setIsCertified] = useState(false)
   
   const [users, setUsers] = useState<DashboardUser[]>([])
   const [shifts, setShifts] = useState<DashboardShift[]>([])
@@ -48,6 +49,7 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
       const data = await res.json()
       if (data.users) setUsers(data.users)
       if (data.shifts) setShifts(data.shifts)
+      setIsCertified(!!data.isCertified)
     } catch { toast.error("Errore caricamento dati OdS") }
     setLoading(false)
   }, [currentDate])
@@ -59,6 +61,7 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
 
 
   const handleDetailsUpdate = async (shift: DashboardShift, value: string) => {
+    if (isCertified) return; // Blocco UI
     if (shift.serviceDetails === value) return; // Nessuna modifica effettiva
 
     // Optimistic UI Update
@@ -270,6 +273,7 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
       })
 
       if (res.ok) {
+        setIsCertified(true)
         toast.success("ORDINE DI SERVIZIO CERTIFICATO ED EMESSO!", {
           duration: 5000,
           icon: '🔏'
@@ -381,9 +385,12 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
            <input 
              type="text" 
              defaultValue={s.serviceDetails || ""}
+             disabled={isCertified}
              onBlur={(e) => handleDetailsUpdate(s, e.target.value)}
-             className="w-full h-full p-2 text-xs bg-transparent focus:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-400 transition-all font-medium text-slate-700 placeholder:text-slate-300"
-             placeholder="Clicca per inserire (Es: 08:00-08:45 Sc. Golgota...)"
+             className={`w-full h-full p-2 text-xs bg-transparent focus:outline-none transition-all font-medium text-slate-700 placeholder:text-slate-300
+               ${isCertified ? 'cursor-not-allowed opacity-70' : 'focus:bg-yellow-50 focus:ring-2 focus:ring-inset focus:ring-indigo-400'}
+             `}
+             placeholder={isCertified ? "Sola lettura" : "Clicca per inserire (Es: 08:00-08:45 Sc. Golgota...)"}
            />
         </td>
       </tr>
@@ -395,12 +402,20 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
       
       {/* Header Intestazione */}
       <div className="bg-slate-900 border-b border-slate-800 p-4 shrink-0 flex justify-between items-center px-6">
-         <h2 className="text-lg font-black text-white tracking-widest uppercase">Grid <span className="text-indigo-400">O.d.S.</span></h2>
+         <div className="flex items-center gap-4">
+           <h2 className="text-lg font-black text-white tracking-widest uppercase">Grid <span className="text-indigo-400">O.d.S.</span></h2>
+           {isCertified && (
+             <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full animate-in zoom-in duration-500">
+               <ShieldCheck size={12} className="text-emerald-400" />
+               <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Sigillo Digitale Attivo</span>
+             </div>
+           )}
+         </div>
          
          <div className="flex gap-2">
             <button 
               onClick={handleAutoSchools} 
-              disabled={isAutoAssigning}
+              disabled={isAutoAssigning || isCertified}
               className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-white rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-xl shadow-amber-900/40 disabled:opacity-50"
             >
               <GraduationCap width={14} height={14}/> {isAutoAssigning ? "Assegnazione..." : "🪄 Auto-Scuole"}

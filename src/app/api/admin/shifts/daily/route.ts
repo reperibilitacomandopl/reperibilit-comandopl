@@ -23,7 +23,7 @@ export async function GET(req: Request) {
     const endDate = new Date(date)
     endDate.setHours(23, 59, 59, 999)
 
-    const [users, shifts, absences, categories, vehicles] = await Promise.all([
+    const [users, shifts, absences, categories, vehicles, certifiedDoc] = await Promise.all([
       prisma.user.findMany({ 
         where: { ...tf, role: "AGENTE" }, 
         orderBy: { name: "asc" },
@@ -39,10 +39,24 @@ export async function GET(req: Request) {
         include: { types: true },
         orderBy: { orderIndex: "asc" }
       }),
-      prisma.vehicle.findMany({ where: { ...tf }, orderBy: { name: "asc" } })
+      prisma.vehicle.findMany({ where: { ...tf }, orderBy: { name: "asc" } }),
+      prisma.certifiedDocument.findFirst({
+        where: { 
+          tenantId: tenantId || null,
+          type: "ODS",
+          metadata: { contains: dateStr }
+        }
+      })
     ])
 
-    return NextResponse.json({ users, shifts, absences, categories, vehicles })
+    return NextResponse.json({ 
+      users, 
+      shifts, 
+      absences, 
+      categories, 
+      vehicles,
+      isCertified: !!certifiedDoc 
+    })
   } catch (error) {
     console.error("[DAILY SHIFTS GET]", error)
     return NextResponse.json({ error: "Internal Error" }, { status: 500 })
@@ -62,6 +76,21 @@ export async function PUT(req: Request) {
 
     const { date, userId, type, timeRange, serviceCategoryId, serviceTypeId, vehicleId, serviceDetails, patrolGroupId } = parsed.data
     const tenantId = session.user.tenantId
+
+    // VERIFICA CERTIFICAZIONE (HARDENING)
+    const certifiedDoc = await prisma.certifiedDocument.findFirst({
+      where: { 
+        tenantId: tenantId || null,
+        type: "ODS",
+        metadata: { contains: date }
+      }
+    })
+
+    if (certifiedDoc) {
+      return NextResponse.json({ 
+        error: "Non è possibile modificare un Ordine di Servizio già certificato ed emesso. Il sigillo digitale ne garantisce l'integrità." 
+      }, { status: 403 })
+    }
 
     // Crea la data esattamente a mezzanotte UTC
     const [y, m, d] = date.split("-").map(Number)

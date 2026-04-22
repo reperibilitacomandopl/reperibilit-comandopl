@@ -75,7 +75,7 @@ export default auth((req) => {
 
   // 1. Route pubbliche: lascia passare
   if (isPublicRoute(pathname)) {
-    return addSecurityHeaders(NextResponse.next())
+    return addSecurityHeaders(NextResponse.next(), true)
   }
 
   // 2. Utenti non autenticati: redirect al login
@@ -141,7 +141,7 @@ export default auth((req) => {
  * Aggiunge header di sicurezza a tutte le risposte.
  * CSP (Content Security Policy) è il principale header anti-XSS.
  */
-function addSecurityHeaders(response: NextResponse): NextResponse {
+function addSecurityHeaders(response: NextResponse, isPublic: boolean = false): NextResponse {
   // Content Security Policy — restringe le origini dei contenuti caricabili
   response.headers.set(
     "Content-Security-Policy",
@@ -167,6 +167,14 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
       "worker-src 'self' blob:",
     ].join("; ")
   )
+
+  // Previene il caching delle pagine protette per garantire che il logout sia immediato 
+  // e che premendo "Indietro" non si vedano dati sensibili.
+  if (!isPublic) {
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
+    response.headers.set("Pragma", "no-cache")
+    response.headers.set("Expires", "0")
+  }
 
   // Previene il MIME-type sniffing
   response.headers.set("X-Content-Type-Options", "nosniff")

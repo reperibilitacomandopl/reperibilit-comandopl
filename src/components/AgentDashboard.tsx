@@ -27,6 +27,7 @@ import AgentSosModal from "./agent/AgentSosModal"
 import OfficerDutyPanel from "./agent/OfficerDutyPanel"
 import PersonalBalances from "./agent/PersonalBalances"
 import PersonalClockHistory from "./agent/PersonalClockHistory"
+import { useGpsTracking } from "@/hooks/useGpsTracking"
 
 import { Shield, CalendarDays, BookOpen, FileDown } from "lucide-react"
 
@@ -62,6 +63,12 @@ export default function AgentDashboard({
 }: AgentDashboardProps) {
   
   const admin = useAgentData({ currentUser, currentYear, currentMonth, shifts });
+
+  // GPS REAL-TIME TRACKING (SOLO IN SERVIZIO)
+  useGpsTracking({ 
+    isClockedIn: admin.isClockedIn || 'OUT', 
+    intervalMs: 300000 // Aggiorna posizione ogni 5 minuti
+  });
 
   // PWA Shortcuts & URL Actions
   useEffect(() => {

@@ -181,10 +181,12 @@ export async function POST(req: Request) {
       processedShiftIds.add(s.id)
     }
 
-    // 5. Apply updates
     for (const u of updates) {
       await prisma.shift.update({
-        where: { id: u.id },
+        where: { 
+          id: u.id,
+          tenantId: tenantId || null
+        },
         data: {
           serviceCategoryId: u.serviceCategoryId,
           serviceTypeId: u.serviceTypeId,

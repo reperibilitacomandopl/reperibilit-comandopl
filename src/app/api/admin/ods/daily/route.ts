@@ -82,7 +82,10 @@ export async function PUT(req: Request) {
       }
 
       const updatedShift = await prisma.shift.update({
-        where: { id: update.id },
+        where: { 
+          id: update.id,
+          tenantId: session.user.tenantId || null
+        },
         data: {
           serviceCategoryId: update.serviceCategoryId !== undefined ? update.serviceCategoryId : undefined,
           serviceTypeId: update.serviceTypeId !== undefined ? update.serviceTypeId : undefined,
