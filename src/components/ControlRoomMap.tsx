@@ -11,6 +11,7 @@ interface AgentLocation {
   lastLat: number
   lastLng: number
   lastSeenAt: string
+  isSosActive?: boolean
 }
 
 export default function ControlRoomMap() {
@@ -38,7 +39,7 @@ export default function ControlRoomMap() {
       try {
         mapRef.current = L.map(mapContainerRef.current).setView([40.8277, 16.5539], 14)
         
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
           attribution: '© OpenStreetMap contributors © CARTO',
           subdomains: 'abcd',
           maxZoom: 20
@@ -121,10 +122,10 @@ export default function ControlRoomMap() {
             className: 'custom-div-icon',
             html: `
               <div class="relative">
-                <div class="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg border-2 border-white/20">
+                <div class="w-10 h-10 ${agent.isSosActive ? 'bg-rose-600 animate-pulse' : 'bg-blue-600'} rounded-2xl flex items-center justify-center text-white shadow-lg border-2 border-white/20">
                   <span class="text-[10px] font-black">${agent.name.charAt(0)}</span>
                 </div>
-                <div class="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#0f172a]"></div>
+                <div class="absolute -bottom-1 -right-1 w-3 h-3 ${agent.isSosActive ? 'bg-rose-500 animate-ping' : 'bg-emerald-500'} rounded-full border-2 border-white"></div>
               </div>
             `,
             iconSize: [40, 40],
@@ -136,9 +137,9 @@ export default function ControlRoomMap() {
             <div class="p-2">
               <h4 class="font-black text-slate-900 uppercase text-xs">${agent.name}</h4>
               <p class="text-[10px] text-slate-500 font-bold uppercase mb-2">${agent.qualifica || 'Agente'}</p>
-              <div class="flex items-center gap-2 text-[9px] text-emerald-600 font-black">
-                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
-                LIVE · ${new Date(agent.lastSeenAt).toLocaleTimeString()}
+              <div class="flex items-center gap-2 text-[9px] ${agent.isSosActive ? 'text-rose-600' : 'text-emerald-600'} font-black">
+                <span class="w-1.5 h-1.5 ${agent.isSosActive ? 'bg-rose-500' : 'bg-emerald-500'} rounded-full animate-pulse"></span>
+                ${agent.isSosActive ? 'EMERGENZA SOS' : 'LIVE'} · ${new Date(agent.lastSeenAt).toLocaleTimeString()}
               </div>
             </div>
           `)
@@ -155,12 +156,12 @@ export default function ControlRoomMap() {
   }, [])
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] bg-slate-950 rounded-[2.5rem] border border-white/5 overflow-hidden shadow-2xl relative">
+    <div className="flex flex-col h-[calc(100vh-120px)] bg-slate-50 rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-2xl relative">
       {mapError && (
-        <div className="absolute inset-0 z-[2000] bg-slate-950/90 flex flex-col items-center justify-center p-8 text-center">
+        <div className="absolute inset-0 z-[2000] bg-white/90 flex flex-col items-center justify-center p-8 text-center">
           <AlertTriangle size={48} className="text-amber-500 mb-4" />
-          <h3 className="text-xl font-black text-white uppercase tracking-tighter">Errore Caricamento Mappa</h3>
-          <p className="text-slate-400 text-sm mt-2 max-w-md">Impossibile caricare le librerie cartografiche. Controlla la tua connessione o riprova più tardi.</p>
+          <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Errore Caricamento Mappa</h3>
+          <p className="text-slate-500 text-sm mt-2 max-w-md">Impossibile caricare le librerie cartografiche. Controlla la tua connessione o riprova più tardi.</p>
           <button 
             onClick={() => window.location.reload()}
             className="mt-6 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl shadow-xl transition-all"
@@ -172,33 +173,33 @@ export default function ControlRoomMap() {
       
       {/* Header Overlay */}
       <div className="absolute top-6 left-6 right-6 z-[1000] flex flex-col md:flex-row gap-4 pointer-events-none">
-        <div className="bg-slate-900/80 backdrop-blur-xl border border-white/10 p-6 rounded-3xl shadow-2xl pointer-events-auto flex items-center gap-6">
+        <div className="bg-white/80 backdrop-blur-xl border border-slate-200 p-6 rounded-3xl shadow-2xl pointer-events-auto flex items-center gap-6">
           <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-blue-500/20">
             <Navigation size={24} />
           </div>
           <div>
-            <h2 className="text-xl font-black text-white uppercase tracking-tighter">Centrale Operativa GPS</h2>
+            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Centrale Operativa GPS</h2>
             <div className="flex items-center gap-4 mt-1">
-              <span className="flex items-center gap-1.5 text-[10px] font-black text-emerald-400 uppercase tracking-widest">
+              <span className="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 uppercase tracking-widest">
                 <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
                 Sistema Attivo
               </span>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                 Ultimo Aggiornamento: {lastUpdate.toLocaleTimeString()}
               </span>
             </div>
           </div>
         </div>
 
-        <div className="bg-slate-900/80 backdrop-blur-xl border border-white/10 p-6 rounded-3xl shadow-2xl pointer-events-auto flex items-center gap-8 ml-auto">
+        <div className="bg-white/80 backdrop-blur-xl border border-slate-200 p-6 rounded-3xl shadow-2xl pointer-events-auto flex items-center gap-8 ml-auto">
           <div className="flex flex-col items-center">
-            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Agenti in Rete</span>
-            <span className="text-2xl font-black text-white">{agents.length}</span>
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Agenti in Rete</span>
+            <span className="text-2xl font-black text-slate-900">{agents.length}</span>
           </div>
-          <div className="h-8 w-px bg-white/10"></div>
+          <div className="h-8 w-px bg-slate-200"></div>
           <button 
             onClick={() => { setLoading(true); fetchLocations(); }}
-            className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-white/40 hover:text-white transition-all"
+            className="p-3 bg-slate-100 hover:bg-slate-200 rounded-2xl text-slate-400 hover:text-slate-600 transition-all"
             title="Aggiorna Mappa"
           >
             <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
@@ -210,10 +211,10 @@ export default function ControlRoomMap() {
       <div ref={mapContainerRef} className="flex-1 z-0" />
 
       {/* Agents List Overlay (Desktop Only) */}
-      <div className="absolute bottom-6 right-6 z-[1000] w-72 max-h-[400px] bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-[2rem] shadow-2xl overflow-hidden hidden xl:flex flex-col pointer-events-auto">
-        <div className="p-5 border-b border-white/5 flex items-center justify-between">
-          <span className="text-[10px] font-black text-white uppercase tracking-widest">Lista Operativa</span>
-          <Users size={14} className="text-slate-500" />
+      <div className="absolute bottom-6 right-6 z-[1000] w-72 max-h-[400px] bg-white/80 backdrop-blur-xl border border-slate-200 rounded-[2rem] shadow-2xl overflow-hidden hidden xl:flex flex-col pointer-events-auto">
+        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+          <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Lista Operativa</span>
+          <Users size={14} className="text-slate-400" />
         </div>
         <div className="overflow-y-auto custom-scrollbar p-2 space-y-1">
           {agents.length === 0 ? (
@@ -232,14 +233,14 @@ export default function ControlRoomMap() {
                 }}
                 className="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-2xl transition-all text-left group"
               >
-                <div className="w-8 h-8 bg-blue-600/20 rounded-xl flex items-center justify-center text-blue-400 font-black text-[10px] group-hover:bg-blue-600 group-hover:text-white transition-all">
+                <div className={`w-8 h-8 ${agent.isSosActive ? 'bg-rose-600' : 'bg-blue-600/20'} rounded-xl flex items-center justify-center ${agent.isSosActive ? 'text-white' : 'text-blue-600'} font-black text-[10px] group-hover:bg-blue-600 group-hover:text-white transition-all`}>
                   {agent.name.charAt(0)}
                 </div>
                 <div className="flex-1 overflow-hidden">
-                  <p className="text-[11px] font-black text-white truncate uppercase">{agent.name}</p>
-                  <p className="text-[9px] text-slate-500 font-bold uppercase truncate">{agent.qualifica || 'Agente'}</p>
+                  <p className="text-[11px] font-black text-slate-900 truncate uppercase">{agent.name}</p>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase truncate">{agent.qualifica || 'Agente'}</p>
                 </div>
-                <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                <div className={`w-2 h-2 rounded-full ${agent.isSosActive ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)] animate-pulse' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'}`}></div>
               </button>
             ))
           )}
@@ -248,14 +249,14 @@ export default function ControlRoomMap() {
 
       {/* Legend / Alert Overlay */}
       <div className="absolute bottom-6 left-6 z-[1000] pointer-events-none">
-        <div className="bg-slate-900/80 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-full shadow-2xl pointer-events-auto flex items-center gap-4">
+        <div className="bg-white/80 backdrop-blur-xl border border-slate-200 px-4 py-2 rounded-full shadow-2xl pointer-events-auto flex items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-blue-600"></div>
-            <span className="text-[9px] font-black text-white uppercase tracking-widest">Pattuglia</span>
+            <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Pattuglia</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-rose-600 animate-pulse"></div>
-            <span className="text-[9px] font-black text-white uppercase tracking-widest">Allerta SOS</span>
+            <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Allerta SOS</span>
           </div>
         </div>
       </div>

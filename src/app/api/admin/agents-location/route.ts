@@ -45,9 +45,22 @@ export async function GET() {
       // Se l'agente ha fatto OUT o non ha mai fatto IN oggi, non lo mostriamo sulla mappa
       // per rispettare il requisito di privacy.
       if (lastClock && lastClock.type === 'IN') {
+        // Verifica se l'agente ha un SOS attivo (PENDING) negli ultimi 60 minuti
+        const activeSos = await prisma.emergencyAlert.findFirst({
+          where: {
+            adminId: agent.id,
+            tenantId,
+            status: "PENDING",
+            date: {
+              gte: new Date(Date.now() - 60 * 60 * 1000)
+            }
+          }
+        })
+
         activeAgents.push({
           ...agent,
-          isClockedIn: true
+          isClockedIn: true,
+          isSosActive: !!activeSos
         })
       }
     }

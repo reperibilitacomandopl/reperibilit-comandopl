@@ -205,6 +205,21 @@ export async function POST(req: Request) {
     if (!matricola || !name || !password) return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
 
     const tenantId = session.user.tenantId
+    if (tenantId) {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { maxAgents: true }
+      });
+      if (tenant) {
+        const currentCount = await prisma.user.count({
+          where: { tenantId, isActive: true, isSuperAdmin: false }
+        });
+        if (currentCount >= tenant.maxAgents) {
+          return NextResponse.json({ error: "PLAN_LIMIT_REACHED" }, { status: 403 });
+        }
+      }
+    }
+
     const existing = await prisma.user.findFirst({ 
       where: { matricola, tenantId: tenantId || null } 
     })
