@@ -51,14 +51,20 @@ export async function POST(req: Request) {
           prisma.user.findMany({
             where: { 
               tenantId: tenantId || null, 
-              OR: [{ role: "ADMIN" }, { role: "OFFICER" }]
+              OR: [
+                { role: "ADMIN" }, 
+                { isUfficiale: true }
+              ]
             },
             select: { id: true, name: true, telegramChatId: true }
           }),
           prisma.shift.findMany({
             where: {
               tenantId: tenantId || null,
-              date: new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Rome" }) + "T00:00:00Z"),
+              date: {
+                gte: new Date(new Date().setHours(0,0,0,0)),
+                lt: new Date(new Date().setHours(23,59,59,999))
+              },
               repType: { not: null }
             },
             include: { user: { select: { id: true, name: true, telegramChatId: true } } }
@@ -67,8 +73,12 @@ export async function POST(req: Request) {
 
         const recipientMap = new Map();
         adminsAndOfficers.forEach(u => recipientMap.set(u.id, u));
-        todayRepShifts.forEach(s => { if (s.user) recipientMap.set(s.user.id, s.user); });
+        todayRepShifts.forEach(s => { 
+          if (s.user) recipientMap.set(s.user.id, s.user); 
+        });
         alertRecipients = Array.from(recipientMap.values());
+        
+        console.log(`[SOS] Notifica a ${alertRecipients.length} destinatari per tenant ${tenantId}`);
       }
 
       // 3. Invia Push e Notifica
