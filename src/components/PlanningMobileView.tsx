@@ -134,11 +134,30 @@ export default function PlanningMobileView({
           setLoadingSOS(false)
         }
       },
-      () => {
-        setLoadingSOS(false)
-        toast.error("Impossibile ottenere GPS per SOS. Verifica permessi.", { id: toastId })
+      async (err) => {
+        // Fallback: Invio SOS senza GPS se fallisce
+        console.warn("GPS fallito, invio SOS senza coordinate", err)
+        try {
+          const res = await fetch('/api/admin/alert-emergency', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              type: 'SOS',
+              message: `🆘 SOS! Intervento immediato (Posizione GPS non disponibile).`
+            })
+          })
+          if (res.ok) {
+            toast.success("🚨 SEGNALE SOS INVIATO (Senza GPS)!", { id: toastId })
+          } else {
+            throw new Error("API SOS failed")
+          }
+        } catch {
+          toast.error("Impossibile inviare SOS. Errore di rete.", { id: toastId })
+        } finally {
+          setLoadingSOS(false)
+        }
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     )
   }
 

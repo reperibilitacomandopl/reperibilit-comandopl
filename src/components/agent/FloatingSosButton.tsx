@@ -44,9 +44,28 @@ export default function FloatingSosButton({ onSendSos }: FloatingSosButtonProps)
             resolve(false)
           }
         },
-        () => {
-          toast.error("Impossibile ottenere GPS. Verifica permessi.", { id: toastId })
-          resolve(false)
+        async () => {
+          // Fallback se il GPS fallisce o l'utente nega i permessi
+          try {
+            const res = await fetch('/api/admin/alert-emergency', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'SOS',
+                message: `🆘 SOS! ${note || 'Richiesta intervento (Posizione GPS non disponibile).'}`
+              })
+            })
+            if (res.ok) {
+              toast.success("🚨 SEGNALE SOS INVIATO (Senza GPS)!", { id: toastId })
+              resolve(true)
+            } else {
+              toast.error("Errore invio SOS, riprova", { id: toastId })
+              resolve(false)
+            }
+          } catch {
+            toast.error("Impossibile inviare SOS. Errore di rete.", { id: toastId })
+            resolve(false)
+          }
         },
         { enableHighAccuracy: true, timeout: 10000 }
       )

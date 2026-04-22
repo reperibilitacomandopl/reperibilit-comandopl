@@ -10,8 +10,11 @@ const rankMap = [
   { rank: "DIRIGENTE SUPERIORE", level: 2 },
   { rank: "DIRIGENTE", level: 3 },
   { rank: "COMANDANTE", level: 3 },
+  { rank: "VICE COMANDANTE", level: 3 },
   { rank: "COMMISSARIO SUPERIORE", level: 4 },
   { rank: "COMMISSARIO CAPO", level: 5 },
+  { rank: "ISTRUTTORE DIRETTIVO", level: 5 },
+  { rank: "SOSTITUTO COMMISSARIO", level: 6 },
   { rank: "COMMISSARIO", level: 6 },
   { rank: "VICE COMMISSARIO", level: 7 },
   { rank: "ISPETTORE SUPERIORE", level: 8 },
@@ -23,6 +26,7 @@ const rankMap = [
   { rank: "VICE SOVRINTENDENTE", level: 14 },
   { rank: "ASSISTENTE CAPO", level: 15 },
   { rank: "ASSISTENTE", level: 15 },
+  { rank: "ISTRUTTORE VIGILANZA", level: 15 },
   { rank: "AGENTE SCELTO", level: 16 },
   { rank: "AGENTE DI P.L.", level: 17 },
   { rank: "AGENTE", level: 17 }
@@ -80,13 +84,40 @@ export async function PUT(req: Request) {
     })
     if (!targetUser) return NextResponse.json({ error: "Utente non trovato o non appartenente al tuo comando" }, { status: 404 })
 
-    if (action === "resetPassword" && newPassword) {
-      const hashed = await bcrypt.hash(newPassword, 10)
-      await prisma.user.update({
-        where: { id: userId },
-        data: { password: hashed }
-      })
+    const updateData: any = {
+      email: email === undefined ? undefined : (email || null),
+      phone: phone === undefined ? undefined : (phone || null),
+      name: name || undefined,
+      matricola: matricola || undefined,
+      squadra: squadra === undefined ? undefined : (squadra || null),
+      servizio: servizio === undefined ? undefined : (servizio || null),
+      massimale: massimale !== undefined ? parseInt(massimale, 10) : undefined,
+      defaultServiceCategoryId: defaultServiceCategoryId === undefined ? undefined : (defaultServiceCategoryId || null),
+      defaultServiceTypeId: defaultServiceTypeId === undefined ? undefined : (defaultServiceTypeId || null),
+      rotationGroupId: rotationGroupId === undefined ? undefined : (rotationGroupId || null),
+      qualifica: qualifica === undefined ? undefined : (qualifica || null),
+      dataAssunzione: dataAssunzione ? new Date(dataAssunzione) : (dataAssunzione === null ? null : undefined),
+      dataDiNascita: dataDiNascita ? new Date(dataDiNascita) : (dataDiNascita === null ? null : undefined),
+      scadenzaPatente: scadenzaPatente ? new Date(scadenzaPatente) : (scadenzaPatente === null ? null : undefined),
+      scadenzaPortoArmi: scadenzaPortoArmi ? new Date(scadenzaPortoArmi) : (scadenzaPortoArmi === null ? null : undefined),
+      tipoContratto: tipoContratto === undefined ? undefined : (tipoContratto || null),
+      noteInterne: noteInterne === undefined ? undefined : (noteInterne || null),
+      defaultPartnerIds: defaultPartnerIds === undefined ? undefined : defaultPartnerIds,
+      fixedServiceDays: fixedServiceDays === undefined ? undefined : fixedServiceDays,
+      hasL104: hasL104 === undefined ? undefined : hasL104,
+      l104Assistiti: l104Assistiti === undefined ? undefined : parseInt(l104Assistiti, 10),
+      hasStudyLeave: hasStudyLeave === undefined ? undefined : hasStudyLeave,
+      hasParentalLeave: hasParentalLeave === undefined ? undefined : hasParentalLeave,
+      hasChildSicknessLeave: hasChildSicknessLeave === undefined ? undefined : hasChildSicknessLeave
+    }
 
+    if (qualifica !== undefined) {
+      updateData.gradoLivello = getGradoLivello(qualifica)
+    }
+
+    if (action === "resetPassword" && newPassword) {
+      updateData.password = await bcrypt.hash(newPassword, 10)
+      
       await logAudit({
         tenantId,
         adminId: session.user.id!,
@@ -96,14 +127,10 @@ export async function PUT(req: Request) {
         targetName: targetUser?.name,
         details: `Resettata password per l'agente ${targetUser?.name}`
       })
-
-      return NextResponse.json({ success: true, message: "Password resettata" })
     }
 
     if (action === "restore") {
       const originalMatricola = targetUser.matricola.split("_ARCHIVED_")[0]
-      
-      // Verifica se la matricola originale è stata ripresa da qualcun altro nel frattempo
       const collision = await prisma.user.findFirst({
         where: { matricola: originalMatricola, tenantId: tenantId || null, isActive: true }
       })
@@ -112,13 +139,8 @@ export async function PUT(req: Request) {
         return NextResponse.json({ error: "Impossibile ripristinare: la matricola originale è già in uso da un altro agente attivo." }, { status: 409 })
       }
 
-      const restoredUser = await prisma.user.update({
-        where: { id: userId },
-        data: { 
-          isActive: true,
-          matricola: originalMatricola
-        }
-      })
+      updateData.isActive = true
+      updateData.matricola = originalMatricola
 
       await logAudit({
         tenantId: tenantId || null,
@@ -126,61 +148,32 @@ export async function PUT(req: Request) {
         adminName: session.user.name!,
         action: "RESTORE_USER",
         targetId: userId,
-        targetName: restoredUser.name,
-        details: `Ripristinato agente dall'archivio: ${restoredUser.name} (Matr. ${restoredUser.matricola})`
+        targetName: targetUser.name,
+        details: `Ripristinato agente dall'archivio: ${targetUser.name} (Matr. ${originalMatricola})`
       })
-
-      return NextResponse.json({ success: true, user: restoredUser })
     }
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: {
-        email: email === undefined ? undefined : (email || null),
-        phone: phone === undefined ? undefined : (phone || null),
-        name: name || undefined,
-        matricola: matricola || undefined,
-        squadra: squadra === undefined ? undefined : (squadra || null),
-        servizio: servizio === undefined ? undefined : (servizio || null),
-        massimale: massimale !== undefined ? parseInt(massimale, 10) : undefined,
-        defaultServiceCategoryId: defaultServiceCategoryId === undefined ? undefined : (defaultServiceCategoryId || null),
-        defaultServiceTypeId: defaultServiceTypeId === undefined ? undefined : (defaultServiceTypeId || null),
-        rotationGroupId: rotationGroupId === undefined ? undefined : (rotationGroupId || null),
-        qualifica: qualifica === undefined ? undefined : (qualifica || null),
-        gradoLivello: qualifica ? getGradoLivello(qualifica) : undefined,
-        dataAssunzione: dataAssunzione ? new Date(dataAssunzione) : (dataAssunzione === null ? null : undefined),
-        dataDiNascita: dataDiNascita ? new Date(dataDiNascita) : (dataDiNascita === null ? null : undefined),
-        scadenzaPatente: scadenzaPatente ? new Date(scadenzaPatente) : (scadenzaPatente === null ? null : undefined),
-        scadenzaPortoArmi: scadenzaPortoArmi ? new Date(scadenzaPortoArmi) : (scadenzaPortoArmi === null ? null : undefined),
-        tipoContratto: tipoContratto === undefined ? undefined : (tipoContratto || null),
-        noteInterne: noteInterne === undefined ? undefined : (noteInterne || null),
-        defaultPartnerIds: defaultPartnerIds === undefined ? undefined : defaultPartnerIds,
-        fixedServiceDays: fixedServiceDays === undefined ? undefined : fixedServiceDays,
-        hasL104: hasL104 === undefined ? undefined : hasL104,
-        l104Assistiti: l104Assistiti === undefined ? undefined : parseInt(l104Assistiti, 10),
-        hasStudyLeave: hasStudyLeave === undefined ? undefined : hasStudyLeave,
-        hasParentalLeave: hasParentalLeave === undefined ? undefined : hasParentalLeave,
-        hasChildSicknessLeave: hasChildSicknessLeave === undefined ? undefined : hasChildSicknessLeave
-      }
+      data: updateData
     })
 
     const changes = []
     if (name) changes.push(`Nome: ${name}`)
     if (matricola) changes.push(`Matricola: ${matricola}`)
-    if (squadra !== undefined) changes.push(`Squadra: ${squadra || 'Nessuna'}`)
-    if (servizio !== undefined) changes.push(`Servizio: ${servizio || 'Nessuno'}`)
-    if (massimale !== undefined) changes.push(`Massimale: ${massimale}`)
-    if (qualifica !== undefined) changes.push(`Qualifica: ${qualifica}`)
+    if (qualifica !== undefined) changes.push(`Qualifica: ${qualifica || 'Nessuna'}`)
 
-    await logAudit({
-      tenantId: tenantId || null,
-      adminId: session.user.id!,
-      adminName: session.user.name!,
-      action: "UPDATE_USER",
-      targetId: userId,
-      targetName: updatedUser.name,
-      details: `Aggiornati dati per ${updatedUser.name}: ${changes.join(", ")}`
-    })
+    if (changes.length > 0 && action !== "resetPassword" && action !== "restore") {
+      await logAudit({
+        tenantId: tenantId || null,
+        adminId: session.user.id!,
+        adminName: session.user.name!,
+        action: "UPDATE_USER",
+        targetId: userId,
+        targetName: updatedUser.name,
+        details: `Aggiornati dati per ${updatedUser.name}: ${changes.join(", ")}`
+      })
+    }
 
     return NextResponse.json({ success: true, user: updatedUser })
   } catch (error) {

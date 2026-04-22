@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Building2, Users, Calendar, Plus, Power, PowerOff, RefreshCw, Shield, X, Globe, Zap, Settings } from "lucide-react"
+import { Building2, Users, Calendar, Plus, Power, PowerOff, RefreshCw, Shield, X, Globe, Zap, Settings, Download, Trash2 } from "lucide-react"
 import toast from "react-hot-toast"
 import Link from "next/link"
 
@@ -27,6 +27,9 @@ export default function SuperAdminDashboard({ tenants, currentUser }: { tenants:
   const [isSeeding, setIsSeeding] = useState<string | null>(null)
   const [isToggling, setIsToggling] = useState<string | null>(null)
   const [editingTenant, setEditingTenant] = useState<TenantData | null>(null)
+  const [destroyingTenant, setDestroyingTenant] = useState<TenantData | null>(null)
+  const [destroyConfirmName, setDestroyConfirmName] = useState("")
+  const [isDestroying, setIsDestroying] = useState(false)
   const [isClient, setIsClient] = useState(false)
 
   useEffect(() => {
@@ -176,6 +179,33 @@ export default function SuperAdminDashboard({ tenants, currentUser }: { tenants:
       toast.error("Errore")
     } finally {
       setIsToggling(null)
+    }
+  }
+
+  const handleExport = (tenantId: string) => {
+    window.open(`/api/superadmin/tenants/export?tenantId=${tenantId}`, '_blank')
+  }
+
+  const handleDestroy = async () => {
+    if (!destroyingTenant) return
+    if (destroyConfirmName !== destroyingTenant.name) {
+      toast.error("Il nome digitato non corrisponde")
+      return
+    }
+    
+    setIsDestroying(true)
+    try {
+      const res = await fetch(`/api/superadmin/tenants/destroy?tenantId=${destroyingTenant.id}`, {
+        method: "DELETE"
+      })
+      if (!res.ok) throw new Error("Errore")
+      toast.success("Comando eliminato definitivamente")
+      setDestroyingTenant(null)
+      window.location.reload()
+    } catch {
+      toast.error("Errore durante l'eliminazione")
+    } finally {
+      setIsDestroying(false)
     }
   }
 
@@ -345,6 +375,20 @@ export default function SuperAdminDashboard({ tenants, currentUser }: { tenants:
                           title={tenant.isActive ? "Sospendi" : "Riattiva"}
                         >
                           {isToggling === tenant.id ? <RefreshCw size={16} className="animate-spin" /> : tenant.isActive ? <PowerOff size={16} /> : <Power size={16} />}
+                        </button>
+                        <button
+                          onClick={() => handleExport(tenant.id)}
+                          className="p-2 bg-blue-500/10 text-blue-400 rounded-lg hover:bg-blue-500/20 transition-all ml-2"
+                          title="Esporta Dati GDPR"
+                        >
+                          <Download size={16} />
+                        </button>
+                        <button
+                          onClick={() => { setDestroyingTenant(tenant); setDestroyConfirmName(""); }}
+                          className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-all"
+                          title="Elimina Definitivamente (Oblio)"
+                        >
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </td>
@@ -516,6 +560,53 @@ export default function SuperAdminDashboard({ tenants, currentUser }: { tenants:
               >
                 {isUpdating ? <RefreshCw size={16} className="animate-spin" /> : null}
                 Salva Modifiche
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Distruzione Tenant */}
+      {destroyingTenant && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setDestroyingTenant(null)}></div>
+          <div className="relative w-full max-w-lg bg-slate-900 border border-red-500/30 rounded-3xl shadow-2xl shadow-red-900/20 overflow-hidden">
+            <div className="bg-red-600 p-6 text-white text-center">
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Trash2 size={32} />
+              </div>
+              <h3 className="text-xl font-black uppercase">Distruzione Comando</h3>
+              <p className="text-red-100 text-sm font-bold mt-1">Azione IRREVERSIBILE</p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-slate-300">
+                Stai per eliminare definitivamente il comando <strong>{destroyingTenant.name}</strong> e <strong>tutti i dati associati</strong> (utenti, turni, richieste, timbrature). 
+                Questa operazione non può essere annullata.
+              </p>
+              
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
+                <label className="block text-xs font-bold text-red-400 mb-2">
+                  Digita <span className="text-white bg-red-900 px-1 py-0.5 rounded">{destroyingTenant.name}</span> per confermare:
+                </label>
+                <input 
+                  value={destroyConfirmName} 
+                  onChange={e => setDestroyConfirmName(e.target.value)}
+                  className="w-full bg-slate-950 border border-red-500/50 rounded-lg px-3 py-2.5 text-sm font-bold text-white outline-none focus:border-red-500" 
+                  placeholder="Nome del comando"
+                />
+              </div>
+            </div>
+
+            <div className="p-6 bg-slate-950/50 flex gap-3 border-t border-white/10">
+              <button onClick={() => setDestroyingTenant(null)} className="flex-1 bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl font-bold text-sm transition-all">Annulla</button>
+              <button 
+                disabled={isDestroying || destroyConfirmName !== destroyingTenant.name}
+                onClick={handleDestroy}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isDestroying ? <RefreshCw size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                Distruggi Dati
               </button>
             </div>
           </div>

@@ -458,9 +458,6 @@ export function AdminPersonnelModal({ isOpen, onClose }: AdminPersonnelModalProp
                 body: JSON.stringify({ userId: id, ...payload })
              });
              if (res.ok) {
-                if (payload.action === "resetPassword") {
-                   await fetch("/api/admin/users", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: id, action: "resetPassword", newPassword: payload.newPassword }) });
-                }
                 toast.success("Operatore aggiornato con successo");
                 router.refresh();
                 setEditingAgent(null);
