@@ -69,7 +69,14 @@ export default function AgentSosModal({ onClose, onSendSos }: AgentSosModalProps
       
       if (timerRef.current) clearInterval(timerRef.current)
       timerRef.current = setInterval(() => {
-        setRecordingDuration(prev => prev + 1)
+        setRecordingDuration(prev => {
+          if (prev >= 60) {
+            stopRecording()
+            toast.success("Limite di 60s raggiunto. Invio automatico...")
+            return prev
+          }
+          return prev + 1
+        })
       }, 1000)
 
       draw()

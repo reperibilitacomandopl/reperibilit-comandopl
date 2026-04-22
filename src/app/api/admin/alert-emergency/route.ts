@@ -61,10 +61,7 @@ export async function POST(req: Request) {
           prisma.shift.findMany({
             where: {
               tenantId: tenantId || null,
-              date: {
-                gte: new Date(new Date().setHours(0,0,0,0)),
-                lt: new Date(new Date().setHours(23,59,59,999))
-              },
+              date: new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Rome" }) + "T00:00:00Z"),
               repType: { not: null }
             },
             include: { user: { select: { id: true, name: true, telegramChatId: true } } }
@@ -120,13 +117,17 @@ export async function POST(req: Request) {
         });
  
         if (audio) {
-          const firstRecipient = telegramRecipients[0];
-          const voiceRes = await sendTelegramVoice(firstRecipient.telegramChatId!, audio, `🎤 Vocale - ${isResponseFromAdmin ? 'Centrale' : session.user.name}`);
-          
-          if (voiceRes?.voice?.file_id) {
-            for (let i = 1; i < telegramRecipients.length; i++) {
-              telegramPromises.push(sendTelegramVoice(telegramRecipients[i].telegramChatId!, voiceRes.voice.file_id, `🎤 Vocale`));
+          try {
+            const firstRecipient = telegramRecipients[0];
+            const voiceRes = await sendTelegramVoice(firstRecipient.telegramChatId!, audio, `🎤 Vocale - ${isResponseFromAdmin ? 'Centrale' : session.user.name}`);
+            
+            if (voiceRes?.voice?.file_id) {
+              for (let i = 1; i < telegramRecipients.length; i++) {
+                telegramPromises.push(sendTelegramVoice(telegramRecipients[i].telegramChatId!, voiceRes.voice.file_id, `🎤 Vocale`));
+              }
             }
+          } catch (audioErr) {
+            console.error("❌ Errore invio audio SOS:", audioErr);
           }
         }
       }
