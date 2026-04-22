@@ -147,16 +147,18 @@ function addSecurityHeaders(response: NextResponse, isPublic: boolean = false): 
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      // Script: self + inline necessari per Next.js + eval per dev mode
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com",
-      // Stili: self + inline (necessari per Tailwind e styled-jsx)
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      // Script: self + inline necessari per Next.js + eval per dev mode + Leaflet
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://unpkg.com",
+      // Stili: self + inline (necessari per Tailwind e styled-jsx) + Leaflet
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com",
       // Font: self + Google Fonts
       "font-src 'self' https://fonts.gstatic.com data:",
       // Immagini: self + data URI + blob (per QR code) + qualsiasi HTTPS
       "img-src 'self' data: blob: https:",
-      // Connessioni API: self + Supabase + Telegram
-      "connect-src 'self' https://*.supabase.co https://api.telegram.org wss://*.supabase.co",
+      // Connessioni API: self + Supabase + Telegram + Mappe
+      "connect-src 'self' https://*.supabase.co https://api.telegram.org wss://*.supabase.co https://*.basemaps.cartocdn.com",
+      // Media: assets esterni (Mixkit)
+      "media-src 'self' https://assets.mixkit.co",
       // Frame: nessuno (già gestito da X-Frame-Options: DENY)
       "frame-ancestors 'none'",
       // Base: self
