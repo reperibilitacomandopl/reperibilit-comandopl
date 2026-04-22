@@ -28,7 +28,8 @@ export async function GET() {
         qualifica: true,
         lastLat: true,
         lastLng: true,
-        lastSeenAt: true
+        lastSeenAt: true,
+        telegramChatId: true
       }
     })
 
@@ -60,7 +61,8 @@ export async function GET() {
         activeAgents.push({
           ...agent,
           isClockedIn: true,
-          isSosActive: !!activeSos
+          isSosActive: !!activeSos,
+          activeAlertId: activeSos?.id || null
         })
       }
     }

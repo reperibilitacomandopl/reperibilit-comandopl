@@ -11,69 +11,78 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { type, message, note, audio, lat, lng } = await req.json().catch(() => ({}));
+    const { type, message, note, audio, lat, lng, userId: targetUserIdFromRequest } = await req.json().catch(() => ({}));
     const tenantId = session.user.tenantId;
     const userId = session.user.id;
 
-    // --- CASO 1: SOS AGENTE (Bottom-Up) ---
+    // --- CASO 1: SOS AGENTE (Bottom-Up) O RISPOSTA CENTRALE (Top-Down Targeted) ---
     if (type === "SOS") {
-      // 1. Registra l'SOS nel database delle emergenze
-      const alert = await prisma.emergencyAlert.create({
-        data: {
-          tenantId: tenantId || null,
-          adminId: userId, // In questo caso è l'agente che lancia
-          message: message || `🆘 SOS GPS lanciato da ${session.user.name}`,
-          lat: lat || null,
-          lng: lng || null,
-          status: "PENDING",
-        }
-      });
+      const isResponseFromAdmin = !!targetUserIdFromRequest && targetUserIdFromRequest !== session.user.id;
+      const targetUserId = isResponseFromAdmin ? targetUserIdFromRequest : session.user.id;
 
-      // 2. Calcola oggi locale (Altamura/Roma) per trovare i reperibili
-      const now = new Date();
-      const localDateStr = now.toLocaleDateString("en-CA", { timeZone: "Europe/Rome" }); // YYYY-MM-DD
-      const localTodayUTC = new Date(localDateStr + "T00:00:00Z");
-
-      // 3. Trova tutti i destinatari: ADMIN, OFFICER e REPERIBILI del giorno
-      const [adminsAndOfficers, todayRepShifts] = await Promise.all([
-        prisma.user.findMany({
-          where: { 
-            tenantId: tenantId || null, 
-            OR: [{ role: "ADMIN" }, { role: "OFFICER" }]
-          },
-          select: { id: true, name: true, telegramChatId: true }
-        }),
-        prisma.shift.findMany({
-          where: {
+      // 1. Registra l'SOS nel database se è un nuovo allarme (non una risposta)
+      let alertId = null;
+      if (!isResponseFromAdmin) {
+        const alert = await prisma.emergencyAlert.create({
+          data: {
             tenantId: tenantId || null,
-            date: localTodayUTC,
-            repType: { not: null }
-          },
-          include: { user: { select: { id: true, name: true, telegramChatId: true } } }
-        })
-      ]);
+            adminId: targetUserId,
+            message: message || `🆘 SOS GPS lanciato da ${session.user.name}`,
+            lat: lat || null,
+            lng: lng || null,
+            status: "PENDING",
+          }
+        });
+        alertId = alert.id;
+      }
 
-      // Unifica i destinatari (evitando duplicati)
-      const recipientMap = new Map<string, { id: string, name: string, telegramChatId: string | null }>();
-      adminsAndOfficers.forEach(u => recipientMap.set(u.id, u));
-      todayRepShifts.forEach(s => {
-        if (s.user) recipientMap.set(s.user.id, s.user);
-      });
+      // 2. Determina destinatari
+      let alertRecipients = [];
+      if (isResponseFromAdmin) {
+        // Messaggio da Admin a specifico Agente
+        const agent = await prisma.user.findUnique({
+          where: { id: targetUserId },
+          select: { id: true, name: true, telegramChatId: true }
+        });
+        if (agent) alertRecipients = [agent];
+      } else {
+        // SOS da Agente a Centrale (Admin/Officers/Reperibili)
+        const [adminsAndOfficers, todayRepShifts] = await Promise.all([
+          prisma.user.findMany({
+            where: { 
+              tenantId: tenantId || null, 
+              OR: [{ role: "ADMIN" }, { role: "OFFICER" }]
+            },
+            select: { id: true, name: true, telegramChatId: true }
+          }),
+          prisma.shift.findMany({
+            where: {
+              tenantId: tenantId || null,
+              date: new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Rome" }) + "T00:00:00Z"),
+              repType: { not: null }
+            },
+            include: { user: { select: { id: true, name: true, telegramChatId: true } } }
+          })
+        ]);
 
-      const alertRecipients = Array.from(recipientMap.values());
+        const recipientMap = new Map();
+        adminsAndOfficers.forEach(u => recipientMap.set(u.id, u));
+        todayRepShifts.forEach(s => { if (s.user) recipientMap.set(s.user.id, s.user); });
+        alertRecipients = Array.from(recipientMap.values());
+      }
 
-      // 3. Invia Push ai destinatari e crea Notifica nel DB
+      // 3. Invia Push e Notifica
       const pushPayload = {
-        title: "🚨 EMERGENZA SOS!",
-        body: `L'agente ${session.user.name} ha lanciato un SOS.`,
-        url: `/${session.user.tenantSlug}/admin/timbrature?alertId=${alert.id}`
+        title: isResponseFromAdmin ? "🎧 MESSAGGIO DALLA CENTRALE" : "🚨 EMERGENZA SOS!",
+        body: isResponseFromAdmin ? `La Centrale ha inviato un messaggio.` : `L'agente ${session.user.name} ha lanciato un SOS.`,
+        url: isResponseFromAdmin ? `/${session.user.tenantSlug}/?view=agent` : `/${session.user.tenantSlug}/admin/sala-operativa`
       };
 
- 
-      const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-      const telegramText = `🚨 <b>ALLERTA SOS GPS</b> 🚨\n\nOperatore: <b>${session.user.name}</b> (Matr. ${session.user.matricola || 'N/D'})\n\n📝 <b>NOTA:</b> ${note || "Nessuna nota fornita"}\n\n📍 <a href="${mapUrl}">Vedi Posizione su Mappe</a>`;
- 
-      // 4. Invio in parallelo di Push e Notifiche Hub
+      const mapUrl = (lat && lng) ? `https://www.google.com/maps?q=${lat},${lng}` : null;
+      let telegramText = isResponseFromAdmin 
+        ? `🎧 <b>MESSAGGIO DALLA CENTRALE</b>\n\n${message}`
+        : `🚨 <b>ALLERTA SOS GPS</b> 🚨\n\nOperatore: <b>${session.user.name}</b> (Matr. ${session.user.matricola || 'N/D'})\n\n📍 <a href="${mapUrl}">Vedi Posizione su Mappe</a>`;
+
       const notificationPromises = alertRecipients.map(async (recipient) => {
         try {
           await sendPushNotification(recipient.id, pushPayload);
@@ -82,51 +91,38 @@ export async function POST(req: Request) {
               tenantId: tenantId || null,
               userId: recipient.id,
               title: pushPayload.title,
-              message: note ? `Nota: ${note}` : pushPayload.body,
+              message: message || pushPayload.body,
               type: "ALERT",
               link: pushPayload.url,
-              metadata: JSON.stringify({ lat, lng, alertId: alert.id, note, audio })
+              metadata: JSON.stringify({ lat, lng, note, audio })
             }
           });
-        } catch (e) {
-          console.error(`❌ Fallimento notifica push per ${recipient.name}:`, e);
-        }
+        } catch (e) { console.error(`❌ Errore notifica per ${recipient.name}:`, e); }
       });
  
-      // 5. Gestione Telegram (Ottimizzata con file_id)
+      // 4. Gestione Telegram
       const telegramPromises = [];
-      let sharedFileId: string | null = null;
- 
-      // Troviamo i destinatari con Telegram attivo
       const telegramRecipients = alertRecipients.filter(r => r.telegramChatId);
       
       if (telegramRecipients.length > 0) {
-        // Invia testo a tutti in parallelo
         telegramRecipients.forEach(r => {
           telegramPromises.push(sendTelegramMessage(r.telegramChatId!, telegramText));
         });
  
-        // Gestione Audio (Invia al primo, ottieni file_id, invia agli altri)
-        if (audio && telegramRecipients.length > 0) {
+        if (audio) {
           const firstRecipient = telegramRecipients[0];
-          const voiceRes = await sendTelegramVoice(firstRecipient.telegramChatId!, audio, `🎤 Vocale SOS - ${session.user.name}`);
+          const voiceRes = await sendTelegramVoice(firstRecipient.telegramChatId!, audio, `🎤 Vocale - ${isResponseFromAdmin ? 'Centrale' : session.user.name}`);
           
-          if (voiceRes && voiceRes.voice?.file_id && typeof voiceRes.voice.file_id === 'string') {
-            sharedFileId = voiceRes.voice.file_id;
-            // Invia agli altri usando il file_id
+          if (voiceRes?.voice?.file_id) {
             for (let i = 1; i < telegramRecipients.length; i++) {
-              if (sharedFileId) {
-                telegramPromises.push(sendTelegramVoice(telegramRecipients[i].telegramChatId!, sharedFileId, `🎤 Vocale SOS - ${session.user.name}`));
-              }
+              telegramPromises.push(sendTelegramVoice(telegramRecipients[i].telegramChatId!, voiceRes.voice.file_id, `🎤 Vocale`));
             }
           }
         }
       }
  
-      // Attendi il completamento di tutto
       await Promise.allSettled([...notificationPromises, ...telegramPromises]);
-
-      return NextResponse.json({ success: true, alertId: alert.id });
+      return NextResponse.json({ success: true, alertId });
     }
 
     // --- CASO 2: ALLERTA COMANDO (Top-Down) ---
@@ -232,6 +228,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, alerted: successCount });
   } catch (err: any) {
     console.error("❌ Errore API Alert Emergency:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    const session = await auth();
+    if (!session || !session.user || (session.user.role !== "ADMIN" && !session.user.canManageShifts)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { alertId, status } = await req.json();
+    const tenantId = session.user.tenantId;
+
+    if (!alertId || !status) {
+      return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
+    }
+
+    const alert = await prisma.emergencyAlert.update({
+      where: { 
+        id: alertId,
+        tenantId: tenantId || null
+      },
+      data: { status }
+    });
+
+    return NextResponse.json({ success: true, alert });
+  } catch (err: any) {
+    console.error("❌ Errore API Update Alert:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
