@@ -25,7 +25,8 @@ import {
   GraduationCap,
   BarChart3,
   Server,
-  Navigation
+  Navigation,
+  Activity
 } from "lucide-react"
 
 type NavSection = {
@@ -71,7 +72,8 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Amministrazione",
     accent: "text-purple-400",
     items: [
-      { label: "Configurazione & Audit", href: "/admin/impostazioni", icon: Settings, description: "Saldi Ore, Impostazioni, Log di Sistema" },
+      { label: "Configurazione Sistema", href: "/admin/impostazioni", icon: Settings, description: "Saldi Ore, Impostazioni Globali" },
+      { label: "Registri di Audit", href: "/admin/audit-logs", icon: Activity, description: "Tracciabilità completa azioni" },
       { label: "Gestione Straordinari", href: "/admin/straordinari", icon: Clock, description: "Budget mensili ed elettorali" },
       { label: "Report Mensile", href: "/admin/report", icon: BarChart3, description: "Riepilogo Ore, Assenze, Straordinari" },
       { label: "Export Ragioneria", href: "/admin/export-paghe", icon: FileText, description: "Report Excel Indennità e Paghe" },
