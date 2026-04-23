@@ -43,18 +43,21 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { date, code, label, hours, note } = await req.json()
+    const { date, code, label, hours, note, userId: targetUserId } = await req.json()
 
     if (!date || !code || !label) {
       return NextResponse.json({ error: "date, code, label required" }, { status: 400 })
     }
 
     const tenantId = session.user.tenantId
+    // Admin può inserire ore per altri operatori
+    const isAdmin = session.user.role === "ADMIN" || session.user.canManageShifts
+    const effectiveUserId = (isAdmin && targetUserId) ? targetUserId : session.user.id
 
     const entry = await prisma.agendaEntry.upsert({
       where: {
         userId_date_code_tenantId: {
-          userId: session.user.id,
+          userId: effectiveUserId,
           date: new Date(date),
           code,
           tenantId: tenantId || ""
@@ -63,7 +66,7 @@ export async function POST(req: Request) {
       update: { label, hours: hours || null, note: note || null },
       create: {
         tenantId: tenantId || null,
-        userId: session.user.id,
+        userId: effectiveUserId,
         date: new Date(date),
         code,
         label,

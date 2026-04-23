@@ -243,7 +243,7 @@ export function useAdminData(
     }
   }
 
-  const handleSaveCellEdit = async (agentId: string, day: number, value: string) => {
+  const handleSaveCellEdit = async (agentId: string, day: number, value: string, hours?: number) => {
     setIsSavingCell(true)
     let finalValue = value.trim()
     if (finalValue.toUpperCase() === "REP") { finalValue = "rep" } 
@@ -264,6 +264,33 @@ export function useAdminData(
         })
       })
       if (!res.ok) throw new Error()
+      
+      // Se sono state specificate delle ore, crea anche una voce nell'agenda dell'operatore
+      if (hours && hours > 0) {
+        // Cerca il codice agenda corrispondente allo shortCode
+        let agendaCode = finalValue
+        for (const cat of AGENDA_CATEGORIES) {
+          const item = cat.items.find(i => i.shortCode === finalValue)
+          if (item) { agendaCode = item.code; break }
+        }
+
+        try {
+          await fetch('/api/agenda', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: agentId,
+              date: targetDateIso,
+              code: agendaCode,
+              label: finalValue,
+              hours: hours,
+              note: `Inserito da Admin (${hours}h)`
+            })
+          })
+        } catch {
+          console.warn("[CELL EDIT] Errore creazione voce agenda ore, turno comunque salvato")
+        }
+      }
       
       // Aggiornamento ottimistico locale per evitare il "blink" visivo
       setShifts(prevShifts => {
@@ -287,7 +314,8 @@ export function useAdminData(
       })
 
       setEditingCell(null)
-      toast.success("Turno aggiornato")
+      const hoursMsg = hours ? ` (${hours}h)` : ''
+      toast.success(`Turno aggiornato${hoursMsg}`)
       
       // Chiamata soft a Next.js per allineare il server senza ricaricare il browser
       router.refresh()

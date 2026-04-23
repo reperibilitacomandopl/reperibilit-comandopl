@@ -12,7 +12,7 @@ interface AdminShiftGridProps {
   dayInfo: any[]
   onToggleUfficiale: (id: string) => void
   onRecalcAgent: (id: string) => void
-  onSaveCell: (agentId: string, day: number, value: string) => Promise<void>
+  onSaveCell: (agentId: string, day: number, value: string, hours?: number) => Promise<void>
   sortConfig?: { field: string, direction: 'asc' | 'desc' }
   onSort?: (config: { field: string, direction: 'asc' | 'desc' }) => void
 }
@@ -127,6 +127,7 @@ export default function AdminShiftGrid({
   const { currentYear, currentMonth, settings, allAgents } = useAdminState()
   const [editingCell, setEditingCell] = useState<any>(null)
   const [editValue, setEditValue] = useState("")
+  const [editHours, setEditHours] = useState<string>("")
 
   /* ─── TOTALI GIORNALIERI ─── */
   const dayStats = useMemo(() => {
@@ -171,13 +172,24 @@ export default function AdminShiftGrid({
   }
 
   /* ─── CELL EDITOR ─── */
+  // Determina se un codice è basato su ore
+  const isHoursCode = (code: string): boolean => {
+    for (const cat of AGENDA_CATEGORIES) {
+      const item = cat.items.find(i => i.shortCode === code || i.code === code)
+      if (item && item.unit === 'HOURS') return true
+    }
+    return false
+  }
+
   const openCellEditor = (agentId: string, agentName: string, day: number, currentType: string) => {
     setEditingCell({ agentId, agentName, day, currentType })
     setEditValue(currentType)
+    setEditHours("")
   }
-  const handleSave = async (val: string) => {
-    await onSaveCell(editingCell.agentId, editingCell.day, val)
+  const handleSave = async (val: string, hours?: number) => {
+    await onSaveCell(editingCell.agentId, editingCell.day, val, hours)
     setEditingCell(null)
+    setEditHours("")
   }
 
   /* ─── MOBILE ─── */
@@ -483,7 +495,7 @@ export default function AdminShiftGrid({
             {/* Selezione Codice Rigida */}
             <div className="px-5 pt-4 pb-2">
               <div className="relative flex items-center">
-                <select value={editValue} onChange={e => setEditValue(e.target.value)}
+                <select value={editValue} onChange={e => { setEditValue(e.target.value); setEditHours(""); }}
                   className="w-full bg-slate-100 border-2 border-slate-200 rounded-xl pl-4 pr-20 py-3 text-sm font-bold text-slate-900 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none hover:bg-slate-50 cursor-pointer transition-colors"
                   autoFocus>
                   <option value="">Seleziona codice...</option>
@@ -493,16 +505,34 @@ export default function AdminShiftGrid({
                   {AGENDA_CATEGORIES.map(cat => (
                     <optgroup key={cat.group} label={`${cat.emoji} ${cat.group}`}>
                       {cat.items.map(item => (
-                         <option key={item.shortCode} value={item.shortCode}>{item.shortCode} - {item.label}</option>
+                         <option key={item.shortCode} value={item.shortCode}>{item.shortCode} - {item.label}{item.unit === 'HOURS' ? ' (Ore)' : ''}</option>
                       ))}
                     </optgroup>
                   ))}
                 </select>
-                <button onClick={() => handleSave(editValue)} disabled={!editValue}
+                <button onClick={() => handleSave(editValue, editHours ? parseFloat(editHours) : undefined)} disabled={!editValue || (isHoursCode(editValue) && !editHours)}
                   className="absolute right-1.5 px-4 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                   Salva
                 </button>
               </div>
+
+              {/* Campo Ore — visibile solo per codici basati su ore */}
+              {isHoursCode(editValue) && (
+                <div className="mt-3 flex items-center gap-3 p-3 bg-teal-50 border-2 border-teal-200 rounded-xl">
+                  <span className="text-[11px] font-black text-teal-700 uppercase tracking-wider whitespace-nowrap">⏱️ Quante ore?</span>
+                  <input
+                    type="number"
+                    min="0.5"
+                    max="24"
+                    step="0.5"
+                    value={editHours}
+                    onChange={e => setEditHours(e.target.value)}
+                    placeholder="Es: 2, 3.5"
+                    className="flex-1 bg-white border-2 border-teal-300 rounded-lg px-3 py-2 text-sm font-bold text-teal-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none text-center"
+                  />
+                  <span className="text-[10px] font-bold text-teal-500">h</span>
+                </div>
+              )}
             </div>
 
             {/* Pulsanti rapidi turni */}
@@ -535,7 +565,15 @@ export default function AdminShiftGrid({
                     </div>
                     <div className="p-2 bg-white grid grid-cols-2 gap-1.5">
                       {cat.items.map(item => (
-                        <button key={item.shortCode} onClick={() => handleSave(item.shortCode)}
+                        <button key={item.shortCode} onClick={() => {
+                          if (item.unit === 'HOURS') {
+                            setEditValue(item.shortCode)
+                            setEditHours("")
+                            // Non salva subito, aspetta l'inserimento ore
+                          } else {
+                            handleSave(item.shortCode)
+                          }
+                        }}
                           className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-all border border-transparent hover:border-slate-200 hover:shadow-sm group/btn`}>
                           <span className={`${theme.btnBg} ${theme.btnText} text-[8px] font-black rounded px-1.5 py-0.5 min-w-[36px] text-center whitespace-nowrap`}>
                             {item.shortCode.length > 6 ? item.shortCode.substring(0, 6) : item.shortCode}
