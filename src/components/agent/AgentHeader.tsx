@@ -1,7 +1,8 @@
 "use client"
 import React from "react"
 import Link from "next/link"
-import { ShieldCheck, CalendarDays, Clock, Users, ArrowRightLeft, MapPin, RefreshCw, ChevronLeft, ChevronRight, CheckCircle2, X, Shield, Smartphone, Send, LogOut } from "lucide-react"
+import { ShieldCheck, CalendarDays, Clock, Users, ArrowRightLeft, MapPin, RefreshCw, ChevronLeft, ChevronRight, CheckCircle2, X, Shield, Smartphone, Send, LogOut, Lock } from "lucide-react"
+import TwoFactorSetupModal from "../TwoFactorSetupModal"
 
 export default function AgentHeader({
   currentUser,
@@ -33,6 +34,7 @@ export default function AgentHeader({
   telegramLoading,
   signOutAction
 }: any) {
+  const [show2faSetup, setShow2faSetup] = React.useState(false)
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-700">
       {/* Widget in servizio */}
@@ -59,6 +61,7 @@ export default function AgentHeader({
                 onClick={() => handleClockAction('OUT')}
                 disabled={clockLoading}
                 className="bg-white text-emerald-700 hover:bg-emerald-50 px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-tighter shadow-lg active:scale-95 transition-all flex items-center gap-2"
+                aria-label="Termina Turno"
               >
                 {clockLoading ? (
                   <RefreshCw size={18} className="animate-spin" />
@@ -183,12 +186,22 @@ export default function AgentHeader({
                 </div>
               </div>
 
-              <div className="sm:ml-auto w-full sm:w-auto">
+              <div className="sm:ml-auto flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+                {!currentUser.twoFactorEnabled && (
+                  <button 
+                    onClick={() => setShow2faSetup(true)}
+                    className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-300 px-6 py-4 rounded-[2rem] text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 border border-white/5"
+                  >
+                    <Lock size={16} /> Proteggi Account (2FA)
+                  </button>
+                )}
+
                 {!currentUser.telegramChatId ? (
                   <button 
                     onClick={onGenerateTelegramCode}
                     disabled={telegramLoading}
                     className="w-full sm:w-auto bg-[#0088cc] hover:bg-[#0077b5] text-white px-8 py-4 rounded-[2rem] text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-blue-500/20 border-b-4 border-blue-800"
+                    aria-label="Attiva Notifiche Telegram"
                   >
                     {telegramLoading ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
                     {telegramCode ? `Codice: ${telegramCode}` : "Attiva Telegram"}
@@ -201,6 +214,8 @@ export default function AgentHeader({
                 )}
               </div>
             </div>
+
+            {show2faSetup && <TwoFactorSetupModal onClose={() => setShow2faSetup(false)} />}
           </div>
           
           {/* 4. Secondary Side Widgets (Always Aligned Properly) */}
@@ -219,6 +234,7 @@ export default function AgentHeader({
               <button 
                 onClick={() => setShowSosModal(true)}
                 className="bg-rose-600 hover:bg-rose-500 p-6 rounded-[2.5rem] flex flex-col justify-between h-40 shadow-2xl shadow-rose-900/40 transition-all active:scale-95 group border border-rose-400/20"
+                aria-label="Invia SOS Emergenza"
               >
                 <div className="p-4 bg-white/20 rounded-2xl w-fit group-hover:scale-110 transition-transform">
                   <Shield className="text-white" size={24} />
@@ -244,12 +260,14 @@ export default function AgentHeader({
                 <button 
                   onClick={() => setShowSwapModal(true)}
                   className="flex-1 flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 text-white py-5 rounded-[2rem] font-black text-[10px] uppercase tracking-widest border border-white/10 transition-all active:scale-95 backdrop-blur-sm"
+                  aria-label="Gestione Scambi Turni"
                 >
                   <RefreshCw size={18} /> Scambi
                 </button>
                 <button 
                   onClick={() => setShowSyncModal(true)}
                   className="flex-1 flex items-center justify-center gap-3 bg-white text-[#0f172a] py-5 rounded-[2rem] font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 shadow-2xl"
+                  aria-label="Installa PWA"
                 >
                   <CalendarDays size={18} className="text-blue-600" /> PWA
                 </button>

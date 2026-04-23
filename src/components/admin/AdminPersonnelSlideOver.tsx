@@ -53,6 +53,7 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
   const [tempCanManageUsers, setTempCanManageUsers] = useState(false)
   const [tempCanVerifyClockIns, setTempCanVerifyClockIns] = useState(false)
   const [tempIsActive, setTempIsActive] = useState(true)
+  const [tempTwoFactorEnabled, setTempTwoFactorEnabled] = useState(false)
 
   const [newPass, setNewPass] = useState("")
   const [isUpdating, setIsUpdating] = useState(false)
@@ -89,6 +90,7 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
       setTempCanManageUsers(editingAgent.canManageUsers || false)
       setTempCanVerifyClockIns(editingAgent.canVerifyClockIns || false)
       setTempIsActive(editingAgent.isActive !== false)
+      setTempTwoFactorEnabled(editingAgent.twoFactorEnabled || false)
 
       setNewPass("")
       setEditTab("HR")

@@ -26,7 +26,7 @@
   --glass-border: rgba(255, 255, 255, 0.2);
 }
 
-@theme inline {
+@theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-outfit), var(--font-geist-sans);
@@ -94,3 +94,18 @@ body {
   border-radius: 999px; 
 }
 .custom-scrollbar-dark::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+
+/* Accessibility: Focus visible */
+:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: inherit;
+}
+
+button:focus-visible, 
+a:focus-visible, 
+input:focus-visible, 
+select:focus-visible {
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.2);
+}
+

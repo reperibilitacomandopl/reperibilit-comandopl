@@ -122,6 +122,7 @@ export function AdminToolbar({
             type="button"
             onClick={onPrevMonth}
             className="p-4 md:p-2 hover:bg-white hover:shadow-md rounded-xl transition-all text-slate-400 hover:text-indigo-600 active:scale-75 touch-manipulation z-10"
+            aria-label="Mese Precedente"
             title="Mese Precedente"
           >
             <Play className="rotate-180" width={18} height={18} fill="currentColor" />
@@ -136,6 +137,7 @@ export function AdminToolbar({
             type="button"
             onClick={onNextMonth}
             className="p-4 md:p-2 hover:bg-white hover:shadow-md rounded-xl transition-all text-slate-400 hover:text-indigo-600 active:scale-75 touch-manipulation z-10"
+            aria-label="Mese Successivo"
             title="Mese Successivo"
           >
             <Play width={18} height={18} fill="currentColor" />
@@ -176,6 +178,7 @@ export function AdminToolbar({
           onClick={onShowSalaOperativa} 
           className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all active:scale-95 shadow-lg shadow-blue-500/20"
           title="Gestione Squadre e Pattuglie (Sala Operativa)"
+          aria-label="Apri Sala Operativa"
         >
           <Radio width={16} height={16} /> <span className="hidden md:inline">Sala Operativa</span>
         </button>
@@ -183,6 +186,7 @@ export function AdminToolbar({
           onClick={onShowStampaOds} 
           className="flex items-center gap-2 bg-slate-800 text-slate-200 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all active:scale-95 border border-slate-700"
           title="Stampa Ordine di Servizio Giornaliero"
+          aria-label="Stampa Ordine di Servizio"
         >
           <FileText width={16} height={16} /> <span className="hidden md:inline">Stampa OdS</span>
         </button>
@@ -194,6 +198,7 @@ export function AdminToolbar({
             onClick={onShowParcoAuto} 
             className="flex items-center gap-2 text-slate-400 hover:text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
             title="Gestione Flotta Veicoli"
+            aria-label="Gestione Mezzi"
           >
             <Car width={14} height={14} /> Mezzi
           </button>
@@ -203,6 +208,7 @@ export function AdminToolbar({
             onClick={onShowSezioni} 
             className="flex items-center gap-2 text-slate-400 hover:text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
             title="Configurazione Squadre/Sezioni"
+            aria-label="Gestione Sezioni"
           >
             <LayoutGrid width={14} height={14} /> Sezioni
           </button>
@@ -214,16 +220,16 @@ export function AdminToolbar({
         {/* RESOURCE TOOLS */}
         <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
           {canManageUsers && (
-            <button onClick={onShowAnagrafica} className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-800 shadow-sm hover:bg-slate-800 transition-all active:scale-95" title="Gestione Personale e Fascicoli">
+            <button onClick={onShowAnagrafica} className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-800 shadow-sm hover:bg-slate-800 transition-all active:scale-95" title="Gestione Personale e Fascicoli" aria-label="Gestione Personale">
               <Users width={16} height={16} /> <span className="hidden lg:inline">Gestione Personale</span>
             </button>
           )}
           {canManageShifts && (
-            <button onClick={onShowBulkAbsence} className="flex items-center gap-2 bg-white text-slate-700 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-200 shadow-sm hover:bg-slate-50 transition-all active:scale-95" title="Assenze Multiple">
+            <button onClick={onShowBulkAbsence} className="flex items-center gap-2 bg-white text-slate-700 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-200 shadow-sm hover:bg-slate-50 transition-all active:scale-95" title="Assenze Multiple" aria-label="Gestione Assenze">
               <CalendarIcon width={16} height={16} /> <span className="hidden lg:inline">Assenze</span>
             </button>
           )}
-          <button onClick={onShowAudit} className="flex items-center gap-2 bg-white text-slate-700 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-200 shadow-sm hover:bg-slate-50 transition-all active:scale-95" title="Log Audit">
+          <button onClick={onShowAudit} className="flex items-center gap-2 bg-white text-slate-700 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-200 shadow-sm hover:bg-slate-50 transition-all active:scale-95" title="Log Audit" aria-label="Visualizza Audit Log">
             <ClipboardList width={16} height={16} /> <span className="hidden lg:inline">Audit</span>
           </button>
         </div>
@@ -232,6 +238,7 @@ export function AdminToolbar({
         <button 
           onClick={onShowSwaps} 
           className={`relative flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-indigo-100 text-indigo-700 rounded-2xl font-black text-[11px] uppercase tracking-widest active:scale-95 transition-all hover:bg-indigo-50 ${pendingSwapsCount + pendingRequestsCount > 0 ? 'ring-2 ring-indigo-400 ring-offset-2' : ''}`}
+          aria-label="Coda Approvazioni Turni"
         >
            <RefreshCw width={16} height={16} /> 
            <span>Coda Approvazioni</span>
@@ -342,11 +349,12 @@ export function AdminToolbar({
             onClick={onToggleMobileView}
             className={`p-3 rounded-2xl transition-all active:scale-95 border-2 ${isMobileView ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-400 border-slate-100 hover:border-slate-300"}`}
             title="Vista Mobile/Tabella"
+            aria-label="Cambia Vista Mobile/Tabella"
           >
             <Smartphone width={20} height={20} />
           </button>
           {canConfigureSystem && (
-            <button onClick={onShowSettings} className="p-3 bg-slate-100 text-slate-700 rounded-2xl hover:bg-slate-200 transition-all active:scale-95 border border-slate-200" title="Impostazioni Sistema">
+            <button onClick={onShowSettings} className="p-3 bg-slate-100 text-slate-700 rounded-2xl hover:bg-slate-200 transition-all active:scale-95 border border-slate-200" title="Impostazioni Sistema" aria-label="Impostazioni Sistema">
               <Settings width={20} height={20} />
             </button>
           )}
@@ -354,6 +362,7 @@ export function AdminToolbar({
             disabled={isPublishing} 
             onClick={onPublish} 
             className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl ${isPublished ? "bg-amber-100 text-amber-700 border border-amber-200" : "bg-emerald-600 text-white shadow-emerald-500/20"}`}
+            aria-label={isPublished ? "Nascondi Turni" : "Pubblica Turni"}
           >
             {isPublished ? <><EyeOff width={16} height={16} /> Nascondi</> : <><Eye width={16} height={16} /> Pubblica</>}
           </button>
@@ -363,6 +372,7 @@ export function AdminToolbar({
             onClick={onLock} 
             className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl ${isLocked ? "bg-red-600 text-white shadow-red-500/20" : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"}`}
             title={isLocked ? "Sblocca Mese" : "Congela Mese (Blocca modifiche ai turni)"}
+            aria-label={isLocked ? "Sblocca Mese" : "Chiudi Mese"}
           >
             <Shield width={16} height={16} className={isLocked ? "fill-white" : "fill-slate-400"} /> 
             {isLocked ? "Mese Chiuso" : "Mese Aperto"}

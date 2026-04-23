@@ -43,6 +43,7 @@ export const metadata: Metadata = {
 import PWAListener from "@/components/PWAListener";
 import SessionWrapper from "@/components/SessionWrapper";
 import PrivacyConsentModal from "@/components/PrivacyConsentModal";
+import TwoFactorModal from "@/components/TwoFactorModal";
 
 export default function RootLayout({
   children,
@@ -58,6 +59,7 @@ export default function RootLayout({
         <SessionWrapper>
           {children}
           <PrivacyConsentModal />
+          <TwoFactorModal />
           <Toaster position="bottom-right" toastOptions={{ className: 'text-sm font-semibold rounded-xl shadow-lg border border-slate-100', duration: 4000 }} />
           <PWAListener />
         </SessionWrapper>

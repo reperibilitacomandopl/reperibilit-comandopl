@@ -92,6 +92,8 @@ model User {
   privacyConsent           Boolean   @default(false)
   gpsAcceptedAt            DateTime?
   privacyAcceptedAt        DateTime?
+  twoFactorSecret          String?
+  twoFactorEnabled         Boolean   @default(false)
 
   // GPS Real-time (solo durante il servizio)
   lastLat                  Float?

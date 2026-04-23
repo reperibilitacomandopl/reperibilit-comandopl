@@ -72,7 +72,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           canVerifyClockIns: user.canVerifyClockIns,
           canConfigureSystem: user.canConfigureSystem,
           gpsConsent: user.gpsConsent,
-          privacyConsent: user.privacyConsent
+          privacyConsent: user.privacyConsent,
+          twoFactorEnabled: user.twoFactorEnabled
         }
       }
     })
@@ -105,7 +106,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.canConfigureSystem = (user as any).canConfigureSystem as boolean | undefined
         token.gpsConsent = (user as any).gpsConsent as boolean | undefined
         token.privacyConsent = (user as any).privacyConsent as boolean | undefined
+        token.twoFactorEnabled = (user as any).twoFactorEnabled as boolean | undefined
+        token.twoFactorVerified = false
       }
+
+      if (trigger === "update" && session?.twoFactorVerified) {
+        token.twoFactorVerified = true
+      }
+
       return token
     },
     async session({ session, token }) {
@@ -127,6 +135,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.canConfigureSystem = token.canConfigureSystem as boolean
         session.user.gpsConsent = token.gpsConsent as boolean
         session.user.privacyConsent = token.privacyConsent as boolean
+        session.user.twoFactorEnabled = token.twoFactorEnabled as boolean
+        session.user.twoFactorVerified = token.twoFactorVerified as boolean
         
         // Se è SuperAdmin, NON ci fidiamo della cache del token. Leggiamo SEMPRE il DB in tempo reale
         // per permettere allo switch (impersonification) di funzionare istantaneamente tramite cookie.
