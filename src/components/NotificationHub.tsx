@@ -507,15 +507,12 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
                                 </a>
                              </div>
                              <audio 
-                               key={detailData.audio.substring(0, 50)}
+                               key={detailData.alertId || 'sos-audio'}
                                controls 
+                               preload="auto"
+                               src={detailData.audio}
                                className="w-full h-12 rounded-lg outline-none"
-                             >
-                                <source src={detailData.audio} type="audio/webm" />
-                                <source src={detailData.audio} type="audio/mp4" />
-                                <source src={detailData.audio} type="audio/ogg" />
-                                Il tuo browser non supporta il player audio.
-                             </audio>
+                             />
                           </div>
                        ) : (
                           <div className="p-8 text-center bg-slate-950/20 rounded-2xl border border-dashed border-white/5">
