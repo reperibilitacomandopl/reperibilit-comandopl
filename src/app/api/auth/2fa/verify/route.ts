@@ -1,7 +1,9 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
-import { authenticator } from "otplib"
+import { OTP } from "otplib"
+
+const otp = new OTP({ strategy: 'totp' });
 
 export async function POST(req: Request) {
   const session = await auth()
@@ -20,12 +22,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "2FA non configurato" }, { status: 400 })
     }
 
-    const isValid = authenticator.verify({
+    const result = await otp.verify({
       token,
       secret: user.twoFactorSecret
     })
 
-    if (!isValid) {
+    if (!result.valid) {
       return NextResponse.json({ error: "Codice non valido" }, { status: 400 })
     }
 

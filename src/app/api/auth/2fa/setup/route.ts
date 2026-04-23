@@ -1,8 +1,10 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
-import { authenticator } from "otplib"
+import { OTP } from "otplib"
 import QRCode from "qrcode"
+
+const otp = new OTP({ strategy: 'totp' });
 
 export async function GET() {
   const session = await auth()
@@ -22,18 +24,18 @@ export async function GET() {
     // Generate secret if not exists
     let secret = user.twoFactorSecret
     if (!secret) {
-      secret = authenticator.generateSecret()
+      secret = otp.generateSecret()
       await prisma.user.update({
         where: { id: user.id },
         data: { twoFactorSecret: secret }
       })
     }
 
-    const otpauth = authenticator.keyuri(
-      user.matricola,
-      "Sentinel Security",
-      secret
-    )
+    const otpauth = otp.generateURI({
+      issuer: "Sentinel Security",
+      label: user.matricola,
+      secret: secret
+    })
 
     const qrCodeUrl = await QRCode.toDataURL(otpauth)
 
@@ -66,12 +68,12 @@ export async function POST(req: Request) {
     }
 
     if (action === "enable") {
-      const isValid = authenticator.verify({
+      const result = await otp.verify({
         token,
         secret: user.twoFactorSecret
       })
 
-      if (!isValid) {
+      if (!result.valid) {
         return NextResponse.json({ error: "Codice non valido" }, { status: 400 })
       }
 
@@ -85,12 +87,12 @@ export async function POST(req: Request) {
 
     if (action === "disable") {
       // Per disabilitare chiediamo comunque il token per sicurezza
-      const isValid = authenticator.verify({
+      const result = await otp.verify({
         token,
         secret: user.twoFactorSecret
       })
 
-      if (!isValid) {
+      if (!result.valid) {
         return NextResponse.json({ error: "Codice non valido" }, { status: 400 })
       }
 

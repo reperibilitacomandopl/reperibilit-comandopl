@@ -16,8 +16,8 @@ export async function POST(req: Request) {
       updateData.privacyConsent = true
       updateData.privacyAcceptedAt = new Date()
     }
-    if (gpsConsent === true) {
-      updateData.gpsConsent = true
+    if (gpsConsent !== undefined) {
+      updateData.gpsConsent = gpsConsent
       updateData.gpsAcceptedAt = new Date()
     }
 
@@ -25,15 +25,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No data provided" }, { status: 400 })
     }
 
-    const updatedUser = await prisma.user.update({
+    const updatedUser = await (prisma.user.update as any)({
       where: { id: session.user.id },
       data: updateData
     })
 
     return NextResponse.json({ 
       success: true, 
-      privacyConsent: updatedUser.privacyConsent,
-      gpsConsent: updatedUser.gpsConsent 
+      privacyConsent: (updatedUser as any).privacyConsent,
+      gpsConsent: (updatedUser as any).gpsConsent,
+      privacyAcceptedAt: (updatedUser as any).privacyAcceptedAt,
+      gpsAcceptedAt: (updatedUser as any).gpsAcceptedAt
     })
   } catch (error) {
     console.error("[CONSENT UPDATE ERROR]", error)

@@ -130,6 +130,7 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
       canManageShifts: tempCanManageShifts,
       canManageUsers: tempCanManageUsers,
       canVerifyClockIns: tempCanVerifyClockIns,
+      twoFactorEnabled: tempTwoFactorEnabled,
       isActive: tempIsActive,
       newPassword: newPass || undefined, // Used internally to identify if a reset is requested
       action: newPass ? "resetPassword" : undefined

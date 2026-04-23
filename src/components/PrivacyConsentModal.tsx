@@ -11,9 +11,16 @@ export default function PrivacyConsentModal() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    if (session?.user && (!session.user.privacyConsent || !session.user.gpsConsent)) {
-      setIsOpen(true)
-      if (session.user.privacyConsent) setStep(2)
+    if (session?.user) {
+      const needsPrivacy = !session.user.privacyAcceptedAt
+      const needsGps = !session.user.gpsAcceptedAt
+      
+      if (needsPrivacy || needsGps) {
+        setIsOpen(true)
+        if (!needsPrivacy && needsGps) setStep(2)
+      } else {
+        setIsOpen(false)
+      }
     }
   }, [session])
 
@@ -28,12 +35,16 @@ export default function PrivacyConsentModal() {
         body: JSON.stringify({ privacyConsent: true })
       })
       if (res.ok) {
-        await update() // Update session
-        if (session?.user.gpsConsent) {
+        const data = await res.json()
+        if (session?.user.gpsAcceptedAt) {
           setIsOpen(false)
         } else {
           setStep(2)
         }
+        await update({ 
+          privacyConsent: data.privacyConsent,
+          privacyAcceptedAt: data.privacyAcceptedAt
+        })
       }
     } catch (e) {
       console.error(e)
@@ -44,16 +55,41 @@ export default function PrivacyConsentModal() {
 
   const handleAcceptGps = async () => {
     setIsSubmitting(true)
+    setIsOpen(false) // Chiudi subito per UX fluida
     try {
       const res = await fetch("/api/user/consent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ gpsConsent: true })
       })
-      if (res.ok) {
-        await update() // Update session
-        setIsOpen(false)
-      }
+      const data = await res.json()
+      await update({ 
+        gpsConsent: data.gpsConsent,
+        gpsAcceptedAt: data.gpsAcceptedAt
+      })
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDeclineGps = async () => {
+    setIsSubmitting(true)
+    setIsOpen(false) // Chiudi subito
+    try {
+      // Salviamo comunque il fatto che l'utente ha fatto una scelta (anche se negativa)
+      // per non riproporre la modale ossessivamente
+      const res = await fetch("/api/user/consent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gpsConsent: false, skipGps: true })
+      })
+      const data = await res.json()
+      await update({ 
+        gpsConsent: data.gpsConsent,
+        gpsAcceptedAt: data.gpsAcceptedAt
+      })
     } catch (e) {
       console.error(e)
     } finally {
@@ -147,13 +183,23 @@ export default function PrivacyConsentModal() {
                 <p>Per conformità con le normative vigenti e il Garante Privacy, è richiesto il tuo consenso esplicito per l'uso dei sensori di posizione del dispositivo.</p>
               </div>
 
-              <button 
-                onClick={handleAcceptGps}
-                disabled={isSubmitting}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-emerald-200 transition-all active:scale-95 flex items-center justify-center gap-3"
-              >
-                {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Attiva Servizi di Posizione"}
-              </button>
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={handleAcceptGps}
+                  disabled={isSubmitting}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-emerald-200 transition-all active:scale-95 flex items-center justify-center gap-3"
+                >
+                  {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Attiva e Prosegui"}
+                </button>
+                
+                <button 
+                  onClick={handleDeclineGps}
+                  disabled={isSubmitting}
+                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-500 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all"
+                >
+                  Continua senza GPS
+                </button>
+              </div>
             </div>
           )}
         </div>

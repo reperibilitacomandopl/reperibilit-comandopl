@@ -73,7 +73,8 @@ export async function PUT(req: Request) {
       dataAssunzione, scadenzaPatente, scadenzaPortoArmi, noteInterne,
       dataDiNascita, tipoContratto, defaultPartnerIds, fixedServiceDays,
       hasL104, l104Assistiti, hasStudyLeave, hasParentalLeave, hasChildSicknessLeave,
-      canConfigureSystem, canManageShifts, canManageUsers, canVerifyClockIns, isActive
+      canConfigureSystem, canManageShifts, canManageUsers, canVerifyClockIns, 
+      twoFactorEnabled, isActive 
     } = await req.json()
     
     if (!userId) return NextResponse.json({ error: "Missing userId" }, { status: 400 })
@@ -114,6 +115,7 @@ export async function PUT(req: Request) {
       canManageShifts: canManageShifts === undefined ? undefined : canManageShifts,
       canManageUsers: canManageUsers === undefined ? undefined : canManageUsers,
       canVerifyClockIns: canVerifyClockIns === undefined ? undefined : canVerifyClockIns,
+      twoFactorEnabled: twoFactorEnabled === undefined ? undefined : twoFactorEnabled,
       isActive: isActive === undefined ? undefined : isActive
     }
 

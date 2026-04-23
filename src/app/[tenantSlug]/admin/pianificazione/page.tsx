@@ -33,7 +33,9 @@ export default async function PianificazionePage({ params, searchParams }: { par
         squadra: true, massimale: true, defaultServiceCategoryId: true, 
         defaultServiceTypeId: true, rotationGroupId: true,
         dataAssunzione: true, scadenzaPatente: true, scadenzaPortoArmi: true, noteInterne: true,
-        dataDiNascita: true, tipoContratto: true, defaultPartnerIds: true, fixedServiceDays: true
+        dataDiNascita: true, tipoContratto: true, defaultPartnerIds: true, fixedServiceDays: true,
+        canConfigureSystem: true, canManageShifts: true, canManageUsers: true, canVerifyClockIns: true,
+        twoFactorEnabled: true, hasL104: true, l104Assistiti: true, hasStudyLeave: true, hasParentalLeave: true, hasChildSicknessLeave: true
       }
     }),
     prisma.shift.findMany({

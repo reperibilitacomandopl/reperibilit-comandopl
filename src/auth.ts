@@ -73,7 +73,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           canConfigureSystem: user.canConfigureSystem,
           gpsConsent: user.gpsConsent,
           privacyConsent: user.privacyConsent,
-          twoFactorEnabled: user.twoFactorEnabled
+          twoFactorEnabled: user.twoFactorEnabled,
+          twoFactorVerified: false,
+          privacyAcceptedAt: user.privacyAcceptedAt,
+          gpsAcceptedAt: user.gpsAcceptedAt
         }
       }
     })
@@ -108,10 +111,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.privacyConsent = (user as any).privacyConsent as boolean | undefined
         token.twoFactorEnabled = (user as any).twoFactorEnabled as boolean | undefined
         token.twoFactorVerified = false
+        token.privacyAcceptedAt = (user as any).privacyAcceptedAt as Date | null | undefined
+        token.gpsAcceptedAt = (user as any).gpsAcceptedAt as Date | null | undefined
       }
 
-      if (trigger === "update" && session?.twoFactorVerified) {
-        token.twoFactorVerified = true
+      if (trigger === "update") {
+        if (session?.twoFactorVerified) token.twoFactorVerified = true
+        if (session?.privacyAcceptedAt) token.privacyAcceptedAt = session.privacyAcceptedAt
+        if (session?.gpsAcceptedAt) token.gpsAcceptedAt = session.gpsAcceptedAt
+        if (session?.gpsConsent !== undefined) token.gpsConsent = session.gpsConsent
+        if (session?.privacyConsent !== undefined) token.privacyConsent = session.privacyConsent
       }
 
       return token
@@ -137,6 +146,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.privacyConsent = token.privacyConsent as boolean
         session.user.twoFactorEnabled = token.twoFactorEnabled as boolean
         session.user.twoFactorVerified = token.twoFactorVerified as boolean
+        session.user.privacyAcceptedAt = token.privacyAcceptedAt as Date | null
+        session.user.gpsAcceptedAt = token.gpsAcceptedAt as Date | null
         
         // Se è SuperAdmin, NON ci fidiamo della cache del token. Leggiamo SEMPRE il DB in tempo reale
         // per permettere allo switch (impersonification) di funzionare istantaneamente tramite cookie.

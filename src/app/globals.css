@@ -24,9 +24,8 @@
   /* Glassmorphism primitives */
   --glass-bg: rgba(255, 255, 255, 0.7);
   --glass-border: rgba(255, 255, 255, 0.2);
-}
 
-@theme {
+  /* Tailwind v4 Theme Variables */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-outfit), var(--font-geist-sans);

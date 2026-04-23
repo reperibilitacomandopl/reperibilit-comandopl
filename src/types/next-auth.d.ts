@@ -17,6 +17,12 @@ declare module "next-auth" {
     canManageUsers: boolean
     canVerifyClockIns: boolean
     canConfigureSystem: boolean
+    gpsConsent: boolean
+    privacyConsent: boolean
+    twoFactorEnabled: boolean
+    twoFactorVerified: boolean
+    privacyAcceptedAt: Date | null
+    gpsAcceptedAt: Date | null
   }
 
   interface Session {
@@ -41,5 +47,11 @@ declare module "next-auth/jwt" {
     canManageUsers: boolean
     canVerifyClockIns: boolean
     canConfigureSystem: boolean
+    gpsConsent: boolean
+    privacyConsent: boolean
+    twoFactorEnabled: boolean
+    twoFactorVerified: boolean
+    privacyAcceptedAt: Date | null
+    gpsAcceptedAt: Date | null
   }
 }
