@@ -1,7 +1,7 @@
 "use client"
 
-import React from "react"
-import { X, ClipboardList, RefreshCw, Calendar as CalendarIcon } from "lucide-react"
+import React, { useState } from "react"
+import { X, ClipboardList, RefreshCw, Calendar as CalendarIcon, Download } from "lucide-react"
 
 interface AdminAuditModalProps {
   isOpen: boolean
@@ -12,6 +12,28 @@ interface AdminAuditModalProps {
 }
 
 export function AdminAuditModal({ isOpen, onClose, auditLogs, isLoadingAudit, onRefresh }: AdminAuditModalProps) {
+  const [isExporting, setIsExporting] = useState(false)
+
+  const handleExport = async () => {
+    try {
+      setIsExporting(true)
+      const res = await fetch("/api/admin/audit-logs/export")
+      if (!res.ok) throw new Error("Export failed")
+      
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `audit_log_${new Date().toISOString().split('T')[0]}.csv`
+      a.click()
+      window.URL.revokeObjectURL(url)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   if (!isOpen) return null
 
   return (
@@ -31,6 +53,10 @@ export function AdminAuditModal({ isOpen, onClose, auditLogs, isLoadingAudit, on
             </div>
           </div>
           <div className="flex items-center gap-3">
+             <button onClick={handleExport} disabled={isExporting} className="flex items-center gap-2 px-4 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all disabled:opacity-50">
+               {isExporting ? <RefreshCw width={16} height={16} className="animate-spin" /> : <Download width={16} height={16} />}
+               <span className="hidden sm:inline">Esporta CSV</span>
+             </button>
              <button onClick={onRefresh} className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all">
                 <RefreshCw width={20} height={20} className={isLoadingAudit ? "animate-spin" : ""} />
              </button>
@@ -111,6 +137,20 @@ export function AdminAuditModal({ isOpen, onClose, auditLogs, isLoadingAudit, on
                               <p className="text-[9px] text-slate-400 font-black uppercase mb-0.5">Hash ID</p>
                               <p className="text-[9px] font-mono font-bold text-slate-400 uppercase">{log.targetId?.slice(0,12)}...</p>
                            </div>
+                        </div>
+                      )}
+                      {(log.ipAddress || log.userAgent) && (
+                        <div className="pt-3 mt-3 border-t border-slate-50 flex flex-wrap gap-4">
+                           {log.ipAddress && (
+                             <div className="flex items-center gap-2 text-[9px] font-mono font-bold text-slate-400">
+                               <span className="uppercase tracking-widest">IP:</span> {log.ipAddress}
+                             </div>
+                           )}
+                           {log.userAgent && (
+                             <div className="flex items-center gap-2 text-[9px] font-mono font-bold text-slate-400 truncate max-w-[200px] sm:max-w-md">
+                               <span className="uppercase tracking-widest">Client:</span> {log.userAgent}
+                             </div>
+                           )}
                         </div>
                       )}
                     </div>

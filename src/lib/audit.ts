@@ -1,4 +1,5 @@
 import { prisma } from "./prisma"
+import { headers } from "next/headers"
 
 export async function logAudit({
   tenantId,
@@ -7,7 +8,9 @@ export async function logAudit({
   action,
   targetId,
   targetName,
-  details
+  details,
+  ipAddress,
+  userAgent
 }: {
   tenantId?: string | null
   adminId: string
@@ -16,8 +19,30 @@ export async function logAudit({
   targetId?: string
   targetName?: string
   details: string
+  ipAddress?: string
+  userAgent?: string
 }) {
   try {
+    let finalIp = ipAddress;
+    let finalUserAgent = userAgent;
+
+    // Se non passati, proviamo a recuperarli dal contesto della richiesta Next.js
+    if (!finalIp || !finalUserAgent) {
+      try {
+        const headersList = await headers()
+        if (!finalIp) {
+           finalIp = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() || 
+                     headersList.get("x-real-ip") || 
+                     "unknown";
+        }
+        if (!finalUserAgent) {
+           finalUserAgent = headersList.get("user-agent") || "unknown";
+        }
+      } catch (e) {
+        // Ignora: siamo probabilmente fuori da un contesto di Request (es. Cron Job)
+      }
+    }
+
     await prisma.auditLog.create({
       data: {
         tenantId: tenantId || null,
@@ -26,7 +51,9 @@ export async function logAudit({
         action,
         targetId,
         targetName,
-        details
+        details,
+        ipAddress: finalIp,
+        userAgent: finalUserAgent
       }
     })
   } catch (error) {

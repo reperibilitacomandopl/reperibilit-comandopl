@@ -14,7 +14,6 @@ import AdminAlertModal from "./admin/AdminAlertModal"
 import SettingsPanel, { TabType } from "./SettingsPanel"
 import ServiceManagerPanel from "./ServiceManagerPanel"
 import ServiceOrderDashboard from "./ServiceOrderDashboard"
-import AdminRegistersPanel from "./admin/AdminRegistersPanel"
 import BachecaPanel from "./BachecaPanel"
 import WelcomeTour from "./admin/WelcomeTour"
 
@@ -33,7 +32,8 @@ export default function AdminDashboard({
   settings, 
   tenantSlug,
   rotationGroups = [],
-  categories = []
+  categories = [],
+  currentUser
 }: any) {
   const router = useRouter()
   
@@ -47,7 +47,6 @@ export default function AdminDashboard({
   const [showSalaOperativa, setShowSalaOperativa] = useState(false)
   const [showAlertModal, setShowAlertModal] = useState(false)
   const [showStampaOds, setShowStampaOds] = useState(false)
-  const [showRegisters, setShowRegisters] = useState(false)
   const [showBacheca, setShowBacheca] = useState(false)
   
   const [isMobileView, setIsMobileView] = useState(false)
@@ -91,6 +90,7 @@ export default function AdminDashboard({
         />
 
         <AdminToolbar 
+          currentUser={currentUser}
           currentMonth={currentMonth} 
           currentYear={currentYear} 
           currentMonthName={admin.currentMonthName}
@@ -101,7 +101,6 @@ export default function AdminDashboard({
           onShowAnagrafica={() => setShowAnagrafica(true)}
           onShowAudit={() => { setShowAuditLog(true); admin.fetchAuditLogs(); }}
           onShowBulkAbsence={() => setShowBulkAbsence(true)}
-          onShowRegisters={() => setShowRegisters(true)}
           onShowSettings={() => setShowSettings(true)}
           onShowVerbatel={() => setShowVerbatelSync(true)}
           onShowSwaps={() => { setShowSwapApprovals(true); admin.fetchPendingApprovals(); }}
@@ -216,19 +215,6 @@ export default function AdminDashboard({
           </div>
         )}
 
-        {showRegisters && (
-          <div className="fixed inset-0 z-[9999] bg-slate-900/50 backdrop-blur-sm overflow-auto flex items-center justify-center p-0 md:p-6">
-             <div className="w-full h-full md:w-[98vw] md:h-[95vh] max-w-7xl">
-                <AdminRegistersPanel 
-                  allAgents={admin.sortedAgents}
-                  currentYear={currentYear}
-                  currentMonth={currentMonth}
-                  settings={settings}
-                  onClose={() => setShowRegisters(false)}
-                />
-             </div>
-          </div>
-        )}
 
          {showBacheca && (
            <div className="fixed inset-0 z-[90] bg-slate-100/80 backdrop-blur-sm p-4 sm:p-10 overflow-auto flex justify-center">

@@ -98,6 +98,7 @@ export default async function PianificazionePage({ params, searchParams }: { par
         rotationGroups={rotationGroups}
         categories={categories}
         tenantSlug={tenantSlug}
+        currentUser={session.user}
       />
     </div>
   )

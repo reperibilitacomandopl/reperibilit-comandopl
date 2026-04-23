@@ -20,7 +20,6 @@ interface AdminToolbarProps {
   onShowAnagrafica: () => void
   onShowAudit: () => void
   onShowBulkAbsence: () => void
-  onShowRegisters: () => void
   onShowSettings: () => void
   onShowVerbatel: () => void
   onShowSwaps: () => void
@@ -58,11 +57,12 @@ interface AdminToolbarProps {
   uploadStatus: string
   isMobileView: boolean
   onToggleMobileView: () => void
+  currentUser?: any
 }
 
 export function AdminToolbar({
   currentMonth, currentYear, currentMonthName,
-  isPublished, isLocked, onPublish, onLock, onShowAnagrafica, onShowAudit, onShowBulkAbsence, onShowRegisters,
+  isPublished, isLocked, onPublish, onLock, onShowAnagrafica, onShowAudit, onShowBulkAbsence,
   onShowSettings, onShowVerbatel, onShowSwaps, onShowBacheca,
   pendingSwapsCount, pendingRequestsCount,
   onSearch, onRoleFilter, onExportExcel, onExportRepExcel, onExportUfficialiExcel, onExportPayroll, onExportPDF, onExportRepPDF,
@@ -70,7 +70,8 @@ export function AdminToolbar({
   onImportShifts, onGenerateMonth, isGenerating, isResolving, isSendingPec, isSendingAlert, 
   isExportingPDF, isPublishing, isClearing, uploadStatus,
   isMobileView, onToggleMobileView,
-  onShowSalaOperativa, onShowStampaOds, onShowParcoAuto, onShowSezioni
+  onShowSalaOperativa, onShowStampaOds, onShowParcoAuto, onShowSezioni,
+  currentUser
 }: AdminToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [activeImportType, setActiveImportType] = useState<"base" | "rep">("base")
@@ -98,6 +99,10 @@ export function AdminToolbar({
     link.click();
     document.body.removeChild(link);
   }
+
+  const canManageShifts = currentUser?.role === "ADMIN" || currentUser?.isSuperAdmin || currentUser?.canManageShifts;
+  const canManageUsers = currentUser?.role === "ADMIN" || currentUser?.isSuperAdmin || currentUser?.canManageUsers;
+  const canConfigureSystem = currentUser?.role === "ADMIN" || currentUser?.isSuperAdmin || currentUser?.canConfigureSystem;
 
   return (
     <div className="flex flex-col gap-6">
@@ -184,35 +189,40 @@ export function AdminToolbar({
         
         <div className="w-[1px] h-6 bg-slate-700 mx-1"></div>
         
-        <button 
-          onClick={onShowParcoAuto} 
-          className="flex items-center gap-2 text-slate-400 hover:text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
-          title="Gestione Flotta Veicoli"
-        >
-          <Car width={14} height={14} /> Mezzi
-        </button>
-        <button 
-          onClick={onShowSezioni} 
-          className="flex items-center gap-2 text-slate-400 hover:text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
-          title="Configurazione Squadre/Sezioni"
-        >
-          <LayoutGrid width={14} height={14} /> Sezioni
-        </button>
+        {canConfigureSystem && (
+          <button 
+            onClick={onShowParcoAuto} 
+            className="flex items-center gap-2 text-slate-400 hover:text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+            title="Gestione Flotta Veicoli"
+          >
+            <Car width={14} height={14} /> Mezzi
+          </button>
+        )}
+        {canConfigureSystem && (
+          <button 
+            onClick={onShowSezioni} 
+            className="flex items-center gap-2 text-slate-400 hover:text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+            title="Configurazione Squadre/Sezioni"
+          >
+            <LayoutGrid width={14} height={14} /> Sezioni
+          </button>
+        )}
       </div>
 
       {/* SECTION 3: OPERATIONAL TOOLS (The Premium Buttons) */}
       <div className="flex flex-wrap items-center gap-3">
         {/* RESOURCE TOOLS */}
         <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
-          <button onClick={onShowAnagrafica} className="flex items-center gap-2 bg-white text-slate-700 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-200 shadow-sm hover:bg-slate-50 transition-all active:scale-95" title="Anagrafica">
-            <Users width={16} height={16} /> <span className="hidden lg:inline">Anagrafica</span>
-          </button>
-          <button onClick={onShowRegisters} className="flex items-center gap-2 bg-white text-slate-700 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-200 shadow-sm hover:bg-slate-50 transition-all active:scale-95" title="Registri e Saldi">
-            <ClipboardList width={16} height={16} /> <span className="hidden lg:inline">Registri</span>
-          </button>
-          <button onClick={onShowBulkAbsence} className="flex items-center gap-2 bg-white text-slate-700 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-200 shadow-sm hover:bg-slate-50 transition-all active:scale-95" title="Assenze Multiple">
-            <CalendarIcon width={16} height={16} /> <span className="hidden lg:inline">Assenze</span>
-          </button>
+          {canManageUsers && (
+            <button onClick={onShowAnagrafica} className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-800 shadow-sm hover:bg-slate-800 transition-all active:scale-95" title="Gestione Personale e Fascicoli">
+              <Users width={16} height={16} /> <span className="hidden lg:inline">Gestione Personale</span>
+            </button>
+          )}
+          {canManageShifts && (
+            <button onClick={onShowBulkAbsence} className="flex items-center gap-2 bg-white text-slate-700 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-200 shadow-sm hover:bg-slate-50 transition-all active:scale-95" title="Assenze Multiple">
+              <CalendarIcon width={16} height={16} /> <span className="hidden lg:inline">Assenze</span>
+            </button>
+          )}
           <button onClick={onShowAudit} className="flex items-center gap-2 bg-white text-slate-700 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-200 shadow-sm hover:bg-slate-50 transition-all active:scale-95" title="Log Audit">
             <ClipboardList width={16} height={16} /> <span className="hidden lg:inline">Audit</span>
           </button>
@@ -231,27 +241,30 @@ export function AdminToolbar({
         </button>
 
         {/* IMPORT/RESET TOOLS */}
-        <div className="flex bg-slate-100 p-1 rounded-2xl gap-1 items-center">
-          <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
-          
-          {/* Download Template Button */}
-          <button onClick={downloadTemplate} className="flex items-center gap-2 bg-white text-emerald-600 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-emerald-100 shadow-sm hover:bg-emerald-50 transition-all active:scale-95" title="Scarica Modello Excel/CSV per Importazioni">
-            <FileDown width={16} height={16} /> <span className="hidden xl:inline">Modello</span>
-          </button>
-          
-          <button onClick={() => triggerImport("base")} className="flex items-center gap-2 bg-white text-blue-600 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-blue-100 shadow-sm hover:bg-blue-50 transition-all active:scale-95" title="Importa Turni da Excel">
-            <UploadCloud width={16} height={16} /> <span className="hidden xl:inline">Import Turni</span>
-          </button>
-          <button onClick={() => triggerImport("rep")} className="flex items-center gap-2 bg-white text-purple-600 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-purple-100 shadow-sm hover:bg-purple-50 transition-all active:scale-95" title="Importa Reperibilità da Excel">
-            <UploadCloud width={16} height={16} /> <span className="hidden xl:inline">Import REP</span>
-          </button>
-          <div className="w-[1px] h-6 bg-slate-200 mx-1"></div>
-          <button disabled={isClearing} onClick={() => onClear("base")} className="text-[10px] font-black text-rose-500 hover:bg-rose-50 px-3 py-2.5 rounded-xl uppercase tracking-tighter disabled:opacity-50" title="Reset Turni">Reset <span className="hidden sm:inline">Turni</span></button>
-          <button disabled={isClearing} onClick={() => onClear("rep")} className="text-[10px] font-black text-rose-500 hover:bg-rose-50 px-3 py-2.5 rounded-xl uppercase tracking-tighter disabled:opacity-50" title="Reset REP">Reset <span className="hidden sm:inline">REP</span></button>
-        </div>
+        {canManageShifts && (
+          <div className="flex bg-slate-100 p-1 rounded-2xl gap-1 items-center">
+            <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
+            
+            {/* Download Template Button */}
+            <button onClick={downloadTemplate} className="flex items-center gap-2 bg-white text-emerald-600 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-emerald-100 shadow-sm hover:bg-emerald-50 transition-all active:scale-95" title="Scarica Modello Excel/CSV per Importazioni">
+              <FileDown width={16} height={16} /> <span className="hidden xl:inline">Modello</span>
+            </button>
+            
+            <button onClick={() => triggerImport("base")} className="flex items-center gap-2 bg-white text-blue-600 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-blue-100 shadow-sm hover:bg-blue-50 transition-all active:scale-95" title="Importa Turni da Excel">
+              <UploadCloud width={16} height={16} /> <span className="hidden xl:inline">Import Turni</span>
+            </button>
+            <button onClick={() => triggerImport("rep")} className="flex items-center gap-2 bg-white text-purple-600 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-purple-100 shadow-sm hover:bg-purple-50 transition-all active:scale-95" title="Importa Reperibilità da Excel">
+              <UploadCloud width={16} height={16} /> <span className="hidden xl:inline">Import REP</span>
+            </button>
+            <div className="w-[1px] h-6 bg-slate-200 mx-1"></div>
+            <button disabled={isClearing} onClick={() => onClear("base")} className="text-[10px] font-black text-rose-500 hover:bg-rose-50 px-3 py-2.5 rounded-xl uppercase tracking-tighter disabled:opacity-50" title="Reset Turni">Reset <span className="hidden sm:inline">Turni</span></button>
+            <button disabled={isClearing} onClick={() => onClear("rep")} className="text-[10px] font-black text-rose-500 hover:bg-rose-50 px-3 py-2.5 rounded-xl uppercase tracking-tighter disabled:opacity-50" title="Reset REP">Reset <span className="hidden sm:inline">REP</span></button>
+          </div>
+        )}
 
         {/* COMMUNICATION TOOLS (The real power) */}
-        <div className="flex bg-slate-900 p-1 rounded-2xl gap-1">
+        {canConfigureSystem && (
+          <div className="flex bg-slate-900 p-1 rounded-2xl gap-1">
           <button 
             onClick={onShowBacheca} 
             className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all active:scale-95 shadow-md shadow-indigo-500/20"
@@ -276,6 +289,7 @@ export function AdminToolbar({
             <Radio width={16} height={16} /> Chiama Reperibili
           </button>
         </div>
+        )}
 
         {/* AI & SYNC TOOLS */}
         <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
@@ -331,9 +345,11 @@ export function AdminToolbar({
           >
             <Smartphone width={20} height={20} />
           </button>
-          <button onClick={onShowSettings} className="p-3 bg-slate-100 text-slate-700 rounded-2xl hover:bg-slate-200 transition-all active:scale-95 border border-slate-200">
-            <Settings width={20} height={20} />
-          </button>
+          {canConfigureSystem && (
+            <button onClick={onShowSettings} className="p-3 bg-slate-100 text-slate-700 rounded-2xl hover:bg-slate-200 transition-all active:scale-95 border border-slate-200" title="Impostazioni Sistema">
+              <Settings width={20} height={20} />
+            </button>
+          )}
           <button 
             disabled={isPublishing} 
             onClick={onPublish} 

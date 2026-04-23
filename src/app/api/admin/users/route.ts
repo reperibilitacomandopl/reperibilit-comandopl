@@ -72,7 +72,8 @@ export async function PUT(req: Request) {
       defaultServiceTypeId, rotationGroupId, qualifica,
       dataAssunzione, scadenzaPatente, scadenzaPortoArmi, noteInterne,
       dataDiNascita, tipoContratto, defaultPartnerIds, fixedServiceDays,
-      hasL104, l104Assistiti, hasStudyLeave, hasParentalLeave, hasChildSicknessLeave
+      hasL104, l104Assistiti, hasStudyLeave, hasParentalLeave, hasChildSicknessLeave,
+      canConfigureSystem, canManageShifts, canManageUsers, canVerifyClockIns, isActive
     } = await req.json()
     
     if (!userId) return NextResponse.json({ error: "Missing userId" }, { status: 400 })
@@ -108,7 +109,12 @@ export async function PUT(req: Request) {
       l104Assistiti: l104Assistiti === undefined ? undefined : parseInt(l104Assistiti, 10),
       hasStudyLeave: hasStudyLeave === undefined ? undefined : hasStudyLeave,
       hasParentalLeave: hasParentalLeave === undefined ? undefined : hasParentalLeave,
-      hasChildSicknessLeave: hasChildSicknessLeave === undefined ? undefined : hasChildSicknessLeave
+      hasChildSicknessLeave: hasChildSicknessLeave === undefined ? undefined : hasChildSicknessLeave,
+      canConfigureSystem: canConfigureSystem === undefined ? undefined : canConfigureSystem,
+      canManageShifts: canManageShifts === undefined ? undefined : canManageShifts,
+      canManageUsers: canManageUsers === undefined ? undefined : canManageUsers,
+      canVerifyClockIns: canVerifyClockIns === undefined ? undefined : canVerifyClockIns,
+      isActive: isActive === undefined ? undefined : isActive
     }
 
     if (qualifica !== undefined) {
@@ -193,7 +199,8 @@ export async function POST(req: Request) {
       matricola, name, password, isUfficiale, squadra, massimale,
       qualifica, dataAssunzione, scadenzaPatente, scadenzaPortoArmi,
       dataDiNascita, tipoContratto, defaultPartnerIds, fixedServiceDays,
-      hasL104, l104Assistiti, hasStudyLeave, hasParentalLeave, hasChildSicknessLeave
+      hasL104, l104Assistiti, hasStudyLeave, hasParentalLeave, hasChildSicknessLeave,
+      canConfigureSystem, canManageShifts, canManageUsers, canVerifyClockIns
     } = await req.json()
     if (!matricola || !name || !password) return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
 
@@ -243,7 +250,11 @@ export async function POST(req: Request) {
         l104Assistiti: l104Assistiti ? parseInt(l104Assistiti, 10) : 1,
         hasStudyLeave: hasStudyLeave || false,
         hasParentalLeave: hasParentalLeave || false,
-        hasChildSicknessLeave: hasChildSicknessLeave || false
+        hasChildSicknessLeave: hasChildSicknessLeave || false,
+        canConfigureSystem: canConfigureSystem || false,
+        canManageShifts: canManageShifts || false,
+        canManageUsers: canManageUsers || false,
+        canVerifyClockIns: canVerifyClockIns || false
       }
     })
 

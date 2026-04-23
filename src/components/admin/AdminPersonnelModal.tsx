@@ -1,5 +1,8 @@
 "use client"
 import { AdminPersonnelSlideOver } from "./AdminPersonnelSlideOver"
+import { AdminDossierCartellino } from "./AdminDossierCartellino"
+import { AdminDossierSaldi } from "./AdminDossierSaldi"
+import { AdminDossierRichieste } from "./AdminDossierRichieste"
 
 import React, { useState } from "react"
 import { 
@@ -33,7 +36,7 @@ export function AdminPersonnelModal({ isOpen, onClose }: AdminPersonnelModalProp
   const [anagQualificaFilter, setAnagQualificaFilter] = useState("ALL")
   const [editingAgent, setEditingAgent] = useState<any>(null)
   const [selectedAgentForDetails, setSelectedAgentForDetails] = useState<any>(null)
-  const [activeDetailTab, setActiveDetailTab] = useState<"ANAGRAFICA" | "SALDI" | "STORICO" | "NOTE">("ANAGRAFICA")
+  const [activeDetailTab, setActiveDetailTab] = useState<"PROFILO" | "CARTELLINO" | "SALDI" | "RICHIESTE" | "STORICO" | "NOTE">("PROFILO")
   const [agentBalances, setAgentBalances] = useState<any>(null)
   const [isLoadingBalances, setIsLoadingBalances] = useState(false)
   const [viewMode, setViewMode] = useState<"TABLE" | "CARDS">("TABLE")
@@ -61,7 +64,7 @@ export function AdminPersonnelModal({ isOpen, onClose }: AdminPersonnelModalProp
 
   const handleOpenDetails = async (agent: any) => {
     setSelectedAgentForDetails(agent)
-    setActiveDetailTab("ANAGRAFICA")
+    setActiveDetailTab("PROFILO")
     setIsLoadingBalances(true)
     const bals = await fetchAgentBalances(agent.id)
     setAgentBalances(bals)
@@ -291,13 +294,13 @@ export function AdminPersonnelModal({ isOpen, onClose }: AdminPersonnelModalProp
                  
                  {/* Tabs */}
                  <div className="flex gap-2 mt-8 overflow-x-auto no-scrollbar">
-                    {['ANAGRAFICA', 'SALDI', 'STORICO', 'NOTE'].map(tab => (
+                    {['PROFILO', 'CARTELLINO', 'SALDI', 'RICHIESTE', 'STORICO', 'NOTE'].map(tab => (
                        <button 
                          key={tab} 
                          onClick={() => setActiveDetailTab(tab as any)}
                          className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeDetailTab === tab ? 'bg-white text-slate-900 shadow-lg' : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60'}`}
                        >
-                         {tab === 'ANAGRAFICA' ? '📋 Profilo' : tab === 'SALDI' ? '📊 Saldi' : tab === 'STORICO' ? '🕒 Storico' : '📝 Note'}
+                         {tab === 'PROFILO' ? '📋 Profilo' : tab === 'CARTELLINO' ? '⏱️ Cartellino' : tab === 'SALDI' ? '📊 Saldi' : tab === 'RICHIESTE' ? '✉️ Richieste' : tab === 'STORICO' ? '🕒 Storico' : '📝 Note'}
                        </button>
                     ))}
                  </div>
@@ -305,7 +308,7 @@ export function AdminPersonnelModal({ isOpen, onClose }: AdminPersonnelModalProp
               
               {/* Content */}
               <div className="flex-1 overflow-y-auto p-8 bg-slate-50 custom-scrollbar">
-                 {activeDetailTab === 'ANAGRAFICA' && (
+                 {activeDetailTab === 'PROFILO' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-5"><Award width={14} height={14} className="text-blue-500" /> Profilo</h3>
@@ -401,36 +404,25 @@ export function AdminPersonnelModal({ isOpen, onClose }: AdminPersonnelModalProp
                        </button>
                     </div>
                  )}
+                 {activeDetailTab === 'CARTELLINO' && (
+                    <AdminDossierCartellino userId={selectedAgentForDetails.id} currentYear={currentYear} />
+                 )}
+                 {activeDetailTab === 'RICHIESTE' && (
+                    <AdminDossierRichieste userId={selectedAgentForDetails.id} currentYear={currentYear} />
+                 )}
                  {activeDetailTab === 'SALDI' && (
-                    <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-slate-100">
-                       {isLoadingBalances ? (
-                         <div className="p-16 text-center">
-                           <RefreshCw width={24} height={24} className="animate-spin text-indigo-500 mx-auto mb-3" />
-                           <p className="text-xs font-black uppercase text-slate-400">Caricamento saldi...</p>
-                         </div>
-                       ) : agentBalances?.balance?.details?.length > 0 ? (
-                          <table className="w-full text-left">
-                             <thead className="bg-slate-50 border-b border-slate-100">
-                                <tr>
-                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Causale</th>
-                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 text-center">Iniziali</th>
-                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 text-center">Utilizzati</th>
-                                   <th className="px-6 py-4 text-[10px] font-black uppercase text-indigo-600 text-center bg-indigo-50/50">Residui</th>
-                                </tr>
-                             </thead>
-                             <tbody className="divide-y divide-slate-50">
-                                {agentBalances.balance.details.map((d: any) => (
-                                   <tr key={d.code} className="hover:bg-slate-50/50 transition-colors">
-                                      <td className="px-6 py-4 font-black text-slate-800 text-sm">{d.label || d.code}</td>
-                                      <td className="px-6 py-4 font-bold text-slate-500 text-sm text-center">{d.initialValue}</td>
-                                      <td className="px-6 py-4 font-bold text-rose-500 text-sm text-center">−{d.used || 0}</td>
-                                      <td className="px-6 py-4 font-black text-indigo-700 text-lg text-center bg-indigo-50/30">{d.residue}</td>
-                                   </tr>
-                                ))}
-                             </tbody>
-                          </table>
-                       ) : <p className="p-16 text-center font-black text-slate-300">Nessun dato saldo per {currentYear}</p>}
-                    </div>
+                    <AdminDossierSaldi 
+                      userId={selectedAgentForDetails.id} 
+                      agent={selectedAgentForDetails}
+                      balancesData={agentBalances}
+                      currentYear={currentYear}
+                      onRefresh={async () => {
+                         setIsLoadingBalances(true)
+                         const bals = await fetchAgentBalances(selectedAgentForDetails.id)
+                         setAgentBalances(bals)
+                         setIsLoadingBalances(false)
+                      }}
+                    />
                  )}
                  {activeDetailTab === 'NOTE' && (
                     <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm min-h-[200px]">

@@ -21,7 +21,7 @@ const RANKS = [
 ];
 
 export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave, onDelete, rotationGroups, categories, activeAgentsForPartners }: AdminPersonnelSlideOverProps) {
-  const [editTab, setEditTab] = useState<"HR" | "TURNO" | "SEZIONE" | "SERVIZIO" | "DIRITTI">("HR")
+  const [editTab, setEditTab] = useState<"HR" | "TURNO" | "SEZIONE" | "SERVIZIO" | "DIRITTI" | "PERMESSI">("HR")
   const [tempName, setTempName] = useState("")
   const [tempMatricola, setTempMatricola] = useState("")
   const [tempSquadra, setTempSquadra] = useState("")
@@ -46,6 +46,14 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
   const [tempHasStudyLeave, setTempHasStudyLeave] = useState(false)
   const [tempHasParentalLeave, setTempHasParentalLeave] = useState(false)
   const [tempHasChildSicknessLeave, setTempHasChildSicknessLeave] = useState(false)
+  
+  // RBAC Flags
+  const [tempCanConfigureSystem, setTempCanConfigureSystem] = useState(false)
+  const [tempCanManageShifts, setTempCanManageShifts] = useState(false)
+  const [tempCanManageUsers, setTempCanManageUsers] = useState(false)
+  const [tempCanVerifyClockIns, setTempCanVerifyClockIns] = useState(false)
+  const [tempIsActive, setTempIsActive] = useState(true)
+
   const [newPass, setNewPass] = useState("")
   const [isUpdating, setIsUpdating] = useState(false)
 
@@ -75,6 +83,13 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
       setTempHasStudyLeave(editingAgent.hasStudyLeave || false)
       setTempHasParentalLeave(editingAgent.hasParentalLeave || false)
       setTempHasChildSicknessLeave(editingAgent.hasChildSicknessLeave || false)
+      
+      setTempCanConfigureSystem(editingAgent.canConfigureSystem || false)
+      setTempCanManageShifts(editingAgent.canManageShifts || false)
+      setTempCanManageUsers(editingAgent.canManageUsers || false)
+      setTempCanVerifyClockIns(editingAgent.canVerifyClockIns || false)
+      setTempIsActive(editingAgent.isActive !== false)
+
       setNewPass("")
       setEditTab("HR")
     }
@@ -109,6 +124,11 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
       hasStudyLeave: tempHasStudyLeave,
       hasParentalLeave: tempHasParentalLeave,
       hasChildSicknessLeave: tempHasChildSicknessLeave,
+      canConfigureSystem: tempCanConfigureSystem,
+      canManageShifts: tempCanManageShifts,
+      canManageUsers: tempCanManageUsers,
+      canVerifyClockIns: tempCanVerifyClockIns,
+      isActive: tempIsActive,
       newPassword: newPass || undefined, // Used internally to identify if a reset is requested
       action: newPass ? "resetPassword" : undefined
     }
@@ -140,7 +160,8 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
                 { id: "TURNO", icon: Clock, label: "Ciclo Turni" },
                 { id: "SEZIONE", icon: Briefcase, label: "Sezione" },
                 { id: "SERVIZIO", icon: Shield, label: "Servizio & Pattuglia" },
-                { id: "DIRITTI", icon: ShieldCheck, label: "Diritti" }
+                { id: "DIRITTI", icon: ShieldCheck, label: "Diritti" },
+                { id: "PERMESSI", icon: Shield, label: "Permessi" }
               ].map(tab => (
                  <button 
                    key={tab.id}
@@ -412,9 +433,86 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
                      </button>
                   </div>
                </div>
-  </div>
-           )}
-        </div>
+   </div>
+            )}
+
+            {/* SCHEDA 5: PERMESSI */}
+            {editTab === "PERMESSI" && (
+              <div className="space-y-6 animate-in fade-in duration-300">
+                <div className="bg-slate-100 p-5 rounded-2xl border border-slate-200">
+                   <h4 className="text-sm font-black text-slate-800 uppercase flex items-center gap-2 mb-2"><ShieldCheck width={16} height={16} className="text-slate-500" /> Controllo Accessi</h4>
+                   <p className="text-xs text-slate-500 font-medium mb-6">Attiva i permessi granulari per delegare specifiche funzioni amministrative a questo utente, senza concedere privilegi globali.</p>
+                   
+                   <div className="space-y-3">
+                      <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+                         <div>
+                            <p className="text-xs font-black text-slate-800 uppercase tracking-widest">Configurazione Sistema</p>
+                            <p className="text-[10px] text-slate-400 font-bold leading-tight mt-1">Può modificare impostazioni globali e categorie servizi.</p>
+                         </div>
+                         <button 
+                           onClick={() => setTempCanConfigureSystem(!tempCanConfigureSystem)}
+                           className={`w-12 h-6 shrink-0 rounded-full transition-all relative ${tempCanConfigureSystem ? 'bg-indigo-600 shadow-inner' : 'bg-slate-200'}`}
+                         >
+                            <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all ${tempCanConfigureSystem ? 'translate-x-6' : ''}`} />
+                         </button>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+                         <div>
+                            <p className="text-xs font-black text-slate-800 uppercase tracking-widest">Gestione Turni</p>
+                            <p className="text-[10px] text-slate-400 font-bold leading-tight mt-1">Può creare, modificare ed eliminare i turni di servizio.</p>
+                         </div>
+                         <button 
+                           onClick={() => setTempCanManageShifts(!tempCanManageShifts)}
+                           className={`w-12 h-6 shrink-0 rounded-full transition-all relative ${tempCanManageShifts ? 'bg-emerald-600 shadow-inner' : 'bg-slate-200'}`}
+                         >
+                            <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all ${tempCanManageShifts ? 'translate-x-6' : ''}`} />
+                         </button>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+                         <div>
+                            <p className="text-xs font-black text-slate-800 uppercase tracking-widest">Gestione Personale</p>
+                            <p className="text-[10px] text-slate-400 font-bold leading-tight mt-1">Può aggiungere/modificare agenti e i loro permessi (HR).</p>
+                         </div>
+                         <button 
+                           onClick={() => setTempCanManageUsers(!tempCanManageUsers)}
+                           className={`w-12 h-6 shrink-0 rounded-full transition-all relative ${tempCanManageUsers ? 'bg-amber-500 shadow-inner' : 'bg-slate-200'}`}
+                         >
+                            <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all ${tempCanManageUsers ? 'translate-x-6' : ''}`} />
+                         </button>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+                         <div>
+                            <p className="text-xs font-black text-slate-800 uppercase tracking-widest">Verifica Timbrature</p>
+                            <p className="text-[10px] text-slate-400 font-bold leading-tight mt-1">Può confermare/modificare gli orari del cartellino.</p>
+                         </div>
+                         <button 
+                           onClick={() => setTempCanVerifyClockIns(!tempCanVerifyClockIns)}
+                           className={`w-12 h-6 shrink-0 rounded-full transition-all relative ${tempCanVerifyClockIns ? 'bg-blue-600 shadow-inner' : 'bg-slate-200'}`}
+                         >
+                            <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all ${tempCanVerifyClockIns ? 'translate-x-6' : ''}`} />
+                         </button>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="bg-rose-50 p-5 rounded-2xl border border-rose-100 mt-6">
+                   <h4 className="text-sm font-black text-rose-800 uppercase flex items-center gap-2 mb-2">Stato Account</h4>
+                   <div className="flex items-center justify-between">
+                         <p className="text-[10px] text-rose-600/80 font-bold leading-tight max-w-[250px]">Disattivare un account impedisce l'accesso e l'assegnazione nei turni, ma conserva lo storico (Soft Delete).</p>
+                         <button 
+                           onClick={() => setTempIsActive(!tempIsActive)}
+                           className={`w-12 h-6 shrink-0 rounded-full transition-all relative ${tempIsActive ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                         >
+                            <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all ${tempIsActive ? 'translate-x-6' : ''}`} />
+                         </button>
+                   </div>
+                </div>
+              </div>
+            )}
+         </div>
 
         {/* Actions */}
         <div className="p-4 border-t border-slate-200 bg-white flex gap-3 shrink-0">

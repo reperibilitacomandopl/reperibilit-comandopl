@@ -311,6 +311,8 @@ model AuditLog {
   targetId   String?
   targetName String?
   details    String
+  ipAddress  String?
+  userAgent  String?
   createdAt  DateTime @default(now())
   tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
