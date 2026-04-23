@@ -494,14 +494,32 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
                   {/* DETTAGLI EMERGENZA SOS AUDIO */}
                   {detailData.type === 'ALERT' && (
                     <div className="space-y-4">
-                       {detailData.audio ? (
+                       {detailData.audio && detailData.audio.length > 100 ? (
                           <div className="p-4 bg-rose-500/10 rounded-2xl border border-rose-500/20">
-                             <p className="text-[9px] font-black uppercase text-rose-400 mb-2">🔴 Messaggio Vocale Operatore</p>
-                             <audio controls src={detailData.audio} className="w-full h-10 rounded-lg outline-none" />
+                             <div className="flex justify-between items-center mb-3">
+                                <p className="text-[9px] font-black uppercase text-rose-400">🔴 Messaggio Vocale Operatore</p>
+                                <a 
+                                  href={detailData.audio} 
+                                  download={`SOS_Audio_${new Date().getTime()}.webm`}
+                                  className="text-[9px] font-black uppercase text-rose-400 hover:text-rose-300 underline"
+                                >
+                                  Scarica Audio
+                                </a>
+                             </div>
+                             <audio 
+                               key={detailData.audio.substring(0, 50)}
+                               controls 
+                               className="w-full h-12 rounded-lg outline-none"
+                             >
+                                <source src={detailData.audio} type="audio/webm" />
+                                <source src={detailData.audio} type="audio/mp4" />
+                                <source src={detailData.audio} type="audio/ogg" />
+                                Il tuo browser non supporta il player audio.
+                             </audio>
                           </div>
                        ) : (
-                          <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                             <p className="text-[9px] font-black uppercase text-slate-500 text-center">Nessun file audio allegato all&apos;emergenza</p>
+                          <div className="p-8 text-center bg-slate-950/20 rounded-2xl border border-dashed border-white/5">
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nessun audio registrato</p>
                           </div>
                        )}
                        {detailData.lat && detailData.lng && (
