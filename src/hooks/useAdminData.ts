@@ -4,6 +4,7 @@ import React, { useState, useMemo, useCallback, useEffect } from "react"
 import toast from "react-hot-toast"
 import { useRouter } from "next/navigation"
 import { isHoliday } from "@/utils/holidays"
+import { AGENDA_CATEGORIES } from "@/utils/agenda-codes"
 
 export interface DashboardAgent {
   id: string;
@@ -270,7 +271,7 @@ export function useAdminData(
         // Cerca il codice agenda corrispondente allo shortCode
         let agendaCode = finalValue
         for (const cat of AGENDA_CATEGORIES) {
-          const item = cat.items.find(i => i.shortCode === finalValue)
+          const item = cat.items.find((i: { shortCode: string; code: string }) => i.shortCode === finalValue)
           if (item) { agendaCode = item.code; break }
         }
 
