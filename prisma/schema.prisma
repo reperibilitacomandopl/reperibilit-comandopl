@@ -88,6 +88,10 @@ model User {
   canManageUsers           Boolean   @default(false)
   canVerifyClockIns        Boolean   @default(false)
   isActive                 Boolean   @default(true)
+  gpsConsent               Boolean   @default(false)
+  privacyConsent           Boolean   @default(false)
+  gpsAcceptedAt            DateTime?
+  privacyAcceptedAt        DateTime?
 
   // GPS Real-time (solo durante il servizio)
   lastLat                  Float?

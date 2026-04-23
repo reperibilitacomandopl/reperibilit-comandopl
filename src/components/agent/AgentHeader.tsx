@@ -95,16 +95,18 @@ export default function AgentHeader({
                {/* Clocking Controls */}
                <div className="flex items-center gap-2 p-1.5 bg-white/5 rounded-[2.5rem] border border-white/10 backdrop-blur-md">
                   <button
-                    disabled={clockLoading || isClockedIn === 'IN'}
+                    disabled={clockLoading || isClockedIn === 'IN' || !currentUser?.gpsConsent}
                     onClick={() => handleClockAction('IN')}
                     className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-[2rem] font-black text-[11px] uppercase tracking-widest transition-all ${
                       isClockedIn === 'IN'
                         ? 'bg-white/5 text-white/20 cursor-not-allowed opacity-50'
-                        : 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-xl shadow-emerald-900/50 active:scale-95'
+                        : !currentUser?.gpsConsent
+                          ? 'bg-amber-500/20 text-amber-500 cursor-not-allowed'
+                          : 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-xl shadow-emerald-900/50 active:scale-95'
                     }`}
                   >
                     {clockLoading && isClockedIn !== 'OUT' ? <RefreshCw size={16} className="animate-spin" /> : <MapPin size={16} />}
-                    Entra
+                    {!currentUser?.gpsConsent ? 'Consenso GPS' : 'Entra'}
                   </button>
                   <button
                     disabled={clockLoading || isClockedIn !== 'IN'}

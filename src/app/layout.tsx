@@ -41,6 +41,8 @@ export const metadata: Metadata = {
 };
 
 import PWAListener from "@/components/PWAListener";
+import SessionWrapper from "@/components/SessionWrapper";
+import PrivacyConsentModal from "@/components/PrivacyConsentModal";
 
 export default function RootLayout({
   children,
@@ -53,9 +55,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {children}
-        <Toaster position="bottom-right" toastOptions={{ className: 'text-sm font-semibold rounded-xl shadow-lg border border-slate-100', duration: 4000 }} />
-        <PWAListener />
+        <SessionWrapper>
+          {children}
+          <PrivacyConsentModal />
+          <Toaster position="bottom-right" toastOptions={{ className: 'text-sm font-semibold rounded-xl shadow-lg border border-slate-100', duration: 4000 }} />
+          <PWAListener />
+        </SessionWrapper>
       </body>
     </html>
   );
