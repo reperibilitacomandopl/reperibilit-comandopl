@@ -494,23 +494,23 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
                   {/* DETTAGLI EMERGENZA SOS AUDIO */}
                   {detailData.type === 'ALERT' && (
                     <div className="space-y-4">
-                       {detailData.audio && detailData.audio.length > 100 ? (
+                       {detailData.audio && detailData.audio.length > 100 && selectedNotification ? (
                           <div className="p-4 bg-rose-500/10 rounded-2xl border border-rose-500/20">
                              <div className="flex justify-between items-center mb-3">
                                 <p className="text-[9px] font-black uppercase text-rose-400">🔴 Messaggio Vocale Operatore</p>
                                 <a 
-                                  href={detailData.audio} 
-                                  download={`SOS_Audio_${new Date().getTime()}.webm`}
+                                  href={`/api/admin/alert-audio?notificationId=${selectedNotification.id}`}
+                                  download={`SOS_Audio_${selectedNotification.id}.webm`}
                                   className="text-[9px] font-black uppercase text-rose-400 hover:text-rose-300 underline"
                                 >
                                   Scarica Audio
                                 </a>
                              </div>
                              <audio 
-                               key={detailData.alertId || 'sos-audio'}
+                               key={selectedNotification.id}
                                controls 
                                preload="auto"
-                               src={detailData.audio}
+                               src={`/api/admin/alert-audio?notificationId=${selectedNotification.id}`}
                                className="w-full h-12 rounded-lg outline-none"
                              />
                           </div>
