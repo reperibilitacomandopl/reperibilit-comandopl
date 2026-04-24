@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Settings, Mail, X, Save, Eye, EyeOff, AlertCircle, Loader2, BarChart3, Hash } from "lucide-react"
+import { Settings, Mail, X, Save, Eye, EyeOff, AlertCircle, Loader2, BarChart3, Hash, Wand2 } from "lucide-react"
 import StatisticsDashboard from "./StatisticsDashboard"
 import AdminInitialBalances from "./AdminInitialBalances"
 import ServicesSettings from "./ServicesSettings"
+import RuleEngineTab from "./admin/RuleEngineTab"
 import HelpTooltip from "./ui/HelpTooltip"
 
 type Agent = {
@@ -27,7 +28,7 @@ type SettingsData = {
   bpStaccoMinTurno2: number;
 }
 
-export type TabType = "algorithm" | "pec" | "stats" | "balances" | "services"
+export type TabType = "algorithm" | "pec" | "stats" | "balances" | "services" | "rules"
 
 
 type PecConfig = {
@@ -158,6 +159,7 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
           <div className="flex gap-2 bg-slate-50 p-1.5 rounded-[1.2rem] border border-slate-100">
             {[
               { id: "algorithm", label: "Algoritmo", icon: Settings },
+              { id: "rules", label: "Motore Regole", icon: Wand2 },
               { id: "pec", label: "Email / PEC", icon: Mail },
               { id: "services", label: "Servizi", icon: Settings },
               { id: "stats", label: "Analisi Dati", icon: BarChart3 },
@@ -456,6 +458,11 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
               {/* TAB: SERVICES */}
               {activeTab === "services" && (
                 <ServicesSettings />
+              )}
+
+              {/* TAB: RULES ENGINE */}
+              {activeTab === "rules" && (
+                <RuleEngineTab />
               )}
             </>
           )}

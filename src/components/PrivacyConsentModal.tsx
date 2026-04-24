@@ -12,8 +12,11 @@ export default function PrivacyConsentModal() {
 
   useEffect(() => {
     if (session?.user) {
-      const needsPrivacy = !session.user.privacyAcceptedAt
-      const needsGps = !session.user.gpsAcceptedAt
+      const localPrivacy = localStorage.getItem("privacy_accepted")
+      const localGps = localStorage.getItem("gps_accepted")
+      
+      const needsPrivacy = !session.user.privacyAcceptedAt && !localPrivacy
+      const needsGps = !session.user.gpsAcceptedAt && !localGps
       
       if (needsPrivacy || needsGps) {
         setIsOpen(true)
@@ -36,15 +39,18 @@ export default function PrivacyConsentModal() {
       })
       if (res.ok) {
         const data = await res.json()
-        if (session?.user.gpsAcceptedAt) {
-          setIsOpen(false)
-        } else {
-          setStep(2)
-        }
         await update({ 
           privacyConsent: data.privacyConsent,
           privacyAcceptedAt: data.privacyAcceptedAt
         })
+      }
+      
+      // Fallback: permetti sempre di procedere nella UI per non bloccare l'utente
+      localStorage.setItem("privacy_accepted", "true")
+      if (session?.user.gpsAcceptedAt || localStorage.getItem("gps_accepted")) {
+        setIsOpen(false)
+      } else {
+        setStep(2)
       }
     } catch (e) {
       console.error(e)
@@ -67,6 +73,7 @@ export default function PrivacyConsentModal() {
         gpsConsent: data.gpsConsent,
         gpsAcceptedAt: data.gpsAcceptedAt
       })
+      localStorage.setItem("gps_accepted", "true")
     } catch (e) {
       console.error(e)
     } finally {
@@ -90,6 +97,7 @@ export default function PrivacyConsentModal() {
         gpsConsent: data.gpsConsent,
         gpsAcceptedAt: data.gpsAcceptedAt
       })
+      localStorage.setItem("gps_accepted", "true")
     } catch (e) {
       console.error(e)
     } finally {

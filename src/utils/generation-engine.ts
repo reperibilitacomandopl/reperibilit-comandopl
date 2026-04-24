@@ -19,6 +19,7 @@ export interface GenerationOptions {
   usaProporzionale: boolean
   minUfficiali: number
   checkRestHours?: boolean
+  activeRules?: any[]
 }
 
 export interface GenerationResult {
@@ -46,9 +47,29 @@ export function generateMonthShifts(
   existingShifts: any[], // Shifts for the month + some buffer
   options: GenerationOptions
 ): GenerationResult {
-  const { year, month: month1, repPerAgente, repPerUfficiale, minSpacing, allowConsecutive, usaProporzionale, minUfficiali, checkRestHours = false } = options
+  const { year, month: month1, repPerAgente, repPerUfficiale, minSpacing: defaultSpacing, allowConsecutive, usaProporzionale, minUfficiali, checkRestHours = false, activeRules = [] } = options
   const month0 = month1 - 1 // JS internal
   const daysInMonth = getDaysInMonth(month1, year)
+
+  // === PARSE DYNAMIC RULES ===
+  const forbiddenBaseShifts = new Set<string>();
+  const scoreModifiers: { baseShift: string, score: number, target: string }[] = [];
+  let minSpacing = defaultSpacing;
+
+  activeRules.forEach(rule => {
+    try {
+      const cfg = JSON.parse(rule.config);
+      if (rule.type === 'DISTANCE' && cfg.minDays !== undefined) {
+        minSpacing = cfg.minDays;
+      }
+      if (rule.type === 'FORBIDDEN_BASE_SHIFT' && cfg.baseShift) {
+        forbiddenBaseShifts.add(cfg.baseShift.toUpperCase());
+      }
+      if (rule.type === 'SCORE_MODIFIER' && cfg.baseShift && cfg.score !== undefined) {
+        scoreModifiers.push({ baseShift: cfg.baseShift.toUpperCase(), score: cfg.score, target: rule.targetRole });
+      }
+    } catch(e) {}
+  });
 
   // === SETUP BASE DATA ===
   const baseShifts: Record<string, Record<string, string>> = {}
@@ -80,6 +101,9 @@ export function generateMonthShifts(
     // Regola 1: Assenza dell'agente (INFR, FERIE, RIPOSO, MALATTIA, BR, ecc.)
     // Se l'agente ha un turno normale (M7, P14) anche su un festivo, è OK
     if (isAssenza(shift)) return true;
+    
+    // Regola Dinamica: Divieti Assoluti (FORBIDDEN_BASE_SHIFT)
+    if (forbiddenBaseShifts.has(shift)) return true;
     
     // Regola 2: Se DOMANI l'agente ha un'assenza → no rep oggi (tutela stacco)
     const nextDate = new Date(Date.UTC(year, month0, d + 1))
@@ -332,6 +356,18 @@ export function generateMonthShifts(
             if (!isFes1 && isFes2) return -1;
             if (isFes1 && !isFes2) return 1;
           }
+
+          // 1.5 Dynamic Score Modifiers
+          const shift1 = (baseShifts[a.id]?.[`${d1}-${month0}`] || "").toUpperCase().trim();
+          const shift2 = (baseShifts[a.id]?.[`${d2}-${month0}`] || "").toUpperCase().trim();
+          let score1 = 0; let score2 = 0;
+          scoreModifiers.forEach(sm => {
+             if (sm.target === 'ALL' || (sm.target === 'AGENT' && !a.isUfficiale) || (sm.target === 'OFFICER' && a.isUfficiale)) {
+               if (shift1 === sm.baseShift) score1 += sm.score;
+               if (shift2 === sm.baseShift) score2 += sm.score;
+             }
+          });
+          if (score1 !== score2) return score1 - score2;
 
           // 2. Bilancia il carico dei giorni (scegli il giorno meno sguarnito tra quelli validi)
           return dayAssigned[d1] - dayAssigned[d2];

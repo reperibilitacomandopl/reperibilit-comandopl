@@ -47,6 +47,7 @@ model Tenant {
   shiftSwapRequests  ShiftSwapRequest[]
   users              User[]
   vehicles           Vehicle[]
+  ShiftRule          ShiftRule[]
 }
 
 model User {
@@ -96,9 +97,9 @@ model User {
   twoFactorEnabled         Boolean   @default(false)
 
   // GPS Real-time (solo durante il servizio)
-  lastLat                  Float?
-  lastLng                  Float?
-  lastSeenAt               DateTime?
+  lastLat    Float?
+  lastLng    Float?
+  lastSeenAt DateTime?
 
   // Diritti & Agevolazioni
   hasL104                Boolean            @default(false)
@@ -519,4 +520,19 @@ model AnnouncementRead {
   announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
 
   @@unique([announcementId, userId], name: "announcementId_userId")
+}
+
+model ShiftRule {
+  id         String   @id @default(uuid())
+  tenantId   String?
+  name       String
+  type       String // e.g. 'LIMIT', 'DISTANCE', 'SCORE_MODIFIER', 'FORBIDDEN_BASE_SHIFT'
+  targetRole String   @default("ALL") // 'AGENT', 'OFFICER', 'ALL'
+  config     String // JSON string containing specific rule parameters
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, isActive])
 }

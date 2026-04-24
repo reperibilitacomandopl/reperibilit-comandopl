@@ -110,10 +110,10 @@ export function AdminToolbar({
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-200">
         <div className="shrink-0">
           <h2 className="text-3xl font-black text-slate-900 tracking-tighter uppercase leading-none">Cabina di Regia</h2>
-          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-2 flex items-center gap-2">
+          <div className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-2 flex items-center gap-2">
              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
              Dashboard Gestionale Avanzata
-          </p>
+          </div>
         </div>
 
         {/* MONTH NAVIGATOR (Recuperato e stilizzato) */}

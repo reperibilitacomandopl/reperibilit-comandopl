@@ -51,6 +51,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Nessun agente trovato" }, { status: 400 })
     }
 
+    // Load active rules
+    const activeRules = await prisma.shiftRule.findMany({
+      where: { tenantId, isActive: true }
+    })
+
     // Load shifts for current month + buffer for spacing/eve rules
     const existingShifts = await prisma.shift.findMany({
       where: {
@@ -138,7 +143,8 @@ export async function POST(req: Request) {
         allowConsecutive: settings?.permettiConsecutivi ?? false,
         usaProporzionale: settings?.usaProporzionale ?? true,
         minUfficiali: settings?.minUfficiali ?? 1,
-        checkRestHours: true // Per ora impostato su true come da discussione
+        checkRestHours: true, // Per ora impostato su true come da discussione
+        activeRules
       }
     )
 
