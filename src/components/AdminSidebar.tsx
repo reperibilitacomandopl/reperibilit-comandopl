@@ -210,14 +210,18 @@ export default function AdminSidebar({
         {NAV_SECTIONS.map((section) => {
           const filteredItems = section.items.filter(item => {
             if (userRole === "ADMIN") return true;
+            
+            if (item.label === "Overview & KPI") return true;
+            if (item.label === "Pianificazione Mensile") return true;
+            
             if (section.title === "Centro Operativo") return canManageShifts;
-            if (section.title === "Risorse Umane") {
-              if (item.label === "Timbrature GPS") return canVerifyClockIns;
-              return canManageUsers;
-            }
+            
+            if (item.label === "Timbrature GPS") return canVerifyClockIns;
+            if (section.title === "Risorse Umane") return canManageUsers;
+            
             if (section.title === "Logistica & Mezzi") return canConfigureSystem;
             if (section.title === "Amministrazione") return canConfigureSystem;
-            if (item.label === "Overview & KPI") return true;
+            
             return false;
           });
 

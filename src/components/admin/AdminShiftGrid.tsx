@@ -15,6 +15,7 @@ interface AdminShiftGridProps {
   onSaveCell: (agentId: string, day: number, value: string, hours?: number) => Promise<void>
   sortConfig?: { field: string, direction: 'asc' | 'desc' }
   onSort?: (config: { field: string, direction: 'asc' | 'desc' }) => void
+  readOnly?: boolean
 }
 
 /* ─── MAPPA COLORI PER CODICE ─── */
@@ -122,7 +123,7 @@ const CAT_THEME: Record<string, { border: string; bg: string; text: string; btnB
 export default function AdminShiftGrid({
   agents, shifts, isMobileView, dayInfo,
   onToggleUfficiale, onRecalcAgent, onSaveCell,
-  sortConfig, onSort
+  sortConfig, onSort, readOnly
 }: AdminShiftGridProps) {
   const { currentYear, currentMonth, settings, allAgents } = useAdminState()
   const [editingCell, setEditingCell] = useState<any>(null)
@@ -199,7 +200,7 @@ export default function AdminShiftGrid({
         <PlanningMobileView
           agents={agents} shifts={shifts} dayInfo={dayInfo}
           currentYear={currentYear} currentMonth={currentMonth}
-          isAdmin={true} onEditCell={openCellEditor}
+          isAdmin={true} onEditCell={!readOnly ? openCellEditor : undefined}
         />
       </div>
     )
@@ -363,8 +364,8 @@ export default function AdminShiftGrid({
 
                     return (
                       <td key={di.isNextMonth ? `next-${di.day}` : `day-${agent.id}-${di.day}`}
-                        className={`px-0 py-0.5 text-center border-r border-slate-100/80 ${style.bg} ${di.isNextMonth ? "opacity-30 grayscale" : "cursor-pointer hover:brightness-95"}`}
-                        onClick={() => !di.isNextMonth && openCellEditor(agent.id, agent.name, di.day, rType || sType)}>
+                        className={`px-0 py-0.5 text-center border-r border-slate-100/80 ${style.bg} ${di.isNextMonth ? "opacity-30 grayscale" : (readOnly ? "cursor-default" : "cursor-pointer hover:brightness-95")}`}
+                        onClick={() => !readOnly && !di.isNextMonth && openCellEditor(agent.id, agent.name, di.day, rType || sType)}>
                         {style.badge && (
                           <div className="flex flex-col items-center justify-center min-h-[28px] gap-0">
                             <div className={`mx-auto w-[34px] ${baseShift ? 'h-[14px] leading-[14px]' : 'h-[20px] leading-[20px]'} flex items-center justify-center rounded text-[8px] font-black shadow-sm ${style.badgeClass}`}>

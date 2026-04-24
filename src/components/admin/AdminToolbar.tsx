@@ -174,22 +174,26 @@ export function AdminToolbar({
 
       {/* SECTION 2: STRUMENTI OPERATIVI (The Premium Buttons) */}
       <div className="flex bg-slate-900 px-4 py-3 rounded-[2rem] gap-3 items-center shadow-lg border border-slate-700">
-        <button 
-          onClick={onShowSalaOperativa} 
-          className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all active:scale-95 shadow-lg shadow-blue-500/20"
-          title="Gestione Squadre e Pattuglie (Sala Operativa)"
-          aria-label="Apri Sala Operativa"
-        >
-          <Radio width={16} height={16} /> <span className="hidden md:inline">Sala Operativa</span>
-        </button>
-        <button 
-          onClick={onShowStampaOds} 
-          className="flex items-center gap-2 bg-slate-800 text-slate-200 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all active:scale-95 border border-slate-700"
-          title="Stampa Ordine di Servizio Giornaliero"
-          aria-label="Stampa Ordine di Servizio"
-        >
-          <FileText width={16} height={16} /> <span className="hidden md:inline">Stampa OdS</span>
-        </button>
+        {canManageShifts && (
+          <>
+            <button 
+              onClick={onShowSalaOperativa} 
+              className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all active:scale-95 shadow-lg shadow-blue-500/20"
+              title="Gestione Squadre e Pattuglie (Sala Operativa)"
+              aria-label="Apri Sala Operativa"
+            >
+              <Radio width={16} height={16} /> <span className="hidden md:inline">Sala Operativa</span>
+            </button>
+            <button 
+              onClick={onShowStampaOds} 
+              className="flex items-center gap-2 bg-slate-800 text-slate-200 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all active:scale-95 border border-slate-700"
+              title="Stampa Ordine di Servizio Giornaliero"
+              aria-label="Stampa Ordine di Servizio"
+            >
+              <FileText width={16} height={16} /> <span className="hidden md:inline">Stampa OdS</span>
+            </button>
+          </>
+        )}
         
         <div className="w-[1px] h-6 bg-slate-700 mx-1"></div>
         
@@ -235,17 +239,19 @@ export function AdminToolbar({
         </div>
 
         {/* APPROVAL HUB */}
-        <button 
-          onClick={onShowSwaps} 
-          className={`relative flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-indigo-100 text-indigo-700 rounded-2xl font-black text-[11px] uppercase tracking-widest active:scale-95 transition-all hover:bg-indigo-50 ${pendingSwapsCount + pendingRequestsCount > 0 ? 'ring-2 ring-indigo-400 ring-offset-2' : ''}`}
-          aria-label="Coda Approvazioni Turni"
-        >
-           <RefreshCw width={16} height={16} /> 
-           <span>Coda Approvazioni</span>
-           {pendingSwapsCount + pendingRequestsCount > 0 && (
-             <span className="absolute -top-3 -right-3 w-6 h-6 bg-red-600 text-white flex items-center justify-center rounded-full text-[10px] animate-bounce shadow-lg border-2 border-white">{pendingSwapsCount + pendingRequestsCount}</span>
-           )}
-        </button>
+        {canManageShifts && (
+          <button 
+            onClick={onShowSwaps} 
+            className={`relative flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-indigo-100 text-indigo-700 rounded-2xl font-black text-[11px] uppercase tracking-widest active:scale-95 transition-all hover:bg-indigo-50 ${pendingSwapsCount + pendingRequestsCount > 0 ? 'ring-2 ring-indigo-400 ring-offset-2' : ''}`}
+            aria-label="Coda Approvazioni Turni"
+          >
+             <RefreshCw width={16} height={16} /> 
+             <span>Coda Approvazioni</span>
+             {pendingSwapsCount + pendingRequestsCount > 0 && (
+               <span className="absolute -top-3 -right-3 w-6 h-6 bg-red-600 text-white flex items-center justify-center rounded-full text-[10px] animate-bounce shadow-lg border-2 border-white">{pendingSwapsCount + pendingRequestsCount}</span>
+             )}
+          </button>
+        )}
 
         {/* IMPORT/RESET TOOLS */}
         {canManageShifts && (
@@ -299,30 +305,32 @@ export function AdminToolbar({
         )}
 
         {/* AI & SYNC TOOLS */}
-        <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
-           <button 
-            disabled={isResolving || isGenerating} 
-            onClick={onGenerateMonth} 
-            className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all active:scale-95 disabled:opacity-50"
-            title="Generazione Automatica Reperibilità Mensile"
-          >
-            <RefreshCw className={isGenerating ? "animate-spin" : ""} width={16} height={16} /> Generatore Auto
-          </button>
-           <button 
-            disabled={isResolving || isGenerating} 
-            onClick={onAIResolve} 
-            className="flex items-center gap-2 bg-white text-fuchsia-700 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-fuchsia-100 shadow-sm hover:bg-fuchsia-50 transition-all active:scale-95 disabled:opacity-50"
-            title="Copertura buchi organico con AI"
-          >
-            <Wand2 width={16} height={16} /> AI Resolver
-          </button>
-          <button 
-            onClick={onShowVerbatel} 
-            className="flex items-center gap-2 bg-white text-orange-600 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-orange-100 shadow-sm hover:bg-orange-50 transition-all active:scale-95"
-          >
-            <RefreshCw width={16} height={16} /> Verbatel Sync
-          </button>
-        </div>
+        {canManageShifts && (
+          <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
+             <button 
+              disabled={isResolving || isGenerating} 
+              onClick={onGenerateMonth} 
+              className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all active:scale-95 disabled:opacity-50"
+              title="Generazione Automatica Reperibilità Mensile"
+            >
+              <RefreshCw className={isGenerating ? "animate-spin" : ""} width={16} height={16} /> Generatore Auto
+            </button>
+             <button 
+              disabled={isResolving || isGenerating} 
+              onClick={onAIResolve} 
+              className="flex items-center gap-2 bg-white text-fuchsia-700 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-fuchsia-100 shadow-sm hover:bg-fuchsia-50 transition-all active:scale-95 disabled:opacity-50"
+              title="Copertura buchi organico con AI"
+            >
+              <Wand2 width={16} height={16} /> AI Resolver
+            </button>
+            <button 
+              onClick={onShowVerbatel} 
+              className="flex items-center gap-2 bg-white text-orange-600 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-orange-100 shadow-sm hover:bg-orange-50 transition-all active:scale-95"
+            >
+              <RefreshCw width={16} height={16} /> Verbatel Sync
+            </button>
+          </div>
+        )}
 
         {/* EXPORT TOOLS */}
         <div className="flex bg-slate-900 p-1 rounded-2xl gap-1">
@@ -358,25 +366,29 @@ export function AdminToolbar({
               <Settings width={20} height={20} />
             </button>
           )}
-          <button 
-            disabled={isPublishing} 
-            onClick={onPublish} 
-            className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl ${isPublished ? "bg-amber-100 text-amber-700 border border-amber-200" : "bg-emerald-600 text-white shadow-emerald-500/20"}`}
-            aria-label={isPublished ? "Nascondi Turni" : "Pubblica Turni"}
-          >
-            {isPublished ? <><EyeOff width={16} height={16} /> Nascondi</> : <><Eye width={16} height={16} /> Pubblica</>}
-          </button>
-          
-          <button 
-            disabled={isPublishing} 
-            onClick={onLock} 
-            className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl ${isLocked ? "bg-red-600 text-white shadow-red-500/20" : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"}`}
-            title={isLocked ? "Sblocca Mese" : "Congela Mese (Blocca modifiche ai turni)"}
-            aria-label={isLocked ? "Sblocca Mese" : "Chiudi Mese"}
-          >
-            <Shield width={16} height={16} className={isLocked ? "fill-white" : "fill-slate-400"} /> 
-            {isLocked ? "Mese Chiuso" : "Mese Aperto"}
-          </button>
+          {canManageShifts && (
+            <>
+              <button 
+                disabled={isPublishing} 
+                onClick={onPublish} 
+                className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl ${isPublished ? "bg-amber-100 text-amber-700 border border-amber-200" : "bg-emerald-600 text-white shadow-emerald-500/20"}`}
+                aria-label={isPublished ? "Nascondi Turni" : "Pubblica Turni"}
+              >
+                {isPublished ? <><EyeOff width={16} height={16} /> Nascondi</> : <><Eye width={16} height={16} /> Pubblica</>}
+              </button>
+              
+              <button 
+                disabled={isPublishing} 
+                onClick={onLock} 
+                className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl ${isLocked ? "bg-red-600 text-white shadow-red-500/20" : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"}`}
+                title={isLocked ? "Sblocca Mese" : "Congela Mese (Blocca modifiche ai turni)"}
+                aria-label={isLocked ? "Sblocca Mese" : "Chiudi Mese"}
+              >
+                <Shield width={16} height={16} className={isLocked ? "fill-white" : "fill-slate-400"} /> 
+                {isLocked ? "Mese Chiuso" : "Mese Aperto"}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

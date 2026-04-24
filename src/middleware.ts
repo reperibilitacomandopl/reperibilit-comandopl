@@ -112,24 +112,39 @@ export default auth((req) => {
 
   // 4. Route Admin: verifica ruolo ADMIN o permessi granulari
   if (isAdminRoute(pathname)) {
+    const u = session.user
     const hasAdminAccess =
-      session.user.role === "ADMIN" ||
-      session.user.isSuperAdmin ||
-      session.user.canManageShifts ||
-      session.user.canManageUsers ||
-      session.user.canVerifyClockIns ||
-      session.user.canConfigureSystem
+      u.role === "ADMIN" ||
+      u.isSuperAdmin ||
+      u.canManageShifts ||
+      u.canManageUsers ||
+      u.canVerifyClockIns ||
+      u.canConfigureSystem
 
     if (!hasAdminAccess) {
       if (pathname.startsWith("/api/")) {
-        return addSecurityHeaders(
-          NextResponse.json(
-            { error: "Non hai i permessi per accedere a questa risorsa." },
-            { status: 403 }
-          )
-        )
+        return addSecurityHeaders(NextResponse.json({ error: "Non hai i permessi per accedere a questa risorsa." }, { status: 403 }))
       }
       return NextResponse.redirect(new URL("/login", req.url))
+    }
+
+    // Granular protection for specific sub-routes if not full Admin
+    if (!u.isSuperAdmin && u.role !== "ADMIN") {
+      const isShiftRoute = pathname.includes("/ods") || pathname.includes("/stampa-ods") || pathname.includes("/auto-compila") || pathname.includes("/bacheca-scambi") || pathname.includes("/sala-operativa")
+      const isUserRoute = pathname.includes("/risorse") || pathname.includes("/richieste")
+      const isClockRoute = pathname.includes("/timbrature")
+      const isSystemRoute = pathname.includes("/impostazioni") || pathname.includes("/sezioni") || pathname.includes("/parco-auto") || pathname.includes("/audit-logs") || pathname.includes("/straordinari") || pathname.includes("/report") || pathname.includes("/export-paghe") || pathname.includes("/api")
+
+      let allowed = true
+      if (isShiftRoute && !u.canManageShifts) allowed = false
+      if (isUserRoute && !u.canManageUsers) allowed = false
+      if (isClockRoute && !u.canVerifyClockIns) allowed = false
+      if (isSystemRoute && !u.canConfigureSystem) allowed = false
+
+      if (!allowed) {
+        const tenantSlug = pathname.split("/")[1]
+        return NextResponse.redirect(new URL(`/${tenantSlug}/admin/pannello`, req.url))
+      }
     }
   }
 

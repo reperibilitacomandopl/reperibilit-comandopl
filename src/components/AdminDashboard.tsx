@@ -38,6 +38,7 @@ export default function AdminDashboard({
   const router = useRouter()
   
   // Modals Local Visiblity
+  const canManageShifts = currentUser?.role === "ADMIN" || currentUser?.isSuperAdmin || currentUser?.canManageShifts;
   const [showAnagrafica, setShowAnagrafica] = useState(false)
   const [showAuditLog, setShowAuditLog] = useState(false)
   const [showBulkAbsence, setShowBulkAbsence] = useState(false)
@@ -146,6 +147,7 @@ export default function AdminDashboard({
             shifts={shifts}
             isMobileView={isMobileView}
             dayInfo={admin.dayInfo}
+            readOnly={!canManageShifts}
             onToggleUfficiale={admin.handleToggleUff}
             onRecalcAgent={admin.handleRecalcAgent}
             onSaveCell={admin.handleSaveCellEdit}
