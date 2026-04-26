@@ -44,6 +44,35 @@ export const userCreateSchema = z.object({
   scadenzaPortoArmi: z.string().optional().nullable(),
 });
 
+// --- VALIDAZIONI ARMERIA (WEAPONS & ARMORS) ---
+export const weaponSchema = z.object({
+  name: z.string().min(1, "Il nome o la sigla dell'arma è obbligatorio"),
+  modello: z.string().optional().nullable(),
+  matricola: z.string().optional().nullable(),
+  stato: z.string().default("ATTIVO"),
+  assegnazioneFissaId: z.string().optional().nullable(),
+  dataAssegnazione: z.string().optional().nullable(),
+  note: z.string().optional().nullable()
+});
+
+export const weaponUpdateSchema = weaponSchema.partial().extend({
+  id: z.string()
+});
+
+export const armorSchema = z.object({
+  name: z.string().min(1, "Il nome o la sigla del GAP è obbligatorio"),
+  modello: z.string().optional().nullable(),
+  seriale: z.string().optional().nullable(),
+  stato: z.string().default("ATTIVO"),
+  assegnazioneFissaId: z.string().optional().nullable(),
+  dataAssegnazione: z.string().optional().nullable(),
+  scadenzaKevlar: z.string().optional().nullable()
+});
+
+export const armorUpdateSchema = armorSchema.partial().extend({
+  id: z.string()
+});
+
 // --- VALIDAZIONI IMPOSTAZIONI GLOBALI ---
 export const globalSettingsSchema = z.object({
   minUfficiali: z.number().min(0, "Il minimo di ufficiali non può essere negativo."),
@@ -66,6 +95,8 @@ export const dailyShiftSchema = z.object({
   serviceTypeId: z.string().optional().nullable(),
   vehicleId: z.string().optional().nullable(),
   radioId: z.string().optional().nullable(),
+  weaponId: z.string().optional().nullable(),
+  armorId: z.string().optional().nullable(),
   serviceDetails: z.string().optional().nullable(),
   patrolGroupId: z.string().optional().nullable()
 });

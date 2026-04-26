@@ -72,6 +72,8 @@ export type ShiftSyncInput = {
   serviceTypeId?: string | null;
   vehicleId?: string | null;
   radioId?: string | null;
+  weaponId?: string | null;
+  armorId?: string | null;
   repType?: string | null;
 }
 
@@ -82,6 +84,8 @@ export type ShiftSyncOutput = {
   serviceTypeId: string | null;
   vehicleId: string | null;
   radioId: string | null;
+  weaponId: string | null;
+  armorId: string | null;
   repType: string | null;
 }
 
@@ -91,7 +95,7 @@ export type ShiftSyncOutput = {
  * Applica le Leggi della "Sincronizzazione a Muro".
  */
 export function normalizeShiftData(input: ShiftSyncInput): ShiftSyncOutput {
-  let { macroType, timeRange, serviceCategoryId, serviceTypeId, vehicleId, radioId, repType } = input;
+  let { macroType, timeRange, serviceCategoryId, serviceTypeId, vehicleId, radioId, weaponId, armorId, repType } = input;
   
   macroType = macroType.trim().toUpperCase();
   
@@ -105,6 +109,8 @@ export function normalizeShiftData(input: ShiftSyncInput): ShiftSyncOutput {
       serviceTypeId: null,
       vehicleId: null,
       radioId: null,
+      weaponId: null,
+      armorId: null,
       repType: null // Niente reperibilità se sei assente!
     };
   }
@@ -129,6 +135,8 @@ export function normalizeShiftData(input: ShiftSyncInput): ShiftSyncOutput {
     serviceTypeId: serviceTypeId || null,
     vehicleId: vehicleId || null,
     radioId: radioId || null,
+    weaponId: weaponId || null,
+    armorId: armorId || null,
     repType: repType || null
   };
 }

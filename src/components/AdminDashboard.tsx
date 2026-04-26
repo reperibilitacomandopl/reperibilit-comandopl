@@ -139,6 +139,7 @@ export default function AdminDashboard({
           onShowStampaOds={() => setShowStampaOds(true)}
           onShowParcoAuto={() => router.push(`/${tenantSlug}/admin/parco-auto`)}
           onShowRadio={() => router.push(`/${tenantSlug}/admin/radio`)}
+          onShowArmeria={() => router.push(`/${tenantSlug}/admin/armeria`)}
           onShowSezioni={() => router.push(`/${tenantSlug}/admin/sezioni`)}
         />
 

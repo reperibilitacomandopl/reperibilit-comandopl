@@ -20,6 +20,8 @@ interface ServiceBoardProps {
   // Props for ServiceAgentCard
   vehicles: any[]
   radios: any[]
+  weapons: any[]
+  armors: any[]
   schools: any[]
   currentDate: Date
   patrolSelection: Set<string>
@@ -47,6 +49,8 @@ export default function ServiceBoard({
   handleDropToService,
   vehicles,
   radios,
+  weapons,
+  armors,
   schools,
   currentDate,
   patrolSelection,
@@ -102,6 +106,8 @@ export default function ServiceBoard({
                   copiedAgent={copiedAgent}
                   vehicles={vehicles}
                   radios={radios}
+                  weapons={weapons}
+                  armors={armors}
                   toggleLink={toggleLink}
                   handleRemoveService={handleRemoveService}
                   schools={schools}
@@ -182,6 +188,8 @@ export default function ServiceBoard({
                                 copiedAgent={copiedAgent}
                                 vehicles={vehicles}
                                 radios={radios}
+                                weapons={weapons}
+                                armors={armors}
                                 toggleLink={toggleLink}
                                 handleRemoveService={handleRemoveService}
                                 schools={schools}
@@ -254,6 +262,8 @@ export default function ServiceBoard({
                                             copiedAgent={copiedAgent}
                                             vehicles={vehicles}
                                             radios={radios}
+                                            weapons={weapons}
+                                            armors={armors}
                                             toggleLink={toggleLink}
                                             handleRemoveService={handleRemoveService}
                                             schools={schools}
@@ -283,6 +293,8 @@ export default function ServiceBoard({
                                   copiedAgent={copiedAgent}
                                   vehicles={vehicles}
                                   radios={radios}
+                                  weapons={weapons}
+                                  armors={armors}
                                   toggleLink={toggleLink}
                                   handleRemoveService={handleRemoveService}
                                   schools={schools}

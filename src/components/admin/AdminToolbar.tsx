@@ -30,6 +30,7 @@ interface AdminToolbarProps {
   onShowStampaOds: () => void
   onShowParcoAuto: () => void
   onShowRadio: () => void
+  onShowArmeria: () => void
   onShowSezioni: () => void
   onSearch: (q: string) => void
   onRoleFilter: (role: string) => void
@@ -71,7 +72,7 @@ export function AdminToolbar({
   onImportShifts, onGenerateMonth, isGenerating, isResolving, isSendingPec, isSendingAlert, 
   isExportingPDF, isPublishing, isClearing, uploadStatus,
   isMobileView, onToggleMobileView,
-  onShowSalaOperativa, onShowStampaOds, onShowParcoAuto, onShowRadio, onShowSezioni,
+  onShowSalaOperativa, onShowStampaOds, onShowParcoAuto, onShowRadio, onShowArmeria, onShowSezioni,
   currentUser
 }: AdminToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -215,6 +216,16 @@ export function AdminToolbar({
             aria-label="Gestione Radio"
           >
             <Radio width={14} height={14} /> Radio
+          </button>
+        )}
+        {canConfigureSystem && (
+          <button 
+            onClick={onShowArmeria} 
+            className="flex items-center gap-2 text-slate-400 hover:text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+            title="Gestione Armeria e GAP"
+            aria-label="Gestione Armeria"
+          >
+            <Shield width={14} height={14} /> Armeria
           </button>
         )}
         {canConfigureSystem && (

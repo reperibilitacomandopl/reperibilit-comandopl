@@ -23,7 +23,7 @@ export async function GET(req: Request) {
     const endDate = new Date(date)
     endDate.setHours(23, 59, 59, 999)
 
-    const [users, shifts, absences, categories, vehicles, radios, certifiedDoc] = await Promise.all([
+    const [users, shifts, absences, categories, vehicles, radios, weapons, armors, certifiedDoc] = await Promise.all([
       prisma.user.findMany({ 
         where: { ...tf, role: "AGENTE" }, 
         orderBy: { name: "asc" },
@@ -31,7 +31,7 @@ export async function GET(req: Request) {
       }),
       prisma.shift.findMany({ 
         where: { ...tf, date: { gte: startDate, lte: endDate } },
-        include: { serviceCategory: true, serviceType: true, vehicle: true, radio: true }
+        include: { serviceCategory: true, serviceType: true, vehicle: true, radio: true, weapon: true, armor: true }
       }),
       Promise.resolve([]), 
       prisma.serviceCategory.findMany({
@@ -41,6 +41,8 @@ export async function GET(req: Request) {
       }),
       prisma.vehicle.findMany({ where: { ...tf }, orderBy: { name: "asc" } }),
       prisma.radio.findMany({ where: { ...tf }, orderBy: { name: "asc" } }),
+      prisma.weapon.findMany({ where: { ...tf }, orderBy: { name: "asc" } }),
+      prisma.armor.findMany({ where: { ...tf }, orderBy: { name: "asc" } }),
       prisma.certifiedDocument.findFirst({
         where: { 
           tenantId: tenantId || null,
@@ -57,6 +59,8 @@ export async function GET(req: Request) {
       categories, 
       vehicles,
       radios,
+      weapons,
+      armors,
       isCertified: !!certifiedDoc 
     })
   } catch (error) {
@@ -76,7 +80,7 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "Formato dati non valido", details: parsed.error.format() }, { status: 400 })
     }
 
-    const { date, userId, type, timeRange, serviceCategoryId, serviceTypeId, vehicleId, radioId, serviceDetails, patrolGroupId } = parsed.data
+    const { date, userId, type, timeRange, serviceCategoryId, serviceTypeId, vehicleId, radioId, weaponId, armorId, serviceDetails, patrolGroupId } = parsed.data
     const tenantId = session.user.tenantId
 
     // VERIFICA CERTIFICAZIONE (HARDENING)
@@ -115,6 +119,8 @@ export async function PUT(req: Request) {
       serviceTypeId: serviceTypeId !== undefined ? serviceTypeId : existingShift?.serviceTypeId,
       vehicleId: vehicleId !== undefined ? vehicleId : existingShift?.vehicleId,
       radioId: radioId !== undefined ? radioId : existingShift?.radioId,
+      weaponId: weaponId !== undefined ? weaponId : existingShift?.weaponId,
+      armorId: armorId !== undefined ? armorId : existingShift?.armorId,
       repType: existingShift?.repType
     });
 
@@ -129,6 +135,8 @@ export async function PUT(req: Request) {
              serviceTypeId: normalized.serviceTypeId,
              vehicleId: normalized.vehicleId,
              radioId: normalized.radioId,
+             weaponId: normalized.weaponId,
+             armorId: normalized.armorId,
              serviceDetails: serviceDetails !== undefined ? serviceDetails : existingShift.serviceDetails,
              patrolGroupId: patrolGroupId !== undefined ? patrolGroupId : existingShift.patrolGroupId,
              repType: normalized.repType
@@ -146,6 +154,8 @@ export async function PUT(req: Request) {
             serviceTypeId: normalized.serviceTypeId,
             vehicleId: normalized.vehicleId,
             radioId: normalized.radioId,
+            weaponId: normalized.weaponId,
+            armorId: normalized.armorId,
             serviceDetails,
             patrolGroupId,
             repType: normalized.repType

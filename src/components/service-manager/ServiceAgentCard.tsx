@@ -13,6 +13,8 @@ interface ServiceAgentCardProps {
     serviceTypeId?: string | null; 
     vehicleId?: string | null; 
     radioId?: string | null;
+    weaponId?: string | null;
+    armorId?: string | null;
     timeRange?: string | null; 
     serviceDetails?: string | null; 
     patrolGroupId?: string | null 
@@ -27,6 +29,8 @@ interface ServiceAgentCardProps {
     typeId?: string | null, 
     vehicleId?: string | null, 
     radioId?: string | null,
+    weaponId?: string | null,
+    armorId?: string | null,
     timeRange?: string | null, 
     serviceDetails?: string | null
   ) => Promise<void>
@@ -35,6 +39,8 @@ interface ServiceAgentCardProps {
   copiedAgent: any | null
   vehicles: { id: string; name: string }[]
   radios: { id: string; name: string }[]
+  weapons: { id: string; name: string }[]
+  armors: { id: string; name: string }[]
   toggleLink: (shiftId: string, currentGroupId: string | null) => Promise<void>
   handleRemoveService: (userId: string, originalTimeRange: string) => void
   schools: any[]
@@ -56,6 +62,8 @@ export default function ServiceAgentCard({
   copiedAgent,
   vehicles,
   radios,
+  weapons,
+  armors,
   toggleLink,
   handleRemoveService,
   schools,
@@ -103,7 +111,7 @@ export default function ServiceAgentCard({
                   type="text"
                   id={`note-${agente.id}`}
                   defaultValue={shiftAssegnato.serviceDetails || agente.servizio || ""}
-                  onBlur={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, shiftAssegnato.radioId, timeRangeStr, e.target.value)}
+                  onBlur={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, shiftAssegnato.radioId, shiftAssegnato.weaponId, shiftAssegnato.armorId, timeRangeStr, e.target.value)}
                   className={`text-[10px] font-bold border px-1.5 py-0.5 rounded focus:ring-0 w-[120px] focus:bg-white transition-all ${isDark ? 'text-white bg-slate-700 border-slate-600 hover:border-blue-400' : 'text-blue-800 bg-blue-50 border-blue-200 hover:border-blue-400'}`}
                   placeholder="Es. Fiera, Piantone..."
                 />
@@ -119,6 +127,18 @@ export default function ServiceAgentCard({
                     <div className="flex items-center gap-1 bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tight border border-blue-100" title="Radio Assegnata">
                       <Radio width={10} height={10} />
                       {radios.find(r => r.id === shiftAssegnato.radioId)?.name || '...'}
+                    </div>
+                  )}
+                  {shiftAssegnato.weaponId && (
+                    <div className="flex items-center gap-1 bg-slate-800 text-white px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tight border border-slate-700" title="Arma Assegnata">
+                      <Shield width={10} height={10} />
+                      {weapons.find(w => w.id === shiftAssegnato.weaponId)?.name || '...'}
+                    </div>
+                  )}
+                  {shiftAssegnato.armorId && (
+                    <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tight border border-emerald-200" title="GAP Assegnato">
+                      <Shield width={10} height={10} />
+                      {armors.find(a => a.id === shiftAssegnato.armorId)?.name || '...'}
                     </div>
                   )}
                 </div>

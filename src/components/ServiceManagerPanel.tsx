@@ -25,6 +25,8 @@ interface CopiedAgentData {
   serviceTypeId: string | null | undefined
   vehicleId: string | null | undefined
   radioId?: string | null | undefined
+  weaponId?: string | null | undefined
+  armorId?: string | null | undefined
   timeRange: string | null | undefined
   serviceDetails: string | null | undefined
 }
@@ -35,11 +37,13 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
   const [isAutoAssigning, setIsAutoAssigning] = useState(false)
   
   const [users, setUsers] = useState<{ id: string; name: string; qualifica?: string; isUfficiale?: boolean; servizio?: string }[]>([])
-  const [shifts, setShifts] = useState<{ id: string; userId: string; type: string; serviceCategoryId?: string | null; serviceTypeId?: string | null; vehicleId?: string | null; radioId?: string | null; timeRange?: string | null; serviceDetails?: string | null; patrolGroupId?: string | null }[]>([])
+  const [shifts, setShifts] = useState<{ id: string; userId: string; type: string; serviceCategoryId?: string | null; serviceTypeId?: string | null; vehicleId?: string | null; radioId?: string | null; weaponId?: string | null; armorId?: string | null; timeRange?: string | null; serviceDetails?: string | null; patrolGroupId?: string | null }[]>([])
   const [absences, setAbsences] = useState<{ id: string; userId: string; type: string; date: string }[]>([])
   const [categories, setCategories] = useState<{ id: string; name: string; types?: { id: string; name: string }[] }[]>([])
   const [vehicles, setVehicles] = useState<{ id: string; name: string }[]>([])
   const [radios, setRadios] = useState<{ id: string; name: string }[]>([])
+  const [weapons, setWeapons] = useState<{ id: string; name: string }[]>([])
+  const [armors, setArmors] = useState<{ id: string; name: string }[]>([])
   const [schools, setSchools] = useState<{ id: string; name: string; schedules: { dayOfWeek: number; entranceTime?: string; exitTime?: string; afternoonExitTime?: string }[] }[]>([])
 
   // Collapsible state
@@ -150,6 +154,8 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
       if (data.categories) setCategories(data.categories)
       if (data.vehicles) setVehicles(data.vehicles)
       if (data.radios) setRadios(data.radios)
+      if (data.weapons) setWeapons(data.weapons)
+      if (data.armors) setArmors(data.armors)
       
       const schoolsRes = await fetch("/api/admin/schools")
       const schoolsData = await schoolsRes.json()
@@ -190,7 +196,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
     return currentDate.getFullYear() === now.getFullYear() && currentDate.getMonth() === now.getMonth() && currentDate.getDate() === now.getDate()
   }
 
-  const assignService = async (userId: string, targetTypeString: string, categoryId: string | null = null, typeId: string | null = null, vehicleId: string | null = null, radioId: string | null = null, timeRange: string | null = null, serviceDetails: string | null = null) => {
+  const assignService = async (userId: string, targetTypeString: string, categoryId: string | null = null, typeId: string | null = null, vehicleId: string | null = null, radioId: string | null = null, weaponId: string | null = null, armorId: string | null = null, timeRange: string | null = null, serviceDetails: string | null = null) => {
     const y = currentDate.getFullYear()
     const m = String(currentDate.getMonth() + 1).padStart(2, "0")
     const d = String(currentDate.getDate()).padStart(2, "0")
@@ -203,6 +209,14 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
     let newRadioId = radioId;
     if(radioId === undefined && existingObj?.radioId) {
         newRadioId = existingObj.radioId;
+    }
+    let newWeaponId = weaponId;
+    if(weaponId === undefined && existingObj?.weaponId) {
+        newWeaponId = existingObj.weaponId;
+    }
+    let newArmorId = armorId;
+    if(armorId === undefined && existingObj?.armorId) {
+        newArmorId = existingObj.armorId;
     }
 
     try {
@@ -218,6 +232,8 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
           serviceTypeId: typeId,
           vehicleId: newVehicleId,
           radioId: newRadioId,
+          weaponId: newWeaponId,
+          armorId: newArmorId,
           timeRange: timeRange,
           serviceDetails: serviceDetails
         })
@@ -247,7 +263,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
           finalType = userShift.type;
       }
 
-      assignService(userId, finalType, catId, typeId, undefined, undefined)
+      assignService(userId, finalType, catId, typeId, undefined, undefined, undefined, undefined)
       showUndoToast("Agente assegnato al servizio", undoAction)
     }
   }
@@ -579,6 +595,8 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
             copiedAgent={copiedAgent}
             vehicles={vehicles}
             radios={radios}
+            weapons={weapons}
+            armors={armors}
             toggleLink={toggleLink}
             handleRemoveService={handleRemoveService}
             schools={schools}
@@ -606,6 +624,8 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                   handleDropToService={handleDropToService}
                   vehicles={vehicles}
                   radios={radios}
+                  weapons={weapons}
+                  armors={armors}
                   schools={schools}
                   currentDate={currentDate}
                   patrolSelection={patrolSelection}
@@ -632,6 +652,8 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                   handleDropToService={handleDropToService}
                   vehicles={vehicles}
                   radios={radios}
+                  weapons={weapons}
+                  armors={armors}
                   schools={schools}
                   currentDate={currentDate}
                   patrolSelection={patrolSelection}

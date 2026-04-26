@@ -48,6 +48,8 @@ model Tenant {
   users              User[]
   vehicles           Vehicle[]
   radios             Radio[]
+  weapons            Weapon[]
+  armors             Armor[]
   ShiftRule          ShiftRule[]
 }
 
@@ -126,6 +128,8 @@ model User {
   tenant                 Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   patrolTemplates        PatrolTemplate[]   @relation("PatrolMembers")
   radios                 Radio[]            @relation("RadioAssegnatario")
+  weapons                Weapon[]           @relation("WeaponAssegnatario")
+  armors                 Armor[]            @relation("ArmorAssegnatario")
 
   @@unique([tenantId, matricola])
 }
@@ -168,6 +172,10 @@ model Shift {
   vehicle            Vehicle?           @relation(fields: [vehicleId], references: [id])
   radioId            String?
   radio              Radio?             @relation(fields: [radioId], references: [id])
+  weaponId           String?
+  weapon             Weapon?            @relation(fields: [weaponId], references: [id])
+  armorId            String?
+  armor              Armor?             @relation(fields: [armorId], references: [id])
   swaps              ShiftSwapRequest[]
 
   @@unique([userId, date, tenantId])
@@ -188,6 +196,10 @@ model PatrolTemplate {
   vehicle           Vehicle?         @relation(fields: [vehicleId], references: [id])
   radioId           String?
   radio             Radio?           @relation(fields: [radioId], references: [id])
+  weaponId          String?
+  weapon            Weapon?          @relation(fields: [weaponId], references: [id])
+  armorId           String?
+  armor             Armor?           @relation(fields: [armorId], references: [id])
   members           User[]           @relation("PatrolMembers")
 
   @@unique([name, tenantId])
@@ -251,6 +263,42 @@ model Radio {
   patrolTemplates     PatrolTemplate[]
   tenant              Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   assegnatario        User?            @relation("RadioAssegnatario", fields: [assegnazioneFissaId], references: [id])
+
+  @@unique([name, tenantId])
+}
+
+model Weapon {
+  id                  String           @id @default(uuid())
+  tenantId            String?
+  name                String
+  modello             String?
+  matricola           String?
+  stato               String           @default("ATTIVO")
+  assegnazioneFissaId String?
+  dataAssegnazione    DateTime?
+  note                String?
+  shifts              Shift[]
+  patrolTemplates     PatrolTemplate[]
+  tenant              Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assegnatario        User?            @relation("WeaponAssegnatario", fields: [assegnazioneFissaId], references: [id])
+
+  @@unique([name, tenantId])
+}
+
+model Armor {
+  id                  String           @id @default(uuid())
+  tenantId            String?
+  name                String
+  modello             String?
+  seriale             String?
+  stato               String           @default("ATTIVO")
+  assegnazioneFissaId String?
+  dataAssegnazione    DateTime?
+  scadenzaKevlar      DateTime?
+  shifts              Shift[]
+  patrolTemplates     PatrolTemplate[]
+  tenant              Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assegnatario        User?            @relation("ArmorAssegnatario", fields: [assegnazioneFissaId], references: [id])
 
   @@unique([name, tenantId])
 }

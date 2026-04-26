@@ -26,6 +26,8 @@ interface ServiceManagerSidebarProps {
   copiedAgent: any
   vehicles: any[]
   radios: any[]
+  weapons: any[]
+  armors: any[]
   toggleLink: any
   handleRemoveService: any
   schools: any[]
@@ -54,6 +56,8 @@ export default function ServiceManagerSidebar({
   copiedAgent,
   vehicles,
   radios,
+  weapons,
+  armors,
   toggleLink,
   handleRemoveService,
   schools,
@@ -118,6 +122,8 @@ export default function ServiceManagerSidebar({
                             copiedAgent={copiedAgent}
                             vehicles={vehicles}
                             radios={radios}
+                            weapons={weapons}
+                            armors={armors}
                             toggleLink={toggleLink}
                             handleRemoveService={handleRemoveService}
                             schools={schools}
