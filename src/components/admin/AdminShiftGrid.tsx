@@ -354,7 +354,7 @@ export default function AdminShiftGrid({
                   if (rType.toLowerCase().includes("rep") && !di.isNextMonth) {
                     repTotal++
                     repDays.push(di.day)
-                    if (di.isWeekend) repFest++; else repFer++
+                    if (di.isWeekend || di.isHoliday || di.isVigilia) repFest++; else repFer++
                   }
 
                   const style = getCellStyle(sType, rType, di.isWeekend)
