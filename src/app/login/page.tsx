@@ -157,6 +157,34 @@ function LoginForm() {
                 )}
               </button>
             </form>
+
+            {/* SPID / CIE Divider */}
+            <div className="relative my-8">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-white/10"></div>
+              </div>
+              <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-black">
+                <span className="bg-[#121829] px-4 text-white/30">Oppure</span>
+              </div>
+            </div>
+
+            {/* Istitutional Login Buttons */}
+            <div className="space-y-3">
+              <button 
+                onClick={() => alert("Integrazione SPID in corso di attivazione...")}
+                className="w-full group relative flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-[#0066CC] rounded-xl px-4 py-3 text-sm font-black transition-all shadow-lg active:scale-[0.98] border-2 border-transparent hover:border-blue-200"
+              >
+                <div className="w-6 h-6 bg-[#0066CC] rounded flex items-center justify-center font-black text-[10px] text-white">SPID</div>
+                Entra con SPID
+              </button>
+              <button 
+                onClick={() => alert("Integrazione CIE in corso di attivazione...")}
+                className="w-full group relative flex items-center justify-center gap-3 bg-[#1e293b] hover:bg-[#334155] text-white rounded-xl px-4 py-3 text-sm font-black transition-all shadow-lg active:scale-[0.98] border-2 border-transparent hover:border-slate-700"
+              >
+                <div className="w-6 h-6 bg-white/10 rounded flex items-center justify-center font-black text-[8px] text-white">CIE</div>
+                Entra con CIE
+              </button>
+            </div>
           </div>
 
           {/* Footer */}
