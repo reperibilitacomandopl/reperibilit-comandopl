@@ -108,3 +108,81 @@ select:focus-visible {
   box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.2);
 }
 
+/* ═══════════════════════════════════════════════════
+   ACCESSIBILITÀ WCAG 2.1 / AgID
+   ═══════════════════════════════════════════════════ */
+
+/* Skip to content (navigazione da tastiera) */
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 9999;
+  padding: 1rem 2rem;
+  background: var(--primary);
+  color: white;
+  font-weight: 800;
+  font-size: 0.875rem;
+  text-decoration: none;
+  border-radius: 0 0 0.75rem 0;
+  transition: left 0.2s ease;
+}
+
+.skip-to-content:focus {
+  left: 0;
+  outline: 3px solid #fbbf24;
+  outline-offset: 2px;
+}
+
+/* Screen reader only (testo accessibile nascosto visivamente) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Riduzione movimento per utenti con preferenza prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .animate-pulse, .animate-bounce, .animate-spin {
+    animation: none !important;
+  }
+}
+
+/* Modalità alto contrasto */
+@media (prefers-contrast: high) {
+  :root {
+    --primary: #1e3a8a;
+    --glass-bg: rgba(255, 255, 255, 0.95);
+  }
+  
+  .premium-card {
+    border-width: 2px;
+    border-color: #1e293b;
+  }
+  
+  button, a {
+    text-decoration-thickness: 2px;
+  }
+}
+
+/* Focus indicatore ad alto contrasto per i form */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 5px rgba(79, 70, 229, 0.25);
+}

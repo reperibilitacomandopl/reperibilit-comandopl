@@ -57,7 +57,12 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <SessionWrapper>
-          {children}
+          <a href="#main-content" className="skip-to-content">
+            Vai al contenuto principale
+          </a>
+          <main id="main-content" tabIndex={-1} className="flex-1">
+            {children}
+          </main>
           <PrivacyConsentModal />
           <TwoFactorModal />
           <Toaster position="bottom-right" toastOptions={{ className: 'text-sm font-semibold rounded-xl shadow-lg border border-slate-100', duration: 4000 }} />
