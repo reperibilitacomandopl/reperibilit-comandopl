@@ -1,5 +1,5 @@
 import { DashboardShift } from "@/types/dashboard"
-import { isHoliday } from "./holidays"
+import { isHoliday, isCalendarHoliday } from "./holidays"
 import { isAssenza } from "./shift-logic"
 
 export interface Agent {
@@ -121,11 +121,11 @@ export function generateMonthShifts(
 
   const isVigilia = (d: number): boolean => {
     const nextDayDate = new Date(Date.UTC(year, month0, d + 1))
-    return isHoliday(nextDayDate)
+    return isCalendarHoliday(nextDayDate)
   }
 
   const isGiornoFestivo = (d: number): boolean => {
-    return !!(isSab[d] || isDom[d] || isFestivo[d])
+    return !!(isSab[d] || isDom[d] || isFestivo[d] || isVigilia(d))
   }
 
   const isFestivoWeekend = (d: number): boolean => {
@@ -133,7 +133,7 @@ export function generateMonthShifts(
   }
 
   const isFestivoInfrasettimanale = (d: number): boolean => {
-    return isFestivo[d] && !isSab[d] && !isDom[d]
+    return (isFestivo[d] || isVigilia(d)) && !isSab[d] && !isDom[d]
   }
 
   // === CALCULATE TARGETS ===

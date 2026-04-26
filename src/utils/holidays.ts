@@ -11,10 +11,7 @@ export function getEaster(year: number): Date {
   return new Date(year, month - 1, day, 12, 0, 0); // local noon to avoid timezone issues
 }
 
-export function isHoliday(date: Date): boolean {
-  const dow = date.getDay();
-  if (dow === 0 || dow === 6) return true; // Weekend
-
+export function isCalendarHoliday(date: Date): boolean {
   const day = date.getDate();
   const month = date.getMonth() + 1;
   const year = date.getFullYear();
@@ -45,3 +42,11 @@ export function isHoliday(date: Date): boolean {
 
   return false;
 }
+
+export function isHoliday(date: Date): boolean {
+  const dow = date.getDay();
+  if (dow === 0 || dow === 6) return true; // Weekend
+
+  return isCalendarHoliday(date);
+}
+
