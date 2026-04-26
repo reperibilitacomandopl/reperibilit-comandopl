@@ -130,6 +130,7 @@ model User {
   radios                 Radio[]            @relation("RadioAssegnatario")
   weapons                Weapon[]           @relation("WeaponAssegnatario")
   armors                 Armor[]            @relation("ArmorAssegnatario")
+  announcements          Announcement[]
 
   @@unique([tenantId, matricola])
 }
@@ -575,12 +576,15 @@ model Announcement {
   authorName   String             @default("Comando")
   title        String
   body         String
+  category     String             @default("AVVISO") // AVVISO, URGENTE, ODG, CIRCOLARE
   priority     String             @default("NORMAL")
   requiresRead Boolean            @default(false)
   isPinned     Boolean            @default(false)
+  attachments  String[]           @default([])
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
   tenant       Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  author       User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
   reads        AnnouncementRead[]
 }
 

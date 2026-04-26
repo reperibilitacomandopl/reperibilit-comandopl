@@ -17,8 +17,15 @@ interface Announcement {
   hasRead?: boolean
 }
 
+const CATEGORIES = [
+  { value: "AVVISO", label: "Avviso Generico", color: "bg-blue-100 text-blue-700" },
+  { value: "URGENTE", label: "Urgente", color: "bg-red-100 text-red-700" },
+  { value: "ODG", label: "Ordine del Giorno", color: "bg-emerald-100 text-emerald-700" },
+  { value: "CIRCOLARE", label: "Circolare Interna", color: "bg-amber-100 text-amber-700" },
+]
+
 export default function BachecaPanel({ isAdmin = false, onClose }: { isAdmin?: boolean, onClose?: () => void }) {
-  const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const [announcements, setAnnouncements] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showConfig, setShowConfig] = useState(false)
   const [publishing, setPublishing] = useState(false)
@@ -26,6 +33,7 @@ export default function BachecaPanel({ isAdmin = false, onClose }: { isAdmin?: b
   // Form for new announcement
   const [newTitle, setNewTitle] = useState("")
   const [newBody, setNewBody] = useState("")
+  const [newCategory, setNewCategory] = useState("AVVISO")
   const [newPriority, setNewPriority] = useState("NORMAL")
   const [newRequiresRead, setNewRequiresRead] = useState(false)
   const [newIsPinned, setNewIsPinned] = useState(false)
@@ -74,6 +82,7 @@ export default function BachecaPanel({ isAdmin = false, onClose }: { isAdmin?: b
         body: JSON.stringify({
           title: newTitle,
           body: newBody,
+          category: newCategory,
           priority: newPriority,
           requiresRead: newRequiresRead,
           isPinned: newIsPinned
@@ -84,6 +93,7 @@ export default function BachecaPanel({ isAdmin = false, onClose }: { isAdmin?: b
         setShowConfig(false)
         setNewTitle("")
         setNewBody("")
+        setNewCategory("AVVISO")
         loadAnnouncements()
       } else {
          toast.error("Errore salvataggio")
@@ -95,7 +105,7 @@ export default function BachecaPanel({ isAdmin = false, onClose }: { isAdmin?: b
   }
 
   if (loading) {
-    return <div className="p-8 text-center text-slate-400 text-sm font-medium animate-pulse">Caricamento comunicazioni...</div>
+    return <div className="p-8 text-center text-slate-400 text-sm font-medium animate-pulse uppercase tracking-widest">Caricamento bacheca...</div>
   }
 
   const handleDelete = async (id: string) => {
@@ -115,25 +125,25 @@ export default function BachecaPanel({ isAdmin = false, onClose }: { isAdmin?: b
 
   return (
     <>
-    <div className="bg-white border flex flex-col h-full border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-      <div className="bg-slate-50 border-b border-slate-100 p-5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
-             <Megaphone className="w-5 h-5 text-indigo-600" />
+    <div className="bg-white border-2 border-slate-200 rounded-[2rem] shadow-sm overflow-hidden flex flex-col h-full">
+      <div className="bg-slate-50 border-b-2 border-slate-100 p-6 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
+             <Megaphone className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h2 className="text-sm font-black text-slate-800 tracking-tight">Bacheca Comunicazioni</h2>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">Avvisi e Ordini del Giorno</p>
+            <h2 className="text-base font-black text-slate-800 tracking-tight uppercase">Bacheca Comando</h2>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Avvisi e Ordini del Giorno</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {isAdmin && !showConfig && (
-            <button onClick={() => setShowConfig(true)} className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-bold">
-              <Plus className="w-4 h-4" /> Nuovo
+            <button onClick={() => setShowConfig(true)} className="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all flex items-center gap-2 text-xs font-black uppercase shadow-md active:scale-95">
+              <Plus className="w-4 h-4" /> Nuovo Post
             </button>
           )}
           {onClose && (
-            <button onClick={onClose} className="p-2 hover:bg-rose-100 text-slate-400 hover:text-rose-600 rounded-lg transition-colors" title="Chiudi">
+            <button onClick={onClose} className="p-2.5 hover:bg-slate-200 text-slate-400 rounded-xl transition-colors" title="Chiudi">
               <X className="w-5 h-5" />
             </button>
           )}
@@ -141,105 +151,109 @@ export default function BachecaPanel({ isAdmin = false, onClose }: { isAdmin?: b
       </div>
 
       {isAdmin && showConfig && (
-        <form onSubmit={handlePublish} className="p-5 border-b border-slate-200 bg-indigo-50/50">
-          <div className="flex justify-between items-center mb-4">
-             <h3 className="text-sm font-bold text-slate-800">Scrivi Comunicazione</h3>
-             <button type="button" onClick={() => setShowConfig(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4"/></button>
+        <form onSubmit={handlePublish} className="p-6 border-b-2 border-slate-200 bg-blue-50/30 animate-in slide-in-from-top duration-300">
+          <div className="flex justify-between items-center mb-6">
+             <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Nuova Comunicazione</h3>
+             <button type="button" onClick={() => setShowConfig(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5"/></button>
           </div>
-          <div className="space-y-3 mb-4">
-             <input required type="text" placeholder="Oggetto/Titolo" value={newTitle} onChange={e => setNewTitle(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-semibold focus:outline-none focus:border-indigo-400" />
-             <textarea required placeholder="Testo della comunicazione..." value={newBody} onChange={e => setNewBody(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:border-indigo-400 min-h-[100px] resize-y" />
+          <div className="space-y-4 mb-6">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input required type="text" placeholder="Oggetto/Titolo" value={newTitle} onChange={e => setNewTitle(e.target.value)} className="w-full px-4 py-3 border-2 border-slate-200 bg-white rounded-xl text-sm font-bold focus:outline-none focus:border-blue-500 transition-all" />
+                <select value={newCategory} onChange={e=>setNewCategory(e.target.value)} className="w-full px-4 py-3 border-2 border-slate-200 bg-white rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-500 transition-all">
+                   {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+             </div>
+             <textarea required placeholder="Testo della comunicazione..." value={newBody} onChange={e => setNewBody(e.target.value)} className="w-full px-4 py-3 border-2 border-slate-200 bg-white rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 transition-all min-h-[120px] resize-none" />
              
-             <div className="flex flex-wrap gap-4">
-                <select value={newPriority} onChange={e=>setNewPriority(e.target.value)} className="px-3 py-2 border border-slate-200 bg-white rounded-lg text-xs font-bold text-slate-600 focus:outline-none">
+             <div className="flex flex-wrap items-center gap-6 p-4 bg-white border border-slate-200 rounded-xl">
+                <select value={newPriority} onChange={e=>setNewPriority(e.target.value)} className="px-3 py-2 border-2 border-slate-100 bg-slate-50 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-600 focus:outline-none">
                    <option value="NORMAL">Normale</option>
                    <option value="HIGH">Alta Priorità</option>
                    <option value="URGENT">Urgente</option>
                 </select>
-                <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer">
-                   <input type="checkbox" checked={newRequiresRead} onChange={e => setNewRequiresRead(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4" />
-                   Richiedi Conferma Lettura
+                <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-600 cursor-pointer">
+                   <input type="checkbox" checked={newRequiresRead} onChange={e => setNewRequiresRead(e.target.checked)} className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4" />
+                   Conferma Lettura
                 </label>
-                <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer">
-                   <input type="checkbox" checked={newIsPinned} onChange={e => setNewIsPinned(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4" />
-                   Fissa in Alto (Pin)
+                <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-600 cursor-pointer">
+                   <input type="checkbox" checked={newIsPinned} onChange={e => setNewIsPinned(e.target.checked)} className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4" />
+                   Fissa in Alto
                 </label>
              </div>
           </div>
           <div className="flex justify-end">
-             <button disabled={publishing} type="submit" className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all shadow-md active:scale-95">
-                <Send className="w-3.5 h-3.5" /> {publishing ? "Invio in corso..." : "Pubblica"}
+             <button disabled={publishing} type="submit" className="px-8 py-3 bg-slate-900 hover:bg-black disabled:opacity-50 text-white text-xs font-black uppercase tracking-widest rounded-xl flex items-center gap-3 transition-all shadow-xl active:scale-95">
+                <Send className="w-4 h-4" /> {publishing ? "Invio..." : "Pubblica Avviso"}
              </button>
           </div>
         </form>
       )}
 
-      <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar bg-slate-50/30">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-white">
         {announcements.length === 0 && !showConfig && (
-           <div className="text-center py-10">
-              <Megaphone className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-              <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Nessun Avviso Recente</p>
+           <div className="text-center py-20 border-2 border-dashed border-slate-100 rounded-[2.5rem]">
+              <Megaphone className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+              <p className="text-xs font-black text-slate-300 uppercase tracking-[0.2em]">Nessuna comunicazione</p>
            </div>
         )}
 
-        {/* Sorted: Pinned first, then by priority (URGENT > HIGH > NORMAL), then by date */}
-        {[...announcements].sort((a, b) => {
-          if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1
-          const pOrder: Record<string, number> = { URGENT: 0, HIGH: 1, NORMAL: 2 }
-          const pDiff = (pOrder[a.priority] ?? 2) - (pOrder[b.priority] ?? 2)
-          if (pDiff !== 0) return pDiff
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        }).map((ann) => (
-          <div key={ann.id} className={`p-4 bg-white border rounded-xl shadow-sm relative ${ann.priority === 'URGENT' ? 'border-rose-300 bg-rose-50/10' : ann.priority === 'HIGH' ? 'border-amber-300' : 'border-slate-200'}`}>
-             
-             {ann.isPinned && (
-                <div className="absolute -top-2.5 -right-2.5 bg-indigo-500 text-white w-6 h-6 rounded-full flex items-center justify-center shadow-md">
-                   <Pin className="w-3.5 h-3.5" />
-                </div>
-             )}
+        {announcements.map((ann) => {
+          const cat = CATEGORIES.find(c => c.value === ann.category) || CATEGORIES[0]
+          return (
+            <div key={ann.id} className={`p-5 bg-white border-2 rounded-2xl shadow-sm relative transition-all group hover:shadow-md ${ann.priority === 'URGENT' ? 'border-red-100 bg-red-50/5' : ann.priority === 'HIGH' ? 'border-amber-100' : 'border-slate-100'}`}>
+               
+               {ann.isPinned && (
+                  <div className="absolute -top-3 -right-3 bg-blue-600 text-white w-7 h-7 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                     <Pin className="w-4 h-4" />
+                  </div>
+               )}
 
-             <div className="flex items-center gap-2 mb-2">
-                {ann.priority === "URGENT" ? <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0"/> : ann.priority === "HIGH" ? <Info className="w-4 h-4 text-amber-500 shrink-0"/> : null}
-                <h4 className="text-sm font-bold text-slate-800 flex-1">{ann.title}</h4>
-                {/* Priority Badge */}
-                {ann.priority === "URGENT" && (
-                  <span className="text-[9px] font-black uppercase tracking-widest bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full border border-rose-200 animate-pulse">Urgente</span>
-                )}
-                {ann.priority === "HIGH" && (
-                  <span className="text-[9px] font-black uppercase tracking-widest bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">Priorità</span>
-                )}
-             </div>
-             
-             <p className="text-xs text-slate-600 whitespace-pre-wrap leading-relaxed mb-4">{ann.body}</p>
-             
-             <div className="flex items-center justify-between mt-auto pt-3 border-t border-slate-100">
-                <div className="flex items-center gap-3">
-                   <span className="text-[10px] font-bold text-slate-400 capitalize">{ann.authorName}</span>
-                   <span className="text-slate-300">•</span>
-                   <span className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
-                      <Clock className="w-3 h-3" /> {new Date(ann.createdAt).toLocaleDateString('it-IT')}
-                   </span>
-                </div>
-                
-                {ann.requiresRead && !isAdmin && (
-                   <button 
-                     onClick={() => !ann.hasRead && handleMarkAsRead(ann.id)}
-                     disabled={ann.hasRead}
-                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
-                       ann.hasRead ? "bg-emerald-50 text-emerald-600" : "bg-rose-500 hover:bg-rose-600 text-white shadow-md active:scale-95"
-                     }`}
-                   >
-                      <CheckCircle2 className="w-3.5 h-3.5" /> {ann.hasRead ? "Già Letto" : "Conferma Lettura"}
-                   </button>
-                )}
-                {isAdmin && (
-                   <button onClick={() => setDeleteTarget(ann.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all bg-white text-rose-500 border border-slate-200 hover:border-rose-300 hover:bg-rose-50 shadow-sm active:scale-95">
-                      <Trash2 className="w-3.5 h-3.5" /> Elimina
-                   </button>
-                )}
-             </div>
-          </div>
-        ))}
+               <div className="flex items-center gap-3 mb-3">
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tight ${cat.color}`}>
+                     {cat.label}
+                  </span>
+                  {ann.priority === "URGENT" && (
+                    <span className="text-[9px] font-black uppercase tracking-widest bg-red-600 text-white px-2 py-0.5 rounded-full animate-pulse">Urgente</span>
+                  )}
+                  <h4 className="text-sm font-black text-slate-800 flex-1 truncate">{ann.title}</h4>
+               </div>
+               
+               <p className="text-xs text-slate-600 whitespace-pre-wrap leading-relaxed mb-6 font-medium line-clamp-4">{ann.body}</p>
+               
+               <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-50">
+                  <div className="flex items-center gap-4">
+                     <div className="flex flex-col">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Data</span>
+                        <span className="text-[10px] font-bold text-slate-600">{new Date(ann.createdAt).toLocaleDateString('it-IT')}</span>
+                     </div>
+                     <div className="flex flex-col">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Autore</span>
+                        <span className="text-[10px] font-bold text-slate-800 italic uppercase">{ann.authorName}</span>
+                     </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    {ann.requiresRead && !isAdmin && (
+                       <button 
+                         onClick={() => !ann.hasRead && handleMarkAsRead(ann.id)}
+                         disabled={ann.hasRead}
+                         className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                           ann.hasRead ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-red-600 hover:bg-red-700 text-white shadow-lg active:scale-95"
+                         }`}
+                       >
+                          <CheckCircle2 className="w-4 h-4" /> {ann.hasRead ? "Letto" : "Leggi e Conferma"}
+                       </button>
+                    )}
+                    {isAdmin && (
+                       <button onClick={() => setDeleteTarget(ann.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                          <Trash2 className="w-5 h-5" />
+                       </button>
+                    )}
+                  </div>
+               </div>
+            </div>
+          )
+        })}
       </div>
     </div>
 
@@ -248,10 +262,11 @@ export default function BachecaPanel({ isAdmin = false, onClose }: { isAdmin?: b
       onClose={() => setDeleteTarget(null)}
       onConfirm={() => { if (deleteTarget) handleDelete(deleteTarget) }}
       title="Elimina Comunicazione"
-      message="Sei sicuro di voler eliminare questa comunicazione? L'azione è irreversibile."
+      message="L'avviso verrà rimosso definitivamente per tutti gli agenti. Continuare?"
       destructive
-      confirmLabel="Elimina"
+      confirmLabel="Elimina Definitivamente"
     />
     </>
   )
 }
+

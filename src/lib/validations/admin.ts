@@ -73,6 +73,21 @@ export const armorUpdateSchema = armorSchema.partial().extend({
   id: z.string()
 });
 
+// --- VALIDAZIONI BACHECA (Announcements) ---
+export const announcementSchema = z.object({
+  title: z.string().min(1, "Il titolo è obbligatorio"),
+  body: z.string().min(1, "Il contenuto è obbligatorio"),
+  category: z.string().default("AVVISO"),
+  priority: z.string().default("NORMAL"),
+  requiresRead: z.boolean().default(false),
+  isPinned: z.boolean().default(false),
+  attachments: z.array(z.string()).default([])
+});
+
+export const announcementUpdateSchema = announcementSchema.partial().extend({
+  id: z.string()
+});
+
 // --- VALIDAZIONI IMPOSTAZIONI GLOBALI ---
 export const globalSettingsSchema = z.object({
   minUfficiali: z.number().min(0, "Il minimo di ufficiali non può essere negativo."),

@@ -105,7 +105,6 @@ export default function AdminDashboard({
           onShowSettings={() => setShowSettings(true)}
           onShowVerbatel={() => setShowVerbatelSync(true)}
           onShowSwaps={() => { setShowSwapApprovals(true); admin.fetchPendingApprovals(); }}
-          onShowBacheca={() => setShowBacheca(true)}
           pendingSwapsCount={admin.pendingSwaps.length}
           pendingRequestsCount={admin.pendingRequests.length}
           onSearch={admin.setSearchQuery}
@@ -141,6 +140,7 @@ export default function AdminDashboard({
           onShowRadio={() => router.push(`/${tenantSlug}/admin/radio`)}
           onShowArmeria={() => router.push(`/${tenantSlug}/admin/armeria`)}
           onShowSezioni={() => router.push(`/${tenantSlug}/admin/sezioni`)}
+          onShowBacheca={() => router.push(`/${tenantSlug}/admin/bacheca`)}
         />
 
         <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">

@@ -11,15 +11,15 @@ export async function GET(request: Request) {
     const tenantId = session.user.tenantId
     const userId = session.user.id
 
-    // Auto-delete announcements older than 10 days
-    const tenDaysAgo = new Date();
-    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+    // Auto-delete announcements older than 30 days (extended from 10)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
     await prisma.announcement.deleteMany({
       where: {
         ...(tenantId ? { tenantId } : {}),
         createdAt: {
-          lt: tenDaysAgo
+          lt: thirtyDaysAgo
         }
       }
     });
@@ -34,6 +34,9 @@ export async function GET(request: Request) {
       include: {
         reads: {
           where: { userId }
+        },
+        _count: {
+          select: { reads: true }
         }
       }
     })
@@ -55,12 +58,12 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const session = await auth()
-    if (!session?.user || session.user.role !== "ADMIN") {
+    if (!session?.user || (session.user.role !== "ADMIN" && !session.user.canConfigureSystem)) {
       return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
     }
 
     const tenantId = session.user.tenantId
-    const { title, body, priority, requiresRead, isPinned } = await request.json()
+    const { title, body, priority, category, requiresRead, isPinned, attachments } = await request.json()
 
     if (!title || !body) {
       return NextResponse.json({ error: "Titolo e testo sono obbligatori" }, { status: 400 })
@@ -69,14 +72,27 @@ export async function POST(request: Request) {
     const ann = await prisma.announcement.create({
       data: {
         tenantId,
-        authorId: session.user.id,
+        authorId: session.user.id!,
         authorName: session.user.name || "Comando",
         title,
         body,
+        category: category || "AVVISO",
         priority: priority || "NORMAL",
         requiresRead: requiresRead || false,
-        isPinned: isPinned || false
+        isPinned: isPinned || false,
+        attachments: attachments || []
       }
+    })
+
+    const { logAudit } = await import("@/lib/audit")
+    await logAudit({
+      tenantId: tenantId || "GLOBAL",
+      adminId: session.user.id!,
+      adminName: session.user.name!,
+      action: "CREATE_ANNOUNCEMENT",
+      targetId: ann.id,
+      targetName: ann.title,
+      details: `Creato nuovo avviso in bacheca: ${ann.title}`
     })
 
     return NextResponse.json(ann)
