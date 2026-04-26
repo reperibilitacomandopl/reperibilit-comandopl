@@ -25,6 +25,8 @@ interface DayInfo {
   day: number
   name: string
   isWeekend: boolean
+  isHoliday?: boolean
+  isVigilia?: boolean
   isNextMonth: boolean
 }
 
@@ -159,7 +161,7 @@ export default function PlanningMobileView({
                 <button
                   key={di.day}
                   onClick={() => setSelectedDay(di.day)}
-                  className={`flex flex-col items-center justify-center min-w-[64px] h-[86px] rounded-[1.5rem] transition-all border-2 duration-300 ${selectedDay === di.day ? 'bg-[#0f172a] border-cyan-400 text-white shadow-[0_10px_30px_-10px_rgba(14,165,233,0.5)] scale-110 z-10' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'}`}
+                  className={`flex flex-col items-center justify-center min-w-[64px] h-[86px] rounded-[1.5rem] transition-all border-2 duration-300 ${selectedDay === di.day ? 'bg-[#0f172a] border-cyan-400 text-white shadow-[0_10px_30px_-10px_rgba(14,165,233,0.5)] scale-110 z-10' : (di.isWeekend || di.isHoliday || di.isVigilia ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300')}`}
                 >
                   <span className={`text-[9px] uppercase font-black tracking-widest mb-1 ${selectedDay === di.day ? 'text-cyan-400' : 'text-slate-400'}`}>{di.name.substring(0,3)}</span>
                   <span className="text-2xl font-black">{di.day}</span>

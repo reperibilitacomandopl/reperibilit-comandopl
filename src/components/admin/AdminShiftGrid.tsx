@@ -230,7 +230,7 @@ export default function AdminShiftGrid({
             </th>
             {dayInfo.map(di => (
               <th key={di.isNextMonth ? `h-next-${di.day}` : `h-${di.day}`}
-                className={`px-1 pt-3 pb-1 text-center font-black border-b border-slate-100 min-w-[42px] ${di.isNextMonth ? "bg-slate-100 text-slate-300 opacity-50" : (di.isWeekend ? "bg-rose-50 text-rose-600" : "bg-white text-slate-500")}`}>
+                className={`px-1 pt-3 pb-1 text-center font-black border-b border-slate-100 min-w-[42px] ${di.isNextMonth ? "bg-slate-100 text-slate-300 opacity-50" : (di.isWeekend || di.isHoliday || di.isVigilia ? "bg-rose-50 text-rose-600" : "bg-white text-slate-500")}`}>
                 {di.isNextMonth ? '1*' : di.day}<br />
                 <span className="text-[8px] opacity-70 uppercase">{di.name.substring(0, 3)}</span>
               </th>

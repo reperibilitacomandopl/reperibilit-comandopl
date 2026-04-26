@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react"
 import toast from "react-hot-toast"
 import { useRouter } from "next/navigation"
-import { isHoliday } from "@/utils/holidays"
+import { isHoliday, isCalendarHoliday } from "@/utils/holidays"
 import { AGENDA_CATEGORIES } from "@/utils/agenda-codes"
 
 export interface DashboardAgent {
@@ -124,16 +124,27 @@ export function useAdminData(
     const info = Array.from({ length: daysInMonth }, (_, i) => {
       const d = i + 1
       const date = new Date(currentYear, currentMonth - 1, d)
+      const nextDate = new Date(currentYear, currentMonth - 1, d + 1)
       return { 
         day: d, 
         name: dayNames[date.getDay()], 
-        isWeekend: isHoliday(date),
+        isWeekend: date.getDay() === 0 || date.getDay() === 6,
+        isHoliday: isCalendarHoliday(date),
+        isVigilia: isCalendarHoliday(nextDate),
         isNextMonth: false 
       }
     })
     // Add 1 day of next month for context
     const nextMonth1 = new Date(currentYear, currentMonth, 1)
-    info.push({ day: 1, name: dayNames[nextMonth1.getDay()], isWeekend: isHoliday(nextMonth1), isNextMonth: true })
+    const nextMonth2 = new Date(currentYear, currentMonth, 2)
+    info.push({ 
+      day: 1, 
+      name: dayNames[nextMonth1.getDay()], 
+      isWeekend: nextMonth1.getDay() === 0 || nextMonth1.getDay() === 6,
+      isHoliday: isCalendarHoliday(nextMonth1),
+      isVigilia: isCalendarHoliday(nextMonth2),
+      isNextMonth: true 
+    })
     return info
   }, [currentYear, currentMonth])
 
