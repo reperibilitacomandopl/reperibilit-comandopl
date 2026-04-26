@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { Copy, ClipboardPaste, GraduationCap, Radio, Shield } from "lucide-react"
+import { Copy, ClipboardPaste, GraduationCap, Radio, Shield, Car } from "lucide-react"
 import toast from "react-hot-toast"
 
 interface ServiceAgentCardProps {
@@ -12,6 +12,7 @@ interface ServiceAgentCardProps {
     serviceCategoryId?: string | null; 
     serviceTypeId?: string | null; 
     vehicleId?: string | null; 
+    radioId?: string | null;
     timeRange?: string | null; 
     serviceDetails?: string | null; 
     patrolGroupId?: string | null 
@@ -25,6 +26,7 @@ interface ServiceAgentCardProps {
     categoryId?: string | null, 
     typeId?: string | null, 
     vehicleId?: string | null, 
+    radioId?: string | null,
     timeRange?: string | null, 
     serviceDetails?: string | null
   ) => Promise<void>
@@ -32,6 +34,7 @@ interface ServiceAgentCardProps {
   pasteAgentConfig: (agentId: string, shiftType: string) => void
   copiedAgent: any | null
   vehicles: { id: string; name: string }[]
+  radios: { id: string; name: string }[]
   toggleLink: (shiftId: string, currentGroupId: string | null) => Promise<void>
   handleRemoveService: (userId: string, originalTimeRange: string) => void
   schools: any[]
@@ -52,6 +55,7 @@ export default function ServiceAgentCard({
   pasteAgentConfig,
   copiedAgent,
   vehicles,
+  radios,
   toggleLink,
   handleRemoveService,
   schools,
@@ -89,7 +93,7 @@ export default function ServiceAgentCard({
                 title="Orario Turno (Modificabile)"
                 type="text" 
                 defaultValue={timeRangeStr}
-                onBlur={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, e.target.value, shiftAssegnato.serviceDetails)}
+                onBlur={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, shiftAssegnato.radioId, e.target.value, shiftAssegnato.serviceDetails)}
                 className={`text-[11px] font-black bg-transparent border-none p-0 focus:ring-0 w-[70px] rounded focus:bg-white/20 ${isDark ? 'text-blue-100 hover:bg-white/10' : 'text-slate-700 hover:bg-slate-100'}`}
                 placeholder="hh:mm-hh:mm"
               />
@@ -99,10 +103,26 @@ export default function ServiceAgentCard({
                   type="text"
                   id={`note-${agente.id}`}
                   defaultValue={shiftAssegnato.serviceDetails || agente.servizio || ""}
-                  onBlur={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, timeRangeStr, e.target.value)}
+                  onBlur={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, shiftAssegnato.radioId, timeRangeStr, e.target.value)}
                   className={`text-[10px] font-bold border px-1.5 py-0.5 rounded focus:ring-0 w-[120px] focus:bg-white transition-all ${isDark ? 'text-white bg-slate-700 border-slate-600 hover:border-blue-400' : 'text-blue-800 bg-blue-50 border-blue-200 hover:border-blue-400'}`}
                   placeholder="Es. Fiera, Piantone..."
                 />
+                
+                <div className="flex items-center gap-1.5 ml-2">
+                  {shiftAssegnato.vehicleId && (
+                    <div className="flex items-center gap-1 bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tight border border-slate-200" title="Veicolo Assegnato">
+                      <Car width={10} height={10} />
+                      {vehicles.find(v => v.id === shiftAssegnato.vehicleId)?.name || '...'}
+                    </div>
+                  )}
+                  {shiftAssegnato.radioId && (
+                    <div className="flex items-center gap-1 bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tight border border-blue-100" title="Radio Assegnata">
+                      <Radio width={10} height={10} />
+                      {radios.find(r => r.id === shiftAssegnato.radioId)?.name || '...'}
+                    </div>
+                  )}
+                </div>
+
                 {schools.length > 0 && (
                   <div className="relative group/schools">
                     <button className={`p-1 rounded ${isDark ? 'text-amber-400 hover:bg-white/10' : 'text-amber-600 hover:bg-amber-50'}`} title="Abbina Scuola Manualmente">
@@ -129,7 +149,7 @@ export default function ServiceAgentCard({
                             <button 
                               key={s.id}
                               onClick={() => {
-                                assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, timeRangeStr, noteText)
+                                assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, shiftAssegnato.radioId, timeRangeStr, noteText)
                                 toast.success(`Abbinato: ${s.name}`)
                               }}
                               className="w-full flex items-center justify-between text-left px-2 py-1.5 hover:bg-amber-50 rounded text-[10px] font-bold text-slate-700 transition-colors"
@@ -168,12 +188,23 @@ export default function ServiceAgentCard({
 
           <select 
             value={shiftAssegnato.vehicleId || ""}
-            onChange={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, e.target.value, timeRangeStr, shiftAssegnato.serviceDetails)}
+            onChange={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, e.target.value, shiftAssegnato.radioId, timeRangeStr, shiftAssegnato.serviceDetails)}
             className="text-[10px] bg-slate-100 font-black px-2 py-1.5 rounded-md border border-slate-200 focus:border-blue-500 transition-all text-slate-800 max-w-[120px] truncate"
           >
             <option value="">+ Veicolo</option>
             {vehicles.map(v => (
               <option key={v.id} value={v.id}>{v.name}</option>
+            ))}
+          </select>
+
+          <select 
+            value={shiftAssegnato.radioId || ""}
+            onChange={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, e.target.value, timeRangeStr, shiftAssegnato.serviceDetails)}
+            className="text-[10px] bg-slate-100 font-black px-2 py-1.5 rounded-md border border-slate-200 focus:border-blue-500 transition-all text-slate-800 max-w-[100px] truncate"
+          >
+            <option value="">+ Radio</option>
+            {radios.map(r => (
+              <option key={r.id} value={r.id}>{r.name}</option>
             ))}
           </select>
 
@@ -196,7 +227,7 @@ export default function ServiceAgentCard({
       <input 
         type="text"
         defaultValue={shiftAssegnato.serviceDetails || ""}
-        onBlur={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, shiftAssegnato.timeRange, e.target.value)}
+        onBlur={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, shiftAssegnato.radioId, shiftAssegnato.timeRange, e.target.value)}
         placeholder="Inserisci dettagli servizio o zona..."
         className="w-full text-[11px] font-bold text-slate-700 bg-white border border-slate-200 rounded px-2 py-1 focus:border-blue-500 outline-none"
       />

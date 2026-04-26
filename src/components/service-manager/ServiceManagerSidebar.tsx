@@ -25,6 +25,7 @@ interface ServiceManagerSidebarProps {
   pasteAgentConfig: any
   copiedAgent: any
   vehicles: any[]
+  radios: any[]
   toggleLink: any
   handleRemoveService: any
   schools: any[]
@@ -52,6 +53,7 @@ export default function ServiceManagerSidebar({
   pasteAgentConfig,
   copiedAgent,
   vehicles,
+  radios,
   toggleLink,
   handleRemoveService,
   schools,
@@ -115,6 +117,7 @@ export default function ServiceManagerSidebar({
                             pasteAgentConfig={pasteAgentConfig}
                             copiedAgent={copiedAgent}
                             vehicles={vehicles}
+                            radios={radios}
                             toggleLink={toggleLink}
                             handleRemoveService={handleRemoveService}
                             schools={schools}

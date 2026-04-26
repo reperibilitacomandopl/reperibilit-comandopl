@@ -15,6 +15,21 @@ export const vehicleUpdateSchema = vehicleSchema.extend({
   id: z.string().uuid("ID Veicolo non valido (deve essere un identificatore alfanumerico UUID).")
 });
 
+// --- VALIDAZIONI RADIO ---
+export const radioSchema = z.object({
+  name: z.string().min(2, "Il nome della radio deve avere almeno 2 caratteri."),
+  modello: z.string().optional().nullable(),
+  seriale: z.string().optional().nullable(),
+  assegnazioneFissaId: z.string().optional().nullable(),
+  dataAssegnazione: z.string().optional().nullable(),
+  cambioBatteria: z.string().optional().nullable(),
+  stato: z.enum(["ATTIVO", "MANUTENZIONE", "DISMESSO"]).default("ATTIVO")
+});
+
+export const radioUpdateSchema = radioSchema.extend({
+  id: z.string().uuid("ID Radio non valido (deve essere un identificatore alfanumerico UUID).")
+});
+
 // --- VALIDAZIONI UTENTI / AGENTI ---
 export const userCreateSchema = z.object({
   matricola: z.string().min(1, "La matricola è un campo obbligatorio."),
@@ -50,6 +65,7 @@ export const dailyShiftSchema = z.object({
   serviceCategoryId: z.string().optional().nullable(),
   serviceTypeId: z.string().optional().nullable(),
   vehicleId: z.string().optional().nullable(),
+  radioId: z.string().optional().nullable(),
   serviceDetails: z.string().optional().nullable(),
   patrolGroupId: z.string().optional().nullable()
 });

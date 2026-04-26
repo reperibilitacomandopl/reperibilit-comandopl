@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Calendar, User, Clock, AlertCircle, RefreshCw, ChevronRight, ChevronLeft } from "lucide-react"
+import { Calendar, User, Clock, AlertCircle, RefreshCw, ChevronRight, ChevronLeft, Car, Radio } from "lucide-react"
 import Link from "next/link"
 import toast from "react-hot-toast"
 import { storeOfflineRequest } from "../lib/offline-sync"
@@ -201,8 +201,18 @@ export default function PlanningMobileView({
                           </div>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-1">
+                      <div className="flex flex-col items-end gap-1.5">
                         {renderBadge(shift)}
+                        {shift?.vehicle?.name && (
+                          <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded flex items-center gap-1">
+                            <Car size={10} /> {shift.vehicle.name}
+                          </span>
+                        )}
+                        {shift?.radio?.name && (
+                          <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded flex items-center gap-1">
+                            <Radio size={10} /> {shift.radio.name}
+                          </span>
+                        )}
                       </div>
                     </div>
                   )
@@ -246,7 +256,21 @@ export default function PlanningMobileView({
                         {shift?.repType || shift?.type || "RIPOSO"}
                       </p>
                     </div>
-                    {renderBadge(shift)}
+                    <div className="flex flex-col items-end gap-1.5">
+                      {renderBadge(shift)}
+                      <div className="flex gap-1 mt-1">
+                        {shift?.vehicle?.name && (
+                          <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded flex items-center gap-1" title="Veicolo Assegnato">
+                            <Car size={10} /> {shift.vehicle.name}
+                          </span>
+                        )}
+                        {shift?.radio?.name && (
+                          <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded flex items-center gap-1" title="Radio Assegnata">
+                            <Radio size={10} /> {shift.radio.name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )
               })}

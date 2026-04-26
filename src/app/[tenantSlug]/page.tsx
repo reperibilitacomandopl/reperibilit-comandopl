@@ -51,7 +51,11 @@ export default async function Home({
         lt: new Date(Date.UTC(currentYear, currentMonth, 2)),
       }
     },
-    include: { user: { select: { name: true } } }
+    include: { 
+      user: { select: { name: true } },
+      vehicle: { select: { name: true } },
+      radio: { select: { name: true } }
+    }
   })
 
   const myShifts = shifts.filter(s => s.userId === session.user.id)

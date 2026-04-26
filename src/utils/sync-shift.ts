@@ -71,6 +71,7 @@ export type ShiftSyncInput = {
   serviceCategoryId?: string | null;
   serviceTypeId?: string | null;
   vehicleId?: string | null;
+  radioId?: string | null;
   repType?: string | null;
 }
 
@@ -80,6 +81,7 @@ export type ShiftSyncOutput = {
   serviceCategoryId: string | null;
   serviceTypeId: string | null;
   vehicleId: string | null;
+  radioId: string | null;
   repType: string | null;
 }
 
@@ -89,7 +91,7 @@ export type ShiftSyncOutput = {
  * Applica le Leggi della "Sincronizzazione a Muro".
  */
 export function normalizeShiftData(input: ShiftSyncInput): ShiftSyncOutput {
-  let { macroType, timeRange, serviceCategoryId, serviceTypeId, vehicleId, repType } = input;
+  let { macroType, timeRange, serviceCategoryId, serviceTypeId, vehicleId, radioId, repType } = input;
   
   macroType = macroType.trim().toUpperCase();
   
@@ -102,6 +104,7 @@ export function normalizeShiftData(input: ShiftSyncInput): ShiftSyncOutput {
       serviceCategoryId: null,
       serviceTypeId: null,
       vehicleId: null,
+      radioId: null,
       repType: null // Niente reperibilità se sei assente!
     };
   }
@@ -125,6 +128,7 @@ export function normalizeShiftData(input: ShiftSyncInput): ShiftSyncOutput {
     serviceCategoryId: serviceCategoryId || null,
     serviceTypeId: serviceTypeId || null,
     vehicleId: vehicleId || null,
+    radioId: radioId || null,
     repType: repType || null
   };
 }

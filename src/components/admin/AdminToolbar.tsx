@@ -29,6 +29,7 @@ interface AdminToolbarProps {
   onShowSalaOperativa: () => void
   onShowStampaOds: () => void
   onShowParcoAuto: () => void
+  onShowRadio: () => void
   onShowSezioni: () => void
   onSearch: (q: string) => void
   onRoleFilter: (role: string) => void
@@ -70,7 +71,7 @@ export function AdminToolbar({
   onImportShifts, onGenerateMonth, isGenerating, isResolving, isSendingPec, isSendingAlert, 
   isExportingPDF, isPublishing, isClearing, uploadStatus,
   isMobileView, onToggleMobileView,
-  onShowSalaOperativa, onShowStampaOds, onShowParcoAuto, onShowSezioni,
+  onShowSalaOperativa, onShowStampaOds, onShowParcoAuto, onShowRadio, onShowSezioni,
   currentUser
 }: AdminToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -196,7 +197,6 @@ export function AdminToolbar({
         )}
         
         <div className="w-[1px] h-6 bg-slate-700 mx-1"></div>
-        
         {canConfigureSystem && (
           <button 
             onClick={onShowParcoAuto} 
@@ -205,6 +205,16 @@ export function AdminToolbar({
             aria-label="Gestione Mezzi"
           >
             <Car width={14} height={14} /> Mezzi
+          </button>
+        )}
+        {canConfigureSystem && (
+          <button 
+            onClick={onShowRadio} 
+            className="flex items-center gap-2 text-slate-400 hover:text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+            title="Gestione Inventario Radio"
+            aria-label="Gestione Radio"
+          >
+            <Radio width={14} height={14} /> Radio
           </button>
         )}
         {canConfigureSystem && (

@@ -19,6 +19,7 @@ interface ServiceBoardProps {
   
   // Props for ServiceAgentCard
   vehicles: any[]
+  radios: any[]
   schools: any[]
   currentDate: Date
   patrolSelection: Set<string>
@@ -45,6 +46,7 @@ export default function ServiceBoard({
   handleDropToCategory,
   handleDropToService,
   vehicles,
+  radios,
   schools,
   currentDate,
   patrolSelection,
@@ -99,6 +101,7 @@ export default function ServiceBoard({
                   pasteAgentConfig={pasteAgentConfig}
                   copiedAgent={copiedAgent}
                   vehicles={vehicles}
+                  radios={radios}
                   toggleLink={toggleLink}
                   handleRemoveService={handleRemoveService}
                   schools={schools}
@@ -178,6 +181,7 @@ export default function ServiceBoard({
                                 pasteAgentConfig={pasteAgentConfig}
                                 copiedAgent={copiedAgent}
                                 vehicles={vehicles}
+                                radios={radios}
                                 toggleLink={toggleLink}
                                 handleRemoveService={handleRemoveService}
                                 schools={schools}
@@ -249,6 +253,7 @@ export default function ServiceBoard({
                                             pasteAgentConfig={pasteAgentConfig}
                                             copiedAgent={copiedAgent}
                                             vehicles={vehicles}
+                                            radios={radios}
                                             toggleLink={toggleLink}
                                             handleRemoveService={handleRemoveService}
                                             schools={schools}
@@ -277,6 +282,7 @@ export default function ServiceBoard({
                                   pasteAgentConfig={pasteAgentConfig}
                                   copiedAgent={copiedAgent}
                                   vehicles={vehicles}
+                                  radios={radios}
                                   toggleLink={toggleLink}
                                   handleRemoveService={handleRemoveService}
                                   schools={schools}

@@ -47,6 +47,7 @@ model Tenant {
   shiftSwapRequests  ShiftSwapRequest[]
   users              User[]
   vehicles           Vehicle[]
+  radios             Radio[]
   ShiftRule          ShiftRule[]
 }
 
@@ -124,6 +125,7 @@ model User {
   rotationGroup          RotationGroup?     @relation(fields: [rotationGroupId], references: [id])
   tenant                 Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   patrolTemplates        PatrolTemplate[]   @relation("PatrolMembers")
+  radios                 Radio[]            @relation("RadioAssegnatario")
 
   @@unique([tenantId, matricola])
 }
@@ -164,6 +166,8 @@ model Shift {
   tenant             Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   vehicle            Vehicle?           @relation(fields: [vehicleId], references: [id])
+  radioId            String?
+  radio              Radio?             @relation(fields: [radioId], references: [id])
   swaps              ShiftSwapRequest[]
 
   @@unique([userId, date, tenantId])
@@ -182,6 +186,8 @@ model PatrolTemplate {
   serviceType       ServiceType?     @relation(fields: [serviceTypeId], references: [id])
   tenant            Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   vehicle           Vehicle?         @relation(fields: [vehicleId], references: [id])
+  radioId           String?
+  radio             Radio?           @relation(fields: [radioId], references: [id])
   members           User[]           @relation("PatrolMembers")
 
   @@unique([name, tenantId])
@@ -227,6 +233,24 @@ model Vehicle {
   patrolTemplates       PatrolTemplate[]
   shifts                Shift[]
   tenant                Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([name, tenantId])
+}
+
+model Radio {
+  id                  String           @id @default(uuid())
+  tenantId            String?
+  name                String
+  modello             String?
+  seriale             String?
+  stato               String           @default("ATTIVO")
+  assegnazioneFissaId String?
+  dataAssegnazione    DateTime?
+  cambioBatteria      DateTime?
+  shifts              Shift[]
+  patrolTemplates     PatrolTemplate[]
+  tenant              Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assegnatario        User?            @relation("RadioAssegnatario", fields: [assegnazioneFissaId], references: [id])
 
   @@unique([name, tenantId])
 }

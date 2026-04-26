@@ -138,6 +138,7 @@ export default function AdminDashboard({
           onShowSalaOperativa={() => setShowSalaOperativa(true)}
           onShowStampaOds={() => setShowStampaOds(true)}
           onShowParcoAuto={() => router.push(`/${tenantSlug}/admin/parco-auto`)}
+          onShowRadio={() => router.push(`/${tenantSlug}/admin/radio`)}
           onShowSezioni={() => router.push(`/${tenantSlug}/admin/sezioni`)}
         />
 
