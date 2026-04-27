@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { isHoliday } from "@/utils/holidays"
 
 export async function GET(req: Request) {
   const session = await auth()
@@ -25,7 +26,7 @@ export async function GET(req: Request) {
       }),
       prisma.shift.findMany({
         where: { ...tf, date: { gte: startDate, lte: endDate } },
-        select: { userId: true, type: true, repType: true, durationHours: true, overtimeHours: true }
+        select: { userId: true, date: true, type: true, repType: true, durationHours: true, overtimeHours: true }
       }),
       prisma.agendaEntry.findMany({
         where: { ...tf, date: { gte: startDate, lte: endDate } },
@@ -34,7 +35,7 @@ export async function GET(req: Request) {
     ])
 
     const csvRows = [
-      ["MATRICOLA", "NOME", "QUALIFICA", "ORE STRAORDINARI", "FERIE GODUTE", "REPERIBILITA", "ALTRE ASSENZE"]
+      ["MATRICOLA", "NOME", "QUALIFICA", "ORE STRAORDINARI", "FERIE GODUTE", "REP_TOTALE", "REP_FEST", "REP_FER", "ALTRE ASSENZE"]
     ]
 
     users.forEach(u => {
@@ -43,13 +44,21 @@ export async function GET(req: Request) {
 
       let overtime = 0
       let ferie = 0
-      let reperibilita = 0
+      let repFest = 0
+      let repFer = 0
       let altre_assenze = 0
 
       // Calculate totals
       uShifts.forEach(s => {
         overtime += s.overtimeHours || 0
-        if (s.repType && s.repType.toLowerCase().includes("rep")) reperibilita += 1
+        if (s.repType && s.repType.toLowerCase().includes("rep")) {
+          const shiftDate = new Date(s.date)
+          if (isHoliday(shiftDate)) {
+            repFest += 1
+          } else {
+            repFer += 1
+          }
+        }
         if (s.type === "FERIE" || s.type === "FERIE_") ferie += 1
         if (s.type === "MALATT" || s.type === "MALATTIA") altre_assenze += 1
       })
@@ -65,7 +74,9 @@ export async function GET(req: Request) {
         u.qualifica || "",
         overtime.toString(),
         ferie.toString(),
-        reperibilita.toString(),
+        (repFest + repFer).toString(),
+        repFest.toString(),
+        repFer.toString(),
         altre_assenze.toString()
       ])
     })

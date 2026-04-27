@@ -526,6 +526,36 @@ export async function generateODSPDF({
     doc.text("IL COMANDANTE DEL CORPO", pageWidth - 55, finalY, { align: "center" });
     doc.line(pageWidth - 85, finalY + 12, pageWidth - 25, finalY + 12);
 
+    // 4.5 Timbro Grafico Digitale (Sigillo Istituzionale)
+    const sealCenterX = pageWidth / 2;
+    const sealCenterY = finalY + 6;
+    const sealRadius = 12;
+    
+    // Cerchio esterno
+    doc.setDrawColor(16, 185, 129); // emerald-500
+    doc.setLineWidth(0.8);
+    doc.circle(sealCenterX, sealCenterY, sealRadius, "S");
+    // Cerchio interno
+    doc.setLineWidth(0.3);
+    doc.circle(sealCenterX, sealCenterY, sealRadius - 2, "S");
+    
+    // Testo circolare superiore
+    doc.setFontSize(5);
+    doc.setTextColor(16, 185, 129);
+    doc.setFont("helvetica", "bold");
+    doc.text("★ FIRMATO DIGITALMENTE ★", sealCenterX, sealCenterY - 5, { align: "center" });
+    
+    // Icona centrale (checkmark stilizzato)
+    doc.setFontSize(12);
+    doc.text("✓", sealCenterX, sealCenterY + 1.5, { align: "center" });
+    
+    // Testo circolare inferiore  
+    doc.setFontSize(4);
+    doc.text("SENTINEL SECURITY SUITE", sealCenterX, sealCenterY + 5, { align: "center" });
+    doc.setFontSize(3.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(new Date().toLocaleDateString('it-IT'), sealCenterX, sealCenterY + 7.5, { align: "center" });
+
     // 5. Sigillo Digitale & QR
     const pdfOutput = doc.output("arraybuffer");
     const documentHash = await generateHash(pdfOutput);

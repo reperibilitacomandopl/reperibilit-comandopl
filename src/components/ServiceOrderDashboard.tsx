@@ -278,6 +278,21 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
           duration: 5000,
           icon: '🔏'
         })
+
+        // 3. Pubblica annuncio automatico in Bacheca
+        try {
+          const dateLabel = currentDate.toLocaleDateString('it-IT', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
+          await fetch("/api/announcements", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: `📋 OdS Certificato — ${dateLabel}`,
+              body: `L'Ordine di Servizio per ${dateLabel} è stato firmato digitalmente e pubblicato. Verificate le vostre assegnazioni nella sezione "Il Mio OdS".`,
+              category: "ODG",
+              priority: "HIGH"
+            })
+          })
+        } catch { /* Non bloccare il flusso se la bacheca fallisce */ }
       } else {
         const err = await res.json()
         if (res.status === 409) {

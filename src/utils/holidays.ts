@@ -32,8 +32,11 @@ export function isCalendarHoliday(date: Date): boolean {
   ];
   if (fixed.some(([m, d]) => m === month && d === day)) return true;
 
-  // Pasqua/Pasquetta
+  // Pasqua (Domenica) e Pasquetta (Lunedì)
   const easter = getEaster(year);
+  if (easter.getDate() === day && easter.getMonth() + 1 === month) {
+    return true;
+  }
   const easterMonday = new Date(easter.getTime());
   easterMonday.setDate(easter.getDate() + 1);
   if (easterMonday.getDate() === day && easterMonday.getMonth() + 1 === month) {

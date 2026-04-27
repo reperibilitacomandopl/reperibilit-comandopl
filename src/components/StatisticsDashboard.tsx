@@ -62,8 +62,20 @@ export default function StatisticsDashboard({ month, year }: { month: number; ye
     const weekend = data.reduce((acc, curr) => acc + curr.sabato + curr.domenica, 0)
     const uffCount = data.filter(d => d.isUff).length
     const agtCount = data.filter(d => !d.isUff).length
-    const equityIndex = 95 // Hardcoded for demo, or calculate based on variance
-    return { total, weekend, uffCount, agtCount, equityIndex }
+
+    // Calcolo Equity Index reale basato sulla varianza delle reperibilità
+    const totals = data.map(d => d.sabato + d.domenica + d.feriale + d.infrasettimanale)
+    const mean = totals.length > 0 ? totals.reduce((a, b) => a + b, 0) / totals.length : 0
+    const variance = totals.length > 0 ? totals.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / totals.length : 0
+    const maxPossibleVariance = mean > 0 ? Math.pow(mean, 2) : 1
+    const equityIndex = totals.length > 0 ? Math.round(Math.max(0, Math.min(100, 100 * (1 - variance / maxPossibleVariance)))) : 0
+
+    // Calcolo Compliance reale: conta agenti che superano il massimale (stima 8)
+    const massimale = 8
+    const violazioni = totals.filter(t => t > massimale).length
+    const compliancePercent = totals.length > 0 ? Math.round(((totals.length - violazioni) / totals.length) * 100) : 100
+
+    return { total, weekend, uffCount, agtCount, equityIndex, compliancePercent, violazioni }
   }, [data])
 
   if (loading) {
@@ -140,8 +152,8 @@ export default function StatisticsDashboard({ month, year }: { month: number; ye
           <ShieldCheck className="text-emerald-600 mb-6 relative" size={28} />
           <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 relative">Indice Equità</h4>
           <p className="text-4xl font-black text-slate-900 leading-none relative">{stats.equityIndex}%</p>
-          <div className="mt-4 flex items-center gap-2 relative border border-emerald-100 bg-emerald-50/30 px-3 py-1 rounded-full w-fit">
-             <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Ottimo bilanciamento</span>
+          <div className={`mt-4 flex items-center gap-2 relative border px-3 py-1 rounded-full w-fit ${stats.equityIndex >= 80 ? 'border-emerald-100 bg-emerald-50/30' : stats.equityIndex >= 50 ? 'border-amber-100 bg-amber-50/30' : 'border-rose-100 bg-rose-50/30'}`}>
+             <span className={`text-[9px] font-black uppercase tracking-widest ${stats.equityIndex >= 80 ? 'text-emerald-600' : stats.equityIndex >= 50 ? 'text-amber-600' : 'text-rose-600'}`}>{stats.equityIndex >= 80 ? 'Ottimo bilanciamento' : stats.equityIndex >= 50 ? 'Bilanciamento accettabile' : 'Distribuzione sbilanciata'}</span>
           </div>
         </div>
 
@@ -149,10 +161,10 @@ export default function StatisticsDashboard({ month, year }: { month: number; ye
           <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform"></div>
           <Target className="text-blue-600 mb-6 relative" size={28} />
           <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 relative">Compliance Target</h4>
-          <p className="text-4xl font-black text-slate-900 leading-none relative">100%</p>
+          <p className={`text-4xl font-black leading-none relative ${stats.compliancePercent === 100 ? 'text-slate-900' : 'text-rose-600'}`}>{stats.compliancePercent}%</p>
           <div className="mt-4 flex items-center gap-2 relative">
              <span className="text-[10px] font-bold text-slate-400">Massimali</span>
-             <span className="text-xs font-black text-blue-600">0 SUPERAMENTI</span>
+             <span className={`text-xs font-black ${stats.violazioni === 0 ? 'text-blue-600' : 'text-rose-600'}`}>{stats.violazioni} SUPERAMENTI</span>
           </div>
         </div>
       </div>
