@@ -40,11 +40,12 @@ interface PannelloOverviewProps {
   settings: { massimaleAgente: number; massimaleUfficiale: number; minUfficiali: number } | null
   tenantSlug: string
   tenantName: string
+  totalScadenze?: number
 }
 
 const MESI = ["", "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
 
-export default function PannelloOverview({ totalAgents, todayShifts, isPublished, currentMonth, currentYear, settings, totalVehicles, pendingSwaps, tenantSlug, tenantName }: PannelloOverviewProps) {
+export default function PannelloOverview({ totalAgents, todayShifts, isPublished, currentMonth, currentYear, settings, totalVehicles, pendingSwaps, tenantSlug, tenantName, totalScadenze = 0 }: PannelloOverviewProps) {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [collapsedPattuglie, setCollapsedPattuglie] = useState(false)
   const [collapsedEccezioni, setCollapsedEccezioni] = useState(false)
@@ -241,7 +242,7 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
 
            <div className="hidden md:block w-px h-24 bg-white/10 relative z-10"></div>
 
-           <div className="flex-1 w-full grid grid-cols-2 gap-6 relative z-10">
+           <div className="flex-1 w-full grid grid-cols-3 gap-6 relative z-10">
               <div className="bg-white/5 p-6 rounded-[2rem] border border-white/5 backdrop-blur-md group hover:bg-white/10 transition-colors">
                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Squadre Formate</p>
                  <div className="flex items-end gap-3">
@@ -258,6 +259,15 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
                        {ufficialiOggi}
                     </p>
                     <span className="text-slate-500 text-[10px] font-black mb-1">/ {targetUfficiali}</span>
+                 </div>
+              </div>
+              <div className="bg-white/5 p-6 rounded-[2rem] border border-white/5 backdrop-blur-md group hover:bg-white/10 transition-colors">
+                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Scadenze 30gg</p>
+                 <div className="flex items-end gap-3">
+                    <p className={`text-4xl font-black leading-none ${totalScadenze > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                       {totalScadenze}
+                    </p>
+                    <span className="text-slate-500 text-[10px] font-black mb-1">Alerts</span>
                  </div>
               </div>
            </div>

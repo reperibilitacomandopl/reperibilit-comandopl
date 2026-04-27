@@ -4,11 +4,13 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { CheckCircle2, XCircle, Clock, CalendarDays, Inbox } from "lucide-react"
 import toast from "react-hot-toast"
+import AbsenceCalendar from "@/components/admin/AbsenceCalendar"
 
 export default function GestioneRichiestePage() {
   const router = useRouter()
   const [requests, setRequests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   useEffect(() => {
     fetchRequests()
@@ -39,6 +41,7 @@ export default function GestioneRichiestePage() {
       if (res.ok) {
         toast.success(status === "APPROVED" ? "Richiesta Approvata ed inserita in Calendario!" : "Richiesta Rifiutata")
         fetchRequests()
+        setRefreshTrigger(prev => prev + 1)
         router.refresh()
       } else {
         const error = await res.json()
@@ -128,13 +131,15 @@ export default function GestioneRichiestePage() {
                       <CheckCircle2 size={18} /> Approva (Applica OdS)
                     </button>
                   </div>
-
                 </div>
               ))}
             </div>
           )}
         </div>
       </div>
+
+      {/* Calendario Assenze Visuale */}
+      <AbsenceCalendar refreshTrigger={refreshTrigger} />
     </div>
   )
 }

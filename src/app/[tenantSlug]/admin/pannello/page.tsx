@@ -43,6 +43,16 @@ export default async function PannelloPage() {
     prisma.shiftSwapRequest.count({ where: { status: "PENDING", ...tf } })
   ])
 
+  // Calcolo totale scadenze a 30 giorni
+  const alertDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+  const [patenti, armi, kevlar, veicoliScad] = await Promise.all([
+    prisma.user.count({ where: { isActive: true, scadenzaPatente: { lte: alertDate, gte: now }, ...tf } }),
+    prisma.user.count({ where: { isActive: true, scadenzaPortoArmi: { lte: alertDate, gte: now }, ...tf } }),
+    prisma.armor.count({ where: { stato: "ATTIVO", scadenzaKevlar: { lte: alertDate, gte: now }, ...tf } }),
+    prisma.vehicle.count({ where: { stato: "ATTIVO", OR: [ { scadenzaAssicurazione: { lte: alertDate, gte: now } }, { scadenzaBollo: { lte: alertDate, gte: now } }, { scadenzaRevisione: { lte: alertDate, gte: now } } ], ...tf } })
+  ])
+  const totalScadenze = patenti + armi + kevlar + veicoliScad
+
   return (
     <div className="p-6 lg:p-8 relative z-10">
       <PannelloOverview
@@ -56,6 +66,7 @@ export default async function PannelloPage() {
         pendingSwaps={pendingSwaps}
         tenantSlug={session.user.tenantSlug || ""}
         tenantName={session.user.tenantName || ""}
+        totalScadenze={totalScadenze}
       />
     </div>
   )
