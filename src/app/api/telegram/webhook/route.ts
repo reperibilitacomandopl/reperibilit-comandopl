@@ -97,6 +97,47 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // Comando /turno
+    if (text === "/turno") {
+      const user = await prisma.user.findFirst({
+        where: { telegramChatId: chatId }
+      });
+
+      if (!user) {
+        await sendTelegramMessage(chatId, "❌ Account non collegato. Usa <code>/link [codice]</code>.");
+        return NextResponse.json({ ok: true });
+      }
+
+      const today = new Date();
+      const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+      
+      const formatLocal = (d: Date) => new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Rome' }).format(d);
+      const todayStr = formatLocal(today);
+      const tomorrowStr = formatLocal(tomorrow);
+
+      const shifts = await prisma.shift.findMany({
+        where: {
+          userId: user.id,
+          date: { in: [new Date(`${todayStr}T00:00:00Z`), new Date(`${tomorrowStr}T00:00:00Z`)] }
+        }
+      });
+
+      const todayShift = shifts.find(s => formatLocal(new Date(s.date)) === todayStr);
+      const tomorrowShift = shifts.find(s => formatLocal(new Date(s.date)) === tomorrowStr);
+
+      const formatShiftText = (s: any) => {
+        if (!s || s.type === "RIPOSO") return "💤 RIPOSO";
+        return `📅 <b>${s.type}</b>\n⏰ ${s.timeRange || 'Orario standard'}\n🚗 ${s.vehicleId ? 'Mezzo assegnato' : 'Appiedato'}`;
+      };
+
+      const resp = `👮‍♂️ <b>Servizi per ${user.name}</b>\n\n` +
+                   `<b>OGGI:</b>\n${formatShiftText(todayShift)}\n\n` +
+                   `<b>DOMANI:</b>\n${formatShiftText(tomorrowShift)}`;
+
+      await sendTelegramMessage(chatId, resp);
+      return NextResponse.json({ ok: true });
+    }
+
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("❌ Errore Webhook Telegram:", error);

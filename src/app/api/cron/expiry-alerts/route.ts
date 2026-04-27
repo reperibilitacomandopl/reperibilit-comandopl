@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { sendPushNotification } from "@/lib/push-notifications"
 
 /**
  * CRON JOB — Alert Scadenze Documentali
- * Controlla: patente, porto d'armi, kevlar giubbotti, assicurazione/bollo/revisione veicoli
- * Invia notifiche 30 giorni prima della scadenza
- * Vercel CRON: ogni giorno alle 07:00
  */
 
 const DAYS_BEFORE_ALERT = 30
@@ -48,15 +46,25 @@ export async function GET(req: Request) {
       })
       
       if (!existingNotif) {
+        const title = "⚠️ Patente in Scadenza"
+        const message = `La tua patente scade tra ${daysLeft} giorni. Provvedi al rinnovo.`
+        
         await prisma.notification.create({
           data: {
             userId: agent.id,
             tenantId: agent.tenantId,
-            title: "⚠️ Patente in Scadenza",
-            message: `La tua patente scade tra ${daysLeft} giorni. Provvedi al rinnovo.`,
+            title,
+            message,
             type: "WARNING"
           }
         })
+
+        // Invia Push
+        await sendPushNotification(agent.id, {
+          title,
+          body: message
+        })
+
         totalAlerts++
       }
     }
@@ -84,15 +92,25 @@ export async function GET(req: Request) {
       })
       
       if (!existingNotif) {
+        const title = "🔫 Porto d'Armi in Scadenza"
+        const message = `Il tuo porto d'armi scade tra ${daysLeft} giorni. Contatta l'armiere per il rinnovo.`
+        
         await prisma.notification.create({
           data: {
             userId: agent.id,
             tenantId: agent.tenantId,
-            title: "🔫 Porto d'Armi in Scadenza",
-            message: `Il tuo porto d'armi scade tra ${daysLeft} giorni. Contatta l'armiere per il rinnovo.`,
+            title,
+            message,
             type: "WARNING"
           }
         })
+
+        // Invia Push
+        await sendPushNotification(agent.id, {
+          title,
+          body: message
+        })
+
         totalAlerts++
       }
     }
@@ -122,15 +140,24 @@ export async function GET(req: Request) {
         })
         
         if (!existingNotif) {
+          const title = "🛡️ Giubbotto Antiproiettile in Scadenza"
+          const message = `Il giubbotto "${armor.name}" scade tra ${daysLeft} giorni. Segnalare all'armiere.`
+          
           await prisma.notification.create({
             data: {
               userId: armor.assegnazioneFissaId,
               tenantId: armor.tenantId,
-              title: "🛡️ Giubbotto Antiproiettile in Scadenza",
-              message: `Il giubbotto "${armor.name}" scade tra ${daysLeft} giorni. Segnalare all'armiere.`,
+              title,
+              message,
               type: "WARNING"
             }
           })
+
+          await sendPushNotification(armor.assegnazioneFissaId, {
+            title,
+            body: message
+          })
+
           totalAlerts++
         }
       }
@@ -193,15 +220,24 @@ export async function GET(req: Request) {
                 return `${c.label}: ${dl}gg`
               }).join(", ")
 
+            const title = `🚗 Scadenza Veicolo: ${v.name}`
+            const message = `Il veicolo ${v.name} (${v.targa || 'N/A'}) ha scadenze imminenti: ${expiringItems}`
+
             await prisma.notification.create({
               data: {
                 userId: admin.id,
                 tenantId: v.tenantId,
-                title: `🚗 Scadenza Veicolo: ${v.name}`,
-                message: `Il veicolo ${v.name} (${v.targa || 'N/A'}) ha scadenze imminenti: ${expiringItems}`,
+                title,
+                message,
                 type: "WARNING"
               }
             })
+
+            await sendPushNotification(admin.id, {
+              title,
+              body: message
+            })
+
             totalAlerts++
           }
         }

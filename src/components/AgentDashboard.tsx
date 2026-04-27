@@ -26,6 +26,7 @@ import AgentAgendaModal from "./agent/AgentAgendaModal"
 import AgentSyncModal from "./agent/AgentSyncModal"
 import AgentSosModal from "./agent/AgentSosModal"
 import OfficerDutyPanel from "./agent/OfficerDutyPanel"
+import NextShiftCard from "./agent/NextShiftCard"
 import PersonalBalances from "./agent/PersonalBalances"
 import PersonalClockHistory from "./agent/PersonalClockHistory"
 import { useGpsTracking } from "@/hooks/useGpsTracking"
@@ -231,6 +232,28 @@ export default function AgentDashboard({
         <PersonalBalances />
         <PersonalClockHistory />
       </div>
+
+      {/* NEXT SHIFT PROACTIVE WIDGET */}
+      {(() => {
+        const now = new Date()
+        now.setHours(0, 0, 0, 0)
+        
+        const nextShift = admin.myShifts
+          .filter(s => {
+            const d = new Date(s.date)
+            d.setHours(0, 0, 0, 0)
+            return d >= now && (s.type !== "RIPOSO" && s.type !== "" && !s.type.startsWith("F") && !s.type.startsWith("M"))
+          })
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0]
+
+        return nextShift ? (
+          <NextShiftCard 
+            shift={nextShift} 
+            allAgents={allAgents} 
+            allShifts={shifts} 
+          />
+        ) : null
+      })()}
 
       <AgentShiftsList 
         isPublished={isPublished}

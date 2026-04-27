@@ -113,7 +113,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ 
       data: result,
-      syncToken: "INTERNAL_SYNC_" + tenantId // Placeholder safe token or session-based verification
+      syncToken: "INTERNAL_SYNC_" + tenantId 
     }, { headers: corsHeaders });
 
   } catch (error) {

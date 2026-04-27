@@ -35,7 +35,7 @@ export async function GET(req: Request) {
     ])
 
     const csvRows = [
-      ["MATRICOLA", "NOME", "QUALIFICA", "ORE STRAORDINARI", "FERIE GODUTE", "REP_TOTALE", "REP_FEST", "REP_FER", "ALTRE ASSENZE"]
+      ["MATRICOLA", "NOME", "QUALIFICA", "ORE STRAORDINARI", "BUONI PASTO", "TURNI_TOTALI", "TURNI_NOTTE", "REP_FEST", "REP_FER", "FERIE", "MALATTIA/ASSENZE"]
     ]
 
     users.forEach(u => {
@@ -47,9 +47,21 @@ export async function GET(req: Request) {
       let repFest = 0
       let repFer = 0
       let altre_assenze = 0
+      let buoni_pasto = 0
+      let turni_notte = 0
+      let turni_totali = 0
 
       // Calculate totals
       uShifts.forEach(s => {
+        const type = (s.type || "").toUpperCase();
+        const isWorking = /^[MPN]\d/.test(type);
+
+        if (isWorking) {
+          turni_totali += 1;
+          if (type.startsWith("N")) turni_notte += 1;
+          if ((s.durationHours || 6) >= 6) buoni_pasto += 1;
+        }
+
         overtime += s.overtimeHours || 0
         if (s.repType && s.repType.toLowerCase().includes("rep")) {
           const shiftDate = new Date(s.date)
@@ -59,24 +71,26 @@ export async function GET(req: Request) {
             repFer += 1
           }
         }
-        if (s.type === "FERIE" || s.type === "FERIE_") ferie += 1
-        if (s.type === "MALATT" || s.type === "MALATTIA") altre_assenze += 1
+        if (type === "FERIE" || type === "FERIE_") ferie += 1
+        if (type === "MALATT" || type === "MALATTIA") altre_assenze += 1
       })
 
       uAgenda.forEach(a => {
-        if (a.code === "0015" || a.code === "0016") ferie += 1 // typical codes
-        else if (a.code !== "ORE" && !a.code.includes("IND")) altre_assenze += 1 // simplified logic
+        if (a.code === "0015" || a.code === "0016") ferie += 1
+        else if (["MAL", "VIS", "PER", "L104"].some(k => a.code.includes(k))) altre_assenze += 1
       })
 
       csvRows.push([
         u.matricola,
         u.name,
         u.qualifica || "",
-        overtime.toString(),
-        ferie.toString(),
-        (repFest + repFer).toString(),
+        overtime.toFixed(1),
+        buoni_pasto.toString(),
+        turni_totali.toString(),
+        turni_notte.toString(),
         repFest.toString(),
         repFer.toString(),
+        ferie.toString(),
         altre_assenze.toString()
       ])
     })
