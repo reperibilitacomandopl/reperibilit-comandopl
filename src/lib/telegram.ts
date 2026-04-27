@@ -97,7 +97,8 @@ export async function broadcastEmergency(tenantId: string, message: string) {
   const users = await prisma.user.findMany({
     where: { 
       tenantId,
-      telegramChatId: { not: null }
+      telegramChatId: { not: null },
+      telegramOptIn: true
     },
     select: { telegramChatId: true, name: true }
   });
@@ -118,7 +119,7 @@ export async function notifyAdminActivity(message: string, tenantId?: string) {
   // Se abbiamo un tenantId, cerchiamo gli amministratori del tenant
   if (tenantId) {
     const admins = await prisma.user.findMany({
-      where: { tenantId, role: "ADMIN", telegramChatId: { not: null } },
+      where: { tenantId, role: "ADMIN", telegramChatId: { not: null }, telegramOptIn: true },
       select: { telegramChatId: true }
     });
     

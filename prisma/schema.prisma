@@ -77,6 +77,7 @@ model User {
   telegramChatId           String?
   telegramLinkCode         String?
   telegramLinkExpires      DateTime?
+  telegramOptIn            Boolean   @default(true) // Consenso GDPR Notifiche Telegram
   dataAssunzione           DateTime?
   dataDiNascita            DateTime?
   scadenzaPatente          DateTime?

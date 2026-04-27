@@ -22,7 +22,8 @@ export async function POST(req: Request) {
     // Find all users with a Telegram Chat ID
     const users = await prisma.user.findMany({
       where: {
-        telegramChatId: { not: null }
+        telegramChatId: { not: null },
+        telegramOptIn: true
       }
     })
 

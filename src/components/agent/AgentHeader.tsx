@@ -35,6 +35,22 @@ export default function AgentHeader({
   signOutAction
 }: any) {
   const [show2faSetup, setShow2faSetup] = React.useState(false)
+  const [telegramOptIn, setTelegramOptIn] = React.useState(currentUser?.telegramOptIn !== false) // Default true se non esplicitamente false
+  
+  const handleToggleOptIn = async () => {
+    const newValue = !telegramOptIn
+    setTelegramOptIn(newValue)
+    try {
+      await fetch('/api/user/telegram-optin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ optIn: newValue })
+      })
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-700">
       {/* Widget in servizio */}
@@ -207,9 +223,20 @@ export default function AgentHeader({
                     {telegramCode ? `Codice: ${telegramCode}` : "Attiva Telegram"}
                   </button>
                 ) : (
-                  <div className="flex items-center justify-center gap-3 px-6 py-4 bg-emerald-500/10 border border-emerald-500/20 rounded-[2rem] text-emerald-400 backdrop-blur-md">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <span className="text-[10px] font-black uppercase tracking-widest">Collegato a Telegram</span>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-center gap-3 px-6 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-[2rem] text-emerald-400 backdrop-blur-md">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                      <span className="text-[10px] font-black uppercase tracking-widest">Collegato a Telegram</span>
+                    </div>
+                    <label className="flex items-center justify-center gap-2 cursor-pointer text-slate-300 hover:text-white transition-colors">
+                      <input 
+                        type="checkbox" 
+                        checked={telegramOptIn}
+                        onChange={handleToggleOptIn}
+                        className="w-4 h-4 rounded border-white/10 bg-white/5 text-blue-500 focus:ring-blue-500/50" 
+                      />
+                      <span className="text-[10px] font-bold tracking-widest uppercase">Ricevi Notifiche (GDPR)</span>
+                    </label>
                   </div>
                 )}
               </div>
