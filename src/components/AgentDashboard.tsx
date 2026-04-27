@@ -18,6 +18,7 @@ import AgentRequestForm from "./agent/AgentRequestForm"
 import AgentSwapBoard from "./agent/AgentSwapBoard"
 import BachecaPanel from "@/components/BachecaPanel"
 import NotificationManager from "./NotificationManager"
+import WeatherWidget from "@/components/WeatherWidget"
 
 // Independent Modals
 import AgentSwapModal from "./agent/AgentSwapModal"
@@ -164,6 +165,10 @@ export default function AgentDashboard({
         onGenerateTelegramCode={admin.handleGenerateTelegramCode}
         telegramLoading={admin.telegramLoading}
       />
+
+      <div className="mb-6">
+        <WeatherWidget city="Altamura" />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1 space-y-6">

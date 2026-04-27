@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react"
 import { Loader2, Printer, X, GraduationCap, ShieldCheck } from "lucide-react"
 import toast from "react-hot-toast"
 import { generateODSPDF } from "@/utils/pdf-generator"
+import WeatherWidget from "@/components/WeatherWidget"
 
 interface DashboardUser {
   id: string;
@@ -486,6 +487,9 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
              </div>
          ) : (
             <div className="max-w-[1900px] mx-auto pb-20">
+               <div className="mb-6 max-w-sm">
+                 <WeatherWidget city={tenantName || "Comando"} />
+               </div>
                {renderFasciaOrizzontale("MATTINA", mattinieri)}
                {renderFasciaOrizzontale("POMERIGGIO", pomeridiani)}
                
