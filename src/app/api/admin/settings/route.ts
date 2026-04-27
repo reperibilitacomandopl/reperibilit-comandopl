@@ -45,7 +45,12 @@ export async function GET() {
       from: pecRow.fromAddr,
     }
 
-    return NextResponse.json({ settings, agents: agentsMapped, pecConfig })
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId || "" },
+      select: { logoUrl: true, name: true }
+    })
+
+    return NextResponse.json({ settings, agents: agentsMapped, pecConfig, tenant })
   } catch (error) {
     console.error("[SETTINGS GET]", error)
     return NextResponse.json({ error: "Internal Error" }, { status: 500 })
@@ -202,6 +207,24 @@ export async function PUT(req: Request) {
         adminName: session.user.name!,
         action: "UPDATE_PEC",
         details: `Aggiornate impostazioni PEC (Host: ${host}, User: ${user})`
+      })
+
+      return NextResponse.json({ success: true })
+    }
+
+    if (action === "updateBranding") {
+      const { logoUrl } = body
+      await prisma.tenant.update({
+        where: { id: tenantId || "" },
+        data: { logoUrl: logoUrl || null }
+      })
+
+      await logAudit({
+        tenantId: session.user.tenantId,
+        adminId: session.user.id!,
+        adminName: session.user.name!,
+        action: "UPDATE_BRANDING",
+        details: `Aggiornato logo istituzionale del comando`
       })
 
       return NextResponse.json({ success: true })

@@ -27,7 +27,7 @@ interface DashboardShift {
 }
 
 
-export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose?: () => void, tenantName?: string | null }) {
+export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: { onClose?: () => void, tenantName?: string | null, logoUrl?: string | null }) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [loading, setLoading] = useState(true)
   const [isAutoAssigning, setIsAutoAssigning] = useState(false)
@@ -133,116 +133,19 @@ export default function ServiceOrderDashboard({ onClose, tenantName }: { onClose
 
   // --- DOWNLOAD PDF FIX ---
   const downloadPDF = async () => {
-    const { default: jsPDF } = await import("jspdf")
-    const { default: autoTable } = await import("jspdf-autotable")
-    
-    const doc = new jsPDF()
-    const internalDoc = doc as unknown as { internal: { pageSize: { width: number } } }
-    const pageWidth = internalDoc.internal.pageSize.width
-    const dateStr = currentDate.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })
-    
-    const navelBlue: [number, number, number] = [0, 23, 54] // Naval Blue Sentinel
-
-    // Header Istituzionale Premium
-    doc.setFontSize(22)
-    doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2])
-    const headerTitle = tenantName?.toUpperCase().includes("POLIZIA LOCALE") 
-      ? tenantName.toUpperCase() 
-      : `POLIZIA LOCALE ${tenantName?.toUpperCase() || "COMANDO"}`
-    doc.setFont("helvetica", "bold")
-    doc.text(headerTitle, pageWidth / 2, 20, { align: "center" })
-    
-    doc.setFontSize(14)
-    doc.text("ORDINE DI SERVIZIO GIORNALIERO", pageWidth / 2, 28, { align: "center" })
-    
-    doc.setFontSize(10)
-    doc.setFont("helvetica", "normal")
-    doc.setTextColor(100, 116, 139)
-    doc.text(dateStr.toUpperCase(), pageWidth / 2, 34, { align: "center" })
-
-    doc.setDrawColor(navelBlue[0], navelBlue[1], navelBlue[2])
-    doc.setLineWidth(0.5)
-    doc.line(20, 38, pageWidth - 20, 38)
-    
-    // Preparazione Dati
-    const body: { content: string; styles: Record<string, unknown> }[][] = []
-
-    const isWorkingShift = (type: string) => /^[MPN]\d/.test((type || "").toUpperCase().replace(/[()]/g, "").trim())
-    const currentShifts = shifts.filter(s => isWorkingShift(s.type))
-    
-    const sortedShifts = [...currentShifts].sort((a,b) => {
-      if (a.type !== b.type) return a.type.localeCompare(b.type)
-      if (a.patrolGroupId && b.patrolGroupId) return a.patrolGroupId.localeCompare(b.patrolGroupId)
-      return (a.patrolGroupId ? -1 : 1)
-    })
-
-    sortedShifts.forEach(s => {
-      const u = users.find(u => u.id === s.userId)
-      if (!u) return
-      
-      const qualifica = u.qualifica || (u.isUfficiale ? "Uff.le" : "Agente")
-      const orarioPrincipale = s.timeRange || (s.type.startsWith("M") ? "08:00-14:00" : s.type.startsWith("P") ? "14:00-20:00" : "22:00-04:00")
-      const disposizioni = s.serviceDetails || ""
-      const schoolTimeMatch = disposizioni.match(/(\d{2}:\d{2})(-(\d{2}:\d{2}))?/)
-      
-      let orarioStampa = orarioPrincipale
-      if (schoolTimeMatch) orarioStampa = `${schoolTimeMatch[0]}\n(${orarioPrincipale})`
-
-      const servizio = s.serviceType ? s.serviceType.name : (u.servizio || "Vigilanza")
-      const veicolo = s.vehicle ? `\n(${s.vehicle.name})` : ""
-      
-      const rowData: any = [
-        { content: `${qualifica}\n${u.name}`, styles: { fontStyle: 'bold' } },
-        { content: orarioStampa, styles: { halign: 'center', fontSize: 8, fontStyle: 'bold' } },
-        { content: `${servizio}${veicolo}`, styles: { fontStyle: schoolTimeMatch ? 'bold' : 'normal' } },
-        { content: disposizioni, styles: { fontSize: 8 } }
-      ]
-      
-      rowData.isPatrol = !!s.patrolGroupId
-      body.push(rowData)
-    })
-
-    if (body.length === 0) {
-      toast.error("Nessun turno operativo trovato")
-      return
+    try {
+      await generateODSPDF({
+        date: currentDate,
+        users: users as any,
+        shifts: shifts as any,
+        tenantName: tenantName || "POLIZIA LOCALE",
+        logoUrl
+      })
+      toast.success("PDF Ordine di Servizio Generato")
+    } catch (e) {
+      console.error("[ODS_PDF_ERROR]", e)
+      toast.error("Errore generazione PDF")
     }
-
-    autoTable(doc, {
-      startY: 42,
-      head: [['QUALIFICA / NOME', 'ORARIO', 'SERVIZIO / MEZZO', 'DISPOSIZIONI E LUOGHI']],
-      body: body,
-      theme: 'grid',
-      headStyles: { fillColor: navelBlue, textColor: 255, fontSize: 10, halign: 'center', fontStyle: 'bold' },
-      bodyStyles: { fontSize: 9, cellPadding: 3, textColor: 40 },
-      alternateRowStyles: { fillColor: [245, 247, 250] }, // Effetto Zebra Naval-ish
-      columnStyles: {
-        0: { cellWidth: 45 },
-        1: { cellWidth: 28 },
-        2: { cellWidth: 45 },
-        3: { cellWidth: 'auto' }
-      },
-      didParseCell: (data) => {
-        const row = body[data.row.index];
-        if (row && (row as any).isPatrol && data.section === 'body') {
-          data.cell.styles.fillColor = [230, 242, 255] // Highlight pattuglie
-        }
-      }
-    })
-
-    // Footer & Firme
-    // @ts-expect-error accessing internal library property after autotable execution
-    const finalY = doc.lastAutoTable.finalY + 15
-    doc.setFontSize(9)
-    doc.setTextColor(60, 60, 60)
-    
-    // Linee firme
-    doc.text("L'UFFICIALE DI SERVIZIO", 45, finalY, { align: "center" })
-    doc.line(20, finalY + 12, 70, finalY + 12)
-    
-    doc.text("IL COMANDANTE DEL CORPO", pageWidth - 55, finalY, { align: "center" })
-    doc.line(pageWidth - 85, finalY + 12, pageWidth - 25, finalY + 12)
-
-    doc.save(`ODS_${currentDate.toISOString().split('T')[0]}.pdf`)
   }
 
   const certifyAndEmit = async () => {

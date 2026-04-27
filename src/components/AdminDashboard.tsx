@@ -33,7 +33,8 @@ export default function AdminDashboard({
   tenantSlug,
   rotationGroups = [],
   categories = [],
-  currentUser
+  currentUser,
+  logoUrl
 }: any) {
   const router = useRouter()
   
@@ -51,7 +52,7 @@ export default function AdminDashboard({
   const [showBacheca, setShowBacheca] = useState(false)
   
   const [isMobileView, setIsMobileView] = useState(false)
-
+ 
   // Centralized Hook
   const admin = useAdminData(
     allAgents,
@@ -59,7 +60,8 @@ export default function AdminDashboard({
     currentYear,
     currentMonth,
     tenantSlug,
-    settings
+    settings,
+    logoUrl
   )
 
   const stateValue = {
@@ -214,7 +216,7 @@ export default function AdminDashboard({
         {showStampaOds && (
           <div className="fixed inset-0 z-[100] bg-slate-900 p-0 sm:p-4 overflow-auto">
              <div className="max-w-[1600px] mx-auto min-h-full sm:min-h-[calc(100vh-2rem)] shadow-2xl sm:rounded-3xl overflow-hidden bg-slate-50 relative border border-slate-700">
-                <ServiceOrderDashboard onClose={() => setShowStampaOds(false)} tenantName={settings?.tenantName} />
+                <ServiceOrderDashboard onClose={() => setShowStampaOds(false)} tenantName={settings?.tenantName} logoUrl={logoUrl} />
              </div>
           </div>
         )}

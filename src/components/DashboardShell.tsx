@@ -27,7 +27,8 @@ export default function DashboardShell({
   rotationGroups,
   categories,
   dayInfo,
-  adminData
+  adminData,
+  logoUrl
 }: any) {
   const [activeTab, setActiveTab] = useState('dashboard')
   const { role, name, matricola, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem } = session.user
@@ -100,6 +101,8 @@ export default function DashboardShell({
               tenantSlug={tenantSlug}
               rotationGroups={rotationGroups}
               categories={categories}
+              currentUser={session.user}
+              logoUrl={logoUrl}
             />
           ) : (
             <div className="space-y-6">
@@ -120,6 +123,7 @@ export default function DashboardShell({
                   canManageUsers={canManageUsers}
                   canVerifyClockIns={canVerifyClockIns}
                   canConfigureSystem={canConfigureSystem}
+                  logoUrl={logoUrl}
                 />
               </div>
 

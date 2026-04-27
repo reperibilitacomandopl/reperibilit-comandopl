@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Settings, Mail, X, Save, Eye, EyeOff, AlertCircle, Loader2, BarChart3, Hash, Wand2 } from "lucide-react"
+import { Settings, Mail, X, Save, Eye, EyeOff, AlertCircle, Loader2, BarChart3, Hash, Wand2, Shield } from "lucide-react"
 import StatisticsDashboard from "./StatisticsDashboard"
 import AdminInitialBalances from "./AdminInitialBalances"
 import ServicesSettings from "./ServicesSettings"
@@ -28,7 +28,7 @@ type SettingsData = {
   bpStaccoMinTurno2: number;
 }
 
-export type TabType = "algorithm" | "pec" | "stats" | "balances" | "services" | "rules"
+export type TabType = "algorithm" | "pec" | "stats" | "balances" | "services" | "rules" | "branding"
 
 
 type PecConfig = {
@@ -55,6 +55,7 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
   })
   const [agents, setAgents] = useState<Agent[]>([])
   const [pec, setPec] = useState<PecConfig>({ host: "", port: "465", user: "", pass: "", from: "" })
+  const [tenantInfo, setTenantInfo] = useState<{ logoUrl: string | null; name: string } | null>(null)
   const [showPecPass, setShowPecPass] = useState(false)
   const [feedback, setFeedback] = useState("")
 
@@ -80,6 +81,7 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
         })
         setAgents(data.agents)
         setPec(data.pecConfig)
+        setTenantInfo(data.tenant)
       }
     } catch { showFeedback("❌ Errore caricamento impostazioni") }
     setLoading(false)
@@ -117,6 +119,18 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
         body: JSON.stringify({ action: "savePec", ...pec })
       })
       showFeedback("✅ Credenziali PEC salvate")
+    } catch { showFeedback("❌ Errore") }
+    setSaving(false)
+  }
+
+  const saveBranding = async () => {
+    setSaving(true)
+    try {
+      await fetch("/api/admin/settings", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "updateBranding", logoUrl: tenantInfo?.logoUrl })
+      })
+      showFeedback("✅ Logo istituzionale salvato")
     } catch { showFeedback("❌ Errore") }
     setSaving(false)
   }
@@ -161,6 +175,7 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
               { id: "algorithm", label: "Algoritmo", icon: Settings },
               { id: "rules", label: "Motore Regole", icon: Wand2 },
               { id: "pec", label: "Email / PEC", icon: Mail },
+              { id: "branding", label: "Identità", icon: Shield },
               { id: "services", label: "Servizi", icon: Settings },
               { id: "stats", label: "Analisi Dati", icon: BarChart3 },
               { id: "balances", label: "Saldi", icon: Hash }
@@ -445,6 +460,48 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
                 </div>
               )}
 
+              {/* TAB: BRANDING */}
+              {activeTab === "branding" && (
+                <div className="space-y-10 max-w-2xl animate-in fade-in duration-500">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900 mb-1">🏛️ Identità del Comando</h3>
+                    <p className="text-xs text-slate-400">Personalizza lo stemma ufficiale che apparirà negli Ordini di Servizio PDF.</p>
+                  </div>
+
+                  <div className="bg-slate-50 rounded-[2.5rem] p-10 border border-slate-100 flex flex-col items-center text-center gap-8">
+                     <div className="relative group">
+                        <div className="w-40 h-40 rounded-[2.5rem] bg-white shadow-2xl flex items-center justify-center p-6 border border-slate-100 overflow-hidden">
+                           {tenantInfo?.logoUrl ? (
+                             <img src={tenantInfo.logoUrl} alt="Logo Comando" className="max-w-full max-h-full object-contain" />
+                           ) : (
+                             <Shield size={64} className="text-slate-200" />
+                           )}
+                        </div>
+                        <div className="absolute -bottom-4 -right-4 w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-xl border-4 border-white">
+                           <Save size={20} />
+                        </div>
+                     </div>
+
+                     <div className="w-full space-y-4">
+                        <div>
+                          <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">URL Logo Istituzionale</label>
+                          <input 
+                            type="text" 
+                            placeholder="https://.../stemma.png" 
+                            value={tenantInfo?.logoUrl || ""}
+                            onChange={e => setTenantInfo(t => t ? ({ ...t, logoUrl: e.target.value }) : null)}
+                            className="w-full bg-white border-2 border-slate-200 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 transition-all shadow-inner"
+                          />
+                        </div>
+                        <p className="text-[10px] text-slate-400 italic">
+                          Per ora incolla l&apos;URL di un&apos;immagine (PNG/JPG con sfondo trasparente consigliato).<br/>
+                          Dimensioni ottimali: 400x400px.
+                        </p>
+                     </div>
+                  </div>
+                </div>
+              )}
+
               {/* TAB: STATS */}
               {activeTab === "stats" && (
                 <StatisticsDashboard month={settings.meseCorrente} year={settings.annoCorrente} />
@@ -477,7 +534,11 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
                   Reset Valori
                 </button>
                 <button
-                  onClick={activeTab === "pec" ? savePec : saveSettings}
+                  onClick={
+                    activeTab === "pec" ? savePec : 
+                    activeTab === "branding" ? saveBranding : 
+                    saveSettings
+                  }
                   disabled={saving}
                   className="flex items-center gap-3 bg-slate-900 hover:bg-blue-600 disabled:opacity-50 text-white px-10 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200 transition-all active:scale-95"
                 >

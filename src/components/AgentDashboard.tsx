@@ -47,6 +47,7 @@ export interface AgentDashboardProps {
   canConfigureSystem?: boolean
   userRole?: string
   signOutAction?: () => Promise<void>
+  logoUrl?: string | null
 }
 
 export default function AgentDashboard({ 
@@ -60,7 +61,8 @@ export default function AgentDashboard({
   signOutAction,
   canVerifyClockIns,
   canManageShifts,
-  tenantSlug
+  tenantSlug,
+  logoUrl
 }: AgentDashboardProps) {
   
   const admin = useAgentData({ currentUser, currentYear, currentMonth, shifts });
@@ -273,6 +275,10 @@ export default function AgentDashboard({
                 const doc = new jsPDF()
                 const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
                 const monthYear = `${monthNames[currentMonth - 1]} ${currentYear}`
+                
+                if (logoUrl) {
+                  try { doc.addImage(logoUrl, 'PNG', 165, 12, 25, 25) } catch {}
+                }
                 
                 doc.setFontSize(20)
                 doc.setTextColor(30, 41, 59)

@@ -86,14 +86,16 @@ export async function generatePlanningPDF({
   agents,
   shifts,
   dayInfo,
-  tenantName = "Comando Polizia Locale"
+  tenantName = "Comando Polizia Locale",
+  logoUrl
 }: {
   monthName: string,
   year: number,
   agents: Agent[],
   shifts: Shift[],
   dayInfo: DayInfo[],
-  tenantName?: string
+  tenantName?: string,
+  logoUrl?: string | null
 }) {
   try {
     console.log("[PDF] Avvio generazione professionale...");
@@ -116,10 +118,26 @@ export async function generatePlanningPDF({
     const emerald600: [number, number, number] = [5, 150, 105];
 
     // 1. Intestazione
-    doc.setFontSize(22);
-    doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
-    doc.setFont("helvetica", "bold");
-    doc.text(tenantName.toUpperCase(), 14, 18);
+    if (logoUrl) {
+      try {
+        doc.addImage(logoUrl, "PNG", 14, 10, 25, 25);
+        doc.setFontSize(22);
+        doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+        doc.setFont("helvetica", "bold");
+        doc.text(tenantName.toUpperCase(), 42, 20);
+      } catch (e) {
+        console.warn("[PDF] Errore caricamento logo, fallback su testo", e);
+        doc.setFontSize(22);
+        doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+        doc.setFont("helvetica", "bold");
+        doc.text(tenantName.toUpperCase(), 14, 18);
+      }
+    } else {
+      doc.setFontSize(22);
+      doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+      doc.setFont("helvetica", "bold");
+      doc.text(tenantName.toUpperCase(), 14, 18);
+    }
     
     doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
@@ -274,14 +292,16 @@ export async function generateReperibilitaPDF({
   agents,
   shifts,
   dayInfo,
-  tenantName = "Comando Polizia Locale"
+  tenantName = "Comando Polizia Locale",
+  logoUrl
 }: {
   monthName: string,
   year: number,
   agents: Agent[],
   shifts: Shift[],
   dayInfo: DayInfo[],
-  tenantName?: string
+  tenantName?: string,
+  logoUrl?: string | null
 }) {
   try {
     console.log("[PDF] Generazione Prospetto Solo Reperibilità...");
@@ -302,10 +322,25 @@ export async function generateReperibilitaPDF({
     const emerald600: [number, number, number] = [5, 150, 105];
 
     // 1. Intestazione Specifica
-    doc.setFontSize(22);
-    doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
-    doc.setFont("helvetica", "bold");
-    doc.text(tenantName.toUpperCase(), 14, 18);
+    if (logoUrl) {
+      try {
+        doc.addImage(logoUrl, "PNG", 14, 10, 20, 20);
+        doc.setFontSize(22);
+        doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+        doc.setFont("helvetica", "bold");
+        doc.text(tenantName.toUpperCase(), 38, 18);
+      } catch (e) {
+        doc.setFontSize(22);
+        doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+        doc.setFont("helvetica", "bold");
+        doc.text(tenantName.toUpperCase(), 14, 18);
+      }
+    } else {
+      doc.setFontSize(22);
+      doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+      doc.setFont("helvetica", "bold");
+      doc.text(tenantName.toUpperCase(), 14, 18);
+    }
     
     doc.setFontSize(14);
     doc.setTextColor(emerald600[0], emerald600[1], emerald600[2]);
@@ -412,12 +447,14 @@ export async function generateODSPDF({
   date,
   users,
   shifts,
-  tenantName = "Comando Polizia Locale"
+  tenantName = "Comando Polizia Locale",
+  logoUrl
 }: {
   date: Date,
   users: ODSUser[],
   shifts: ODSShift[],
-  tenantName?: string
+  tenantName?: string,
+  logoUrl?: string | null
 }) {
   try {
     const { default: jsPDFLib } = await import("jspdf");
@@ -435,13 +472,34 @@ export async function generateODSPDF({
     const dateStr = date.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
 
     // 1. Header Istituzionale
-    doc.setFontSize(22);
-    doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
-    doc.setFont("helvetica", "bold");
-    const headerTitle = tenantName.toUpperCase().includes("POLIZIA LOCALE") 
-      ? tenantName.toUpperCase() 
-      : `POLIZIA LOCALE ${tenantName.toUpperCase()}`;
-    doc.text(headerTitle, pageWidth / 2, 20, { align: "center" });
+    if (logoUrl) {
+      try {
+        doc.addImage(logoUrl, "PNG", (pageWidth / 2) - 50, 10, 18, 18);
+        doc.setFontSize(20);
+        doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+        doc.setFont("helvetica", "bold");
+        const headerTitle = tenantName.toUpperCase().includes("POLIZIA LOCALE") 
+          ? tenantName.toUpperCase() 
+          : `POLIZIA LOCALE ${tenantName.toUpperCase()}`;
+        doc.text(headerTitle, (pageWidth / 2) + 12, 20, { align: "center" });
+      } catch (e) {
+        doc.setFontSize(22);
+        doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+        doc.setFont("helvetica", "bold");
+        const headerTitle = tenantName.toUpperCase().includes("POLIZIA LOCALE") 
+          ? tenantName.toUpperCase() 
+          : `POLIZIA LOCALE ${tenantName.toUpperCase()}`;
+        doc.text(headerTitle, pageWidth / 2, 20, { align: "center" });
+      }
+    } else {
+      doc.setFontSize(22);
+      doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+      doc.setFont("helvetica", "bold");
+      const headerTitle = tenantName.toUpperCase().includes("POLIZIA LOCALE") 
+        ? tenantName.toUpperCase() 
+        : `POLIZIA LOCALE ${tenantName.toUpperCase()}`;
+      doc.text(headerTitle, pageWidth / 2, 20, { align: "center" });
+    }
     
     doc.setFontSize(14);
     doc.text("ORDINE DI SERVIZIO GIORNALIERO", pageWidth / 2, 28, { align: "center" });

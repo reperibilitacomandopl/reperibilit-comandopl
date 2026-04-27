@@ -23,7 +23,7 @@ export default async function PianificazionePage({ params, searchParams }: { par
   const currentYear = yearStr ? parseInt(yearStr, 10) : now.getFullYear()
   const currentMonth = monthStr ? parseInt(monthStr, 10) : now.getMonth() + 1
 
-  const [users, shifts, pubRec, settings, rotationGroups, categories] = await Promise.all([
+  const [users, shifts, pubRec, settings, rotationGroups, categories, tenant] = await Promise.all([
     prisma.user.findMany({
       where: { role: "AGENTE", ...tf },
       orderBy: { name: "asc" },
@@ -59,6 +59,7 @@ export default async function PianificazionePage({ params, searchParams }: { par
     prisma.globalSettings.findFirst({ where: tf }),
     prisma.rotationGroup.findMany({ where: tf, orderBy: { name: "asc" } }),
     prisma.serviceCategory.findMany({ where: tf, include: { types: true }, orderBy: { orderIndex: "asc" } }),
+    prisma.tenant.findUnique({ where: { id: tenantId || "" } })
   ])
 
   // === INIEZIONE TURNI TEORICI PER IL 1° DEL MESE SUCCESSIVO ===
@@ -101,6 +102,7 @@ export default async function PianificazionePage({ params, searchParams }: { par
         categories={categories}
         tenantSlug={tenantSlug}
         currentUser={session.user}
+        logoUrl={tenant?.logoUrl}
       />
     </div>
   )

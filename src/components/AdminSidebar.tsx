@@ -76,6 +76,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Gestione Straordinari", href: "/admin/straordinari", icon: Clock, description: "Budget mensili ed elettorali" },
       { label: "Report Mensile", href: "/admin/report", icon: BarChart3, description: "Riepilogo Ore, Assenze, Straordinari" },
       { label: "Export Ragioneria", href: "/admin/export-paghe", icon: FileText, description: "Report Excel Indennità e Paghe" },
+      { label: "Compliance & Salute", href: "/admin/compliance", icon: Shield, description: "Verifica scadenze e consensi GDPR" },
       { label: "API REST & Integrazioni", href: "/admin/api", icon: Server, description: "Documentazione Endpoint" },
     ],
   },

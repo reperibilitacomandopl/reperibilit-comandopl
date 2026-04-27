@@ -5,6 +5,7 @@ import toast from "react-hot-toast"
 import { useRouter } from "next/navigation"
 import { isHoliday, isCalendarHoliday } from "@/utils/holidays"
 import { AGENDA_CATEGORIES } from "@/utils/agenda-codes"
+import { generatePlanningPDF, generateReperibilitaPDF } from "@/utils/pdf-generator"
 
 export interface DashboardAgent {
   id: string;
@@ -70,7 +71,8 @@ export function useAdminData(
   currentYear: number,
   currentMonth: number,
   tenantSlug: string | null,
-  settings?: any
+  settings?: any,
+  logoUrl?: string | null
 ) {
   const router = useRouter()
   const [shifts, setShifts] = useState<DashboardShift[]>(initialShifts)
@@ -862,49 +864,30 @@ export function useAdminData(
   const handleExportPDF = async () => {
     setIsExportingPDF(true)
     try {
-      const { default: jsPDF } = await import("jspdf")
-      const { default: autoTable } = await import("jspdf-autotable")
-      
-      const doc = new jsPDF('l', 'mm', 'a4') // Landscape per tabella mensile
-      const pageWidth = doc.internal.pageSize.width
-      const navelBlue: [number, number, number] = [0, 23, 54] 
-
-      // Header Istituzionale
-      doc.setFontSize(20)
-      doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2])
-      doc.setFont("helvetica", "bold")
-      doc.text(settings?.tenantName?.toUpperCase() || "POLIZIA LOCALE", pageWidth / 2, 15, { align: "center" })
-      
-      doc.setFontSize(14)
-      doc.text(`PROSPETTO TURNI MENSILE - ${currentMonthName.toUpperCase()} ${currentYear}`, pageWidth / 2, 22, { align: "center" })
-      
       const daysInMonth = new Date(currentYear, currentMonth, 0).getDate()
-      const head = [['AGENTE', ...Array.from({length: daysInMonth}, (_, i) => (i+1).toString())]]
-      
-      const body = sortedAgents.map(agent => {
-        const row = [agent.name]
-        for (let d = 1; d <= daysInMonth; d++) {
-          const shiftDate = new Date(Date.UTC(currentYear, currentMonth - 1, d)).toISOString()
-          const shift = shifts.find(s => s.userId === agent.id && new Date(s.date).toISOString() === shiftDate)
-          row.push(shift?.type || shift?.repType || "")
+      const dayInfo = Array.from({ length: daysInMonth }, (_, i) => {
+        const d = new Date(Date.UTC(currentYear, currentMonth - 1, i + 1))
+        return {
+          day: i + 1,
+          name: d.toLocaleDateString('it-IT', { weekday: 'short' }),
+          isWeekend: d.getUTCDay() === 0 || d.getUTCDay() === 6,
+          isNextMonth: false
         }
-        return row
       })
 
-      autoTable(doc, {
-        startY: 30,
-        head: head,
-        body: body,
-        theme: 'grid',
-        styles: { fontSize: 7, cellPadding: 1, halign: 'center' },
-        headStyles: { fillColor: navelBlue, textColor: 255, fontStyle: 'bold' },
-        columnStyles: { 0: { halign: 'left', fontStyle: 'bold', cellWidth: 35 } },
-        margin: { left: 10, right: 10 }
+      await generatePlanningPDF({
+        monthName: currentMonthName,
+        year: currentYear,
+        agents: sortedAgents as any,
+        shifts: shifts as any,
+        dayInfo,
+        tenantName: settings?.tenantName || "POLIZIA LOCALE",
+        logoUrl
       })
-
-      doc.save(`Turni_${currentMonthName}_${currentYear}.pdf`)
-      toast.success("PDF Generato")
+      
+      toast.success("PDF Pianificazione Generato")
     } catch (e) {
+      console.error("[PDF_EXPORT_ERROR]", e)
       toast.error("Errore generazione PDF")
     } finally {
       setIsExportingPDF(false)
@@ -912,55 +895,35 @@ export function useAdminData(
   }
 
   const handleExportRepPDF = async () => {
-    if (confirm("Vuoi generare il PDF con il riepilogo delle reperibilità?")) {
-      setIsExportingPDF(true)
-      try {
-        const { default: jsPDF } = await import("jspdf")
-        const { default: autoTable } = await import("jspdf-autotable")
-        
-        const doc = new jsPDF('l', 'mm', 'a4') 
-        const pageWidth = doc.internal.pageSize.width
-        const purpleNavy: [number, number, number] = [75, 0, 130] 
+    setIsExportingPDF(true)
+    try {
+      const daysInMonth = new Date(currentYear, currentMonth, 0).getDate()
+      const dayInfo = Array.from({ length: daysInMonth }, (_, i) => {
+        const d = new Date(Date.UTC(currentYear, currentMonth - 1, i + 1))
+        return {
+          day: i + 1,
+          name: d.toLocaleDateString('it-IT', { weekday: 'short' }),
+          isWeekend: d.getUTCDay() === 0 || d.getUTCDay() === 6,
+          isNextMonth: false
+        }
+      })
 
-        doc.setFontSize(20)
-        doc.setTextColor(purpleNavy[0], purpleNavy[1], purpleNavy[2])
-        doc.setFont("helvetica", "bold")
-        doc.text(settings?.tenantName?.toUpperCase() || "POLIZIA LOCALE", pageWidth / 2, 15, { align: "center" })
-        
-        doc.setFontSize(14)
-        doc.text(`PROSPETTO REPERIBILITÀ MENSILE - ${currentMonthName.toUpperCase()} ${currentYear}`, pageWidth / 2, 22, { align: "center" })
-        
-        const daysInMonth = new Date(currentYear, currentMonth, 0).getDate()
-        const head = [['NOMINATIVO', ...Array.from({length: daysInMonth}, (_, i) => (i+1).toString())]]
-        
-        const body = sortedAgents.map(agent => {
-          const row = [agent.name]
-          for (let d = 1; d <= daysInMonth; d++) {
-            const shiftDate = new Date(Date.UTC(currentYear, currentMonth - 1, d)).toISOString()
-            const shift = shifts.find(s => s.userId === agent.id && new Date(s.date).toISOString() === shiftDate)
-            row.push(shift?.repType ? "X" : "")
-          }
-          return row
-        }).filter(row => row.slice(1).some(c => c !== ""))
-
-        autoTable(doc, {
-          startY: 30,
-          head: head,
-          body: body,
-          theme: 'grid',
-          styles: { fontSize: 7, cellPadding: 1, halign: 'center' },
-          headStyles: { fillColor: purpleNavy, textColor: 255, fontStyle: 'bold' },
-          columnStyles: { 0: { halign: 'left', fontStyle: 'bold', cellWidth: 35 } },
-          margin: { left: 10, right: 10 }
-        })
-
-        doc.save(`Reperibilita_${currentMonthName}_${currentYear}.pdf`)
-        toast.success("PDF Reperibilità Generato")
-      } catch (e) {
-        toast.error("Errore generazione PDF")
-      } finally {
-        setIsExportingPDF(false)
-      }
+      await generateReperibilitaPDF({
+        monthName: currentMonthName,
+        year: currentYear,
+        agents: sortedAgents as any,
+        shifts: shifts as any,
+        dayInfo,
+        tenantName: settings?.tenantName || "POLIZIA LOCALE",
+        logoUrl
+      })
+      
+      toast.success("PDF Reperibilità Generato")
+    } catch (e) {
+      console.error("[PDF_REP_EXPORT_ERROR]", e)
+      toast.error("Errore generazione PDF")
+    } finally {
+      setIsExportingPDF(false)
     }
   }
 

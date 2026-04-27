@@ -11,14 +11,15 @@ export async function PUT(req: Request) {
   if (!tenantId) return NextResponse.json({ error: "No Tenant" }, { status: 400 })
 
   try {
-    const { lat, lng, clockInRadius } = await req.json()
+    const { lat, lng, clockInRadius, logoUrl } = await req.json()
     
     const tenant = await prisma.tenant.update({
       where: { id: tenantId },
       data: {
         lat: lat ? parseFloat(lat) : null,
         lng: lng ? parseFloat(lng) : null,
-        clockInRadius: clockInRadius ? parseInt(clockInRadius) : 500
+        clockInRadius: clockInRadius ? parseInt(clockInRadius) : 500,
+        logoUrl: logoUrl || undefined
       }
     })
 

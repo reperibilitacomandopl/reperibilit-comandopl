@@ -53,8 +53,7 @@ export default async function Home({
     },
     include: { 
       user: { select: { name: true } },
-      vehicle: { select: { name: true } },
-      radio: { select: { name: true } }
+      vehicle: { select: { name: true } }
     }
   })
 
@@ -70,15 +69,18 @@ export default async function Home({
     }
   })
 
-  // @ts-ignore
-  const pubRec = await prisma.monthStatus.findUnique({
-    where: { month_year_tenantId: { month: currentMonth, year: currentYear, tenantId: tenantId || "" } }
-  })
+  const [pubRec, settings, tenant] = await Promise.all([
+    prisma.monthStatus.findUnique({
+      where: { month_year_tenantId: { month: currentMonth, year: currentYear, tenantId: tenantId || "" } }
+    }),
+    prisma.globalSettings.findUnique({
+      where: { tenantId: tenantId || "" }
+    }),
+    prisma.tenant.findUnique({
+      where: { id: tenantId || "" }
+    })
+  ])
   const isPublished = pubRec ? pubRec.isPublished : false
-
-  const settings = await prisma.globalSettings.findUnique({
-    where: { tenantId: tenantId || "" }
-  })
 
   // Prepare dayInfo for the shell
   const daysInMonth = new Date(currentYear, currentMonth, 0).getDate()
@@ -102,6 +104,7 @@ export default async function Home({
       settings={settings}
       tenantSlug={urlSlug}
       dayInfo={dayInfo}
+      logoUrl={tenant?.logoUrl}
     />
   )
 }
