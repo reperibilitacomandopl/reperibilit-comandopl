@@ -340,88 +340,113 @@ export default function AgentDashboard({
               </div> 
               Il Mio Bilancio
             </h2>
-            <button 
-              onClick={async () => {
-                const { default: jsPDF } = await import('jspdf')
-                const { default: autoTable } = await import('jspdf-autotable')
-                
-                const doc = new jsPDF()
-                const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
-                const monthYear = `${monthNames[currentMonth - 1]} ${currentYear}`
-                
-                if (logoUrl) {
-                  try { doc.addImage(logoUrl, 'PNG', 165, 12, 25, 25) } catch {}
-                }
-                
-                doc.setFontSize(20)
-                doc.setTextColor(30, 41, 59)
-                doc.text('Resoconto Mensile Attività', 14, 22)
-                
-                doc.setFontSize(10)
-                doc.setTextColor(100, 116, 139)
-                doc.text(`Polizia Locale · ${tenantSlug || 'Comando'}`, 14, 30)
-                doc.text(`Generato il: ${new Date().toLocaleDateString('it-IT')} alle ${new Date().toLocaleTimeString('it-IT')}`, 14, 35)
-                
-                doc.setFontSize(12)
-                doc.setTextColor(30, 41, 59)
-                doc.text(`Agente: ${currentUser.name}`, 14, 50)
-                doc.text(`Matricola: ${currentUser.matricola}`, 14, 57)
-                doc.text(`Periodo: ${monthYear}`, 14, 64)
-                
-                const straCodes = ['2000','2050','2001','2002','2003','2020','2021','2022','2023','2026','10001','10002','10003']
-                const ferieCodes = ['0015','0016','0010']
-                const recCodes = ['0009','0067','0008','0081','0036','0037']
-                
-                const straHours = admin.agendaEntries.filter(e => straCodes.includes(e.code)).reduce((sum, e) => sum + (e.hours || 0), 0)
-                const ferieDays = new Set(admin.agendaEntries.filter(e => ferieCodes.includes(e.code)).map(e => new Date(e.date).getUTCDate())).size
-                const recHours = admin.agendaEntries.filter(e => recCodes.includes(e.code)).reduce((sum, e) => sum + (e.hours || 0), 0)
-
-                // @ts-ignore
-                autoTable(doc, {
-                  startY: 75,
-                  head: [['Categoria', 'Valore', 'Unità']],
-                  body: [
-                    ['Straordinario', straHours, 'ore'],
-                    ['Ferie / Festività', ferieDays, 'giorni'],
-                    ['Recupero Ore', recHours, 'ore'],
-                    ['Reperibilità', repCount, 'turni'],
-                  ],
-                  theme: 'striped',
-                  headStyles: { fillColor: [79, 70, 229] },
-                })
-
-                doc.setFontSize(14)
-                // @ts-ignore
-                const tableStartY = (doc as any).lastAutoTable.finalY + 15;
-                doc.text('Dettaglio Agenda Personale', 14, tableStartY)
-                
-                const tableData = admin.agendaEntries.map(e => [
-                  new Date(e.date).toLocaleDateString('it-IT'),
-                  getLabel(e.code),
-                  e.hours ? `${e.hours}h` : '-',
-                  e.note || '-'
-                ])
-
-                // @ts-ignore
-                autoTable(doc, {
-                  startY: tableStartY + 5,
-                  head: [['Data', 'Descrizione', 'Ore', 'Note']],
-                  body: tableData,
-                  theme: 'grid',
-                  headStyles: { fillColor: [51, 65, 85] },
-                  columnStyles: {
-                    0: { cellWidth: 25 },
-                    2: { cellWidth: 15 },
+            <div className="flex flex-wrap items-center gap-2">
+              <button 
+                onClick={async () => {
+                  try {
+                    const res = await fetch("/api/user/gdpr/export");
+                    if (!res.ok) throw new Error("Errore durante l'esportazione");
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `gdpr_export_${currentUser.matricola}_${new Date().toISOString().split('T')[0]}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                  } catch (e) {
+                    alert("Impossibile scaricare i dati. Riprova più tardi.");
                   }
-                })
+                }}
+                className="flex items-center gap-2 bg-indigo-50 text-indigo-700 border border-indigo-100 hover:bg-indigo-100 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-sm hover:scale-105 transition-all"
+              >
+                <Shield size={14} />
+                Dati GDPR
+              </button>
+              <button 
+                onClick={async () => {
+                  const { default: jsPDF } = await import('jspdf')
+                  const { default: autoTable } = await import('jspdf-autotable')
+                  
+                  const doc = new jsPDF()
+                  const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
+                  const monthYear = `${monthNames[currentMonth - 1]} ${currentYear}`
+                  
+                  if (logoUrl) {
+                    try { doc.addImage(logoUrl, 'PNG', 165, 12, 25, 25) } catch {}
+                  }
+                  
+                  doc.setFontSize(20)
+                  doc.setTextColor(30, 41, 59)
+                  doc.text('Resoconto Mensile Attività', 14, 22)
+                  
+                  doc.setFontSize(10)
+                  doc.setTextColor(100, 116, 139)
+                  doc.text(`Polizia Locale · ${tenantSlug || 'Comando'}`, 14, 30)
+                  doc.text(`Generato il: ${new Date().toLocaleDateString('it-IT')} alle ${new Date().toLocaleTimeString('it-IT')}`, 14, 35)
+                  
+                  doc.setFontSize(12)
+                  doc.setTextColor(30, 41, 59)
+                  doc.text(`Agente: ${currentUser.name}`, 14, 50)
+                  doc.text(`Matricola: ${currentUser.matricola}`, 14, 57)
+                  doc.text(`Periodo: ${monthYear}`, 14, 64)
+                  
+                  const straCodes = ['2000','2050','2001','2002','2003','2020','2021','2022','2023','2026','10001','10002','10003']
+                  const ferieCodes = ['0015','0016','0010']
+                  const recCodes = ['0009','0067','0008','0081','0036','0037']
+                  
+                  const straHours = admin.agendaEntries.filter(e => straCodes.includes(e.code)).reduce((sum, e) => sum + (e.hours || 0), 0)
+                  const ferieDays = new Set(admin.agendaEntries.filter(e => ferieCodes.includes(e.code)).map(e => new Date(e.date).getUTCDate())).size
+                  const recHours = admin.agendaEntries.filter(e => recCodes.includes(e.code)).reduce((sum, e) => sum + (e.hours || 0), 0)
 
-                doc.save(`Resoconto_${currentUser.matricola}_${currentMonth}_${currentYear}.pdf`)
-              }}
-              className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:scale-105 transition-all"
-            >
-              <FileDown size={14} />
-              Esporta PDF
-            </button>
+                  // @ts-ignore
+                  autoTable(doc, {
+                    startY: 75,
+                    head: [['Categoria', 'Valore', 'Unità']],
+                    body: [
+                      ['Straordinario', straHours, 'ore'],
+                      ['Ferie / Festività', ferieDays, 'giorni'],
+                      ['Recupero Ore', recHours, 'ore'],
+                      ['Reperibilità', repCount, 'turni'],
+                    ],
+                    theme: 'striped',
+                    headStyles: { fillColor: [79, 70, 229] },
+                  })
+
+                  doc.setFontSize(14)
+                  // @ts-ignore
+                  const tableStartY = (doc as any).lastAutoTable.finalY + 15;
+                  doc.text('Dettaglio Agenda Personale', 14, tableStartY)
+                  
+                  const tableData = admin.agendaEntries.map(e => [
+                    new Date(e.date).toLocaleDateString('it-IT'),
+                    getLabel(e.code),
+                    e.hours ? `${e.hours}h` : '-',
+                    e.note || '-'
+                  ])
+
+                  // @ts-ignore
+                  autoTable(doc, {
+                    startY: tableStartY + 5,
+                    head: [['Data', 'Descrizione', 'Ore', 'Note']],
+                    body: tableData,
+                    theme: 'grid',
+                    headStyles: { fillColor: [51, 65, 85] },
+                    columnStyles: {
+                      0: { cellWidth: 25 },
+                      2: { cellWidth: 15 },
+                    }
+                  })
+
+                  doc.save(`Resoconto_${currentUser.matricola}_${currentMonth}_${currentYear}.pdf`)
+                }}
+                className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:scale-105 transition-all"
+              >
+                <FileDown size={14} />
+                Esporta PDF
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-12">

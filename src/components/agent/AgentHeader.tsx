@@ -1,7 +1,7 @@
 "use client"
 import React from "react"
 import Link from "next/link"
-import { ShieldCheck, CalendarDays, Clock, Users, ArrowRightLeft, MapPin, RefreshCw, ChevronLeft, ChevronRight, CheckCircle2, X, Shield, Smartphone, Send, LogOut, Lock } from "lucide-react"
+import { ShieldCheck, CalendarDays, Clock, Users, ArrowRightLeft, MapPin, RefreshCw, ChevronLeft, ChevronRight, CheckCircle2, X, Shield, Smartphone, Send, LogOut, Lock, Eye } from "lucide-react"
 import TwoFactorSetupModal from "../TwoFactorSetupModal"
 
 export default function AgentHeader({
@@ -50,6 +50,12 @@ export default function AgentHeader({
       console.error(e)
     }
   }
+
+  React.useEffect(() => {
+    if (localStorage.getItem('high-contrast') === 'true') {
+      document.documentElement.classList.add('theme-high-contrast');
+    }
+  }, []);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-700">
@@ -203,6 +209,18 @@ export default function AgentHeader({
               </div>
 
               <div className="sm:ml-auto flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+                <button 
+                  onClick={() => {
+                    const html = document.documentElement;
+                    const isHC = html.classList.toggle('theme-high-contrast');
+                    localStorage.setItem('high-contrast', isHC ? 'true' : 'false');
+                  }}
+                  className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white px-6 py-4 rounded-[2rem] text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 border border-white/5"
+                  title="Attiva/Disattiva Modalità Alto Contrasto (WCAG)"
+                >
+                  <Eye size={16} /> Contrasto
+                </button>
+
                 {!currentUser.twoFactorEnabled && (
                   <button 
                     onClick={() => setShow2faSetup(true)}

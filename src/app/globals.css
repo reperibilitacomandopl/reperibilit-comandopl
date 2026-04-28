@@ -161,7 +161,7 @@ select:focus-visible {
   }
 }
 
-/* Modalità alto contrasto */
+/* Modalità alto contrasto (OS + Manuale) */
 @media (prefers-contrast: high) {
   :root {
     --primary: #1e3a8a;
@@ -176,6 +176,26 @@ select:focus-visible {
   button, a {
     text-decoration-thickness: 2px;
   }
+}
+
+.theme-high-contrast {
+  --primary: #1e3a8a !important;
+  --glass-bg: rgba(255, 255, 255, 0.95) !important;
+  --foreground: #000000 !important;
+  --slate-50: #ffffff !important;
+}
+
+.theme-high-contrast .premium-card {
+  border-width: 2px !important;
+  border-color: #000000 !important;
+  box-shadow: none !important;
+}
+
+.theme-high-contrast button, 
+.theme-high-contrast a,
+.theme-high-contrast input {
+  border-width: 2px !important;
+  border-color: #000000 !important;
 }
 
 /* Focus indicatore ad alto contrasto per i form */

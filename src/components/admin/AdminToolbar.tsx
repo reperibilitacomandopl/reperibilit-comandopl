@@ -280,19 +280,19 @@ export function AdminToolbar({
             <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
             
             {/* Download Template Button */}
-            <button onClick={downloadTemplate} className="flex items-center gap-2 bg-white text-emerald-600 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-emerald-100 shadow-sm hover:bg-emerald-50 transition-all active:scale-95" title="Scarica Modello Excel/CSV per Importazioni">
+            <button onClick={downloadTemplate} className="flex items-center gap-2 bg-white text-emerald-600 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-emerald-100 shadow-sm hover:bg-emerald-50 transition-all active:scale-95" title="Scarica Modello Excel/CSV per Importazioni" aria-label="Scarica Modello Importazione">
               <FileDown width={16} height={16} /> <span className="hidden xl:inline">Modello</span>
             </button>
             
-            <button onClick={() => triggerImport("base")} className="flex items-center gap-2 bg-white text-blue-600 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-blue-100 shadow-sm hover:bg-blue-50 transition-all active:scale-95" title="Importa Turni da Excel">
+            <button onClick={() => triggerImport("base")} className="flex items-center gap-2 bg-white text-blue-600 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-blue-100 shadow-sm hover:bg-blue-50 transition-all active:scale-95" title="Importa Turni da Excel" aria-label="Importa Turni">
               <UploadCloud width={16} height={16} /> <span className="hidden xl:inline">Import Turni</span>
             </button>
             <button onClick={() => triggerImport("rep")} className="flex items-center gap-2 bg-white text-purple-600 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-purple-100 shadow-sm hover:bg-purple-50 transition-all active:scale-95" title="Importa Reperibilità da Excel">
               <UploadCloud width={16} height={16} /> <span className="hidden xl:inline">Import REP</span>
             </button>
             <div className="w-[1px] h-6 bg-slate-200 mx-1"></div>
-            <button disabled={isClearing} onClick={() => onClear("base")} className="text-[10px] font-black text-rose-500 hover:bg-rose-50 px-3 py-2.5 rounded-xl uppercase tracking-tighter disabled:opacity-50" title="Reset Turni">Reset <span className="hidden sm:inline">Turni</span></button>
-            <button disabled={isClearing} onClick={() => onClear("rep")} className="text-[10px] font-black text-rose-500 hover:bg-rose-50 px-3 py-2.5 rounded-xl uppercase tracking-tighter disabled:opacity-50" title="Reset REP">Reset <span className="hidden sm:inline">REP</span></button>
+            <button disabled={isClearing} onClick={() => onClear("base")} className="text-[10px] font-black text-rose-500 hover:bg-rose-50 px-3 py-2.5 rounded-xl uppercase tracking-tighter disabled:opacity-50" title="Reset Turni" aria-label="Azzera Turni Base">Reset <span className="hidden sm:inline">Turni</span></button>
+            <button disabled={isClearing} onClick={() => onClear("rep")} className="text-[10px] font-black text-rose-500 hover:bg-rose-50 px-3 py-2.5 rounded-xl uppercase tracking-tighter disabled:opacity-50" title="Reset REP" aria-label="Azzera Reperibilità">Reset <span className="hidden sm:inline">REP</span></button>
           </div>
         )}
 
@@ -354,20 +354,20 @@ export function AdminToolbar({
         )}
 
         {/* EXPORT TOOLS */}
-        <div className="flex bg-slate-900 p-1 rounded-2xl gap-1">
-           <button onClick={onExportPDF} disabled={isExportingPDF} className="flex items-center gap-2 bg-white/10 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-white/20 transition-all active:scale-95" title="PDF Prospetto">
+        <div className="flex bg-slate-900 p-1 rounded-2xl gap-1" role="group" aria-label="Strumenti di Esportazione">
+           <button onClick={onExportPDF} disabled={isExportingPDF} className="flex items-center gap-2 bg-white/10 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-white/20 transition-all active:scale-95" title="PDF Prospetto" aria-label="Esporta PDF Generale">
               <Printer width={16} height={16} /> <span className="hidden sm:inline">PDF PRO</span>
            </button>
-           <button onClick={onExportRepPDF} disabled={isExportingPDF} className="flex items-center gap-2 bg-white/10 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-white/20 transition-all active:scale-95" title="PDF Reperibilità">
+           <button onClick={onExportRepPDF} disabled={isExportingPDF} className="flex items-center gap-2 bg-white/10 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-white/20 transition-all active:scale-95" title="PDF Reperibilità" aria-label="Esporta PDF Reperibilità">
               <Printer width={16} height={16} /> <span className="hidden sm:inline">PDF REP</span>
            </button>
-           <button onClick={onExportExcel} className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-emerald-500 transition-all active:scale-95" title="Esporta Excel Turni">
+           <button onClick={onExportExcel} className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-emerald-500 transition-all active:scale-95" title="Esporta Excel Turni" aria-label="Esporta in Excel">
               <FileDown width={16} height={16} /> <span className="hidden sm:inline">Excel</span>
            </button>
-           <button onClick={onExportRepExcel} className="flex items-center gap-2 bg-violet-600 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-violet-500 transition-all active:scale-95" title="Esporta Solo Reperibilità in Excel">
+           <button onClick={onExportRepExcel} className="flex items-center gap-2 bg-violet-600 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-violet-500 transition-all active:scale-95" title="Esporta Solo Reperibilità in Excel" aria-label="Esporta Reperibilità in Excel">
               <FileDown width={16} height={16} /> <span className="hidden sm:inline">Excel REP</span>
            </button>
-           <button onClick={onExportPayroll} className="flex items-center gap-2 bg-pink-600 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-pink-500 transition-all active:scale-95" title="Esporta Riepilogo Mensile per Ufficio Paghe (Excel/CSV)">
+           <button onClick={onExportPayroll} className="flex items-center gap-2 bg-pink-600 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-pink-500 transition-all active:scale-95" title="Esporta Riepilogo Mensile per Ufficio Paghe (Excel/CSV)" aria-label="Esporta per Paghe">
               <FileDown width={16} height={16} /> <span className="hidden sm:inline">Export Paghe</span>
            </button>
         </div>

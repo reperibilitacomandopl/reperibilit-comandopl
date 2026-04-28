@@ -207,7 +207,7 @@ export default function AdminSidebar({
       )}
 
       {/* Navigation Items Premium */}
-      <nav className="flex-1 py-10 px-4 space-y-10 overflow-y-auto custom-scrollbar-dark pb-6">
+      <nav aria-label="Menu Principale" className="flex-1 py-10 px-4 space-y-10 overflow-y-auto custom-scrollbar-dark pb-6">
         {NAV_SECTIONS.map((section) => {
           const filteredItems = section.items.filter(item => {
             if (userRole === "ADMIN") return true;
@@ -244,6 +244,8 @@ export default function AdminSidebar({
                     <Link
                       key={item.href}
                       href={itemHref}
+                      aria-label={item.label}
+                      aria-current={isActive ? "page" : undefined}
                       title={collapsed ? item.label : undefined}
                       className={`group flex items-center gap-5 px-5 py-4 rounded-2xl transition-all duration-500 relative overflow-hidden ${
                         isActive
@@ -328,6 +330,8 @@ export default function AdminSidebar({
               </Link>
               <button
                 onClick={() => setCollapsed(!collapsed)}
+                aria-expanded={!collapsed}
+                aria-label={collapsed ? "Espandi menu laterale" : "Riduci menu laterale"}
                 className="flex items-center justify-center gap-2 py-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl text-[9px] font-black text-white/30 hover:text-white uppercase tracking-widest transition-all"
               >
                 <ChevronLeft size={14} /> Close
@@ -338,6 +342,8 @@ export default function AdminSidebar({
         {collapsed && (
            <button
               onClick={() => setCollapsed(!collapsed)}
+              aria-expanded={!collapsed}
+              aria-label={collapsed ? "Espandi menu laterale" : "Riduci menu laterale"}
               className="w-full py-4 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl text-white/20 hover:text-white transition-all"
             >
               <ChevronRight size={16} />

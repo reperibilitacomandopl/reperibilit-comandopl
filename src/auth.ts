@@ -7,6 +7,14 @@ import { cookies } from "next/headers"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
+    // TODO: Integrazione SPID/CIE via OIDC o SAML2 (richiede metadati AgID)
+    // {
+    //   id: "spid",
+    //   name: "SPID",
+    //   type: "oauth",
+    //   version: "2.0",
+    //   // ... configurazione well-known OIDC
+    // },
     CredentialsProvider({
       name: "Credentials",
       credentials: {
