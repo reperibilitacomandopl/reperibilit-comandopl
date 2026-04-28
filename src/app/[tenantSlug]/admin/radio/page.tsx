@@ -22,7 +22,7 @@ export default async function RadioPage({ params }: { params: Promise<{ tenantSl
     }
   })
 
-  const serializedRadios = radios.map(r => ({
+  const serializedRadios = radios.map((r: any) => ({
     ...r,
     dataAssegnazione: r.dataAssegnazione?.toISOString() || null,
     cambioBatteria: r.cambioBatteria?.toISOString() || null

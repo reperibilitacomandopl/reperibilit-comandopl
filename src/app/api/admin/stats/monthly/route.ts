@@ -46,9 +46,9 @@ export async function GET(request: Request) {
     })
 
     // Build per-agent stats
-    const agentStats = agents.map(agent => {
-      const agentShifts = shifts.filter(s => s.userId === agent.id)
-      const agentAgenda = agendaEntries.filter(e => e.userId === agent.id)
+    const agentStats = agents.map((agent: any) => {
+      const agentShifts = shifts.filter((s: any) => s.userId === agent.id)
+      const agentAgenda = agendaEntries.filter((e: any) => e.userId === agent.id)
 
       let turniMattina = 0
       let turniPomeriggio = 0
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
       let oreLavorate = 0
       let oreStraordinario = 0
 
-      agentShifts.forEach(s => {
+      agentShifts.forEach((s: any) => {
         const t = s.type.toUpperCase()
         if (t.startsWith("M") && t !== "MAL" && t !== "MALATTIA" && t !== "MAL_FIGLIO" && t !== "MISSIONE" && t !== "MOT_PERS") {
           turniMattina++
@@ -88,7 +88,7 @@ export async function GET(request: Request) {
       })
 
       // Add agenda overtime
-      agentAgenda.forEach(e => {
+      agentAgenda.forEach((e: any) => {
         if (e.code === "STRAO" || e.code === "STRAORDINARIO") {
           oreStraordinario += e.hours || 0
         }
@@ -121,14 +121,14 @@ export async function GET(request: Request) {
     // Totali
     const totals = {
       totalAgents: agents.length,
-      totalGiorniLavorati: agentStats.reduce((a, s) => a + s.giorniLavorati, 0),
-      totalOreLavorate: Math.round(agentStats.reduce((a, s) => a + s.oreLavorate, 0) * 10) / 10,
-      totalOreStraordinario: Math.round(agentStats.reduce((a, s) => a + s.oreStraordinario, 0) * 10) / 10,
-      totalFerie: agentStats.reduce((a, s) => a + s.ferie, 0),
-      totalMalattia: agentStats.reduce((a, s) => a + s.malattia, 0),
-      totalPermessi104: agentStats.reduce((a, s) => a + s.permessi104, 0),
+      totalGiorniLavorati: agentStats.reduce((a: any, s: any) => a + s.giorniLavorati, 0),
+      totalOreLavorate: Math.round(agentStats.reduce((a: any, s: any) => a + s.oreLavorate, 0) * 10) / 10,
+      totalOreStraordinario: Math.round(agentStats.reduce((a: any, s: any) => a + s.oreStraordinario, 0) * 10) / 10,
+      totalFerie: agentStats.reduce((a: any, s: any) => a + s.ferie, 0),
+      totalMalattia: agentStats.reduce((a: any, s: any) => a + s.malattia, 0),
+      totalPermessi104: agentStats.reduce((a: any, s: any) => a + s.permessi104, 0),
       tassoAssenteismo: agents.length > 0 
-        ? Math.round((agentStats.reduce((a, s) => a + s.giorniAssenza, 0) / (agents.length * new Date(year, month, 0).getDate())) * 1000) / 10
+        ? Math.round((agentStats.reduce((a: any, s: any) => a + s.giorniAssenza, 0) / (agents.length * new Date(year, month, 0).getDate())) * 1000) / 10
         : 0,
     }
 

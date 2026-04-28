@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react"
 import { Loader2, Printer, X, GraduationCap, ShieldCheck } from "lucide-react"
 import toast from "react-hot-toast"
-import { generateODSPDF } from "@/utils/pdf-generator"
+import { generateODSPDF, generateWeeklyODSPDF } from "@/utils/pdf-generator"
 import WeatherWidget from "@/components/WeatherWidget"
 
 interface DashboardUser {
@@ -145,6 +145,37 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
     } catch (e) {
       console.error("[ODS_PDF_ERROR]", e)
       toast.error("Errore generazione PDF")
+    }
+  }
+
+  // --- DOWNLOAD PDF SETTIMANALE ---
+  const downloadWeeklyPDF = async () => {
+    const loadingToast = toast.loading("Generazione pacchetto settimanale...");
+    try {
+      // Recuperiamo i dati per tutti i 7 giorni della settimana visualizzata
+      const batchData = await Promise.all(weekDates.map(async (date) => {
+        const y = date.getFullYear()
+        const m = String(date.getMonth() + 1).padStart(2, "0")
+        const d = String(date.getDate()).padStart(2, "0")
+        const res = await fetch(`/api/admin/shifts/daily?date=${y}-${m}-${d}`)
+        const data = await res.json()
+        return {
+          date: date,
+          users: data.users || [],
+          shifts: data.shifts || []
+        }
+      }))
+
+      await generateWeeklyODSPDF({
+        days: batchData as any,
+        tenantName: tenantName || "POLIZIA LOCALE",
+        logoUrl
+      })
+
+      toast.success("Pacchetto Settimanale Generato", { id: loadingToast })
+    } catch (e) {
+      console.error("[ODS_WEEKLY_PDF_ERROR]", e)
+      toast.error("Errore generazione pacchetto settimanale", { id: loadingToast })
     }
   }
 
@@ -352,7 +383,15 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
                 disabled={loading}
                 className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-2.5 rounded-xl transition-all border border-slate-700"
               >
-                <Printer width={18} height={18}/> Stampa Semplice
+                <Printer width={18} height={18}/> Stampa Giorno
+              </button>
+
+              <button 
+                onClick={downloadWeeklyPDF}
+                disabled={loading}
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-900/20 border border-indigo-500"
+              >
+                <Printer width={18} height={18}/> Stampa Settimana
               </button>
             {onClose && (
               <button onClick={onClose} className="p-2 bg-slate-800 text-slate-400 hover:bg-rose-500 hover:text-white rounded-lg transition-all border border-slate-700">

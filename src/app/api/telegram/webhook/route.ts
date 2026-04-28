@@ -122,8 +122,8 @@ export async function POST(req: Request) {
         }
       });
 
-      const todayShift = shifts.find(s => formatLocal(new Date(s.date)) === todayStr);
-      const tomorrowShift = shifts.find(s => formatLocal(new Date(s.date)) === tomorrowStr);
+      const todayShift = shifts.find((s: any) => formatLocal(new Date(s.date)) === todayStr);
+      const tomorrowShift = shifts.find((s: any) => formatLocal(new Date(s.date)) === tomorrowStr);
 
       const formatShiftText = (s: any) => {
         if (!s || s.type === "RIPOSO") return "💤 RIPOSO";

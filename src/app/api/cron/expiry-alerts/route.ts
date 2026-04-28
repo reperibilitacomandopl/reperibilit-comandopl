@@ -244,7 +244,51 @@ export async function GET(req: Request) {
       }
     }
 
-    // 5. NOTIFICHE ADMIN — Riepilogo giornaliero scadenze (solo se ci sono alert)
+    // 5. TRAINING RECORDS IN SCADENZA
+    const trainingExpiring = await (prisma as any).trainingRecord.findMany({
+      where: {
+        expiryDate: { lte: alertDate, gte: now }
+      },
+      select: { id: true, courseName: true, tenantId: true, userId: true, expiryDate: true }
+    })
+
+    for (const record of trainingExpiring) {
+      const daysLeft = Math.ceil((record.expiryDate!.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      alerts.push({ type: "FORMAZIONE", name: record.courseName, scadenza: `${daysLeft} giorni`, tenantId: record.tenantId })
+      
+      const existingNotif = await prisma.notification.findFirst({
+        where: {
+          userId: record.userId,
+          type: "WARNING",
+          title: { contains: record.courseName },
+          createdAt: { gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) }
+        }
+      })
+      
+      if (!existingNotif) {
+        const title = `🎓 Scadenza Formazione: ${record.courseName}`
+        const message = `Il certificato "${record.courseName}" scade tra ${daysLeft} giorni. Provvedi al rinnovo.`
+        
+        await prisma.notification.create({
+          data: {
+            userId: record.userId,
+            tenantId: record.tenantId,
+            title,
+            message,
+            type: "WARNING"
+          }
+        })
+
+        await sendPushNotification(record.userId, {
+          title,
+          body: message
+        })
+
+        totalAlerts++
+      }
+    }
+
+    // 6. NOTIFICHE ADMIN — Riepilogo giornaliero scadenze (solo se ci sono alert)
     if (alerts.length > 0) {
       // Raggruppa per tenant
       const byTenant: Record<string, typeof alerts> = {}

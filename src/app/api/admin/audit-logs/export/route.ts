@@ -22,7 +22,7 @@ export async function GET(req: Request) {
     // Creazione CSV
     const header = ["Data/Ora", "Operatore (ID)", "Operatore (Nome)", "Azione", "IP Address", "User-Agent", "ID Soggetto/Target", "Nome Soggetto/Target", "Dettagli"]
     
-    const rows = logs.map(log => {
+    const rows = logs.map((log: any) => {
       return [
         new Date(log.createdAt).toISOString(),
         log.adminId,

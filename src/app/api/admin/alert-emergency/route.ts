@@ -69,8 +69,8 @@ export async function POST(req: Request) {
         ]);
 
         const recipientMap = new Map();
-        adminsAndOfficers.forEach(u => recipientMap.set(u.id, u));
-        todayRepShifts.forEach(s => { 
+        adminsAndOfficers.forEach((u: any) => recipientMap.set(u.id, u));
+        todayRepShifts.forEach((s: any) => { 
           if (s.user) recipientMap.set(s.user.id, s.user); 
         });
         alertRecipients = Array.from(recipientMap.values());
@@ -192,13 +192,13 @@ export async function POST(req: Request) {
         message: message || "🚨 URGENZA! Recarsi in comando entro 30 min.",
         status: "PENDING",
         recipients: {
-          create: repUsers.map(s => ({ userId: s.userId, status: "SENT" }))
+          create: repUsers.map((s: any) => ({ userId: s.userId, status: "SENT" }))
         }
       }
     });
 
     // 3. Invia messaggi (Push + Telegram) in parallelo
-    const alertPromises = repUsers.map(async (shift) => {
+    const alertPromises = repUsers.map(async (shift: any) => {
       const { user } = shift;
       const pushPayload = {
         title: "🚨 ALLERTA URGENZA",

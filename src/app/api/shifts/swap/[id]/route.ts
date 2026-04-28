@@ -74,7 +74,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
          if (adminsAndStaff.length > 0) {
             await (prisma as any).notification.createMany({
-              data: adminsAndStaff.map(a => ({
+              data: adminsAndStaff.map((a: any) => ({
                 tenantId: swapRequest.tenantId,
                 userId: a.id,
                 title: "Visto Scambio Richiesto",

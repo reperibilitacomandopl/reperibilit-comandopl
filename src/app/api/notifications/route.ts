@@ -111,16 +111,16 @@ export async function POST(req: Request) {
         }
       })
 
-      const recipients = dutyTeam.filter(s => s.user.telegramChatId).map(s => s.user.telegramChatId!)
+      const recipients = dutyTeam.filter((s: any) => s.user.telegramChatId).map((s: any) => s.user.telegramChatId!)
       
       const alarmText = `🚨 <b>${title}</b> 🚨\n\n${message}`
       
       const sendResults = await Promise.all(
-        recipients.map(chatId => sendTelegramMessage(chatId, alarmText))
+        recipients.map((chatId: any) => sendTelegramMessage(chatId, alarmText))
       )
 
       // Registra anche una notifica nel database per l'app
-      await Promise.all(dutyTeam.map(s => 
+      await Promise.all(dutyTeam.map((s: any) => 
         (prisma as any).notification.create({
           data: {
             userId: s.userId,

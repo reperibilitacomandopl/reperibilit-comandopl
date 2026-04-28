@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     }
 
     // Crea tenant + admin in una transazione
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       // 1. Crea il Tenant
       const tenant = await tx.tenant.create({
         data: {

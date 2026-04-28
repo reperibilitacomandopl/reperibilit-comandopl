@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     })
 
     // Map to include hasRead boolean
-    const result = announcements.map(a => ({
+    const result = announcements.map((a: any) => ({
       ...a,
       hasRead: a.reads.length > 0
     }))

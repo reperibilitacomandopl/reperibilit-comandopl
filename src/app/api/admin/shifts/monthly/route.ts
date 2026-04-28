@@ -32,8 +32,8 @@ export async function GET(request: Request) {
     const augmentedShifts = [...shifts]
     const { resolveTheoreticalShift } = await import("@/utils/theoretical-shift")
 
-    users.forEach(user => {
-      const hasNextDay = shifts.some(s => s.userId === user.id && new Date(s.date).getTime() === nextMonthFirst.getTime())
+    users.forEach((user: any) => {
+      const hasNextDay = shifts.some((s: any) => s.userId === user.id && new Date(s.date).getTime() === nextMonthFirst.getTime())
       if (!hasNextDay) {
         const theoretical = resolveTheoreticalShift({ user, date: nextMonthFirst })
         if (theoretical) {
@@ -87,7 +87,7 @@ export async function PUT(request: Request) {
 
     // Build a lookup map: "userId|date" -> existing shift
     const existingMap = new Map<string, any>()
-    existingShifts.forEach(s => {
+    existingShifts.forEach((s: any) => {
       const key = `${s.userId}|${s.date.toISOString().split('T')[0]}`
       existingMap.set(key, s)
     })
@@ -199,8 +199,8 @@ export async function DELETE(request: Request) {
       const allInMonth = await prisma.shift.findMany({ where })
       
       const idsToDelete = allInMonth
-        .filter(s => !isAssenzaProtetta(s.type))
-        .map(s => s.id)
+        .filter((s: any) => !isAssenzaProtetta(s.type))
+        .map((s: any) => s.id)
 
       if (idsToDelete.length > 0) {
         await prisma.shift.deleteMany({

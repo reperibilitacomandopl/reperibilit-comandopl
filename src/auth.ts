@@ -151,7 +151,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         
         // Se è SuperAdmin, NON ci fidiamo della cache del token. Leggiamo SEMPRE il DB in tempo reale
         // per permettere allo switch (impersonification) di funzionare istantaneamente tramite cookie.
-        if (session.user.isSuperAdmin && session.user.id) {
+        // NOTA: Questo blocco viene saltato in Edge Runtime (Middleware) per evitare errori Prisma.
+        if (session.user.isSuperAdmin && session.user.id && process.env.NEXT_RUNTIME !== 'edge') {
           try {
             const cookieStore = await cookies()
             const impersonatedId = cookieStore.get('superadmin_impersonate')?.value

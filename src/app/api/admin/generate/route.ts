@@ -81,13 +81,13 @@ export async function POST(req: Request) {
     // Inietto il 1° del mese successivo se manca, per proteggere l'ultimo giorno del mese corrente
     const nextMonthFirst = new Date(Date.UTC(year, month, 1))
     
-    agents.forEach(agent => {
+    agents.forEach((agent: any) => {
       // 1. Verifichiamo se l'agente ha già un turno o un'assenza reale salvata per il 1° del mese dopo
-      const hasShiftInDB = existingShifts.some(s => 
+      const hasShiftInDB = existingShifts.some((s: any) => 
         s.userId === agent.id && 
         new Date(s.date).getTime() === nextMonthFirst.getTime()
       )
-      const hasAbsenceInDB = existingAbsences.some(a => 
+      const hasAbsenceInDB = existingAbsences.some((a: any) => 
         a.userId === agent.id && 
         new Date(a.date).getTime() === nextMonthFirst.getTime()
       )
@@ -112,7 +112,7 @@ export async function POST(req: Request) {
         }
       } else if (hasAbsenceInDB && !hasShiftInDB) {
         // Se ha un'assenza ma non un turno, iniettiamo l'assenza per l'engine
-        const abs = existingAbsences.find(a => 
+        const abs = existingAbsences.find((a: any) => 
           a.userId === agent.id && 
           new Date(a.date).getTime() === nextMonthFirst.getTime()
         )
@@ -127,7 +127,7 @@ export async function POST(req: Request) {
 
     // === EXECUTE ENGINE ===
     const result = generateMonthShifts(
-      agents.map(a => ({ 
+      agents.map((a: any) => ({ 
         id: a.id, 
         name: a.name, 
         isUfficiale: a.isUfficiale, 

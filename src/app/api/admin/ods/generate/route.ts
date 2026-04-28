@@ -29,18 +29,24 @@ export async function POST(req: Request) {
 
   try {
     const { date } = await req.json()
-    if (!date) return NextResponse.json({ error: "Missing date" }, { status: 400 })
+    console.log("[ODS GENERATE] Start. Date:", date)
+    if (!date) return NextResponse.json({ error: "Data mancante" }, { status: 400 })
 
     const tenantId = session.user.tenantId
     const tf = tenantId ? { tenantId } : {}
 
-    const targetDate = new Date(date)
+    // Robust parsing
+    const datePart = typeof date === 'string' ? date.substring(0, 10) : ""
+    const [y, m, d] = datePart.split("-").map(Number)
+    if (isNaN(y)) return NextResponse.json({ error: "Data non valida" }, { status: 400 })
+
+    const targetDate = new Date(Date.UTC(y, m - 1, d))
     const nextDate = new Date(targetDate)
-    nextDate.setDate(targetDate.getDate() + 1)
+    nextDate.setUTCDate(targetDate.getUTCDate() + 1)
 
     // Abbreviazione giorno per fixedServiceDays (LUN, MAR...)
     const daysAbr = ["DOM", "LUN", "MAR", "MER", "GIO", "VEN", "SAB"]
-    const currentDayAbr = daysAbr[targetDate.getDay()]
+    const currentDayAbr = daysAbr[targetDate.getUTCDay()]
 
     // 1. Fetch data
     const [shifts, patrolTemplates, serviceCategories] = await Promise.all([
@@ -181,26 +187,31 @@ export async function POST(req: Request) {
       processedShiftIds.add(s.id)
     }
 
-    for (const u of updates) {
-      await prisma.shift.update({
-        where: { 
-          id: u.id,
-          tenantId: tenantId || null
-        },
-        data: {
-          serviceCategoryId: u.serviceCategoryId,
-          serviceTypeId: u.serviceTypeId,
-          vehicleId: u.vehicleId,
-          timeRange: u.timeRange,
-          patrolGroupId: u.patrolGroupId,
-          serviceDetails: u.serviceDetails
-        }
-      })
+    if (updates.length > 0) {
+      await Promise.all(updates.map(u => 
+        prisma.shift.update({
+          where: { 
+            id: u.id,
+            tenantId: tenantId || null
+          },
+          data: {
+            serviceCategoryId: u.serviceCategoryId,
+            serviceTypeId: u.serviceTypeId,
+            vehicleId: u.vehicleId,
+            timeRange: u.timeRange,
+            patrolGroupId: u.patrolGroupId,
+            serviceDetails: u.serviceDetails
+          }
+        })
+      ))
     }
 
     return NextResponse.json({ success: true, count: updates.length })
-  } catch (error) {
-    console.error(error)
-    return NextResponse.json({ error: "Internal Error" }, { status: 500 })
+  } catch (error: any) {
+    console.error("[ODS GENERATE ERROR]", error)
+    return NextResponse.json({ 
+      error: "Internal Server Error", 
+      details: error.message || String(error)
+    }, { status: 500 })
   }
 }

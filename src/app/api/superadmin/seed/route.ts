@@ -18,9 +18,9 @@ export async function POST(req: Request) {
     // Pulisci i dati esistenti per questo tenant (eccetto l'Admin originale)
     // Nota: L'utente che ha creato il tenant è l'unico che salviamo
     const tenantUsers = await prisma.user.findMany({ where: { tenantId } })
-    const mainAdminId = tenantUsers.find(u => u.role === "ADMIN")?.id
+    const mainAdminId = tenantUsers.find((u: any) => u.role === "ADMIN")?.id
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       // 1. Pulisci dipendenze
       await tx.shift.deleteMany({ where: { tenantId } })
       await tx.vehicle.deleteMany({ where: { tenantId } })

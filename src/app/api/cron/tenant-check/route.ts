@@ -34,7 +34,7 @@ export async function GET(req: Request) {
     }
 
     // Disattiva i tenant scaduti
-    const expiredIds = expiredTenants.map(t => t.id)
+    const expiredIds = expiredTenants.map((t: any) => t.id)
     
     await prisma.tenant.updateMany({
       where: {
@@ -45,7 +45,7 @@ export async function GET(req: Request) {
       }
     })
 
-    console.log(`[CRON] Sospesi ${expiredTenants.length} tenant per fine periodo di prova:`, expiredTenants.map(t => t.name).join(", "))
+    console.log(`[CRON] Sospesi ${expiredTenants.length} tenant per fine periodo di prova:`, expiredTenants.map((t: any) => t.name).join(", "))
 
     // (Opzionale) Potremmo creare una notifica per il superadmin o mandare una mail
 

@@ -29,6 +29,8 @@ import OfficerDutyPanel from "./agent/OfficerDutyPanel"
 import NextShiftCard from "./agent/NextShiftCard"
 import PersonalBalances from "./agent/PersonalBalances"
 import PersonalClockHistory from "./agent/PersonalClockHistory"
+import AgentCalendarView from "./agent/AgentCalendarView"
+import AgentYearlyCard from "./agent/AgentYearlyCard"
 import { useGpsTracking } from "@/hooks/useGpsTracking"
 
 import { Shield, CalendarDays, BookOpen, FileDown } from "lucide-react"
@@ -106,6 +108,7 @@ export default function AgentDashboard({
   const [showAbsenceModal, setShowAbsenceModal] = useState(false)
   const [showSosModal, setShowSosModal] = useState(false)
   const [isMobileView, setIsMobileView] = useState(false)
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'yearly'>('calendar')
   const [selectedShiftForSwap, setSelectedShiftForSwap] = useState<DashboardShift | null>(null)
   const [agendaDate, setAgendaDate] = useState('')
 
@@ -255,31 +258,78 @@ export default function AgentDashboard({
         ) : null
       })()}
 
-      <AgentShiftsList 
-        isPublished={isPublished}
-        isMobileView={isMobileView}
-        setIsMobileView={setIsMobileView}
-        currentUser={currentUser}
-        shifts={shifts}
-        myShifts={admin.myShifts}
-        dayInfo={dayInfo}
-        currentYear={currentYear}
-        currentMonth={currentMonth}
-        currentMonthName={currentMonthName}
-        daysInMonth={daysInMonth}
-        prevMonth={prevMonth}
-        prevYear={prevYear}
-        nextMonth={nextMonth}
-        nextYear={nextYear}
-        userRole={userRole}
-        agendaEntries={admin.agendaEntries}
-        setAgendaDate={setAgendaDate}
-        setShowAgenda={setShowAgenda}
-        setSelectedShiftForSwap={setSelectedShiftForSwap}
-        setShowSwapModal={setShowSwapModal}
-        onShowSosModal={() => setShowSosModal(true)}
-        tenantSlug={tenantSlug}
-      />
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between">
+           <div className="flex bg-slate-200/50 p-1 rounded-2xl border border-slate-200">
+              <button 
+                onClick={() => setViewMode('calendar')}
+                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'calendar' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                Calendario
+              </button>
+              <button 
+                onClick={() => setViewMode('list')}
+                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'list' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                Griglia
+              </button>
+              <button 
+                onClick={() => setViewMode('yearly')}
+                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'yearly' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                Annuale
+              </button>
+           </div>
+        </div>
+
+        {viewMode === 'calendar' ? (
+          <AgentCalendarView 
+            myShifts={admin.myShifts}
+            agendaEntries={admin.agendaEntries}
+            currentDate={new Date(currentYear, currentMonth - 1, 1)}
+            onMonthChange={(date) => {
+              window.location.href = `/${tenantSlug || ''}?view=agent&month=${date.getMonth() + 1}&year=${date.getFullYear()}`
+            }}
+            onDayClick={(day) => {
+              setAgendaDate(String(day))
+              setShowAgenda(true)
+            }}
+            onSwapClick={(shift) => {
+              setSelectedShiftForSwap(shift)
+              setShowSwapModal(true)
+            }}
+            isPublished={isPublished}
+          />
+        ) : viewMode === 'yearly' ? (
+          <AgentYearlyCard />
+        ) : (
+          <AgentShiftsList 
+            isPublished={isPublished}
+            isMobileView={isMobileView}
+            setIsMobileView={setIsMobileView}
+            currentUser={currentUser}
+            shifts={shifts}
+            myShifts={admin.myShifts}
+            dayInfo={dayInfo}
+            currentYear={currentYear}
+            currentMonth={currentMonth}
+            currentMonthName={currentMonthName}
+            daysInMonth={daysInMonth}
+            prevMonth={prevMonth}
+            prevYear={prevYear}
+            nextMonth={nextMonth}
+            nextYear={nextYear}
+            userRole={userRole}
+            agendaEntries={admin.agendaEntries}
+            setAgendaDate={setAgendaDate}
+            setShowAgenda={setShowAgenda}
+            setSelectedShiftForSwap={setSelectedShiftForSwap}
+            setShowSwapModal={setShowSwapModal}
+            onShowSosModal={() => setShowSosModal(true)}
+            tenantSlug={tenantSlug}
+          />
+        )}
+      </div>
 
       {/* BALANCES SECTION */}
       <div className="space-y-8">

@@ -26,7 +26,7 @@ export async function DELETE(req: Request) {
     // anche se onDelete: Cascade su Prisma gestirebbe molto, è meglio essere espliciti
     // per tabelle dove onDelete non è specificato nel modello.
     
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       // 1. Log, Notifiche e Timbrature
       await tx.auditLog.deleteMany({ where: { tenantId } })
       await tx.notification.deleteMany({ where: { tenantId } })

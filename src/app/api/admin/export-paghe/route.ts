@@ -86,16 +86,16 @@ export async function GET(request: Request) {
     const bpMinT2 = (globalSettings as any)?.bpStaccoMinTurno2 ?? 2
 
     // ─── CALCOLO PER AGENTE ───
-    const payrollData = agents.map(agent => {
-      const aShifts = shifts.filter(s => s.userId === agent.id)
-      const aAgenda = agendaEntries.filter(a => a.userId === agent.id)
-      const aClocks = clockRecords.filter(c => c.userId === agent.id)
+    const payrollData = agents.map((agent: any) => {
+      const aShifts = shifts.filter((s: any) => s.userId === agent.id)
+      const aAgenda = agendaEntries.filter((a: any) => a.userId === agent.id)
+      const aClocks = clockRecords.filter((c: any) => c.userId === agent.id)
 
       // 1. ASSENZE & CODICI (dalla pianificazione + agenda)
       const codiciMap: Record<string, { label: string, value: number, unit: string }> = {}
 
       // Conteggio da Shift (ferie, malattie pianificate)
-      aShifts.forEach(s => {
+      aShifts.forEach((s: any) => {
         const t = (s.type || "").toUpperCase().trim()
         if (t === "FERIE" || t === "F") {
           const k = "0015"
@@ -121,7 +121,7 @@ export async function GET(request: Request) {
       })
 
       // Conteggio da Agenda (tutti i codici con descrizione)
-      aAgenda.forEach(a => {
+      aAgenda.forEach((a: any) => {
         const label = getLabel(a.code)
         if (!codiciMap[a.code]) codiciMap[a.code] = { label, value: 0, unit: a.hours ? "h" : "gg" }
         codiciMap[a.code].value += (a.hours || 1)
@@ -131,7 +131,7 @@ export async function GET(request: Request) {
       let repFeriale = 0
       let repFestiva = 0
 
-      aShifts.forEach(s => {
+      aShifts.forEach((s: any) => {
         if (s.repType) {
           const hours = repHoursFromLabel(s.repType)
           const shiftDate = new Date(s.date)
@@ -146,7 +146,7 @@ export async function GET(request: Request) {
       // 3. TIMBRATURE → Ore Lavorate e Buoni Pasto
       // Raggruppa clock per giorno
       const clocksByDay: Record<string, { type: string, ts: Date }[]> = {}
-      aClocks.forEach(c => {
+      aClocks.forEach((c: any) => {
         const d = new Date(c.timestamp)
         const dayKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
         if (!clocksByDay[dayKey]) clocksByDay[dayKey] = []
@@ -214,7 +214,7 @@ export async function GET(request: Request) {
 
       // 4. STRAORDINARIO (dalla pianificazione)
       let strOrdinario = 0
-      aShifts.forEach(s => { strOrdinario += (s.overtimeHours || 0) })
+      aShifts.forEach((s: any) => { strOrdinario += (s.overtimeHours || 0) })
 
       return {
         id: agent.id,

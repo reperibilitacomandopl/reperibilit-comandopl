@@ -33,7 +33,7 @@ export async function sendPushNotification(userId: string, payload: { title: str
       return
     }
 
-    const pushPromises = subscriptions.map(async (sub) => {
+    const pushPromises = subscriptions.map(async (sub: any) => {
       try {
         const pushSubscription = {
           endpoint: sub.endpoint,

@@ -70,7 +70,7 @@ export default function RadioClient({ radios: initial, users }: { radios: RadioI
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Errore sconosciuto") }
       const data = await res.json()
       if (editingId) {
-        setRadios(prev => prev.map(r => r.id === editingId ? data.radio : r))
+        setRadios(prev => prev.map((r: any) => r.id === editingId ? data.radio : r))
         toast.success("Radio aggiornata!")
       } else {
         setRadios(prev => [...prev, data.radio])
@@ -86,7 +86,7 @@ export default function RadioClient({ radios: initial, users }: { radios: RadioI
     try {
       const res = await fetch("/api/admin/radios", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) })
       if (!res.ok) throw new Error()
-      setRadios(prev => prev.filter(r => r.id !== id))
+      setRadios(prev => prev.filter((r: any) => r.id !== id))
       toast.success("Radio eliminata")
     } catch { toast.error("Errore eliminazione") }
   }
@@ -106,7 +106,7 @@ export default function RadioClient({ radios: initial, users }: { radios: RadioI
   }
 
   // Alert count (Battery expired or expiring)
-  const alertCount = radios.filter(r => {
+  const alertCount = radios.filter((r: any) => {
     const days = daysUntil(r.cambioBatteria)
     return days !== null && days < 30
   }).length
@@ -192,7 +192,7 @@ export default function RadioClient({ radios: initial, users }: { radios: RadioI
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {radios.map(r => {
+          {radios.map((r: any) => {
             const statoInfo = STATO_OPTIONS.find(o => o.value === r.stato) || STATO_OPTIONS[0]
             const StatoIcon = statoInfo.icon
             return (

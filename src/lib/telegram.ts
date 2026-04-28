@@ -104,7 +104,7 @@ export async function broadcastEmergency(tenantId: string, message: string) {
   });
 
   const results = await Promise.all(
-    users.map(u => sendTelegramMessage(u.telegramChatId!, `🚨 <b>ALLERTA EMERGENZA COMANDO</b> 🚨\n\n${message}`))
+    users.map((u: any) => sendTelegramMessage(u.telegramChatId!, `🚨 <b>ALLERTA EMERGENZA COMANDO</b> 🚨\n\n${message}`))
   );
 
   return results.filter(r => r).length;

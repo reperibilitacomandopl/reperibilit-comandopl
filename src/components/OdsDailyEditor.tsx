@@ -40,8 +40,8 @@ export default function OdsDailyEditor() {
   // State for grouping singles into a patrol
   const [selectedForPatrol, setSelectedForPatrol] = useState<Set<string>>(new Set())
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       if (navigator.onLine) {
         syncOfflineRequests()
@@ -81,7 +81,7 @@ export default function OdsDailyEditor() {
       
       toast.error("Offline: Caricamento dati dalla cache locale")
     }
-    setLoading(false)
+    if (!silent) setLoading(false)
   }, [date])
 
   useEffect(() => { 
@@ -133,7 +133,7 @@ export default function OdsDailyEditor() {
         toast.success("OdS Salvato con successo!")
         setSelectedForPatrol(new Set())
         cacheDataset(`ods-shifts-${date}`, shifts) // Aggiorna cache locale con i nuovi dati salvati
-        loadData() 
+        loadData(true) 
       } else {
         const d = await res.json()
         throw new Error(d.error || "Errore salvataggio")

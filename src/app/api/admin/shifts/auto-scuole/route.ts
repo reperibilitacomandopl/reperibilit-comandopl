@@ -9,11 +9,28 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { date } = await req.json()
+    let body;
+    try {
+      body = await req.json()
+    } catch (e) {
+      return NextResponse.json({ error: "Corpo della richiesta non valido (JSON atteso)" }, { status: 400 })
+    }
+
+    const { date } = body
+    console.log("[AUTO SCUOLE] Start. Date:", date)
     if (!date) return NextResponse.json({ error: "Data mancante" }, { status: 400 })
 
     const tenantId = session.user.tenantId
-    const [y, m, d] = date.split("-").map(Number)
+    if (!tenantId) return NextResponse.json({ error: "TenantId non trovato nella sessione" }, { status: 400 })
+
+    // Robust parsing for YYYY-MM-DD or ISO string
+    const datePart = typeof date === 'string' ? date.substring(0, 10) : ""
+    const [y, m, d] = datePart.split("-").map(Number)
+    
+    if (isNaN(y) || isNaN(m) || isNaN(d)) {
+       return NextResponse.json({ error: `Formato data non valido: ${date}. Atteso YYYY-MM-DD` }, { status: 400 })
+    }
+
     const targetDate = new Date(Date.UTC(y, m - 1, d))
     const dayOfWeek = targetDate.getUTCDay()
 
@@ -27,11 +44,13 @@ export async function POST(req: Request) {
       }
     })
 
-    if (schools.length === 0) {
-      return NextResponse.json({ error: "Nessuna scuola censita per questo giorno o in generale." }, { status: 400 })
+    if (schools.length === 0 || !schools.some((s: any) => s.schedules.length > 0)) {
+       return NextResponse.json({ error: "Nessuna scuola con orario censito per questo giorno della settimana." }, { status: 400 })
     }
 
-    // 2. Fetch all morning (M*) and afternoon (P*) shifts for this date, excluding Ufficiali
+    const activeSchools = schools.filter((s: any) => s.schedules.length > 0)
+
+    // 2. Fetch all candidate shifts
     const shifts = await prisma.shift.findMany({
       where: {
         tenantId,
@@ -46,67 +65,110 @@ export async function POST(req: Request) {
           {
             OR: [
               { type: { startsWith: "M" } },
-              { type: { startsWith: "P" } }
+              { type: { startsWith: "P" } },
+              { type: { contains: "MATTINA", mode: 'insensitive' } },
+              { type: { contains: "POMERIGGIO", mode: 'insensitive' } }
             ]
           },
           {
-            OR: [
-              { serviceDetails: null },
-              { serviceDetails: "" }
-            ]
+            NOT: {
+              OR: [
+                { serviceDetails: { contains: "USCITA" } },
+                { serviceDetails: { contains: "ENTRATA" } },
+                { serviceDetails: { contains: "SCUOLA" } }
+              ]
+            }
           }
         ]
       },
-      orderBy: { user: { name: "asc" } }
+      include: { 
+        user: {
+          select: {
+            id: true,
+            name: true,
+            servizio: true,
+            qualifica: true,
+            gradoLivello: true
+          }
+        } 
+      }
     })
 
     if (shifts.length === 0) {
       return NextResponse.json({ 
         success: false, 
-        message: "Nessun turno disponibile o già assegnato." 
+        message: "Nessun agente disponibile (M o P) senza servizio già assegnato." 
       })
     }
 
-    // 3. Split shifts by type
-    const morningShifts = shifts.filter(s => s.type.startsWith("M"))
-    const afternoonShifts = shifts.filter(s => s.type.startsWith("P"))
+    // 3. SORTING RULE: 
+    // - Priority 1: Section "VIABILITÀ"
+    // - Priority 2: Rank (gradoLivello) from lowest (e.g. 17) to highest (e.g. 1)
+    // In our rankMap, higher level number (17) means lower rank (Agente).
+    // So we sort by gradoLivello DESCENDING.
+    const sortedShifts = [...shifts].sort((a, b) => {
+      const isViabilitaA = a.user?.servizio?.toUpperCase().includes("VIABILIT") ? 0 : 1
+      const isViabilitaB = b.user?.servizio?.toUpperCase().includes("VIABILIT") ? 0 : 1
+      
+      if (isViabilitaA !== isViabilitaB) return isViabilitaA - isViabilitaB
+      
+      const rankA = a.user?.gradoLivello || 99
+      const rankB = b.user?.gradoLivello || 99
+      
+      // Grado "più piccolo" (Agente, level 17) al "più alto" (level 1)
+      // Se gradoLivello è alto (17), è un grado piccolo.
+      return rankB - rankA // Sort DESC (17, 16, 15...)
+    })
+
+    const morningShifts = sortedShifts.filter(s => s.type.toUpperCase().startsWith("M") || s.type.toUpperCase().includes("MATTINA"))
+    const afternoonShifts = sortedShifts.filter(s => s.type.toUpperCase().startsWith("P") || s.type.toUpperCase().includes("POMERIGGIO"))
 
     // 4. Assign individually
     let assignedCount = 0
     const updates = []
+    const assignedShiftIds = new Set<string>()
 
     // --- Assign Morning Schools ---
-    for (let i = 0; i < Math.min(morningShifts.length, schools.length); i++) {
+    for (let i = 0; i < Math.min(morningShifts.length, activeSchools.length); i++) {
       const shift = morningShifts[i]
-      const school = schools[i]
+      const school = activeSchools[i]
       const schedule = school.schedules[0] 
 
       if (schedule) {
-        const note = `${schedule.entranceTime || "07:45-08:30"} ENTRATA / ${schedule.exitTime || "13:00-14:00"} USCITA ${school.name}`
+        const newNote = `${schedule.entranceTime || "07:45-08:30"} ENTRATA / ${schedule.exitTime || "13:00-14:00"} USCITA ${school.name}`
+        const finalNote = shift.serviceDetails ? `${shift.serviceDetails} + ${newNote}` : newNote
         
+        assignedShiftIds.add(shift.id)
         updates.push(prisma.shift.update({
           where: { id: shift.id },
-          data: { serviceDetails: note }
+          data: { 
+            serviceDetails: finalNote
+            // NOTA: Non cambiamo serviceCategoryId per non spostare l'agente dalla postazione admin
+          }
         }))
         assignedCount++
       }
     }
 
     // --- Assign Afternoon Schools (Late Exit) ---
-    // Filter schools that have an afternoon exit time
-    const schoolsWithAfternoon = schools.filter(s => s.schedules[0]?.afternoonExitTime)
-    
-    for (let i = 0; i < Math.min(afternoonShifts.length, schoolsWithAfternoon.length); i++) {
-      const shift = afternoonShifts[i]
+    const schoolsWithAfternoon = activeSchools.filter((s: any) => s.schedules[0]?.afternoonExitTime)
+    const availableAfternoon = afternoonShifts.filter(as => !assignedShiftIds.has(as.id))
+
+    for (let i = 0; i < Math.min(availableAfternoon.length, schoolsWithAfternoon.length); i++) {
+      const shift = availableAfternoon[i]
       const school = schoolsWithAfternoon[i]
       const schedule = school.schedules[0]
 
       if (schedule?.afternoonExitTime) {
-        const note = `${schedule.afternoonExitTime} USCITA ${school.name}`
+        const newNote = `${schedule.afternoonExitTime} USCITA ${school.name}`
+        const finalNote = shift.serviceDetails ? `${shift.serviceDetails} + ${newNote}` : newNote
         
+        assignedShiftIds.add(shift.id)
         updates.push(prisma.shift.update({
           where: { id: shift.id },
-          data: { serviceDetails: note }
+          data: { 
+            serviceDetails: finalNote
+          }
         }))
         assignedCount++
       }
@@ -122,8 +184,11 @@ export async function POST(req: Request) {
       message: `Assegnati ${assignedCount} servizi scolastici (Mattina e Pomeriggio).`
     })
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("[AUTO SCUOLE ERROR]", error)
-    return NextResponse.json({ error: "Internar Error" }, { status: 500 })
+    return NextResponse.json({ 
+      error: "Internal Server Error", 
+      details: error.message || String(error)
+    }, { status: 500 })
   }
 }

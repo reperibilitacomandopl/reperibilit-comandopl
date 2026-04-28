@@ -45,16 +45,16 @@ export default async function CompliancePage({ params }: { params: Promise<{ ten
 
   const stats = {
     total: users.length,
-    ok: users.filter(u => 
+    ok: users.filter((u: any) => 
       getStatus(u.scadenzaPatente) === "OK" && 
       getStatus(u.scadenzaPortoArmi) === "OK" && 
       u.privacyConsent
     ).length,
-    warning: users.filter(u => 
+    warning: users.filter((u: any) => 
       getStatus(u.scadenzaPatente) === "WARNING" || 
       getStatus(u.scadenzaPortoArmi) === "WARNING"
     ).length,
-    critical: users.filter(u => 
+    critical: users.filter((u: any) => 
       getStatus(u.scadenzaPatente) === "EXPIRED" || 
       getStatus(u.scadenzaPortoArmi) === "EXPIRED" ||
       !u.privacyConsent
@@ -104,7 +104,7 @@ export default async function CompliancePage({ params }: { params: Promise<{ ten
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
-            {users.map(user => {
+            {users.map((user: any) => {
               const patenteStatus = getStatus(user.scadenzaPatente)
               const armiStatus = getStatus(user.scadenzaPortoArmi)
               

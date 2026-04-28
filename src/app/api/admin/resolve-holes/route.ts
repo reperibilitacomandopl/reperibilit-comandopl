@@ -142,7 +142,7 @@ export async function POST(req: Request) {
     // Calcolo target per "chiudere un buco"
     let basePerDay = 6;
     if (settings && settings.massimaleAgente && agents.length > 0) {
-       const uffs = agents.filter(a => a.isUfficiale).length
+       const uffs = agents.filter((a: any) => a.isUfficiale).length
        const totalTarget = (uffs * (settings.massimaleUfficiale ?? 6)) + ((agents.length - uffs) * (settings.massimaleAgente ?? 5))
        basePerDay = Math.floor(totalTarget / daysInMonth)
        if (basePerDay < 5) basePerDay = 5 
@@ -216,7 +216,7 @@ export async function POST(req: Request) {
         if (isDom[day]) numDomeniche[best.agentId]++
 
         holesResolved++
-        changesLog.push(`Giorno ${day}: Assegnato ${agents.find(a => a.id === best.agentId)?.name}`)
+        changesLog.push(`Giorno ${day}: Assegnato ${agents.find((a: any) => a.id === best.agentId)?.name}`)
       }
     }
 

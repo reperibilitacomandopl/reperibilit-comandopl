@@ -55,7 +55,7 @@ export async function POST(req: Request) {
 
     const nameMap = new Map<string, any>()
     const matricolaMap = new Map<string, any>()
-    allUsers.forEach(u => {
+    allUsers.forEach((u: any) => {
       if (u.name) nameMap.set(superClean(u.name), u)
       if (u.matricola) matricolaMap.set(String(u.matricola).trim(), u)
     })
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
     const minDate = new Date(Math.min(...allDates))
     const maxDate = new Date(Math.max(...allDates))
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       if (importType === "rep") {
         // Reset REP selettivo: togliamo solo il flag repType per gli agenti e il periodo coinvolto
         await tx.shift.updateMany({
@@ -124,7 +124,7 @@ export async function POST(req: Request) {
           include: { rotationGroup: true }
         })
         const agentsMap = new Map<string, any>()
-        agentsFull.forEach(a => agentsMap.set(a.id, a))
+        agentsFull.forEach((a: any) => agentsMap.set(a.id, a))
 
         // Carichiamo anche eventuali assenze già presenti nel DB per il giorno dopo l'ultimo importato
         const nextDayBufferMin = new Date(minDate); nextDayBufferMin.setUTCDate(nextDayBufferMin.getUTCDate() + 1);

@@ -58,7 +58,7 @@ export async function getEntitlementStatus(userId: string, month: number, year: 
     if (l104Mode === "DAYS") {
       // Count unique days across all L.104 requests
       const days = new Set<string>()
-      l104Requests.forEach(req => {
+      l104Requests.forEach((req: any) => {
         if (req.code === "0031" || req.code === "0038" || req.code === "104_1" || req.code === "104_2") {
           const start = new Date(req.date)
           const end = req.endDate ? new Date(req.endDate) : start
@@ -72,7 +72,7 @@ export async function getEntitlementStatus(userId: string, month: number, year: 
       l104Used = days.size
     } else {
       // Sum hours
-      l104Used = l104Requests.reduce((sum, req) => sum + (req.hours || 0), 0)
+      l104Used = l104Requests.reduce((sum: any, req: any) => sum + (req.hours || 0), 0)
     }
   }
 
@@ -90,7 +90,7 @@ export async function getEntitlementStatus(userId: string, month: number, year: 
       }
     }
   })
-  const studyLeaveUsed = studyRequests.reduce((sum, req) => sum + (req.hours || 0), 0)
+  const studyLeaveUsed = studyRequests.reduce((sum: any, req: any) => sum + (req.hours || 0), 0)
 
   return {
     hasL104: user.hasL104,

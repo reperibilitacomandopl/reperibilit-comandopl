@@ -12,16 +12,19 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
     const dateStr = searchParams.get("date")
-    if (!dateStr) return NextResponse.json({ error: "Missing date" }, { status: 400 })
+    if (!dateStr) return NextResponse.json({ error: "Data mancante" }, { status: 400 })
 
     const tenantId = session.user.tenantId
     const tf = tenantId ? { tenantId } : {}
 
-    const date = new Date(dateStr)
-    const startDate = new Date(date)
-    startDate.setHours(0, 0, 0, 0)
-    const endDate = new Date(date)
-    endDate.setHours(23, 59, 59, 999)
+    // Robust parsing
+    const datePart = typeof dateStr === 'string' ? dateStr.substring(0, 10) : ""
+    const [y, m, d] = datePart.split("-").map(Number)
+    if (isNaN(y)) return NextResponse.json({ error: "Data non valida" }, { status: 400 })
+
+    const startDate = new Date(Date.UTC(y, m - 1, d))
+    const endDate = new Date(startDate)
+    endDate.setUTCHours(23, 59, 59, 999)
 
     const [users, shifts, absences, categories, vehicles, radios, weapons, armors, certifiedDoc] = await Promise.all([
       prisma.user.findMany({ 
@@ -63,9 +66,9 @@ export async function GET(req: Request) {
       armors,
       isCertified: !!certifiedDoc 
     })
-  } catch (error) {
-    console.error("[DAILY SHIFTS GET]", error)
-    return NextResponse.json({ error: "Internal Error" }, { status: 500 })
+  } catch (error: any) {
+    console.error("[DAILY SHIFTS GET ERROR]", error)
+    return NextResponse.json({ error: "Internal Server Error", details: error.message }, { status: 500 })
   }
 }
 
@@ -99,9 +102,11 @@ export async function PUT(req: Request) {
     }
 
     // Crea la data esattamente a mezzanotte UTC
-    const [y, m, d] = date.split("-").map(Number)
-    const targetDate = new Date(Date.UTC(y, m - 1, d))
+    const datePart = typeof date === 'string' ? date.substring(0, 10) : ""
+    const [y, m, d] = datePart.split("-").map(Number)
+    if (isNaN(y)) return NextResponse.json({ error: "Data non valida" }, { status: 400 })
 
+    const targetDate = new Date(Date.UTC(y, m - 1, d))
     const startDate = new Date(targetDate)
     const endDate = new Date(targetDate)
     endDate.setUTCHours(23, 59, 59, 999)
@@ -127,7 +132,7 @@ export async function PUT(req: Request) {
     let shift;
     if (existingShift) {
         shift = await prisma.shift.update({
-           where: { id: existingShift.id }, // ID è già univoco, ma per sicurezza findFirst ha filtrato per tenant
+           where: { id: existingShift.id }, 
            data: {
              type: normalized.type,
              timeRange: normalized.timeRange,
@@ -176,8 +181,8 @@ export async function PUT(req: Request) {
     })
 
     return NextResponse.json({ success: true, shift })
-  } catch (error) {
-    console.error("[DAILY SHIFTS PUT]", error)
-    return NextResponse.json({ error: "Internal Error" }, { status: 500 })
+  } catch (error: any) {
+    console.error("[DAILY SHIFTS PUT ERROR]", error)
+    return NextResponse.json({ error: "Internal Server Error", details: error.message }, { status: 500 })
   }
 }

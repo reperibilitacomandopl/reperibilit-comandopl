@@ -57,7 +57,7 @@ export default async function Home({
     }
   })
 
-  const myShifts = shifts.filter(s => s.userId === session.user.id)
+  const myShifts = shifts.filter((s: any) => s.userId === session.user.id)
 
   const agendaEntries = await prisma.agendaEntry.findMany({
     where: { 

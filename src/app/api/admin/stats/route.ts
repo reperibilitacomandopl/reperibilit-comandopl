@@ -33,7 +33,7 @@ export async function GET(req: Request) {
 
     const statsMap: Record<string, any> = {}
 
-    shifts.forEach(s => {
+    shifts.forEach((s: any) => {
       const d = new Date(s.date)
       const utcDow = d.getUTCDay()
       const name = s.user.name

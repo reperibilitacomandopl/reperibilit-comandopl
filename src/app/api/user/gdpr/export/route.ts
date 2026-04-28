@@ -155,7 +155,7 @@ export async function GET() {
       assenze: absences,
       richiesteCongedi: requests,
       timbrature: clockRecords,
-      saldiFeriePermessi: balances.map(b => ({
+      saldiFeriePermessi: balances.map((b: any) => ({
         anno: b.year,
         voci: b.details
       }))

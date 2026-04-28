@@ -441,6 +441,170 @@ export async function generateReperibilitaPDF({
 }
 
 /**
+ * Funzione interna per disegnare il contenuto di una singola pagina OdS
+ * Usata sia dalla stampa singola che da quella batch/settimanale
+ */
+async function drawODSPageContent({
+  doc,
+  date,
+  users,
+  shifts,
+  tenantName,
+  logoUrl,
+  autoTable,
+  isBatch = false
+}: {
+  doc: jsPDFWithAutoTable,
+  date: Date,
+  users: ODSUser[],
+  shifts: ODSShift[],
+  tenantName: string,
+  logoUrl?: string | null,
+  autoTable: any,
+  isBatch?: boolean
+}) {
+  const navelBlue: [number, number, number] = [0, 23, 54];
+  const pageWidth = doc.internal.pageSize.width;
+  const dateStr = date.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+
+  // 1. Header Istituzionale
+  if (logoUrl) {
+    try {
+      doc.addImage(logoUrl, "PNG", (pageWidth / 2) - 50, 10, 18, 18);
+      doc.setFontSize(20);
+      doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+      doc.setFont("helvetica", "bold");
+      const headerTitle = tenantName.toUpperCase().includes("POLIZIA LOCALE") 
+        ? tenantName.toUpperCase() 
+        : `POLIZIA LOCALE ${tenantName.toUpperCase()}`;
+      doc.text(headerTitle, (pageWidth / 2) + 12, 20, { align: "center" });
+    } catch (e) {
+      doc.setFontSize(22);
+      doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+      doc.setFont("helvetica", "bold");
+      const headerTitle = tenantName.toUpperCase().includes("POLIZIA LOCALE") 
+        ? tenantName.toUpperCase() 
+        : `POLIZIA LOCALE ${tenantName.toUpperCase()}`;
+      doc.text(headerTitle, pageWidth / 2, 20, { align: "center" });
+    }
+  } else {
+    doc.setFontSize(22);
+    doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+    doc.setFont("helvetica", "bold");
+    const headerTitle = tenantName.toUpperCase().includes("POLIZIA LOCALE") 
+      ? tenantName.toUpperCase() 
+      : `POLIZIA LOCALE ${tenantName.toUpperCase()}`;
+    doc.text(headerTitle, pageWidth / 2, 20, { align: "center" });
+  }
+  
+  doc.setFontSize(14);
+  doc.text("ORDINE DI SERVIZIO GIORNALIERO", pageWidth / 2, 28, { align: "center" });
+  
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 116, 139);
+  doc.text(dateStr.toUpperCase(), pageWidth / 2, 34, { align: "center" });
+
+  doc.setDrawColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+  doc.setLineWidth(0.5);
+  doc.line(20, 38, pageWidth - 20, 38);
+
+  // 2. Preparazione Dati
+  const isWorkingShift = (type: string) => /^[MPN]\d/.test((type || "").toUpperCase().replace(/[()]/g, "").trim());
+  const currentShifts = shifts.filter(s => isWorkingShift(s.type));
+  
+  const sortedShifts = [...currentShifts].sort((a,b) => {
+    if (a.type !== b.type) return a.type.localeCompare(b.type);
+    if (a.patrolGroupId && b.patrolGroupId) return a.patrolGroupId.localeCompare(b.patrolGroupId);
+    return (a.patrolGroupId ? -1 : 1);
+  });
+
+  type ODSBodyRow = jsPDFCellConfig[] & { isPatrol?: boolean };
+  
+  const body: ODSBodyRow[] = sortedShifts.map(s => {
+    const u = users.find(u => u.id === s.userId);
+    if (!u) return null;
+    
+    const qualifica = u.qualifica || (u.isUfficiale ? "Uff.le" : "Agente");
+    const orarioPrincipale = s.timeRange || (s.type.startsWith("M") ? "08:00-14:00" : s.type.startsWith("P") ? "14:00-20:00" : "22:00-04:00");
+    const disposizioni = s.serviceDetails || "";
+    const schoolTimeMatch = disposizioni.match(/(\d{2}:\d{2})(-(\d{2}:\d{2}))?/);
+    
+    let orarioStampa = orarioPrincipale;
+    if (schoolTimeMatch) orarioStampa = `${schoolTimeMatch[0]}\n(${orarioPrincipale})`;
+
+    const servizio = s.serviceType ? s.serviceType.name : (u.servizio || "Vigilanza");
+    const veicolo = s.vehicle ? `\n(${s.vehicle.name})` : "";
+    
+    const rowData: jsPDFCellConfig[] = [
+      { content: `${qualifica}\n${u.name}`, styles: { fontStyle: 'bold' } },
+      { content: orarioStampa, styles: { halign: 'center', fontSize: 8, fontStyle: 'bold' } },
+      { content: `${servizio}${veicolo}`, styles: { fontStyle: schoolTimeMatch ? 'bold' : 'normal' } },
+      { content: disposizioni, styles: { fontSize: 8 } }
+    ];
+    
+    const extendedRow = rowData as ODSBodyRow;
+    extendedRow.isPatrol = !!s.patrolGroupId;
+    return extendedRow;
+  }).filter((row): row is ODSBodyRow => row !== null);
+
+  // 3. Generazione Tabella
+  autoTable(doc, {
+    startY: 42,
+    head: [['QUALIFICA / NOME', 'ORARIO', 'SERVIZIO / MEZZO', 'DISPOSIZIONI E LUOGHI']],
+    body: body,
+    theme: 'grid',
+    headStyles: { fillColor: navelBlue, textColor: 255, fontSize: 10, halign: 'center', fontStyle: 'bold' },
+    bodyStyles: { fontSize: 9, cellPadding: 3, textColor: 40 },
+    alternateRowStyles: { fillColor: [245, 247, 250] },
+    columnStyles: {
+      0: { cellWidth: 45 },
+      1: { cellWidth: 28 },
+      2: { cellWidth: 45 },
+      3: { cellWidth: 'auto' }
+    },
+    didParseCell: (data: any) => {
+      const row = body[data.row.index];
+      if (row && row.isPatrol && data.section === 'body') {
+        data.cell.styles.fillColor = [230, 242, 255]; // Highlight Sentinel Blue
+      }
+    }
+  });
+
+  // 4. Sezione Firme
+  const finalY = (doc as any).lastAutoTable.finalY + 15;
+  doc.setFontSize(9);
+  doc.setTextColor(60, 60, 60);
+  doc.text("L'UFFICIALE DI SERVIZIO", 45, finalY, { align: "center" });
+  doc.line(20, finalY + 12, 70, finalY + 12);
+  doc.text("IL COMANDANTE DEL CORPO", pageWidth - 55, finalY, { align: "center" });
+  doc.line(pageWidth - 85, finalY + 12, pageWidth - 25, finalY + 12);
+
+  // 4.5 Timbro Grafico Digitale
+  const sealCenterX = pageWidth / 2;
+  const sealCenterY = finalY + 6;
+  const sealRadius = 12;
+  
+  doc.setDrawColor(16, 185, 129); // emerald-500
+  doc.setLineWidth(0.8);
+  doc.circle(sealCenterX, sealCenterY, sealRadius, "S");
+  doc.setLineWidth(0.3);
+  doc.circle(sealCenterX, sealCenterY, sealRadius - 2, "S");
+  
+  doc.setFontSize(5);
+  doc.setTextColor(16, 185, 129);
+  doc.setFont("helvetica", "bold");
+  doc.text("★ FIRMATO DIGITALMENTE ★", sealCenterX, sealCenterY - 5, { align: "center" });
+  doc.setFontSize(12);
+  doc.text("✓", sealCenterX, sealCenterY + 1.5, { align: "center" });
+  doc.setFontSize(4);
+  doc.text("SENTINEL SECURITY SUITE", sealCenterX, sealCenterY + 5, { align: "center" });
+  doc.setFontSize(3.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text(new Date().toLocaleDateString('it-IT'), sealCenterX, sealCenterY + 7.5, { align: "center" });
+}
+
+/**
  * Genera l'Ordine di Servizio Giornaliero (ODS) Certificato
  */
 export async function generateODSPDF({
@@ -467,152 +631,7 @@ export async function generateODSPDF({
       format: "a4"
     }) as unknown as jsPDFWithAutoTable;
 
-    const navelBlue: [number, number, number] = [0, 23, 54];
-    const pageWidth = doc.internal.pageSize.width;
-    const dateStr = date.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
-
-    // 1. Header Istituzionale
-    if (logoUrl) {
-      try {
-        doc.addImage(logoUrl, "PNG", (pageWidth / 2) - 50, 10, 18, 18);
-        doc.setFontSize(20);
-        doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
-        doc.setFont("helvetica", "bold");
-        const headerTitle = tenantName.toUpperCase().includes("POLIZIA LOCALE") 
-          ? tenantName.toUpperCase() 
-          : `POLIZIA LOCALE ${tenantName.toUpperCase()}`;
-        doc.text(headerTitle, (pageWidth / 2) + 12, 20, { align: "center" });
-      } catch (e) {
-        doc.setFontSize(22);
-        doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
-        doc.setFont("helvetica", "bold");
-        const headerTitle = tenantName.toUpperCase().includes("POLIZIA LOCALE") 
-          ? tenantName.toUpperCase() 
-          : `POLIZIA LOCALE ${tenantName.toUpperCase()}`;
-        doc.text(headerTitle, pageWidth / 2, 20, { align: "center" });
-      }
-    } else {
-      doc.setFontSize(22);
-      doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
-      doc.setFont("helvetica", "bold");
-      const headerTitle = tenantName.toUpperCase().includes("POLIZIA LOCALE") 
-        ? tenantName.toUpperCase() 
-        : `POLIZIA LOCALE ${tenantName.toUpperCase()}`;
-      doc.text(headerTitle, pageWidth / 2, 20, { align: "center" });
-    }
-    
-    doc.setFontSize(14);
-    doc.text("ORDINE DI SERVIZIO GIORNALIERO", pageWidth / 2, 28, { align: "center" });
-    
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 116, 139);
-    doc.text(dateStr.toUpperCase(), pageWidth / 2, 34, { align: "center" });
-
-    doc.setDrawColor(navelBlue[0], navelBlue[1], navelBlue[2]);
-    doc.setLineWidth(0.5);
-    doc.line(20, 38, pageWidth - 20, 38);
-
-    // 2. Preparazione Dati Corazzata
-    const isWorkingShift = (type: string) => /^[MPN]\d/.test((type || "").toUpperCase().replace(/[()]/g, "").trim());
-    const currentShifts = shifts.filter(s => isWorkingShift(s.type));
-    
-    const sortedShifts = [...currentShifts].sort((a,b) => {
-      if (a.type !== b.type) return a.type.localeCompare(b.type);
-      if (a.patrolGroupId && b.patrolGroupId) return a.patrolGroupId.localeCompare(b.patrolGroupId);
-      return (a.patrolGroupId ? -1 : 1);
-    });
-
-    type ODSBodyRow = jsPDFCellConfig[] & { isPatrol?: boolean };
-    
-    const body: ODSBodyRow[] = sortedShifts.map(s => {
-      const u = users.find(u => u.id === s.userId);
-      if (!u) return null;
-      
-      const qualifica = u.qualifica || (u.isUfficiale ? "Uff.le" : "Agente");
-      const orarioPrincipale = s.timeRange || (s.type.startsWith("M") ? "08:00-14:00" : s.type.startsWith("P") ? "14:00-20:00" : "22:00-04:00");
-      const disposizioni = s.serviceDetails || "";
-      const schoolTimeMatch = disposizioni.match(/(\d{2}:\d{2})(-(\d{2}:\d{2}))?/);
-      
-      let orarioStampa = orarioPrincipale;
-      if (schoolTimeMatch) orarioStampa = `${schoolTimeMatch[0]}\n(${orarioPrincipale})`;
-
-      const servizio = s.serviceType ? s.serviceType.name : (u.servizio || "Vigilanza");
-      const veicolo = s.vehicle ? `\n(${s.vehicle.name})` : "";
-      
-      const rowData: jsPDFCellConfig[] = [
-        { content: `${qualifica}\n${u.name}`, styles: { fontStyle: 'bold' } },
-        { content: orarioStampa, styles: { halign: 'center', fontSize: 8, fontStyle: 'bold' } },
-        { content: `${servizio}${veicolo}`, styles: { fontStyle: schoolTimeMatch ? 'bold' : 'normal' } },
-        { content: disposizioni, styles: { fontSize: 8 } }
-      ];
-      
-      const extendedRow = rowData as ODSBodyRow;
-      extendedRow.isPatrol = !!s.patrolGroupId;
-      return extendedRow;
-    }).filter((row): row is ODSBodyRow => row !== null);
-
-    // 3. Generazione Tabella
-    autoTable(doc, {
-      startY: 42,
-      head: [['QUALIFICA / NOME', 'ORARIO', 'SERVIZIO / MEZZO', 'DISPOSIZIONI E LUOGHI']],
-      body: body,
-      theme: 'grid',
-      headStyles: { fillColor: navelBlue, textColor: 255, fontSize: 10, halign: 'center', fontStyle: 'bold' },
-      bodyStyles: { fontSize: 9, cellPadding: 3, textColor: 40 },
-      alternateRowStyles: { fillColor: [245, 247, 250] },
-      columnStyles: {
-        0: { cellWidth: 45 },
-        1: { cellWidth: 28 },
-        2: { cellWidth: 45 },
-        3: { cellWidth: 'auto' }
-      },
-      didParseCell: (data) => {
-        const row = body[data.row.index];
-        if (row && row.isPatrol && data.section === 'body') {
-          data.cell.styles.fillColor = [230, 242, 255]; // Highlight Sentinel Blue
-        }
-      }
-    });
-
-    // 4. Sezione Firme
-    const finalY = (doc as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
-    doc.setFontSize(9);
-    doc.setTextColor(60, 60, 60);
-    doc.text("L'UFFICIALE DI SERVIZIO", 45, finalY, { align: "center" });
-    doc.line(20, finalY + 12, 70, finalY + 12);
-    doc.text("IL COMANDANTE DEL CORPO", pageWidth - 55, finalY, { align: "center" });
-    doc.line(pageWidth - 85, finalY + 12, pageWidth - 25, finalY + 12);
-
-    // 4.5 Timbro Grafico Digitale (Sigillo Istituzionale)
-    const sealCenterX = pageWidth / 2;
-    const sealCenterY = finalY + 6;
-    const sealRadius = 12;
-    
-    // Cerchio esterno
-    doc.setDrawColor(16, 185, 129); // emerald-500
-    doc.setLineWidth(0.8);
-    doc.circle(sealCenterX, sealCenterY, sealRadius, "S");
-    // Cerchio interno
-    doc.setLineWidth(0.3);
-    doc.circle(sealCenterX, sealCenterY, sealRadius - 2, "S");
-    
-    // Testo circolare superiore
-    doc.setFontSize(5);
-    doc.setTextColor(16, 185, 129);
-    doc.setFont("helvetica", "bold");
-    doc.text("★ FIRMATO DIGITALMENTE ★", sealCenterX, sealCenterY - 5, { align: "center" });
-    
-    // Icona centrale (checkmark stilizzato)
-    doc.setFontSize(12);
-    doc.text("✓", sealCenterX, sealCenterY + 1.5, { align: "center" });
-    
-    // Testo circolare inferiore  
-    doc.setFontSize(4);
-    doc.text("SENTINEL SECURITY SUITE", sealCenterX, sealCenterY + 5, { align: "center" });
-    doc.setFontSize(3.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text(new Date().toLocaleDateString('it-IT'), sealCenterX, sealCenterY + 7.5, { align: "center" });
+    await drawODSPageContent({ doc, date, users, shifts, tenantName, logoUrl, autoTable });
 
     // 5. Sigillo Digitale & QR
     const pdfOutput = doc.output("arraybuffer");
@@ -620,18 +639,87 @@ export async function generateODSPDF({
 
     const verifyUrl = `${window.location.origin}/verify/${documentHash}`;
     const qrDataUrl = await QRCodeLib.toDataURL(verifyUrl, { margin: 1, width: 80 });
-    doc.addImage(qrDataUrl, "PNG", pageWidth - 35, doc.internal.pageSize.height - 40, 20, 20);
+    const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
 
+    doc.addImage(qrDataUrl, "PNG", pageWidth - 35, pageHeight - 40, 20, 20);
     doc.setFontSize(6);
     doc.setTextColor(150, 150, 150);
-    doc.text(`IDENTIFICATIVO DIGITALE SHA-256: ${documentHash}`, 14, doc.internal.pageSize.height - 12);
-    doc.text(`SENTINEL SECURITY SUITE - FIRMA ELETTRONICA CERTIFICATA IL ${new Date().toLocaleString('it-IT')}`, 14, doc.internal.pageSize.height - 9);
-    doc.text("SCANSIONA IL QR CODE PER VERIFICARE L'AUTENTICITÀ", pageWidth - 16, doc.internal.pageSize.height - 18, { align: "right" });
+    doc.text(`IDENTIFICATIVO DIGITALE SHA-256: ${documentHash}`, 14, pageHeight - 12);
+    doc.text(`SENTINEL SECURITY SUITE - FIRMA ELETTRONICA CERTIFICATA IL ${new Date().toLocaleString('it-IT')}`, 14, pageHeight - 9);
+    doc.text("SCANSIONA IL QR CODE PER VERIFICARE L'AUTENTICITÀ", pageWidth - 16, pageHeight - 18, { align: "right" });
 
     doc.save(`ODS_${date.toISOString().split('T')[0]}.pdf`);
     return documentHash;
   } catch (err) {
     console.error("[PDF] Errore critico generazione ODS:", err);
+    throw err;
+  }
+}
+
+/**
+ * Genera un pacchetto settimanale di Ordini di Servizio (Batch)
+ */
+export async function generateWeeklyODSPDF({
+  days,
+  tenantName = "Comando Polizia Locale",
+  logoUrl
+}: {
+  days: { date: Date, users: ODSUser[], shifts: ODSShift[] }[],
+  tenantName?: string,
+  logoUrl?: string | null
+}) {
+  try {
+    const { default: jsPDFLib } = await import("jspdf");
+    const { default: autoTable } = await import("jspdf-autotable");
+    const QRCodeLib = await import("qrcode");
+
+    const doc = new jsPDFLib({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4"
+    }) as unknown as jsPDFWithAutoTable;
+
+    for (let i = 0; i < days.length; i++) {
+      if (i > 0) doc.addPage();
+      await drawODSPageContent({ 
+        doc, 
+        date: days[i].date, 
+        users: days[i].users, 
+        shifts: days[i].shifts, 
+        tenantName, 
+        logoUrl, 
+        autoTable,
+        isBatch: true 
+      });
+    }
+
+    // Sigillo Digitale Globale per tutto il pacchetto
+    const pdfOutput = doc.output("arraybuffer");
+    const documentHash = await generateHash(pdfOutput);
+    const verifyUrl = `${window.location.origin}/verify/${documentHash}`;
+    const qrDataUrl = await QRCodeLib.toDataURL(verifyUrl, { margin: 1, width: 80 });
+    
+    const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
+    const pageCount = doc.internal.getNumberOfPages();
+
+    // Applica il piè di pagina con hash a ogni pagina
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.addImage(qrDataUrl, "PNG", pageWidth - 35, pageHeight - 40, 20, 20);
+      doc.setFontSize(6);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`PACCHETTO SETTIMANALE SHA-256: ${documentHash}`, 14, pageHeight - 12);
+      doc.text(`SENTINEL SECURITY SUITE - BATCH CERTIFICATO IL ${new Date().toLocaleString('it-IT')}`, 14, pageHeight - 9);
+      doc.text(`Pagina ${i} di ${pageCount}`, pageWidth - 16, pageHeight - 12, { align: "right" });
+    }
+
+    const firstDate = days[0].date.toISOString().split('T')[0];
+    doc.save(`ODS_Settimanale_${firstDate}.pdf`);
+    return documentHash;
+  } catch (err) {
+    console.error("[PDF] Errore generazione Batch Settimanale:", err);
     throw err;
   }
 }

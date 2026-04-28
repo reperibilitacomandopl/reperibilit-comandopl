@@ -39,12 +39,12 @@ export default async function ArmoryPage({ params }: { params: Promise<{ tenantS
   })
 
   // Serialize dates to ISO strings for Client Component
-  const serializedWeapons = weaponsRaw.map(w => ({
+  const serializedWeapons = weaponsRaw.map((w: any) => ({
     ...w,
     dataAssegnazione: w.dataAssegnazione?.toISOString() || null
   }))
 
-  const serializedArmors = armorsRaw.map(a => ({
+  const serializedArmors = armorsRaw.map((a: any) => ({
     ...a,
     dataAssegnazione: a.dataAssegnazione?.toISOString() || null,
     scadenzaKevlar: a.scadenzaKevlar?.toISOString() || null

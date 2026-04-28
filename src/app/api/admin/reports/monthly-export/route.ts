@@ -38,9 +38,9 @@ export async function GET(req: Request) {
       ["MATRICOLA", "NOME", "QUALIFICA", "ORE STRAORDINARI", "BUONI PASTO", "TURNI_TOTALI", "TURNI_NOTTE", "REP_FEST", "REP_FER", "FERIE", "MALATTIA/ASSENZE"]
     ]
 
-    users.forEach(u => {
-      const uShifts = shifts.filter(s => s.userId === u.id)
-      const uAgenda = agenda.filter(a => a.userId === u.id)
+    users.forEach((u: any) => {
+      const uShifts = shifts.filter((s: any) => s.userId === u.id)
+      const uAgenda = agenda.filter((a: any) => a.userId === u.id)
 
       let overtime = 0
       let ferie = 0
@@ -52,7 +52,7 @@ export async function GET(req: Request) {
       let turni_totali = 0
 
       // Calculate totals
-      uShifts.forEach(s => {
+      uShifts.forEach((s: any) => {
         const type = (s.type || "").toUpperCase();
         const isWorking = /^[MPN]\d/.test(type);
 
@@ -75,7 +75,7 @@ export async function GET(req: Request) {
         if (type === "MALATT" || type === "MALATTIA") altre_assenze += 1
       })
 
-      uAgenda.forEach(a => {
+      uAgenda.forEach((a: any) => {
         if (a.code === "0015" || a.code === "0016") ferie += 1
         else if (["MAL", "VIS", "PER", "L104"].some(k => a.code.includes(k))) altre_assenze += 1
       })

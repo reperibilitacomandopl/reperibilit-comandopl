@@ -28,8 +28,8 @@ export async function POST(req: Request) {
 
     // 2. Load all existing users for mapping
     const existingUsers = await prisma.user.findMany({ where: { tenantId } })
-    const userByMatricola = new Map(existingUsers.map(u => [u.matricola, u.id]))
-    const userByName = new Map(existingUsers.map(u => [u.name.toUpperCase(), u.id]))
+    const userByMatricola = new Map(existingUsers.map((u: any) => [u.matricola, u.id]))
+    const userByName = new Map(existingUsers.map((u: any) => [u.name.toUpperCase(), u.id]))
 
     // 3. Ensure all agents exist
     const defaultHashedPassword = await bcrypt.hash("password123", 10)

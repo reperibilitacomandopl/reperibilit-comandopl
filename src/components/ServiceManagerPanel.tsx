@@ -136,11 +136,11 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
     }
     toast.success(`Pattuglia formata con ${patrolSelection.size} agenti!`)
     setPatrolSelection(new Set())
-    loadData()
+    loadData(true)
   }
 
-  const loadData = useCallback(async () => {
-    setLoading(true)
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     const y = currentDate.getFullYear()
     const m = String(currentDate.getMonth() + 1).padStart(2, "0")
     const d = String(currentDate.getDate()).padStart(2, "0")
@@ -157,11 +157,15 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
       if (data.weapons) setWeapons(data.weapons)
       if (data.armors) setArmors(data.armors)
       
-      const schoolsRes = await fetch("/api/admin/schools")
-      const schoolsData = await schoolsRes.json()
-      setSchools(schoolsData)
+      // Load schools only once or if specifically needed, but for now we keep it here
+      // but maybe wrap it in a condition if we want even more speed
+      if (!silent) {
+        const schoolsRes = await fetch("/api/admin/schools")
+        const schoolsData = await schoolsRes.json()
+        setSchools(schoolsData)
+      }
     } catch { toast.error("Errore caricamento dati operativi") }
-    setLoading(false)
+    if (!silent) setLoading(false)
   }, [currentDate])
 
   useEffect(() => { loadData() }, [loadData])
@@ -200,24 +204,50 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
     const y = currentDate.getFullYear()
     const m = String(currentDate.getMonth() + 1).padStart(2, "0")
     const d = String(currentDate.getDate()).padStart(2, "0")
+    const dateStr = `${y}-${m}-${d}`
 
     const existingObj = shifts.find(s => s.userId === userId)
-    let newVehicleId = vehicleId;
-    if(vehicleId === undefined && existingObj?.vehicleId) {
-        newVehicleId = existingObj.vehicleId;
-    }
-    let newRadioId = radioId;
-    if(radioId === undefined && existingObj?.radioId) {
-        newRadioId = existingObj.radioId;
-    }
-    let newWeaponId = weaponId;
-    if(weaponId === undefined && existingObj?.weaponId) {
-        newWeaponId = existingObj.weaponId;
-    }
-    let newArmorId = armorId;
-    if(armorId === undefined && existingObj?.armorId) {
-        newArmorId = existingObj.armorId;
-    }
+    
+    // Determine new values, falling back to existing if undefined
+    const finalVehicleId = vehicleId === undefined ? existingObj?.vehicleId : vehicleId;
+    const finalRadioId = radioId === undefined ? existingObj?.radioId : radioId;
+    const finalWeaponId = weaponId === undefined ? existingObj?.weaponId : weaponId;
+    const finalArmorId = armorId === undefined ? existingObj?.armorId : armorId;
+
+    // Optimistic UI Update
+    const oldShifts = [...shifts]
+    setShifts(prev => {
+      const exists = prev.find(s => s.userId === userId)
+      if (exists) {
+        return prev.map(s => s.userId === userId ? {
+          ...s,
+          type: targetTypeString,
+          serviceCategoryId: categoryId,
+          serviceTypeId: typeId,
+          vehicleId: finalVehicleId,
+          radioId: finalRadioId,
+          weaponId: finalWeaponId,
+          armorId: finalArmorId,
+          timeRange,
+          serviceDetails
+        } : s)
+      } else {
+        // If it's a new shift, we add a temporary one
+        return [...prev, {
+          id: `temp_${Date.now()}`,
+          userId,
+          type: targetTypeString,
+          serviceCategoryId: categoryId,
+          serviceTypeId: typeId,
+          vehicleId: finalVehicleId,
+          radioId: finalRadioId,
+          weaponId: finalWeaponId,
+          armorId: finalArmorId,
+          timeRange,
+          serviceDetails
+        }]
+      }
+    })
 
     try {
       saveStateForUndo()
@@ -226,23 +256,34 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId,
-          date: `${y}-${m}-${d}`,
+          date: dateStr,
           type: targetTypeString,
           serviceCategoryId: categoryId,
           serviceTypeId: typeId,
-          vehicleId: newVehicleId,
-          radioId: newRadioId,
-          weaponId: newWeaponId,
-          armorId: newArmorId,
+          vehicleId: finalVehicleId,
+          radioId: finalRadioId,
+          weaponId: finalWeaponId,
+          armorId: finalArmorId,
           timeRange: timeRange,
           serviceDetails: serviceDetails
         })
       })
-      if (!res.ok) throw new Error("Errore salvataggio")
-      loadData()
-    } catch (e) {
+      
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || "Errore salvataggio")
+      }
+      
+      // Update with the actual shift from server (includes the real ID)
+      const data = await res.json()
+      if (data.shift) {
+        setShifts(prev => prev.map(s => s.userId === userId ? data.shift : s))
+      }
+      
+    } catch (e: any) {
       console.error(e)
-      toast.error("Errore di rete durante l'assegnazione")
+      setShifts(oldShifts) // Revert optimistic update
+      toast.error(e.message || "Errore di rete durante l'assegnazione")
     }
   }
 
@@ -379,40 +420,48 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
   const resetOds = async () => {
     setShowResetConfirm(false)
     setLoading(true)
-    const y = currentDate.getFullYear()
-    const m = String(currentDate.getMonth() + 1).padStart(2, "0")
-    const d = String(currentDate.getDate()).padStart(2, "0")
-    const dateStr = `${y}-${m}-${d}`
     
-    let count = 0
     const assignedShifts = shifts.filter(s => 
       (s.serviceTypeId || s.serviceCategoryId || s.vehicleId || s.serviceDetails || s.patrolGroupId) && 
       !isAssenza(s.type)
     )
-    for (const s of assignedShifts) {
-      try {
-        await fetch("/api/admin/shifts/daily", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: s.userId,
-            date: dateStr,
-            type: s.type,
-            serviceCategoryId: null,
-            serviceTypeId: null,
-            vehicleId: null,
-            radioId: null,
-            timeRange: s.timeRange,
-            serviceDetails: null,
-            patrolGroupId: null
-          })
-        })
-        count++
-      } catch { toast.error("Errore rimozione assegnazione") }
+
+    if (assignedShifts.length === 0) {
+      setLoading(false)
+      toast.success("Nulla da ripristinare")
+      return
     }
-    toast.success(`Ripristinato! ${count} assegnazioni rimosse.`)
-    showUndoToast("OdS Ripristinato", undoAction)
-    loadData()
+
+    const updates = assignedShifts.map(s => ({
+      id: s.id,
+      serviceCategoryId: null,
+      serviceTypeId: null,
+      vehicleId: null,
+      radioId: null,
+      serviceDetails: null,
+      patrolGroupId: null
+    }))
+
+    try {
+      saveStateForUndo()
+      const res = await fetch("/api/admin/ods/daily", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updates })
+      })
+
+      if (res.ok) {
+        toast.success(`Ripristinato! ${assignedShifts.length} assegnazioni rimosse.`)
+        showUndoToast("OdS Ripristinato", undoAction)
+        loadData(true) 
+      } else {
+        const d = await res.json()
+        throw new Error(d.error || "Errore ripristino")
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Errore durante il ripristino")
+    }
+    setLoading(false)
   }
 
   const handleRemoveService = (userId: string, originalTimeRange: string) => {

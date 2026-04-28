@@ -8,9 +8,10 @@ import ServicesSettings from "./ServicesSettings"
 import PatrolSettingsPanel from "./PatrolSettingsPanel"
 import SquadreManager from "./SquadreManager"
 import PermissionsPanel from "./PermissionsPanel"
-import { Shield, RotateCcw } from "lucide-react"
+import { Shield, RotateCcw, BookOpen } from "lucide-react"
+import TrainingManagementPanel from "./TrainingManagementPanel"
 
-type TabType = "personale" | "cicli" | "servizi" | "pattuglie" | "permessi"
+type TabType = "personale" | "cicli" | "servizi" | "pattuglie" | "permessi" | "formazione"
 
 interface RisorseTabsProps {
   agents: any[]
@@ -21,8 +22,8 @@ interface RisorseTabsProps {
 export default function RisorseTabs({ agents, rotationGroups, categories }: RisorseTabsProps) {
   const searchParams = useSearchParams()
   const initialTab = searchParams.get("tab") as TabType | null
-  const [activeTab, setActiveTab] = useState<"personale" | "cicli" | "servizi" | "pattuglie" | "permessi">(
-    initialTab && ["personale", "cicli", "servizi", "pattuglie", "permessi"].includes(initialTab) 
+  const [activeTab, setActiveTab] = useState<TabType>(
+    initialTab && ["personale", "cicli", "servizi", "pattuglie", "permessi", "formazione"].includes(initialTab) 
       ? initialTab 
       : "personale"
   )
@@ -30,7 +31,7 @@ export default function RisorseTabs({ agents, rotationGroups, categories }: Riso
   // Opzionale: aggiorna il tab se il parametro cambia (es. navigazione interna)
   useEffect(() => {
     const tab = searchParams.get("tab")
-    if (tab && ["personale", "cicli", "servizi", "pattuglie", "permessi"].includes(tab)) {
+    if (tab && ["personale", "cicli", "servizi", "pattuglie", "permessi", "formazione"].includes(tab)) {
        const t = setTimeout(() => setActiveTab(tab as TabType), 0);
        return () => clearTimeout(t);
     }
@@ -89,6 +90,15 @@ export default function RisorseTabs({ agents, rotationGroups, categories }: Riso
           <Key width={18} height={18} />
           Permessi Operativi
         </button>
+        <button
+          onClick={() => setActiveTab("formazione")}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+            activeTab === "formazione" ? "bg-white text-blue-600 shadow-sm shadow-blue-100" : "text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          <BookOpen width={18} height={18} />
+          Formazione e Corsi
+        </button>
       </div>
 
       <div className="mt-4">
@@ -117,6 +127,11 @@ export default function RisorseTabs({ agents, rotationGroups, categories }: Riso
         {activeTab === "permessi" && (
           <div className="animate-in fade-in duration-500 bg-white p-6 md:p-10 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-indigo-100/50">
             <PermissionsPanel users={agents as any} />
+          </div>
+        )}
+        {activeTab === "formazione" && (
+          <div className="animate-in fade-in duration-500">
+            <TrainingManagementPanel agents={agents as any} />
           </div>
         )}
 

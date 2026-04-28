@@ -126,7 +126,7 @@ export async function POST(req: Request) {
           : `per il ${startStr}`
 
         await (prisma as any).notification.createMany({
-          data: admins.map(admin => ({
+          data: admins.map((admin: any) => ({
             tenantId: tenantId || null,
             userId: admin.id,
             title: "Nuova Richiesta",

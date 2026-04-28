@@ -51,6 +51,7 @@ model Tenant {
   weapons            Weapon[]
   armors             Armor[]
   ShiftRule          ShiftRule[]
+  trainingRecords    TrainingRecord[]
 }
 
 model User {
@@ -132,6 +133,7 @@ model User {
   weapons                Weapon[]           @relation("WeaponAssegnatario")
   armors                 Armor[]            @relation("ArmorAssegnatario")
   announcements          Announcement[]
+  trainingRecords        TrainingRecord[]
 
   @@unique([tenantId, matricola])
 }
@@ -612,4 +614,27 @@ model ShiftRule {
   tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, isActive])
+}
+
+model TrainingRecord {
+  id              String   @id @default(uuid())
+  tenantId        String?
+  userId          String
+  courseName      String
+  category        String   @default("GENERALE") // SIA, Guida Sicura, Armi, Primo Soccorso, etc.
+  description     String?
+  issueDate       DateTime
+  expiryDate      DateTime?
+  certificationId String?
+  status          String   @default("VALID") // VALID, EXPIRING, EXPIRED
+  attachments     String[] @default([]) // URLs to documents
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, tenantId])
+  @@index([expiryDate])
 }

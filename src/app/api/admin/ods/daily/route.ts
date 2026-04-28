@@ -28,15 +28,20 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url)
   const dateStr = url.searchParams.get("date")
-  if (!dateStr) return NextResponse.json({ error: "Missing date" }, { status: 400 })
+  if (!dateStr) return NextResponse.json({ error: "Data mancante" }, { status: 400 })
 
   try {
     const tenantId = session.user.tenantId
     const tf = tenantId ? { tenantId } : {}
 
-    const targetDate = new Date(dateStr)
+    // Robust parsing
+    const datePart = typeof dateStr === 'string' ? dateStr.substring(0, 10) : ""
+    const [y, m, d] = datePart.split("-").map(Number)
+    if (isNaN(y)) return NextResponse.json({ error: "Data non valida" }, { status: 400 })
+
+    const targetDate = new Date(Date.UTC(y, m - 1, d))
     const nextDate = new Date(targetDate)
-    nextDate.setDate(targetDate.getDate() + 1)
+    nextDate.setUTCDate(targetDate.getUTCDate() + 1)
 
     const [shifts, users, categories, vehicles] = await Promise.all([
       prisma.shift.findMany({
@@ -61,8 +66,9 @@ export async function GET(req: Request) {
       categories,
       vehicles
     })
-  } catch (error) {
-    return NextResponse.json({ error: "Internal Error" }, { status: 500 })
+  } catch (error: any) {
+    console.error("[ODS DAILY GET ERROR]", error)
+    return NextResponse.json({ error: "Internal Server Error", details: error.message }, { status: 500 })
   }
 }
 
@@ -72,9 +78,12 @@ export async function PUT(req: Request) {
 
   try {
     const { updates } = await req.json()
-    // updates is an array of { id: shiftId, serviceCategoryId, serviceTypeId, vehicleId, timeRange, patrolGroupId, serviceDetails }
+    if (!updates || !Array.isArray(updates)) return NextResponse.json({ error: "Dati mancanti o non validi" }, { status: 400 })
 
-    for (const update of updates) {
+    const tenantId = session.user.tenantId
+
+    // Eseguiamo gli aggiornamenti in parallelo per massima velocità
+    await Promise.all(updates.map(async (update: any) => {
       let durationUpdate = {}
       if (update.timeRange !== undefined) {
         const { durationHours, overtimeHours } = calculateDurationAndOvertime(update.timeRange)
@@ -84,7 +93,7 @@ export async function PUT(req: Request) {
       const updatedShift = await prisma.shift.update({
         where: { 
           id: update.id,
-          tenantId: session.user.tenantId || null
+          tenantId: tenantId || null
         },
         data: {
           serviceCategoryId: update.serviceCategoryId !== undefined ? update.serviceCategoryId : undefined,
@@ -95,25 +104,23 @@ export async function PUT(req: Request) {
           serviceDetails: update.serviceDetails !== undefined ? update.serviceDetails : undefined,
           ...durationUpdate
         },
-        include: { user: true, serviceType: true }
+        include: { serviceType: true }
       })
 
-      // Invia Notifica Push per il nuovo incarico
+      // Invia Notifica Push (opzionale, asincrona)
       if (update.serviceCategoryId || update.serviceTypeId) {
-        try {
-          await sendPushNotification(updatedShift.userId, {
-            title: "📋 Nuovo Ordine di Servizio",
-            body: `Sei stato assegnato al servizio: ${updatedShift.serviceType?.name || 'Vedi dettagli'}. Controlla il pannello agenti.`,
-            url: "/dashboard"
-          })
-        } catch (pushErr) {
-          console.error(`[PUSH ERROR] OdS per ${updatedShift.userId}:`, pushErr)
-        }
+        // Non attendiamo l'invio della notifica per non rallentare la risposta principale
+        sendPushNotification(updatedShift.userId, {
+          title: "📋 Nuovo Ordine di Servizio",
+          body: `Sei stato assegnato al servizio: ${updatedShift.serviceType?.name || 'Vedi dettagli'}. Controlla il pannello agenti.`,
+          url: "/dashboard"
+        }).catch(err => console.error(`[PUSH ERROR] ${updatedShift.userId}:`, err))
       }
-    }
+    }))
 
     return NextResponse.json({ success: true })
-  } catch (error) {
-    return NextResponse.json({ error: "Internal Error" }, { status: 500 })
+  } catch (error: any) {
+    console.error("[ODS DAILY PUT ERROR]", error)
+    return NextResponse.json({ error: "Internal Server Error", details: error.message }, { status: 500 })
   }
 }

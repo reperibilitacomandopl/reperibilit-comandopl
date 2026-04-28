@@ -13,7 +13,8 @@ import {
   CheckCircle2,
   XCircle,
   CarFront,
-  Wand2
+  Wand2,
+  Utensils
 } from "lucide-react"
 import Link from "next/link"
 import { isAssenza, isMalattia } from "@/utils/shift-logic"
@@ -191,7 +192,7 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
           {[
             { label: "Pianificazione Mensile", desc: "Griglia Turni & Reperibilità", href: `/${tenantSlug}/admin/pianificazione`, icon: CalendarDays, accent: "blue", shadow: "shadow-blue-50" },
             { label: "Ordine di Servizio", desc: "Assegnazione Giornaliera", href: `/${tenantSlug}/admin/ods`, icon: Shield, accent: "indigo", shadow: "shadow-indigo-50" },
-            { label: "Generatore Ciclico", desc: "Auto-Compilazione Algoritmica", href: `/${tenantSlug}/admin/auto-compila`, icon: Clock, accent: "slate", shadow: "shadow-slate-50" },
+            { label: "Modulo Buoni Pasto", desc: "Calcolo Maturazioni & Export", href: `/${tenantSlug}/admin/buoni-pasto`, icon: Utensils, accent: "emerald", shadow: "shadow-emerald-50" },
           ].map((action) => {
             const Icon = action.icon
             return (

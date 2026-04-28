@@ -34,7 +34,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     // Eseguiamo in transazione
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       // 1. Aggiorna lo stato della richiesta
       const updatedRequest = await tx.agentRequest.update({
         where: { id },

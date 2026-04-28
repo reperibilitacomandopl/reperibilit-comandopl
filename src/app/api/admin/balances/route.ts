@@ -161,7 +161,7 @@ export async function POST(req: Request) {
     let count = 0
     for (const ob of oldBalances) {
       // Find Ferie (code 0015 usually) to move to Ferie Anni Precedenti (0016)
-      const ferieDetail = ob.details.find(d => d.code === "0015" || d.code === "FERIE")
+      const ferieDetail = ob.details.find((d: any) => d.code === "0015" || d.code === "FERIE")
       if (!ferieDetail) continue
 
       const userUsage = shiftsCount.find((s:any) => s.userId === ob.userId && (s.type === "0015" || s.type === "FERIE"))?._count._all || 0

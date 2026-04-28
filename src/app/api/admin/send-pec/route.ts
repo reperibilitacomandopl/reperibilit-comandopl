@@ -30,7 +30,7 @@ export async function POST(req: Request) {
       select: { id: true, name: true, email: true, isUfficiale: true }
     })
 
-    const emails = agents.map(a => a.email).filter(Boolean) as string[]
+    const emails = agents.map((a: any) => a.email).filter(Boolean) as string[]
     if (emails.length === 0) {
       return NextResponse.json({ error: "Nessun agente dispone di un indirizzo email anagrafato." }, { status: 400 })
     }
@@ -78,7 +78,7 @@ export async function POST(req: Request) {
       let hasReps = false
       for (let d = 1; d <= daysInMonth; d++) {
         const dDate = new Date(Date.UTC(year, month - 1, d)).toISOString()
-        const agentShift = shifts.find(s => s.userId === agent.id && new Date(s.date).toISOString() === dDate)
+        const agentShift = shifts.find((s: any) => s.userId === agent.id && new Date(s.date).toISOString() === dDate)
         
         if (agentShift?.repType && agentShift.repType.includes("REP")) {
           row += `<td style="border: 1px solid #ddd; padding: 4px; background-color: #d1fae5; color: #065f46; font-size: 10px; text-align: center; font-weight: bold;">REP</td>`
@@ -122,7 +122,7 @@ export async function POST(req: Request) {
       if (!agent.email) continue
 
       // Trova le reperibilità specifiche di questo agente per fare un riepilogo
-      const agentShifts = shifts.filter(s => s.userId === agent.id && s.repType && s.repType.includes("REP"))
+      const agentShifts = shifts.filter((s: any) => s.userId === agent.id && s.repType && s.repType.includes("REP"))
       
       let personalSummaryHtml = `
         <div style="margin-top: 20px; padding: 15px; border-left: 4px solid #3b82f6; background-color: #eff6ff;">
@@ -134,7 +134,7 @@ export async function POST(req: Request) {
         <ul style="font-size: 13px; color: #1e3a8a; line-height: 1.6; padding-left: 20px;">`
         
         // Ordina per data
-        agentShifts.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        agentShifts.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
         
         const daysOfWeek = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"]
         for (const shift of agentShifts) {
