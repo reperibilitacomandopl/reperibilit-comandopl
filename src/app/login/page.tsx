@@ -69,8 +69,8 @@ function LoginForm() {
       <div className="relative z-10 w-full max-w-[420px] mx-4">
         {/* Logo Card */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl mb-5 shadow-2xl">
-            <Shield size={40} className="text-blue-400" />
+          <div className="inline-flex items-center justify-center w-24 h-24 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl mb-5 shadow-2xl ring-4 ring-white/5">
+            <Shield size={48} className="text-blue-400" />
           </div>
           <h1 className="text-2xl font-black text-white tracking-tight">
             Portale Polizia Locale
@@ -81,8 +81,8 @@ function LoginForm() {
         </div>
 
         {/* Login Card */}
-        <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-2xl overflow-hidden">
-          <div className="p-8">
+        <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-2xl overflow-hidden login-card-glass">
+          <div className="p-6 sm:p-8">
             <h2 className="text-xl font-bold text-white mb-1">
               Accesso al Portale
             </h2>
@@ -92,12 +92,12 @@ function LoginForm() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-[11px] font-bold text-blue-200/70 uppercase tracking-wider mb-2" htmlFor="tenantSlug">
+                <label className="block text-xs font-bold text-blue-200/90 uppercase tracking-wider mb-2" htmlFor="tenantSlug">
                   Codice Comando
                 </label>
                 <div className="relative">
                   <input
-                    className="w-full bg-white/5 border-2 border-white/10 rounded-xl px-4 py-3 text-sm text-white font-semibold placeholder:text-white/20 focus:border-blue-400/50 focus:bg-white/10 focus:outline-none transition-all"
+                    className="w-full bg-white/5 border-2 border-white/10 rounded-xl px-4 py-3 text-sm text-white font-semibold placeholder:text-white/40 focus:border-blue-400 focus:bg-white/10 focus:ring-4 focus:ring-blue-500/20 focus:outline-none transition-all"
                     id="tenantSlug" type="text" name="tenantSlug" 
                     placeholder="Es. altamura" required
                     value={tenantSlug}
@@ -108,12 +108,12 @@ function LoginForm() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-blue-200/70 uppercase tracking-wider mb-2" htmlFor="matricola">
+                <label className="block text-xs font-bold text-blue-200/90 uppercase tracking-wider mb-2" htmlFor="matricola">
                   Matricola
                 </label>
                 <div className="relative">
                   <input
-                    className="w-full bg-white/5 border-2 border-white/10 rounded-xl px-4 py-3 text-sm text-white font-semibold placeholder:text-white/20 focus:border-blue-400/50 focus:bg-white/10 focus:outline-none transition-all"
+                    className="w-full bg-white/5 border-2 border-white/10 rounded-xl px-4 py-3 text-sm text-white font-semibold placeholder:text-white/40 focus:border-blue-400 focus:bg-white/10 focus:ring-4 focus:ring-blue-500/20 focus:outline-none transition-all"
                     id="matricola" type="text" name="matricola" placeholder="Es. ROSSI001" required
                     autoComplete="username"
                   />
@@ -121,12 +121,12 @@ function LoginForm() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-blue-200/70 uppercase tracking-wider mb-2" htmlFor="password">
+                <label className="block text-xs font-bold text-blue-200/90 uppercase tracking-wider mb-2" htmlFor="password">
                   Password
                 </label>
                 <div className="relative">
                   <input
-                    className="w-full bg-white/5 border-2 border-white/10 rounded-xl px-4 py-3 text-sm text-white font-semibold placeholder:text-white/20 focus:border-blue-400/50 focus:bg-white/10 focus:outline-none transition-all"
+                    className="w-full bg-white/5 border-2 border-white/10 rounded-xl px-4 py-3 text-sm text-white font-semibold placeholder:text-white/40 focus:border-blue-400 focus:bg-white/10 focus:ring-4 focus:ring-blue-500/20 focus:outline-none transition-all"
                     id="password" type="password" name="password" placeholder="••••••••" required minLength={6}
                     autoComplete="current-password"
                   />
@@ -179,7 +179,7 @@ function LoginForm() {
               </button>
               <button 
                 onClick={() => alert("Integrazione CIE in corso di attivazione...")}
-                className="w-full group relative flex items-center justify-center gap-3 bg-[#1e293b] hover:bg-[#334155] text-white rounded-xl px-4 py-3 text-sm font-black transition-all shadow-lg active:scale-[0.98] border-2 border-transparent hover:border-slate-700"
+                className="w-full group relative flex items-center justify-center gap-3 bg-[#1e293b] hover:bg-[#334155] text-white rounded-xl px-4 py-3 text-sm font-black transition-all shadow-lg active:scale-[0.98] border border-white/10 hover:border-slate-500"
               >
                 <div className="w-6 h-6 bg-white/10 rounded flex items-center justify-center font-black text-[8px] text-white">CIE</div>
                 Entra con CIE

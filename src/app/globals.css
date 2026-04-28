@@ -206,3 +206,14 @@ select:focus-visible {
   outline-offset: 1px;
   box-shadow: 0 0 0 5px rgba(79, 70, 229, 0.25);
 }
+
+/* Fix Browser Autofill styling for dark glassmorphism inputs */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active{
+    -webkit-box-shadow: 0 0 0 30px #1e293b inset !important;
+    -webkit-text-fill-color: white !important;
+    border-radius: 0.75rem;
+    transition: background-color 5000s ease-in-out 0s;
+}
