@@ -98,7 +98,7 @@ export default function FloatingSosButton({ onSendSos }: FloatingSosButtonProps)
       {/* Floating SOS Button — always visible */}
       <button
         onClick={() => setShowModal(true)}
-        className="fixed bottom-24 lg:bottom-8 right-4 z-[90] w-16 h-16 bg-red-600 hover:bg-red-500 active:scale-90 text-white rounded-full shadow-2xl shadow-red-500/40 flex items-center justify-center transition-all group border-2 border-red-400/50"
+        className="fixed bottom-28 lg:bottom-8 right-4 z-[90] w-16 h-16 bg-red-600 hover:bg-red-500 active:scale-90 text-white rounded-full shadow-2xl shadow-red-500/40 flex items-center justify-center transition-all group border-2 border-red-400/50"
         aria-label="SOS Emergenza"
         title="SOS Emergenza GPS"
       >

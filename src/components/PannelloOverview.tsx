@@ -124,7 +124,7 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
              </div>
              <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Sentinel Command Dashboard</span>
           </div>
-          <h1 className="text-5xl font-black text-slate-900 tracking-tighter uppercase leading-none">Pannello <span className="text-blue-600">Overview</span></h1>
+          <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tighter uppercase leading-none">Pannello <span className="text-blue-600">Overview</span></h1>
           <p className="text-sm text-slate-500 mt-4 font-bold flex items-center gap-3">
              <span className="bg-slate-100 px-3 py-1 rounded-lg text-slate-700">
                {currentTime.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" })}
@@ -150,7 +150,7 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
             <div
               key={card.label}
               style={{ animationDelay: `${idx * 100}ms` }}
-              className={`relative overflow-hidden bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 group hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 animate-in zoom-in-95`}
+              className={`relative overflow-hidden bg-white rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100 group hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 animate-in zoom-in-95 mx-2 sm:mx-0`}
             >
               {/* Decorative Background Blob */}
               <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-full blur-[40px] opacity-10 group-hover:opacity-20 transition-opacity bg-gradient-to-br ${card.color}`} />
@@ -188,7 +188,7 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
           <TrendingUp size={18} className="text-blue-500" />
           Protocolli di Accesso Rapido
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 px-2 sm:px-0">
           {[
             { label: "Pianificazione Mensile", desc: "Griglia Turni & Reperibilità", href: `/${tenantSlug}/admin/pianificazione`, icon: CalendarDays, accent: "blue", shadow: "shadow-blue-50" },
             { label: "Ordine di Servizio", desc: "Assegnazione Giornaliera", href: `/${tenantSlug}/admin/ods`, icon: Shield, accent: "indigo", shadow: "shadow-indigo-50" },
@@ -223,7 +223,7 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
           <Activity size={18} className="text-indigo-500" />
           Scanner Strategico Forze
         </h2>
-        <div className="bg-slate-900 rounded-[3rem] p-10 shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center gap-12 border border-slate-800">
+        <div className="bg-slate-900 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center gap-12 border border-slate-800 mx-2 sm:mx-0">
            <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(79,70,229,0.1),transparent)] pointer-events-none"></div>
            
            <div className="flex-1 w-full relative z-10">
@@ -236,7 +236,7 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
                     {coperturaPercent >= 80 ? 'Status Ottimale' : coperturaPercent >= 50 ? 'Status Accettabile' : 'Status Critico'}
                  </span>
               </div>
-              <div className="h-4 w-full bg-white/5 rounded-full overflow-hidden shadow-inner border border-white/5 p-1">
+              <div className="h-4 w-full bg-white/5 rounded-full overflow-hidden shadow-inner border border-white/10 p-1">
                  <div className={`h-full rounded-full transition-all duration-1000 shadow-[0_0_20px_rgba(0,0,0,0.5)] ${coperturaPercent >= 80 ? 'bg-emerald-500' : coperturaPercent >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${coperturaPercent}%` }}></div>
               </div>
            </div>

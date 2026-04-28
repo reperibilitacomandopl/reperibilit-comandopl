@@ -169,7 +169,7 @@ export default function AdminSidebar({
         {/* Mobile Close Button */}
         <button
           onClick={() => setMobileOpen(false)}
-          className="lg:hidden absolute top-4 right-[-50px] p-3 bg-slate-900 border border-slate-800 text-slate-400 rounded-2xl shadow-2xl"
+          className="lg:hidden absolute top-4 right-4 p-3 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-2xl shadow-2xl z-[120]"
         >
           <X size={24} />
         </button>
