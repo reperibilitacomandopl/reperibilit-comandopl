@@ -107,9 +107,9 @@ export default function AgentHeader({
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                  <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.8)]"></div>
-                 <span className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.4em] opacity-80">Sentinel Hub 2.0</span>
+                 <span className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.4em] opacity-80">Sentinel Hub 3.0</span>
               </div>
-              <h2 className="text-4xl sm:text-6xl font-black tracking-tighter leading-none">
+              <h2 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tighter leading-none">
                 Ciao, {currentUser?.name?.split(" ")[0]}! 👋
               </h2>
               <p className="text-slate-400 font-bold uppercase tracking-widest text-[11px] opacity-70">Postazione operativa digitale &middot; Sentinel Hub</p>

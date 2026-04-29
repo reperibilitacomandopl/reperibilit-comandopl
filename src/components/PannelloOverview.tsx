@@ -174,7 +174,7 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
                 
                 <div className="mb-2">
                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{card.label}</p>
-                   <p className="text-5xl font-black text-slate-900 tracking-tighter leading-none">{card.value}</p>
+                   <p className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tighter leading-none">{card.value}</p>
                 </div>
                 
                 <div className="mt-8 pt-4 border-t border-slate-50 flex items-center justify-between">
@@ -239,7 +239,7 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
               <div className="flex justify-between items-end mb-4">
                  <div>
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Tasso di Copertura Effettivo</p>
-                    <h3 className="text-5xl font-black text-white tracking-tighter leading-none">{coperturaPercent}%</h3>
+                    <h3 className="text-3xl sm:text-5xl font-black text-white tracking-tighter leading-none">{coperturaPercent}%</h3>
                  </div>
                  <span className={`text-[10px] font-black px-4 py-2 rounded-xl uppercase tracking-widest border transition-all duration-500 ${coperturaPercent >= 80 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : coperturaPercent >= 50 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'}`}>
                     {coperturaPercent >= 80 ? 'Status Ottimale' : coperturaPercent >= 50 ? 'Status Accettabile' : 'Status Critico'}
@@ -252,29 +252,29 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
 
            <div className="hidden md:block w-px h-24 bg-white/10 relative z-10"></div>
 
-           <div className="flex-1 w-full grid grid-cols-3 gap-6 relative z-10">
-              <div className="bg-white/5 p-6 rounded-[2rem] border border-white/5 backdrop-blur-md group hover:bg-white/10 transition-colors">
+           <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 relative z-10">
+              <div className="bg-white/5 p-4 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border border-white/5 backdrop-blur-md group hover:bg-white/10 transition-colors">
                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Squadre Formate</p>
                  <div className="flex items-end gap-3">
-                    <p className="text-4xl font-black text-white leading-none">
+                    <p className="text-2xl sm:text-4xl font-black text-white leading-none">
                        {new Set(todayShifts.filter(s => s.patrolGroupId).map(s => s.patrolGroupId)).size}
                     </p>
                     <span className="text-[10px] font-bold text-slate-500 uppercase mb-1">Unità</span>
                  </div>
               </div>
-              <div className="bg-white/5 p-6 rounded-[2rem] border border-white/5 backdrop-blur-md group hover:bg-white/10 transition-colors">
+              <div className="bg-white/5 p-4 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border border-white/5 backdrop-blur-md group hover:bg-white/10 transition-colors">
                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Status Ufficiali</p>
                  <div className="flex items-end gap-3">
-                    <p className={`text-4xl font-black leading-none ${ufficialiStatusOk ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    <p className={`text-2xl sm:text-4xl font-black leading-none ${ufficialiStatusOk ? 'text-emerald-400' : 'text-rose-400'}`}>
                        {ufficialiOggi}
                     </p>
                     <span className="text-slate-500 text-[10px] font-black mb-1">/ {targetUfficiali}</span>
                  </div>
               </div>
-              <div className="bg-white/5 p-6 rounded-[2rem] border border-white/5 backdrop-blur-md group hover:bg-white/10 transition-colors">
+              <div className="bg-white/5 p-4 sm:p-6 rounded-[1.5rem] sm:rounded-[2rem] border border-white/5 backdrop-blur-md group hover:bg-white/10 transition-colors">
                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Scadenze 30gg</p>
                  <div className="flex items-end gap-3">
-                    <p className={`text-4xl font-black leading-none ${totalScadenze > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                    <p className={`text-2xl sm:text-4xl font-black leading-none ${totalScadenze > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
                        {totalScadenze}
                     </p>
                     <span className="text-slate-500 text-[10px] font-black mb-1">Alerts</span>
@@ -290,7 +290,7 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
           <Wand2 size={18} className="text-purple-500" />
           Sentinel AI Intelligence Insights
         </h2>
-        <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950 rounded-[3rem] p-10 shadow-2xl relative overflow-hidden border border-white/10 group">
+        <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 shadow-2xl relative overflow-hidden border border-white/10 group mx-2 sm:mx-0">
            <div className="absolute top-0 right-0 w-1/2 h-full bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.15),transparent)] pointer-events-none group-hover:scale-110 transition-transform duration-1000"></div>
            
            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 relative z-10">

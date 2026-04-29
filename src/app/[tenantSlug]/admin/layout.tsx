@@ -63,7 +63,7 @@ export default async function AdminLayout({
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/10 via-transparent to-transparent pointer-events-none"></div>
         
         {/* TOP HEADER */}
-        <header className="sticky top-0 z-40 w-full bg-slate-950/80 backdrop-blur-xl border-b border-white/5 px-8 py-4 flex items-center justify-between">
+        <header className="sticky top-0 z-40 w-full bg-slate-950/80 backdrop-blur-xl border-b border-white/5 pl-16 pr-4 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="h-8 w-[2px] bg-indigo-500 rounded-full hidden lg:block"></div>
             <h2 className="text-white text-xs font-black uppercase tracking-[0.2em] opacity-80">

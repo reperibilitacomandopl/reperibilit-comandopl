@@ -148,7 +148,7 @@ export default function FloatingSosButton({ onSendSos }: FloatingSosButtonProps)
         onTouchStart={startPress}
         onTouchEnd={cancelPress}
         onTouchCancel={cancelPress}
-        className={`fixed bottom-28 lg:bottom-8 right-4 z-[90] w-16 h-16 bg-red-600 hover:bg-red-500 text-white rounded-full shadow-2xl shadow-red-500/40 flex items-center justify-center transition-all group border-2 ${pressing ? "border-white scale-110" : "border-red-400/50"}`}
+        className={`fixed bottom-32 lg:bottom-8 right-4 z-[90] w-14 h-14 lg:w-16 lg:h-16 bg-red-600 hover:bg-red-500 text-white rounded-full shadow-2xl shadow-red-500/40 flex items-center justify-center transition-all group border-2 ${pressing ? "border-white scale-110" : "border-red-400/50"}`}
         aria-label="SOS Emergenza — Tieni premuto"
         title="Tieni premuto 3 secondi per SOS"
       >

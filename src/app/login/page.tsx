@@ -159,13 +159,10 @@ function LoginForm() {
             </form>
 
             {/* SPID / CIE Divider */}
-            <div className="relative my-8">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/10"></div>
-              </div>
-              <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-black">
-                <span className="bg-[#121829] px-4 text-white/30">Oppure</span>
-              </div>
+            <div className="flex items-center gap-4 my-8">
+              <div className="h-px flex-1 bg-white/10"></div>
+              <span className="text-[10px] uppercase tracking-widest font-black text-white/30">Oppure</span>
+              <div className="h-px flex-1 bg-white/10"></div>
             </div>
 
             {/* Istitutional Login Buttons */}
