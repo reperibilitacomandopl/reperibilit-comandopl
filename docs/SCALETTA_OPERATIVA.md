@@ -19,7 +19,7 @@
 | 8 | Mappa GPS Fix + Placeholder | ✅ Completato | 🟡 Medio |
 | 9 | PDF Miglioramenti (Logo, Watermark, Individuale) | ✅ Completato | 🟡 Medio |
 | 10 | Template ODS + Notifica Telegram Auto | ✅ Completato | 🟡 Medio |
-| 11 | Landing Page Upgrade (Screenshot, Video) | ⏳ Rimandato | 🟢 Basso |
+| 11 | Landing Page Upgrade (Screenshot, Video) | ✅ Completato | 🟢 Basso |
 | 12 | Funzionalità Avanzate (Multi-select, Undo, Chat) | ⬜ Da fare | 🔴 Alto |
 
 ---

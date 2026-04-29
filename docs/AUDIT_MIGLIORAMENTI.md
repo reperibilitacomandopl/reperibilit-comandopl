@@ -212,7 +212,7 @@ PDF pianificazione e reperibilità funzionanti (appena corretti). Grafica unifor
 18. ~~Notifica Telegram auto su ODS (4.6)~~ ✅ Completato — Auto-invio alla certificazione
 
 ### 🟣 Sprint 4 — Innovazione (4-6 settimane)
-19. Video/mockup hero landing (1.1)
+19. ~~Video/mockup hero landing (1.1)~~ ✅ Completato — Sezione screenshot carousel
 20. Geofencing GPS (5.4)
 21. Chat pattuglia (6.7)
 22. Undo/Redo turni (3.7)
