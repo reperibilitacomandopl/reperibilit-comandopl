@@ -175,15 +175,15 @@ export default function AdminSidebar({
         </button>
 
       {/* Brand Header Premium */}
-      <div className="px-8 py-10 border-b border-white/5 flex items-center gap-4 shrink-0 relative overflow-hidden">
+      <div className="px-5 py-8 border-b border-white/5 flex items-center gap-3 shrink-0 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-600/5 to-transparent pointer-events-none"></div>
-        <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-xs shadow-lg shadow-blue-500/20 shrink-0 ring-1 ring-white/20 relative z-10 transition-transform hover:scale-110">
+        <div className="w-11 h-11 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-xs shadow-lg shadow-blue-500/20 shrink-0 ring-1 ring-white/20 relative z-10 transition-transform hover:scale-110">
           PL
         </div>
         {!collapsed && (
-          <div className="overflow-hidden font-sans relative z-10">
-            <h1 className="text-lg font-black text-white tracking-tighter leading-tight truncate uppercase">
-              {isImpersonating ? "Support" : "Sentinel"} <span className="text-blue-500">Premium</span>
+          <div className="overflow-hidden font-sans relative z-10 min-w-0">
+            <h1 className="text-base font-black text-white tracking-tighter leading-tight uppercase">
+              {isImpersonating ? "Support" : "Sentinel"} <span className="text-blue-500">Pro</span>
             </h1>
             <p className={`text-[8px] font-black tracking-[0.3em] uppercase leading-tight mt-1 ${isImpersonating ? "text-indigo-400 animate-pulse" : "text-white/20"}`}>
               {isImpersonating ? "Sessione Attiva" : "Command Console"}

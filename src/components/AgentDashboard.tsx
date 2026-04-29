@@ -513,7 +513,7 @@ export default function AgentDashboard({
       </div>
 
       <footer className="text-center py-12 border-t border-slate-100 text-[10px] text-slate-400 font-bold uppercase tracking-[0.3em]">
-          Sentinel Command Suite · v2.0
+          Sentinel Command Suite · v3.0
       </footer>
 
       {showAbsenceModal && <AgentRequestForm balances={admin.balances} onClose={() => setShowAbsenceModal(false)} />}
