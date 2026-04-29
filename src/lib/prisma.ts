@@ -46,4 +46,3 @@ export const prisma = isEdge
   : (globalForPrisma.prisma || (globalForPrisma.prisma = getExtendedClient()))
 
 if (!isEdge && process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
-
