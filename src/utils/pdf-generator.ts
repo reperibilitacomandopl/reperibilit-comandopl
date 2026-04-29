@@ -84,6 +84,7 @@ async function generateHash(content: string | ArrayBuffer): Promise<string> {
  */
 export async function generatePlanningPDF({
   monthName,
+  month,
   year,
   agents,
   shifts,
