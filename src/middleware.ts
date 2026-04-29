@@ -142,6 +142,7 @@ function addSecurityHeaders(response: NextResponse, isPublic: boolean = false): 
     img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com https://*.googleusercontent.com https://raw.githubusercontent.com;
     font-src 'self' https://fonts.gstatic.com;
     connect-src 'self' https://api.telegram.org https://*.tile.openstreetmap.org;
+    media-src 'self' https://assets.mixkit.co;
     frame-ancestors 'none';
     form-action 'self';
   `.replace(/\s{2,}/g, ' ').trim()

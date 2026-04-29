@@ -192,7 +192,8 @@ export async function POST(req: Request) {
     }
 
     if (updates.length > 0) {
-      await Promise.all(updates.map(u => 
+      console.log(`[ODS GENERATE] Tentativo di aggiornamento per ${updates.length} turni.`)
+      const results = await Promise.allSettled(updates.map(u => 
         prisma.shift.update({
           where: { 
             id: u.id,
@@ -200,16 +201,25 @@ export async function POST(req: Request) {
           data: {
             serviceCategoryId: u.serviceCategoryId,
             serviceTypeId: u.serviceTypeId,
-            vehicleId: u.vehicleId,
+            vehicleId: u.vehicleId || null,
             timeRange: u.timeRange,
             patrolGroupId: u.patrolGroupId,
             serviceDetails: u.serviceDetails
           }
         })
       ))
+      
+      const failed = results.filter(r => r.status === 'rejected')
+      if (failed.length > 0) {
+        console.error(`[ODS GENERATE] ${failed.length} aggiornamenti falliti su ${updates.length}.`, failed[0])
+      }
+      
+      const successCount = results.filter(r => r.status === 'fulfilled').length
+      return NextResponse.json({ success: true, count: successCount, failed: failed.length })
     }
 
-    return NextResponse.json({ success: true, count: updates.length })
+    console.log("[ODS GENERATE] Nessun aggiornamento necessario.")
+    return NextResponse.json({ success: true, count: 0 })
   } catch (error: any) {
     console.error("[ODS GENERATE ERROR]", error)
     return NextResponse.json({ 
