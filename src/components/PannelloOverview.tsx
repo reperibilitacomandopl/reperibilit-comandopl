@@ -77,6 +77,8 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
       color: "from-emerald-500 to-emerald-700",
       textColor: "text-emerald-50",
       sub: `${assentiOggi} assenti totali`,
+      href: `/${tenantSlug}/admin/ods`,
+      action: "Vai a Sala Operativa"
     },
     {
       label: "Ufficiali Copertura",
@@ -85,6 +87,8 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
       color: ufficialiStatusOk ? "from-blue-500 to-blue-700" : "from-rose-500 to-rose-700",
       textColor: ufficialiStatusOk ? "text-blue-50" : "text-rose-50",
       sub: ufficialiStatusOk ? `Target min. ${targetUfficiali} raggiunto` : `ATTENZIONE: Sotto target (${targetUfficiali})`,
+      href: `/${tenantSlug}/admin/pianificazione`,
+      action: "Vai a Pianificazione"
     },
     {
       label: "Stato Autoparco",
@@ -93,6 +97,8 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
       color: "from-slate-600 to-slate-800",
       textColor: "text-slate-50",
       sub: `${totalVehicles - veicoliInUsoCount} veicoli liberi`,
+      href: `/${tenantSlug}/admin/parco-auto`,
+      action: "Gestisci Autoparco"
     },
     {
       label: pendingSwaps > 0 ? "Eccezioni / Scambi" : "Eccezioni / Malattie",
@@ -101,6 +107,8 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
       color: pendingSwaps > 0 ? "from-amber-500 to-amber-700" : (malattieOggi > 0 ? "from-rose-500 to-rose-700" : "from-teal-500 to-teal-700"),
       textColor: "text-white",
       sub: pendingSwaps > 0 ? "Richieste in attesa di approvazione" : (malattieOggi > 0 ? "Malattie registrate oggi" : "Tutto regolare"),
+      href: `/${tenantSlug}/admin/richieste`,
+      action: "Gestisci Richieste"
     },
   ]
 
@@ -147,10 +155,11 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
         {cards.map((card, idx) => {
           const Icon = card.icon
           return (
-            <div
+            <Link
               key={card.label}
+              href={card.href}
               style={{ animationDelay: `${idx * 100}ms` }}
-              className={`relative overflow-hidden bg-white rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100 group hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 animate-in zoom-in-95 mx-2 sm:mx-0`}
+              className={`relative overflow-hidden bg-white rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100 group hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 animate-in zoom-in-95 mx-2 sm:mx-0 cursor-pointer`}
             >
               {/* Decorative Background Blob */}
               <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-full blur-[40px] opacity-10 group-hover:opacity-20 transition-opacity bg-gradient-to-br ${card.color}`} />
@@ -160,7 +169,7 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
                   <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${card.color} flex items-center justify-center text-white shadow-xl shadow-slate-200 group-hover:scale-110 transition-transform duration-500`}>
                     <Icon size={24} />
                   </div>
-                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] group-hover:text-slate-700 transition-colors">Sentinel Kpi 0{idx+1}</span>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] group-hover:text-blue-600 transition-colors">{card.action} →</span>
                 </div>
                 
                 <div className="mb-2">
@@ -177,7 +186,7 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
                    </div>
                 </div>
               </div>
-            </div>
+            </Link>
           )
         })}
       </div>

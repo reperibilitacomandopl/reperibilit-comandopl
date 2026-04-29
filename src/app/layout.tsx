@@ -45,6 +45,7 @@ import SessionWrapper from "@/components/SessionWrapper";
 import PrivacyConsentModal from "@/components/PrivacyConsentModal";
 import TwoFactorModal from "@/components/TwoFactorModal";
 import InstitutionalFooter from "@/components/InstitutionalFooter";
+import CookieBanner from "@/components/CookieBanner";
 
 export default function RootLayout({
   children,
@@ -69,6 +70,7 @@ export default function RootLayout({
           <TwoFactorModal />
           <Toaster position="bottom-right" toastOptions={{ className: 'text-sm font-semibold rounded-xl shadow-lg border border-slate-100', duration: 4000 }} />
           <PWAListener />
+          <CookieBanner />
         </SessionWrapper>
       </body>
     </html>
