@@ -33,6 +33,7 @@ import AgentCalendarView from "./agent/AgentCalendarView"
 import AgentYearlyCard from "./agent/AgentYearlyCard"
 import { useGpsTracking } from "@/hooks/useGpsTracking"
 
+import { isAssenza } from "@/utils/shift-logic"
 import { Shield, CalendarDays, BookOpen, FileDown } from "lucide-react"
 
 export interface AgentDashboardProps {
@@ -245,7 +246,7 @@ export default function AgentDashboard({
           .filter(s => {
             const d = new Date(s.date)
             d.setHours(0, 0, 0, 0)
-            return d >= now && (s.type !== "RIPOSO" && s.type !== "" && !s.type.startsWith("F") && !s.type.startsWith("M"))
+            return d >= now && !isAssenza(s.type)
           })
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0]
 

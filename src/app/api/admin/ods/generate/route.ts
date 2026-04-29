@@ -16,7 +16,7 @@ function getTimeRangeFromShiftType(type: string): string | null {
 }
 
 function classifyShift(type: string): "M" | "P" | "N" | "OFF" {
-  const t = type.toUpperCase().replace(/[()]/g, "").trim()
+  const t = type.toUpperCase().replace(/[()]/g, "").replace(/\s/g, "").trim()
   if (/^M\d/.test(t)) return "M"
   if (/^P\d/.test(t)) return "P"
   if (/^[NS]\d/.test(t)) return "N"
@@ -176,15 +176,19 @@ export async function POST(req: Request) {
       if (processedShiftIds.has(s.id)) continue
       if (classifyShift(s.type) === "OFF") continue
 
-      updates.push({
-        id: s.id,
-        serviceCategoryId: s.user.defaultServiceCategoryId || null,
-        serviceTypeId: s.user.defaultServiceTypeId || (s.user.defaultServiceCategoryId ? getDefaultType(s.user.defaultServiceCategoryId) : null),
-        timeRange: getTimeRangeFromShiftType(s.type) || s.timeRange,
-        patrolGroupId: null,
-        serviceDetails: s.user.servizio || null
-      })
-      processedShiftIds.add(s.id)
+      const catId = s.user.defaultServiceCategoryId || (serviceCategories.length > 0 ? serviceCategories[0].id : null)
+      
+      if (catId) {
+        updates.push({
+          id: s.id,
+          serviceCategoryId: catId,
+          serviceTypeId: s.user.defaultServiceTypeId || getDefaultType(catId),
+          timeRange: getTimeRangeFromShiftType(s.type) || s.timeRange,
+          patrolGroupId: null,
+          serviceDetails: s.user.servizio || null
+        })
+        processedShiftIds.add(s.id)
+      }
     }
 
     if (updates.length > 0) {
@@ -192,7 +196,6 @@ export async function POST(req: Request) {
         prisma.shift.update({
           where: { 
             id: u.id,
-            tenantId: tenantId || null
           },
           data: {
             serviceCategoryId: u.serviceCategoryId,
