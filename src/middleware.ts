@@ -22,6 +22,7 @@ const PUBLIC_PREFIXES = [
   "/api/cron",
   "/api/telegram/webhook",
   "/api/test-db",
+  "/api/calendar",
 ]
 
 function isPublicRoute(pathname: string): boolean {
