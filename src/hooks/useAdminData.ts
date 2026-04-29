@@ -864,23 +864,14 @@ export function useAdminData(
   const handleExportPDF = async () => {
     setIsExportingPDF(true)
     try {
-      const daysInMonth = new Date(currentYear, currentMonth, 0).getDate()
-      const dayInfo = Array.from({ length: daysInMonth }, (_, i) => {
-        const d = new Date(Date.UTC(currentYear, currentMonth - 1, i + 1))
-        return {
-          day: i + 1,
-          name: d.toLocaleDateString('it-IT', { weekday: 'short' }),
-          isWeekend: d.getUTCDay() === 0 || d.getUTCDay() === 6,
-          isNextMonth: false
-        }
-      })
+      const dayInfoForPDF = dayInfo.filter(d => !d.isNextMonth)
 
       await generatePlanningPDF({
         monthName: currentMonthName,
         year: currentYear,
         agents: sortedAgents as any,
         shifts: shifts as any,
-        dayInfo,
+        dayInfo: dayInfoForPDF,
         tenantName: settings?.tenantName || "POLIZIA LOCALE",
         logoUrl
       })
@@ -897,23 +888,14 @@ export function useAdminData(
   const handleExportRepPDF = async () => {
     setIsExportingPDF(true)
     try {
-      const daysInMonth = new Date(currentYear, currentMonth, 0).getDate()
-      const dayInfo = Array.from({ length: daysInMonth }, (_, i) => {
-        const d = new Date(Date.UTC(currentYear, currentMonth - 1, i + 1))
-        return {
-          day: i + 1,
-          name: d.toLocaleDateString('it-IT', { weekday: 'short' }),
-          isWeekend: d.getUTCDay() === 0 || d.getUTCDay() === 6,
-          isNextMonth: false
-        }
-      })
-
+      const dayInfoForPDF = dayInfo.filter(d => !d.isNextMonth);
+      
       await generateReperibilitaPDF({
         monthName: currentMonthName,
         year: currentYear,
         agents: sortedAgents as any,
         shifts: shifts as any,
-        dayInfo,
+        dayInfo: dayInfoForPDF,
         tenantName: settings?.tenantName || "POLIZIA LOCALE",
         logoUrl
       })

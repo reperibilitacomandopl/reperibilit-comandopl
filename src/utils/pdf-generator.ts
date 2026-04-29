@@ -18,6 +18,8 @@ interface DayInfo {
   day: number;
   name: string;
   isWeekend: boolean;
+  isHoliday?: boolean;
+  isVigilia?: boolean;
   isNextMonth: boolean;
   month?: number;
 }
@@ -111,9 +113,12 @@ export async function generatePlanningPDF({
       format: "a4"
     }) as unknown as jsPDFWithAutoTable;
 
-    const navelBlue: [number, number, number] = [0, 23, 54];
-    const rose100: [number, number, number] = [255, 228, 230];
-    const rose600: [number, number, number] = [225, 29, 72];
+    const navelBlue: [number, number, number] = [15, 23, 42]; // Slate 900
+    const indigo600: [number, number, number] = [79, 70, 229]; // Indigo 600
+    const rose100: [number, number, number] = [255, 228, 230]; // Rose 100
+    const rose600: [number, number, number] = [225, 29, 72]; // Rose 600
+    const amber50: [number, number, number] = [255, 251, 235]; // Amber 50
+    const amber600: [number, number, number] = [180, 83, 9]; // Amber 600
     const emerald100: [number, number, number] = [209, 250, 229];
     const emerald600: [number, number, number] = [5, 150, 105];
 
@@ -157,8 +162,6 @@ export async function generatePlanningPDF({
       const row: (string | number)[] = [agent.name];
       
       dayInfo.forEach(di => {
-        // CORREZIONE CRITICA: Uso di Date.UTC per evitare slittamenti di fuso orario
-        // In questo modo targetDateStr combacia perfettamente con quello memorizzato nel DB
         const d = new Date(Date.UTC(year, di.isNextMonth ? monthIndex + 1 : monthIndex, di.day));
         const targetDateStr = d.toISOString().split('T')[0];
         
@@ -168,11 +171,12 @@ export async function generatePlanningPDF({
         });
         
         let val = "";
-        if (shift?.repType?.toUpperCase().includes("REP")) {
-          val = "REP"; // Unificata ogni forma di reperibilità in "REP"
+        // PRIORITÀ ALLA REPERIBILITÀ: Se c'è un repType lo mostriamo sempre
+        if (shift?.repType) {
+          val = shift.repType.toUpperCase();
           repTotal++;
         } else if (shift?.type) {
-          val = shift.type;
+          val = shift.type.toUpperCase();
         }
         row.push(val);
       });
@@ -209,23 +213,35 @@ export async function generatePlanningPDF({
         fillColor: [249, 251, 254]
       },
       didParseCell: (dataFilter) => {
+        // Header styling for weekends/holidays
         if (dataFilter.section === "head" && dataFilter.column.index > 0 && dataFilter.column.index <= dayInfo.length) {
           const di = dayInfo[dataFilter.column.index - 1];
-          if (di?.isWeekend) {
-            dataFilter.cell.styles.fillColor = [40, 60, 100];
+          if (di?.isHoliday || di?.isWeekend) {
+            dataFilter.cell.styles.fillColor = [30, 41, 59]; // Slate 800
+          } else if (di?.isVigilia) {
+            dataFilter.cell.styles.fillColor = [51, 65, 85]; // Slate 700
           }
         }
         
         if (dataFilter.section === "body" && dataFilter.column.index > 0 && dataFilter.column.index <= dayInfo.length) {
           const di = dayInfo[dataFilter.column.index - 1];
-          if (di?.isWeekend) {
+          
+          // Colorazione FESTIVI e WEEKEND
+          if (di?.isHoliday || di?.isWeekend) {
             dataFilter.cell.styles.fillColor = rose100;
             dataFilter.cell.styles.textColor = rose600;
+            dataFilter.cell.styles.fontStyle = "bold";
+          } 
+          // Colorazione VIGILIE / PREFESTIVI
+          else if (di?.isVigilia) {
+            dataFilter.cell.styles.fillColor = amber50;
+            dataFilter.cell.styles.textColor = amber600;
           }
         }
 
-        // Colorazione solo per REPERIBILITÀ (Sigla REP) in verde
-        if (dataFilter.section === "body" && dataFilter.cell.text[0] === "REP") {
+        // Colorazione REPERIBILITÀ (Qualsiasi sigla che contenga REP o sia in un elenco specifico)
+        const cellText = dataFilter.cell.text[0] || "";
+        if (dataFilter.section === "body" && (cellText.includes("REP") || cellText === "RP" || cellText === "RS")) {
           dataFilter.cell.styles.fillColor = emerald100;
           dataFilter.cell.styles.textColor = emerald600;
           dataFilter.cell.styles.fontStyle = "bold";
