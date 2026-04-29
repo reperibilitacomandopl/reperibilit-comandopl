@@ -206,8 +206,50 @@ export default function AdminShiftGrid({
     )
   }
 
+  const [showLegend, setShowLegend] = useState(false)
+
+  const legendItems = [
+    { code: "M*", label: "Mattina", bg: "bg-blue-500" },
+    { code: "P*", label: "Pomeriggio", bg: "bg-emerald-500" },
+    { code: "REP", label: "Reperibilità", bg: "bg-violet-600" },
+    { code: "FERIE", label: "Ferie", bg: "bg-yellow-500" },
+    { code: "MAL", label: "Malattia", bg: "bg-red-600" },
+    { code: "104", label: "L.104", bg: "bg-sky-600" },
+    { code: "RR/RP", label: "Recupero", bg: "bg-teal-500" },
+    { code: "CONG", label: "Congedo", bg: "bg-pink-500" },
+    { code: "CORSO", label: "Corso/Missione", bg: "bg-indigo-500" },
+    { code: "BR", label: "Blocco Riposo", bg: "bg-gray-800" },
+  ]
+
   return (
-    <div className="overflow-auto custom-scrollbar-horizontal max-h-[calc(100vh-320px)] border-b-2 border-slate-200 rounded-b-3xl" suppressHydrationWarning>
+    <>
+      {/* ─── LEGENDA COLORI ─── */}
+      <div className="mb-2">
+        <button
+          onClick={() => setShowLegend(!showLegend)}
+          className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors px-2 py-1"
+        >
+          <div className="flex gap-0.5">
+            <div className="w-2 h-2 rounded-sm bg-blue-500" />
+            <div className="w-2 h-2 rounded-sm bg-violet-600" />
+            <div className="w-2 h-2 rounded-sm bg-red-600" />
+          </div>
+          {showLegend ? "Nascondi Legenda" : "Mostra Legenda"}
+        </button>
+        {showLegend && (
+          <div className="flex flex-wrap gap-2 mt-2 p-3 bg-slate-50 rounded-xl border border-slate-100 animate-in fade-in slide-in-from-top-1 duration-200">
+            {legendItems.map(item => (
+              <div key={item.code} className="flex items-center gap-1.5 px-2.5 py-1 bg-white rounded-lg border border-slate-100 shadow-sm">
+                <span className={`w-3 h-3 rounded-sm ${item.bg} shrink-0`} />
+                <span className="text-[10px] font-black text-slate-600 uppercase tracking-tight">{item.code}</span>
+                <span className="text-[9px] text-slate-400 font-semibold">{item.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="overflow-auto custom-scrollbar-horizontal max-h-[calc(100vh-320px)] border-b-2 border-slate-200 rounded-b-3xl" suppressHydrationWarning>
       <table className="w-full border-collapse text-xs">
         <thead className="sticky top-0 z-[50] bg-white">
           {/* ─── HEADER GIORNI ─── */}
@@ -599,5 +641,6 @@ export default function AdminShiftGrid({
         </div>
       )}
     </div>
+    </>
   )
 }
