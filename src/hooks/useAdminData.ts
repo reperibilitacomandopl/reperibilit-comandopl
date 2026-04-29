@@ -868,6 +868,7 @@ export function useAdminData(
 
       await generatePlanningPDF({
         monthName: currentMonthName,
+        month: currentMonth,
         year: currentYear,
         agents: sortedAgents as any,
         shifts: shifts as any,
@@ -892,6 +893,7 @@ export function useAdminData(
       
       await generateReperibilitaPDF({
         monthName: currentMonthName,
+        month: currentMonth,
         year: currentYear,
         agents: sortedAgents as any,
         shifts: shifts as any,

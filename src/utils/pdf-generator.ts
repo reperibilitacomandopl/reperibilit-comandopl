@@ -92,6 +92,7 @@ export async function generatePlanningPDF({
   logoUrl
 }: {
   monthName: string,
+  month: number,
   year: number,
   agents: Agent[],
   shifts: Shift[],
@@ -155,7 +156,7 @@ export async function generatePlanningPDF({
 
     // 2. Preparazione Dati
     const headers = ["Agente", ...dayInfo.map(d => d.day.toString()), "TOT"];
-    const monthIndex = dayInfo[0].month !== undefined ? dayInfo[0].month - 1 : 0;
+    const monthIndex = month - 1;
 
     const rows = agents.map(agent => {
       let repTotal = 0;
@@ -169,21 +170,28 @@ export async function generatePlanningPDF({
         const shift = shifts.find(s => {
           if (!s.date) return false;
           const dObj = new Date(s.date);
-          // Confronto robusto: controlla sia UTC che Locale per evitare problemi di fuso orario
-          const match = (
+          const targetIso = new Date(Date.UTC(targetY, targetM, targetD)).toISOString().split('T')[0];
+          const sIso = dObj.toISOString().split('T')[0];
+          
+          return s.userId === agent.id && (
+            sIso === targetIso ||
             (dObj.getUTCFullYear() === targetY && dObj.getUTCMonth() === targetM && dObj.getUTCDate() === targetD) ||
             (dObj.getFullYear() === targetY && dObj.getMonth() === targetM && dObj.getDate() === targetD)
           );
-          return s.userId === agent.id && match;
         });
         
         let val = "";
-        // PRIORITÀ ALLA REPERIBILITÀ: Se c'è un repType lo mostriamo sempre
-        if (shift?.repType) {
-          val = shift.repType.toUpperCase();
+        const sType = (shift?.type || "").toUpperCase();
+        const rType = (shift?.repType || "").toUpperCase();
+
+        if (rType.includes("REP") || rType === "RP" || rType === "RS") {
+          val = rType;
           repTotal++;
-        } else if (shift?.type) {
-          val = shift.type.toUpperCase();
+        } else if (sType.includes("REP")) {
+          val = sType;
+          repTotal++;
+        } else if (sType) {
+          val = sType;
         }
         row.push(val);
       });
@@ -311,6 +319,7 @@ export async function generatePlanningPDF({
  */
 export async function generateReperibilitaPDF({
   monthName,
+  month,
   year,
   agents,
   shifts,
@@ -319,6 +328,7 @@ export async function generateReperibilitaPDF({
   logoUrl
 }: {
   monthName: string,
+  month: number,
   year: number,
   agents: Agent[],
   shifts: Shift[],
@@ -379,7 +389,7 @@ export async function generateReperibilitaPDF({
 
     // 2. Preparazione Dati (Solo REP)
     const headers = ["Agente", ...dayInfo.map(d => d.day.toString()), "TOT"];
-    const monthIndex = dayInfo[0].month !== undefined ? dayInfo[0].month - 1 : 0;
+    const monthIndex = month - 1;
 
     const rows = agents.map(agent => {
       let repTotal = 0;
@@ -393,18 +403,25 @@ export async function generateReperibilitaPDF({
         const shift = shifts.find(s => {
           if (!s.date) return false;
           const dObj = new Date(s.date);
-          const match = (
+          const targetIso = new Date(Date.UTC(targetY, targetM, targetD)).toISOString().split('T')[0];
+          const sIso = dObj.toISOString().split('T')[0];
+
+          return s.userId === agent.id && (
+            sIso === targetIso ||
             (dObj.getUTCFullYear() === targetY && dObj.getUTCMonth() === targetM && dObj.getUTCDate() === targetD) ||
             (dObj.getFullYear() === targetY && dObj.getMonth() === targetM && dObj.getDate() === targetD)
           );
-          return s.userId === agent.id && match;
         });
         
         let val = "";
-        // In questo report specialistico mostriamo SOLO le reperibilità
+        const sType = (shift?.type || "").toUpperCase();
         const rType = (shift?.repType || "").toUpperCase();
+
         if (rType.includes("REP") || rType === "RP" || rType === "RS") {
           val = rType;
+          repTotal++;
+        } else if (sType.includes("REP")) {
+          val = sType;
           repTotal++;
         }
         row.push(val);
