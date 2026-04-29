@@ -16,6 +16,13 @@ export default function LandingPage() {
   const [formData, setFormData] = useState({ name: "", command: "", email: "", phone: "", message: "" })
   const [formSubmitted, setFormSubmitted] = useState(false)
   const [visibleSections, setVisibleSections] = useState<Set<string>>(new Set())
+  const [activeScreenshot, setActiveScreenshot] = useState(0)
+
+  const screenshots = [
+    { src: "/screenshots/dashboard.png", alt: "Dashboard Admin Sentinel", caption: "Dashboard Comando — Panoramica operativa in tempo reale" },
+    { src: "/screenshots/planning.png", alt: "Pianificazione Turni", caption: "Cabina di Regia — Pianificazione mensile drag & drop" },
+    { src: "/screenshots/mobile.png", alt: "App Mobile Agente", caption: "App Agente — Servizio del giorno, calendario e SOS" },
+  ]
 
   // Scroll detection for navbar
   useEffect(() => {
@@ -183,6 +190,80 @@ export default function LandingPage() {
               {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-current" />)}
             </div>
             <div className="text-xs font-bold text-white/30 uppercase tracking-widest mt-1">Altamura PL</div>
+          </div>
+        </div>
+      </section>
+
+      {/* ====== APP PREVIEW CAROUSEL ====== */}
+      <section id="preview" data-animate className="py-20 md:py-28 px-6 border-t border-white/5 bg-gradient-to-b from-transparent via-blue-950/10 to-transparent">
+        <div className={`max-w-6xl mx-auto transition-all duration-1000 ${isVisible("preview") ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}>
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-full text-[11px] font-bold text-cyan-400 mb-4 uppercase tracking-widest">
+              Anteprima
+            </div>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-4">
+              Guarda Sentinel in Azione
+            </h2>
+            <p className="text-white/40 text-lg max-w-xl mx-auto font-medium">
+              Dashboard admin, pianificazione turni e app mobile agente — tutto integrato.
+            </p>
+          </div>
+
+          {/* Screenshot Tabs */}
+          <div className="flex justify-center gap-3 mb-8">
+            {[
+              { label: "Dashboard", idx: 0 },
+              { label: "Pianificazione", idx: 1 },
+              { label: "App Mobile", idx: 2 },
+            ].map((tab) => (
+              <button
+                key={tab.idx}
+                onClick={() => setActiveScreenshot(tab.idx)}
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                  activeScreenshot === tab.idx
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20"
+                    : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/70 border border-white/5"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Screenshot Display */}
+          <div className="relative max-w-4xl mx-auto">
+            {/* Glow effect */}
+            <div className="absolute -inset-4 bg-gradient-to-r from-blue-600/20 via-indigo-600/20 to-cyan-600/20 rounded-[2rem] blur-2xl opacity-30" />
+            
+            <div className="relative bg-gradient-to-b from-white/10 to-white/5 border border-white/10 rounded-2xl p-2 shadow-2xl shadow-black/40 overflow-hidden">
+              {/* Browser-like top bar */}
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-white/5 rounded-t-xl mb-2">
+                <div className="flex gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
+                </div>
+                <div className="flex-1 mx-4">
+                  <div className="bg-white/5 rounded-lg px-3 py-1 text-[10px] text-white/30 font-mono max-w-xs mx-auto text-center">
+                    sentinel-pl.vercel.app
+                  </div>
+                </div>
+              </div>
+              
+              {/* Screenshot Image */}
+              <div className="relative overflow-hidden rounded-b-xl aspect-video bg-slate-900/50">
+                <img
+                  src={screenshots[activeScreenshot].src}
+                  alt={screenshots[activeScreenshot].alt}
+                  className="w-full h-full object-cover object-top transition-all duration-700"
+                />
+              </div>
+            </div>
+
+            {/* Caption */}
+            <p className="text-center text-xs text-white/30 font-semibold mt-4 uppercase tracking-widest">
+              {screenshots[activeScreenshot].caption}
+            </p>
           </div>
         </div>
       </section>
