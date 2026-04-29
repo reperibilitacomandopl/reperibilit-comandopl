@@ -185,11 +185,13 @@ export async function generatePlanningPDF({
         const sType = (shift?.type || "").toUpperCase();
         const rType = (shift?.repType || "").toUpperCase();
 
-        if (rType.includes("REP") || rType === "RP" || rType === "RS") {
-          val = rType;
+        if (rType.includes("REP")) {
+          val = "REP";
           repTotal++;
+        } else if (rType === "RP" || rType === "RS") {
+          val = rType;
         } else if (sType.includes("REP")) {
-          val = sType;
+          val = "REP";
           repTotal++;
         } else if (sType) {
           val = sType;
@@ -208,12 +210,13 @@ export async function generatePlanningPDF({
       body: rows,
       theme: "grid",
       styles: {
-        fontSize: 7.5,
-        cellPadding: 1.2,
+        fontSize: 6.5,
+        cellPadding: 0.8,
         halign: "center",
         valign: "middle",
         lineWidth: 0.05,
-        lineColor: [220, 220, 220]
+        lineColor: [220, 220, 220],
+        minCellHeight: 6
       },
       headStyles: {
         fillColor: navelBlue,
@@ -418,12 +421,11 @@ export async function generateReperibilitaPDF({
         const sType = (shift?.type || "").toUpperCase();
         const rType = (shift?.repType || "").toUpperCase();
 
-        if (rType.includes("REP") || rType === "RP" || rType === "RS") {
+        if (rType.includes("REP") || sType.includes("REP")) {
+          val = "REP";
+          repTotal++;
+        } else if (rType === "RP" || rType === "RS") {
           val = rType;
-          repTotal++;
-        } else if (sType.includes("REP")) {
-          val = sType;
-          repTotal++;
         }
         row.push(val);
       });
@@ -445,12 +447,13 @@ export async function generateReperibilitaPDF({
       body: rows,
       theme: "grid",
       styles: {
-        fontSize: 7,
-        cellPadding: 1,
+        fontSize: 6.5,
+        cellPadding: 0.8,
         halign: "center",
         valign: "middle",
         lineWidth: 0.05,
-        lineColor: [220, 220, 220]
+        lineColor: [220, 220, 220],
+        minCellHeight: 6
       },
       headStyles: {
         fillColor: navelBlue,
