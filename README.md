@@ -1,243 +1,338 @@
-# 🛡️ Portale Reperibilità — Comando di Polizia Locale di Altamura
+# 🛡️ Sentinel Security Suite
 
-Sistema di gestione dei turni di reperibilità notturna (22:00–07:00) per il Comando di Polizia Locale di Altamura.
+> **La Sala Operativa Digitale per la Polizia Locale** — Piattaforma SaaS cloud per la gestione completa dei Comandi di Polizia Locale italiani.
 
----
-
-## 📋 Panoramica
-
-Il sistema gestisce due ruoli principali:
-
-| Ruolo | Accesso | Funzioni |
-|-------|---------|----------|
-| **Amministratore** | Dashboard completa, gestione turni | Importa turni base, genera reperibilità, pubblica, modifica manualmente |
-| **Agente / Ufficiale** | Dashboard personale | Visualizza proprio calendario, sincronizza con Google/Apple, gestisce agenda personale |
+[![Deploy on Vercel](https://img.shields.io/badge/Deploy-Vercel-black?logo=vercel)](https://portale-polizia-locale.vercel.app)
+[![Next.js](https://img.shields.io/badge/Next.js-16.2-black?logo=nextdotjs)](https://nextjs.org)
+[![Prisma](https://img.shields.io/badge/Prisma-6.4-2D3748?logo=prisma)](https://prisma.io)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://typescriptlang.org)
 
 ---
 
-## 🔐 Accesso al Sistema
+## 📋 Sommario
 
-Ogni utente accede con **matricola** e **password** dalla pagina di login.  
-L'accesso determina automaticamente il ruolo (Admin o Agente) e la vista mostrata.
-
----
-
-## 👨‍💼 LATO AMMINISTRATORE
-
-### 1. Importazione Turni Base (Excel)
-
-L'admin importa il file Excel dei turni base del mese. Il file contiene per ogni agente il turno giornaliero assegnato (es. `M7`, `P14`, `F`, `RR`, `104`, ecc.).
-
-Questi turni base sono **fondamentali** perché determinano:
-- **Chi è disponibile** per la reperibilità in un dato giorno
-- **Chi è bloccato** (ferie, malattia, riposi, congedi)
-
-### 2. Generazione Automatica delle Reperibilità
-
-Cliccando su **"Genera Reperibilità"**, l'algoritmo assegna automaticamente i turni REP 22:00–07:00 per l'intero mese.
-
-#### Come funziona l'algoritmo
-
-L'assegnazione avviene in **3 fasi** successive:
+- [Panoramica](#-panoramica)
+- [Architettura](#-architettura)
+- [Funzionalità](#-funzionalità-principali)
+- [Struttura del Progetto](#-struttura-del-progetto)
+- [Setup Locale](#-setup-locale)
+- [Variabili d'Ambiente](#-variabili-dambiente)
+- [Deploy](#-deploy)
+- [Ruoli e Permessi](#-ruoli-e-permessi)
+- [API Endpoints](#-api-endpoints)
+- [Sicurezza](#-sicurezza)
 
 ---
 
-#### FASE 0 — Assegnazione Ufficiali (Prioritaria)
+## 🏗️ Panoramica
 
-Per **ogni giorno del mese**, il sistema assicura la presenza di **almeno 1 ufficiale** tra i reperibili.
+Sentinel Security Suite è un portale SaaS **multi-tenant** progettato per digitalizzare completamente le operazioni di un Comando di Polizia Locale. Il sistema gestisce:
 
-Gli ufficiali vengono scelti con questi criteri:
-- L'ufficiale non deve essere **bloccato** quel giorno (codici bloccanti: `F`, `FERIE`, `M`, `MALATTIA`, `104`, `RR`, `RP`, `RPS`, `CONGEDO`, `ASS`, `CS`, `PNR`, ecc.)
-- L'ufficiale non deve essere bloccato **il giorno successivo** (poiché il turno notturno finisce la mattina dopo)
-- Deve esserci un **distanziamento di almeno 2 giorni** tra due reperibilità consecutive
-- Massimo **1 sabato** e **1 domenica** al mese per ufficiale
-- A parità di condizioni, viene preferito chi ha **meno turni assegnati** rispetto al proprio obiettivo
+- **Pianificazione turni** mensile con generatore ciclico automatico
+- **Ordini di Servizio (OdS)** con firma digitale SHA-256 e QR Code di verifica
+- **Reperibilità** con sincronizzazione calendario (iCal) e notifiche Telegram
+- **Timbrature geolocalizzate** (clock-in/out con verifica GPS)
+- **SOS GPS** in tempo reale con allarme a tutta la centrale
+- **Export paghe** personalizzabile per la Ragioneria comunale
 
----
-
-#### FASE 1 — Assegnazione Principale Agenti
-
-Per ogni giorno, il sistema assegna i restanti agenti fino a raggiungere il **target giornaliero** (tra 7 e 8 agenti reperibili al giorno).
-
-I candidati vengono valutati con un **sistema a punteggio** (score più basso = priorità più alta):
-
-| Criterio | Effetto sul Punteggio |
-|----------|----------------------|
-| Rapporto turni fatti / turni obiettivo | Base del calcolo — chi ha fatto meno turni ha priorità |
-| Turno base di **mattina** (M7, M8...) | **Bonus −500** (preferito, perché finisce prima del turno notturno) |
-| Turno base di **pomeriggio** (P14...) | **Penalità +300** (meno ideale per servizio notturno consecutivo) |
-| Già raggiunto il target festivi (2) | **Penalità +5000** |
-| Già fatto 1 sabato o 1 domenica | **Penalità +1.000.000** (praticamente escluso) |
-
-**Regole ferree:**
-- Mai **due reperibilità consecutive** (distanza minima 2 giorni)
-- Mai reperibilità se il giorno dopo è **bloccato**
-- Massimo **1 sabato** e **1 domenica** per agente al mese
-- Obiettivo: **2 festivi** (idealmente 1 sabato + 1 domenica) per agente
+L'applicazione è costruita come **Progressive Web App (PWA)** ed è installabile su iPhone e Android senza passare dagli store.
 
 ---
 
-#### FASE 2 — Riempimento (Rilassato)
+## 🧱 Architettura
 
-Se dopo la Fase 1 ci sono giorni con **meno di 7 agenti reperibili**, il sistema esegue 2 passaggi di riempimento con regole progressivamente rilassate:
-- **Passaggio 1**: Distanziamento ridotto a 1 giorno
-- **Passaggio 2**: Nessun vincolo di distanziamento
+```
+┌──────────────────────────────────────────────────────┐
+│                    FRONTEND (Next.js 16)              │
+│  ┌─────────┐  ┌──────────┐  ┌────────────────────┐  │
+│  │ Landing  │  │  Admin   │  │  Agent Dashboard   │  │
+│  │  Page    │  │Dashboard │  │  (PWA Mobile)      │  │
+│  └─────────┘  └──────────┘  └────────────────────┘  │
+├──────────────────────────────────────────────────────┤
+│                   API ROUTES (Next.js)                │
+│  /api/admin/*  /api/agent/*  /api/cron/*  /api/auth  │
+├──────────────────────────────────────────────────────┤
+│                 MIDDLEWARE (Auth + Security)          │
+│  NextAuth.js · RBAC · CSP Headers · Rate Limiting    │
+├──────────────────────────────────────────────────────┤
+│                  DATABASE (PostgreSQL)                │
+│  Prisma ORM · Multi-Tenant · Neon/Supabase           │
+├──────────────────────────────────────────────────────┤
+│               SERVIZI ESTERNI                        │
+│  Telegram Bot · Web Push · Vercel Cron · VAPID Keys  │
+└──────────────────────────────────────────────────────┘
+```
 
----
+### Stack Tecnologico
 
-#### Target Individuale e Proporzionalità
-
-Ogni agente ha un **massimale** personale impostato dall'admin (default: 5 per agenti, 6 per ufficiali, configurabile fino a 8).
-
-Se l'opzione **"Proporzionalità Assenze"** è attiva:
-- Se un agente ha **molte assenze** nel mese (ferie, malattie, ecc.), il suo obiettivo viene ridotto proporzionalmente
-- Esempio: se un agente con massimale 8 è presente solo 20 giorni su 30, il suo target diventa circa 5
-
-Formula: `Target = (Giorni Disponibili / Giorni Base) × Massimale`
-
----
-
-### 3. Modifica Manuale
-
-Dopo la generazione automatica, l'admin può:
-- **Aggiungere** una reperibilità a un agente in un giorno specifico (clic sulla cella)
-- **Rimuovere** una reperibilità esistente (clic sulla cella con REP)
-- **Modificare** il turno base di un agente
-
-### 4. Pubblicazione
-
-Quando l'admin è soddisfatto della distribuzione, clicca **"Pubblica Mese"**.  
-Solo dopo la pubblicazione i turni diventano visibili agli agenti nella loro dashboard.
-
-### 5. Gestione Agenti
-
-L'admin può:
-- Aggiungere/rimuovere agenti dal sistema
-- Designare un agente come **Ufficiale** (toggle)
-- Modificare il **massimale** individuale di reperibilità
-- Impostare email e telefono per le notifiche PEC
-
----
-
-## 👮 LATO AGENTE / UFFICIALE
-
-### 1. Calendario Personale
-
-Dopo il login, l'agente vede il proprio **calendario mensile** con una griglia a 7 colonne, simile a Google Calendar.
-
-Ogni giorno mostra:
-- 🟢 **Verde** → Reperibilità assegnata (REP 22:00–07:00)
-- 🟡 **Giallo** → Assenza (Ferie, 104, ecc.)
-- 🔵 **Blu** → Turno standard o malattia
-- 🔴 **Rosso** → Weekend/Festivo
-- 🟣 **Viola** → Voce in Agenda Personale
-- 🔵 **Bordo blu lampeggiante** → Giorno corrente
-
-### 2. Widget "Prossima Reperibilità"
-
-Un widget dinamico mostra sempre:
-- La **data della prossima reperibilità** futura
-- Un **countdown** (tra X giorni / ⚠️ Domani / 🔴 OGGI!)
-- L'**orario del turno** (22:00 – 07:00)
-
-### 3. Riepilogo Mensile
-
-Una sezione dedicata elenca **tutte le reperibilità del mese** con:
-- Data e giorno della settimana
-- Tipo di reperibilità
-- Turno base assegnato
-- Conteggio totale
-
-### 4. Sincronizzazione Calendario
-
-L'agente può esportare le proprie reperibilità in:
-- 📱 **iPhone / iPad / Mac** → Abbonamento automatico via `webcal://`
-- 💻 **Windows / Outlook** → Abbonamento calendario Internet
-- 🌐 **Google Calendar** → Importazione diretta
-- 📥 **File .ics** → Download manuale
+| Tecnologia | Versione | Utilizzo |
+|-----------|---------|----------|
+| **Next.js** | 16.2 | Framework full-stack con App Router |
+| **React** | 19.x | UI Components |
+| **TypeScript** | 5.x | Type Safety |
+| **Prisma** | 6.4 | ORM e migrazioni database |
+| **PostgreSQL** | 15+ | Database relazionale |
+| **NextAuth.js** | 5.x | Autenticazione e sessioni |
+| **jsPDF** | 2.x | Generazione PDF client-side |
+| **Leaflet** | 1.9 | Mappe GPS in tempo reale |
+| **Web Push** | - | Notifiche push browser |
+| **Tailwind CSS** | 3.x | Styling utility-first |
 
 ---
 
-## 📒 AGENDA PERSONALE
+## ✨ Funzionalità Principali
 
-Ogni agente dispone di un'**agenda personale privata** integrata nel calendario.
+### 👮 Lato Admin (Comandante / Responsabile)
 
-### Come Funziona
+| Modulo | Descrizione |
+|--------|-------------|
+| **Pannello Overview** | Dashboard con KPI in tempo reale: copertura, assenze, ufficiali, autoparco |
+| **Pianificazione Mensile** | Griglia interattiva 31 giorni × N agenti. Assegnazione turni, reperibilità, riposi |
+| **Generatore Ciclico** | Auto-compilazione turni in base a pattern configurabili (cicli 7/14/28 giorni) |
+| **Ordine di Servizio** | Drag & drop per assegnare agenti ai servizi giornalieri con veicoli e radio |
+| **Stampa OdS** | Anteprima PDF professionale con firma digitale e QR Code di autenticità |
+| **Centrale Operativa** | Mappa GPS live con posizione degli agenti in servizio |
+| **Gestione Personale** | Anagrafica completa, qualifiche, scadenze documenti, L.104, permessi studio |
+| **Export Paghe** | Generazione file Excel/CSV per la Ragioneria con calcolo automatico buoni pasto |
+| **Bacheca Comando** | Pubblicazione OdS e comunicazioni visibili dagli agenti |
+| **Auto-Scuole** | Assegnazione automatica servizi scolastici in base ai plessi configurati |
 
-1. **Clicca su un giorno** nel calendario oppure sul pulsante **"Gestisci Agenda"**
-2. Si apre la modale con:
-   - **A sinistra**: Form di inserimento con ricerca tra 60+ codici
-   - **A destra**: Lista di tutti gli appunti del mese
+### 📱 Lato Agente (PWA Mobile)
 
-### Codici Disponibili
+| Modulo | Descrizione |
+|--------|-------------|
+| **I Miei Turni** | Calendario personale con vista mensile, griglia e annuale |
+| **Timbratura GPS** | Clock-in/out geolocalizzato con validazione raggio |
+| **SOS Emergenza** | Pulsante rosso con invio coordinate GPS alla Centrale |
+| **Sincronizza Calendario** | Abbonamento iCal per iPhone/Google Calendar con promemoria automatici |
+| **Richiesta Congedi** | Form per ferie, malattia, permessi L.104, studio |
+| **Scambi Turno** | Bacheca per proporre/accettare scambi tra colleghi |
+| **Agenda Personale** | Note private per ogni giorno del mese |
+| **Notifiche Push** | Avvisi in tempo reale per pubblicazioni, emergenze, variazioni |
+| **Telegram** | Collegamento al bot per ricevere notifiche anche ad app chiusa |
 
-I codici sono organizzati in **7 categorie colorate**:
+### ⚡ Automazioni
 
-| Emoji | Categoria | Esempi |
-|-------|-----------|--------|
-| 🏖️ | **Ferie e Festività** | Ferie Anno Corrente (0015), Festività Soppresse (0010) |
-| 👶 | **Congedi** | Congedo Paternità (0112), Parentale 100% (0111), 80% (0098), 30% (0097) |
-| 📋 | **Permessi** | L.104/92 (0031), Istituzionali Retribuiti (0005), Motivi Personali (0014) |
-| 🏥 | **Malattia e Salute** | Visite/Esami (0032), Donazione Sangue (0035), Allattamento (0003) |
-| 🔄 | **Recupero Ore** | Recupero A.O. (0009), Ore Eccedenti (0008), Riposo Compensativo (0036) |
-| ⏰ | **Straordinario** | Pagamento (2000), Notturno (2001), Festivo (2002), Elettorale (2020) |
-| 🎓 | **Formazione** | Corso Aggiornamento (2041), Diritto Studio 150h (0011), Missione (0068) |
-
-### Funzionalità
-- **🔍 Ricerca rapida**: Digita "ferie", "104", "straord" per trovare il codice
-- **⏱ Ore**: Campo opzionale per registrare le ore (es. permessi orari, straordinari)
-- **📝 Note**: Dettagli aggiuntivi liberi
-- **🗑️ Eliminazione**: Hover sulla voce → icona cestino
-- **📊 Statistiche**: Totale voci e ore visualizzate nel footer della modale e nella card della dashboard
-
-### Privacy
-> ⚠️ **L'agenda è strettamente personale**: ogni utente vede e gestisce solo le proprie voci. Nessun altro utente o amministratore può accedere all'agenda di un altro agente.
-
----
-
-## 🗄️ Struttura Database
-
-| Tabella | Descrizione |
-|---------|-------------|
-| `User` | Agenti e admin con matricola, ruolo, massimale, flag ufficiale |
-| `Shift` | Turni base + assegnazione REP per data |
-| `Absence` | Assenze importate da Excel |
-| `AgendaEntry` | Voci dell'agenda personale (codice, label, ore, note) |
-| `MonthStatus` | Stato pubblicazione per mese/anno |
-| `GlobalSettings` | Parametri globali (anno, mese corrente, proporzionalità) |
+- **Cron Daily Reminder** — Ogni mattina alle 08:00, notifica Telegram agli agenti in reperibilità
+- **Cron Expiry Alerts** — Alert automatici per documenti in scadenza (patente, porto d'armi)
+- **Cron Data Retention** — Pulizia automatica dati obsoleti secondo policy GDPR
+- **Auto-Pubblicazione OdS** — Notifica automatica al personale quando l'OdS viene certificato
 
 ---
 
-## 🚀 Avvio Rapido
+## 📁 Struttura del Progetto
+
+```
+src/
+├── app/                          # Next.js App Router
+│   ├── [tenantSlug]/             # Route multi-tenant dinamiche
+│   │   ├── admin/                # Tutte le pagine admin
+│   │   │   ├── pannello/         # Dashboard Overview
+│   │   │   ├── pianificazione/   # Griglia turni mensile
+│   │   │   ├── ods/              # Ordine di Servizio
+│   │   │   ├── sala-operativa/   # Mappa GPS
+│   │   │   ├── stampa-ods/       # Anteprima PDF OdS
+│   │   │   ├── risorse/          # Gestione Personale
+│   │   │   ├── impostazioni/     # Configurazione sistema
+│   │   │   ├── buoni-pasto/      # Modulo buoni pasto
+│   │   │   ├── export-paghe/     # Export Ragioneria
+│   │   │   ├── audit-logs/       # Log attività
+│   │   │   └── ...               # (radio, armeria, parco-auto, etc.)
+│   │   └── page.tsx              # Landing agente/admin
+│   ├── api/                      # API Routes
+│   │   ├── admin/                # Endpoint amministrativi
+│   │   ├── agent/                # Endpoint agente
+│   │   ├── calendar/[userId]/    # Feed iCal pubblico
+│   │   ├── cron/                 # Task schedulati
+│   │   ├── notifications/        # Push & Telegram
+│   │   └── ...
+│   ├── login/                    # Pagina di login
+│   └── superadmin/               # Gestione multi-tenant
+│
+├── components/                   # Componenti React
+│   ├── admin/                    # Componenti admin-specifici
+│   ├── agent/                    # Componenti agente-specifici
+│   ├── ui/                       # Componenti UI riutilizzabili
+│   ├── AdminDashboard.tsx        # Shell admin
+│   ├── AgentDashboard.tsx        # Shell agente
+│   ├── LandingPage.tsx           # Homepage pubblica
+│   └── ...
+│
+├── hooks/                        # Custom React Hooks
+│   ├── useAdminData.ts           # Stato admin centralizzato
+│   ├── useAgentData.ts           # Stato agente centralizzato
+│   └── useGpsTracking.ts         # Tracking GPS in background
+│
+├── lib/                          # Librerie e utility
+│   ├── prisma.ts                 # Client Prisma singleton
+│   ├── telegram.ts               # Wrapper API Telegram Bot
+│   └── offline-sync.ts           # Sync offline PWA
+│
+├── utils/                        # Funzioni di utilità
+│   ├── pdf-generator.ts          # Generazione PDF (jsPDF)
+│   ├── holidays.ts               # Calendario festività italiane
+│   ├── shift-logic.ts            # Logica turni e assenze
+│   ├── agenda-codes.ts           # Codici assenza/turno
+│   └── constants.ts              # Costanti e colori
+│
+├── middleware.ts                  # Auth + Security middleware
+└── auth.ts                       # Configurazione NextAuth
+```
+
+---
+
+## 🚀 Setup Locale
+
+### Prerequisiti
+
+- **Node.js** 18+ (LTS consigliato)
+- **PostgreSQL** 15+ (o account Neon/Supabase)
+- **npm** 9+
+
+### Installazione
 
 ```bash
-# Installazione dipendenze
+# 1. Clona il repository
+git clone https://github.com/reperibilitacomandopl/reperibilit-comandopl.git
+cd reperibilit-comandopl
+
+# 2. Installa le dipendenze
 npm install
 
-# Setup database
+# 3. Configura il file .env (vedi sezione successiva)
+cp .env.example .env
+
+# 4. Genera il client Prisma
+npx prisma generate
+
+# 5. Esegui le migrazioni del database
 npx prisma db push
 
-# Avvio in sviluppo
+# 6. (Opzionale) Popola con dati di test
+npx prisma db seed
+
+# 7. Avvia in modalità sviluppo
 npm run dev
 ```
 
-L'app sarà disponibile su `http://localhost:3000`
+L'app sarà disponibile su `http://localhost:3000`.
 
 ---
 
-## 📂 File Principali
+## 🔐 Variabili d'Ambiente
 
-| File | Funzione |
-|------|----------|
-| `src/app/api/admin/generate/route.ts` | Algoritmo di generazione reperibilità |
-| `src/app/api/admin/edit-shift/route.ts` | Modifica manuale turni |
-| `src/app/api/admin/publish-month/route.ts` | Pubblicazione mese |
-| `src/app/api/agenda/route.ts` | API CRUD agenda personale |
-| `src/app/api/calendar/[userId]/route.ts` | Generazione file .ics |
-| `src/components/AgentDashboard.tsx` | Dashboard agente completa |
-| `src/app/page.tsx` | Dashboard admin + routing |
-| `prisma/schema.prisma` | Schema database |
+Crea un file `.env` nella root del progetto:
+
+```env
+# DATABASE
+DATABASE_URL="postgresql://user:password@host:5432/dbname?sslmode=require"
+
+# AUTH
+AUTH_SECRET="una-chiave-segreta-molto-lunga-e-casuale"
+NEXTAUTH_URL="http://localhost:3000"
+
+# TELEGRAM BOT
+TELEGRAM_BOT_TOKEN="123456:ABCdefGHIjklMNOpqrSTUvwxyz"
+
+# PUSH NOTIFICATIONS (VAPID)
+NEXT_PUBLIC_VAPID_PUBLIC_KEY="BDxxxxxx..."
+VAPID_PRIVATE_KEY="xxxxxxxx..."
+
+# (Opzionale) Email PEC
+SMTP_HOST="smtp.pec.provider.it"
+SMTP_PORT=465
+SMTP_USER="comando@pec.comune.it"
+SMTP_PASS="password"
+```
 
 ---
 
-*Comando di Polizia Locale di Altamura · Sistema Reperibilità v1.0*
+## 🌐 Deploy
+
+### Vercel (Consigliato)
+
+```bash
+# Deploy in produzione
+vercel --prod
+
+# Le variabili d'ambiente devono essere configurate su Vercel Dashboard
+```
+
+### Build manuale
+
+```bash
+# Build di produzione
+npm run build
+
+# Avvia il server di produzione
+npm start
+```
+
+---
+
+## 👥 Ruoli e Permessi
+
+Il sistema utilizza un modello RBAC (Role-Based Access Control) con permessi granulari:
+
+| Ruolo | Descrizione | Permessi |
+|-------|------------|----------|
+| **ADMIN** | Comandante / Vice | Accesso completo a tutte le funzionalità |
+| **AGENTE** | Agente operativo | Dashboard personale, richieste assenze, scambi |
+| **SUPER_ADMIN** | Amministratore SaaS | Gestione multi-tenant, creazione nuovi comandi |
+
+### Permessi Granulari (per ruoli intermedi)
+
+| Permesso | Descrizione |
+|----------|-------------|
+| `canManageShifts` | Può modificare turni e OdS |
+| `canManageUsers` | Può gestire anagrafica personale |
+| `canVerifyClockIns` | Può validare le timbrature |
+| `canConfigureSystem` | Può accedere alle impostazioni di sistema |
+
+---
+
+## 🔌 API Endpoints Principali
+
+### Pubbliche (senza autenticazione)
+| Metodo | Endpoint | Descrizione |
+|--------|----------|-------------|
+| GET | `/api/calendar/[userId]` | Feed iCal reperibilità |
+| GET | `/api/cron/daily-reminder` | Cron promemoria mattutini |
+| POST | `/api/telegram/webhook` | Webhook bot Telegram |
+
+### Protette (autenticazione richiesta)
+| Metodo | Endpoint | Descrizione |
+|--------|----------|-------------|
+| GET/POST | `/api/admin/shifts` | CRUD turni mensili |
+| GET/POST | `/api/admin/ods` | Gestione OdS giornaliero |
+| POST | `/api/admin/alert-emergency` | Invio allarme SOS |
+| GET/POST | `/api/agent/clockin` | Timbratura GPS |
+| GET/POST | `/api/notifications` | Gestione notifiche |
+| GET/POST | `/api/requests` | Richieste assenze |
+| GET/POST | `/api/swaps` | Scambi turno |
+
+---
+
+## 🔒 Sicurezza
+
+Il sistema implementa i seguenti standard di sicurezza:
+
+- **Autenticazione**: NextAuth.js con hashing bcrypt delle password
+- **2FA**: Supporto TOTP (Google Authenticator) opzionale per ogni utente
+- **CSP**: Content Security Policy restrittiva su tutte le risposte
+- **CORS**: Protezione cross-origin con whitelist
+- **Middleware**: Protezione automatica di tutte le route non pubbliche
+- **Firma digitale**: Hash SHA-256 su ogni OdS certificato con QR Code di verifica
+- **GDPR**: Consenso privacy esplicito, data retention automatica, diritto all'oblio
+- **Geolocalizzazione**: Consenso GPS esplicito prima dell'attivazione del tracking
+
+---
+
+## 📄 Licenza
+
+Proprietà intellettuale riservata. Tutti i diritti sono riservati.
+
+---
+
+> **Sentinel Security Suite** — *La tecnologia al servizio della sicurezza pubblica.*  
+> Sviluppato con ❤️ per la Polizia Locale italiana.
