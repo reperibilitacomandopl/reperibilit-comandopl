@@ -68,11 +68,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ userId: 
     const lines: string[] = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//Portale Caserma//Reperibilita//IT',
+      'METHOD:PUBLISH',
+      'PRODID:-//Sentinel//Portale Polizia Locale//IT',
       'CALSCALE:GREGORIAN',
       `X-WR-CALNAME:Reperibilità - ${user.name}`,
       'X-WR-TIMEZONE:Europe/Rome',
-      'X-MICROSOFT-CALSCALE:GREGORIAN',
+      'X-PUBLISHED-TTL:PT1H',
+      'X-WR-CALDESC:Sincronizzazione turni di reperibilità Sentinel',
       // VTIMEZONE block for Europe/Rome
       'BEGIN:VTIMEZONE',
       'TZID:Europe/Rome',
