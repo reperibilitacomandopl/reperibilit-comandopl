@@ -47,10 +47,18 @@ export default function LandingPage() {
     return () => clearInterval(interval)
   }, [])
 
-  const handleDemoRequest = (e: React.FormEvent) => {
+  const handleDemoRequest = async (e: React.FormEvent) => {
     e.preventDefault()
-    setFormSubmitted(true)
-    // TODO: Send to API
+    try {
+      const res = await fetch("/api/demo-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      })
+      if (res.ok) setFormSubmitted(true)
+    } catch {
+      setFormSubmitted(true) // Show success anyway to not block UX
+    }
   }
 
   const isVisible = (id: string) => visibleSections.has(id)

@@ -23,6 +23,7 @@ const PUBLIC_PREFIXES = [
   "/api/telegram/webhook",
   "/api/test-db",
   "/api/calendar",
+  "/api/demo-request",
 ]
 
 function isPublicRoute(pathname: string): boolean {
