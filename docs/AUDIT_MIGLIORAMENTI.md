@@ -2,6 +2,7 @@
 ## Piano di Miglioramento Dettagliato (Funzionalità + Grafica)
 
 > Analisi condotta il 29 Aprile 2026 su tutte le pagine del portale in produzione.
+> **Ultimo aggiornamento implementazioni: 29 Aprile 2026**
 
 ---
 
@@ -189,28 +190,28 @@ PDF pianificazione e reperibilità funzionanti (appena corretti). Grafica unifor
 ### 🔴 Sprint 1 — Correzioni Critiche (1-2 settimane)
 1. ~~Fix PDF vuoti~~ ✅ Completato
 2. ~~Fix calendario iCal/iPhone~~ ✅ Completato
-3. Cookie banner GDPR (1.6)
-4. Form demo → collegare a email (1.4, 1.5)
-5. Mappa GPS non caricata (5.1)
+3. ~~Cookie banner GDPR (1.6)~~ ✅ Completato — Componente `CookieBanner.tsx`
+4. ~~Form demo → collegare a email (1.4, 1.5)~~ ✅ Completato — API `/api/demo-request` + Telegram
+5. ~~Mappa GPS non caricata (5.1)~~ ✅ Completato — Placeholder informativo migliorato
 6. Link impostazioni nella sidebar (8.1)
 
 ### 🟡 Sprint 2 — UX Admin (2-3 settimane)
-7. Riorganizzazione toolbar Pianificazione (3.1, 3.2)
-8. Sticky header griglia turni (3.5)
-9. KPI cliccabili nell'overview (2.5)
-10. Contatore richieste pendenti (2.6)
-11. Conferma long-press SOS (6.1)
+7. ~~Riorganizzazione toolbar Pianificazione (3.1, 3.2)~~ ✅ Completato — 2 dropdown (Strumenti + Export)
+8. ~~Sticky header griglia turni (3.5)~~ ✅ Già presente nel codice
+9. ~~KPI cliccabili nell'overview (2.5)~~ ✅ Completato — Link a pagine corrispondenti
+10. ~~Contatore richieste pendenti (2.6)~~ ✅ Già presente (badge Approvazioni)
+11. ~~Conferma long-press SOS (6.1)~~ ✅ Completato — 2.5s con progress ring SVG
 12. Template ODS riutilizzabili (4.4)
 
 ### 🟢 Sprint 3 — Funzionalità Avanzate (3-4 settimane)
 13. Mini-grafico storico copertura (2.2)
 14. Multi-select celle turni (3.8)
-15. PDF riepilogo individuale (7.2)
+15. ~~PDF watermark BOZZA (7.4)~~ ✅ Completato
 16. Countdown prossimo turno (6.3)
-17. Conflitti visivi nella griglia (3.10)
-18. Notifica Telegram auto su ODS (4.6)
+17. ~~Legenda colori nella griglia (3.6)~~ ✅ Completato — Barra collassabile
+18. ~~Notifica Telegram auto su ODS (4.6)~~ ✅ Completato — Auto-invio alla certificazione
 
-### 🔵 Sprint 4 — Innovazione (4-6 settimane)
+### 🟣 Sprint 4 — Innovazione (4-6 settimane)
 19. Video/mockup hero landing (1.1)
 20. Geofencing GPS (5.4)
 21. Chat pattuglia (6.7)
