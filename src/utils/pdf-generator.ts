@@ -162,12 +162,19 @@ export async function generatePlanningPDF({
       const row: (string | number)[] = [agent.name];
       
       dayInfo.forEach(di => {
-        const d = new Date(Date.UTC(year, di.isNextMonth ? monthIndex + 1 : monthIndex, di.day));
-        const targetDateStr = d.toISOString().split('T')[0];
+        const targetY = year;
+        const targetM = di.isNextMonth ? (monthIndex === 11 ? 0 : monthIndex + 1) : monthIndex;
+        const targetD = di.day;
         
         const shift = shifts.find(s => {
-          const sDate = new Date(s.date).toISOString().split('T')[0];
-          return s.userId === agent.id && sDate === targetDateStr;
+          if (!s.date) return false;
+          const dObj = new Date(s.date);
+          // Confronto robusto: controlla sia UTC che Locale per evitare problemi di fuso orario
+          const match = (
+            (dObj.getUTCFullYear() === targetY && dObj.getUTCMonth() === targetM && dObj.getUTCDate() === targetD) ||
+            (dObj.getFullYear() === targetY && dObj.getMonth() === targetM && dObj.getDate() === targetD)
+          );
+          return s.userId === agent.id && match;
         });
         
         let val = "";
@@ -283,9 +290,9 @@ export async function generatePlanningPDF({
         color: { dark: "#001736", light: "#FFFFFF" }
       });
       
-      doc.addImage(qrDataUrl, "PNG", 262, 182, 22, 22);
+      doc.addImage(qrDataUrl, "PNG", 262, 178, 20, 20);
       doc.setFontSize(5);
-      doc.text("SCANSIONA PER VERIFICA", 262, 205);
+      doc.text("VALIDAZIONE DIGITALE", 262, 200);
     } catch (qrErr) {
       console.warn("[PDF] QR Code non generato:", qrErr);
     }
@@ -338,13 +345,14 @@ export async function generateReperibilitaPDF({
     const emerald600: [number, number, number] = [5, 150, 105];
 
     // 1. Intestazione Specifica
+    // 1. Intestazione Specifica
     if (logoUrl) {
       try {
-        doc.addImage(logoUrl, "PNG", 14, 10, 20, 20);
+        doc.addImage(logoUrl, "PNG", 14, 10, 25, 25);
         doc.setFontSize(22);
         doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
         doc.setFont("helvetica", "bold");
-        doc.text(tenantName.toUpperCase(), 38, 18);
+        doc.text(tenantName.toUpperCase(), 42, 20);
       } catch (e) {
         doc.setFontSize(22);
         doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
@@ -378,18 +386,25 @@ export async function generateReperibilitaPDF({
       const row: (string | number)[] = [agent.name];
       
       dayInfo.forEach(di => {
-        const d = new Date(Date.UTC(year, di.isNextMonth ? monthIndex + 1 : monthIndex, di.day));
-        const targetDateStr = d.toISOString().split('T')[0];
+        const targetY = year;
+        const targetM = di.isNextMonth ? (monthIndex === 11 ? 0 : monthIndex + 1) : monthIndex;
+        const targetD = di.day;
         
         const shift = shifts.find(s => {
-          const sDate = new Date(s.date).toISOString().split('T')[0];
-          return s.userId === agent.id && sDate === targetDateStr;
+          if (!s.date) return false;
+          const dObj = new Date(s.date);
+          const match = (
+            (dObj.getUTCFullYear() === targetY && dObj.getUTCMonth() === targetM && dObj.getUTCDate() === targetD) ||
+            (dObj.getFullYear() === targetY && dObj.getMonth() === targetM && dObj.getDate() === targetD)
+          );
+          return s.userId === agent.id && match;
         });
         
         let val = "";
-        // In questo report specialistico mostriamo SOLO le reperibilità, ignorando il resto
-        if (shift?.repType?.toUpperCase().includes("REP")) {
-          val = "REP";
+        // In questo report specialistico mostriamo SOLO le reperibilità
+        const rType = (shift?.repType || "").toUpperCase();
+        if (rType.includes("REP") || rType === "RP" || rType === "RS") {
+          val = rType;
           repTotal++;
         }
         row.push(val);
@@ -399,15 +414,21 @@ export async function generateReperibilitaPDF({
       return row;
     });
 
+    // Colori per festività
+    const rose100: [number, number, number] = [255, 228, 230];
+    const rose600: [number, number, number] = [225, 29, 72];
+    const amber50: [number, number, number] = [255, 251, 235];
+    const amber600: [number, number, number] = [180, 83, 9];
+
     // 3. Generazione Tabella
     autoTable(doc, {
-      startY: 40,
+      startY: 38,
       head: [headers],
       body: rows,
       theme: "grid",
       styles: {
-        fontSize: 7.5,
-        cellPadding: 1.2,
+        fontSize: 7,
+        cellPadding: 1,
         halign: "center",
         valign: "middle",
         lineWidth: 0.05,
@@ -417,14 +438,36 @@ export async function generateReperibilitaPDF({
         fillColor: navelBlue,
         textColor: [255, 255, 255],
         fontStyle: "bold",
-        fontSize: 8
+        fontSize: 7.5
       },
       columnStyles: {
         0: { halign: "left", fontStyle: "bold", cellWidth: 38, fillColor: [248, 250, 252] },
         [headers.length - 1]: { fontStyle: "bold", fillColor: [241, 245, 249] }
       },
       didParseCell: (dataFilter) => {
-        if (dataFilter.section === "body" && dataFilter.cell.text[0] === "REP") {
+        // Colorazione Header Festivi
+        if (dataFilter.section === "head" && dataFilter.column.index > 0 && dataFilter.column.index <= dayInfo.length) {
+          const di = dayInfo[dataFilter.column.index - 1];
+          if (di?.isHoliday || di?.isWeekend) {
+            dataFilter.cell.styles.fillColor = [30, 41, 59];
+          }
+        }
+
+        // Colorazione Celle Festivi/Vigilie
+        if (dataFilter.section === "body" && dataFilter.column.index > 0 && dataFilter.column.index <= dayInfo.length) {
+          const di = dayInfo[dataFilter.column.index - 1];
+          if (di?.isHoliday || di?.isWeekend) {
+            dataFilter.cell.styles.fillColor = rose100;
+            dataFilter.cell.styles.textColor = rose600;
+          } else if (di?.isVigilia) {
+            dataFilter.cell.styles.fillColor = amber50;
+            dataFilter.cell.styles.textColor = amber600;
+          }
+        }
+
+        // Colorazione Reperibilità
+        const cellText = dataFilter.cell.text[0] || "";
+        if (dataFilter.section === "body" && (cellText.includes("REP") || cellText === "RP" || cellText === "RS")) {
           dataFilter.cell.styles.fillColor = emerald100;
           dataFilter.cell.styles.textColor = emerald600;
           dataFilter.cell.styles.fontStyle = "bold";
@@ -432,21 +475,22 @@ export async function generateReperibilitaPDF({
       }
     });
 
-    // 4. Sigillo Digitale Semplificato
+    // 4. Sigillo Digitale
     const pdfOutput = doc.output("arraybuffer");
     const documentHash = await generateHash(pdfOutput);
     
-    // QR Code in alto a destra per il prospetto sintetico
+    // QR Code in basso a destra per evitare sovrapposizioni
     try {
       const verifyUrl = `${window.location.origin}/verify/${documentHash}`;
-      const qrDataUrl = await QRCodeLib.toDataURL(verifyUrl, { margin: 1, width: 60 });
-      doc.addImage(qrDataUrl, "PNG", 268, 12, 18, 18);
+      const qrDataUrl = await QRCodeLib.toDataURL(verifyUrl, { margin: 1, width: 80 });
+      doc.addImage(qrDataUrl, "PNG", 265, 180, 22, 22);
     } catch {}
 
     doc.setFontSize(6);
     doc.setTextColor(150, 150, 150);
-    doc.text(`Identificativo Prospetto: ${documentHash} | Generato il ${new Date().toLocaleString('it-IT')}`, 14, 205);
-    doc.text(`Sentinel Security Suite v2.0`, 283, 205, { align: "right" });
+    doc.text(`Identificativo Prospetto: ${documentHash}`, 14, 202);
+    doc.text(`Generato da Sentinel Security Suite il ${new Date().toLocaleString('it-IT')}`, 14, 205);
+    doc.text(`v2.0 Professional Edition`, 283, 205, { align: "right" });
 
     doc.save(`Prospetto_REP_${monthName.replace(/\s+/g, '_')}_${year}.pdf`);
     return documentHash;
