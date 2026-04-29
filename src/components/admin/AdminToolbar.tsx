@@ -1,13 +1,40 @@
 "use client"
 
-import React, { useState, useRef } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import { 
   UploadCloud, HelpCircle, Trash2, CalendarIcon, Users, ClipboardList, 
   Printer, RefreshCw, Settings, Hash, EyeOff, Eye, Mail, Play, Shield, 
-  Wand2, FileDown, Smartphone, Radio, Car, LayoutGrid, FileText, Megaphone
+  Wand2, FileDown, Smartphone, Radio, Car, LayoutGrid, FileText, Megaphone,
+  ChevronDown, Package, Wrench
 } from "lucide-react"
 import toast from "react-hot-toast"
 import { useRouter } from "next/navigation"
+
+/* ─── DROPDOWN MENU COMPONENT ─── */
+function DropdownMenu({ label, icon: Icon, children, variant = "light" }: { label: string; icon: any; children: React.ReactNode; variant?: "light" | "dark" }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [])
+  const base = variant === "dark"
+    ? "bg-white/10 text-white hover:bg-white/20 border border-white/10"
+    : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"
+  return (
+    <div ref={ref} className="relative">
+      <button onClick={() => setOpen(!open)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-sm ${base}`}>
+        <Icon width={16} height={16} /> {label} <ChevronDown width={12} height={12} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 min-w-[220px] z-[200] animate-in fade-in slide-in-from-top-2 duration-200">
+          <div onClick={() => setOpen(false)} className="flex flex-col gap-1">{children}</div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface AdminToolbarProps {
   currentMonth: number
@@ -240,137 +267,108 @@ export function AdminToolbar({
         )}
       </div>
 
-      {/* SECTION 3: OPERATIONAL TOOLS (The Premium Buttons) */}
+      {/* SECTION 3: OPERATIONAL TOOLS — Reorganized with Dropdowns */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* RESOURCE TOOLS */}
-        <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
-          {canManageUsers && (
-            <button onClick={onShowAnagrafica} className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-800 shadow-sm hover:bg-slate-800 transition-all active:scale-95" title="Gestione Personale e Fascicoli" aria-label="Gestione Personale">
-              <Users width={16} height={16} /> <span className="hidden lg:inline">Gestione Personale</span>
-            </button>
-          )}
-          {canManageShifts && (
-            <button onClick={onShowBulkAbsence} className="flex items-center gap-2 bg-white text-slate-700 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-200 shadow-sm hover:bg-slate-50 transition-all active:scale-95" title="Assenze Multiple" aria-label="Gestione Assenze">
-              <CalendarIcon width={16} height={16} /> <span className="hidden lg:inline">Assenze</span>
-            </button>
-          )}
-          <button onClick={onShowAudit} className="flex items-center gap-2 bg-white text-slate-700 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-200 shadow-sm hover:bg-slate-50 transition-all active:scale-95" title="Log Audit" aria-label="Visualizza Audit Log">
-            <ClipboardList width={16} height={16} /> <span className="hidden lg:inline">Audit</span>
-          </button>
-        </div>
+        <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
 
-        {/* APPROVAL HUB */}
+        {/* PRIMARY ACTIONS — Always Visible */}
+        {canManageUsers && (
+          <button onClick={onShowAnagrafica} className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-slate-800 shadow-sm hover:bg-slate-800 transition-all active:scale-95" title="Gestione Personale">
+            <Users width={16} height={16} /> <span className="hidden lg:inline">Personale</span>
+          </button>
+        )}
+
         {canManageShifts && (
           <button 
             onClick={onShowSwaps} 
-            className={`relative flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-indigo-100 text-indigo-700 rounded-2xl font-black text-[11px] uppercase tracking-widest active:scale-95 transition-all hover:bg-indigo-50 ${pendingSwapsCount + pendingRequestsCount > 0 ? 'ring-2 ring-indigo-400 ring-offset-2' : ''}`}
-            aria-label="Coda Approvazioni Turni"
+            className={`relative flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-indigo-100 text-indigo-700 rounded-xl font-black text-[11px] uppercase tracking-widest active:scale-95 transition-all hover:bg-indigo-50 ${pendingSwapsCount + pendingRequestsCount > 0 ? 'ring-2 ring-indigo-400 ring-offset-2' : ''}`}
           >
-             <RefreshCw width={16} height={16} /> 
-             <span>Coda Approvazioni</span>
-             {pendingSwapsCount + pendingRequestsCount > 0 && (
-               <span className="absolute -top-3 -right-3 w-6 h-6 bg-red-600 text-white flex items-center justify-center rounded-full text-[10px] animate-bounce shadow-lg border-2 border-white">{pendingSwapsCount + pendingRequestsCount}</span>
-             )}
+            <RefreshCw width={16} height={16} /> Approvazioni
+            {pendingSwapsCount + pendingRequestsCount > 0 && (
+              <span className="absolute -top-3 -right-3 w-6 h-6 bg-red-600 text-white flex items-center justify-center rounded-full text-[10px] animate-bounce shadow-lg border-2 border-white">{pendingSwapsCount + pendingRequestsCount}</span>
+            )}
           </button>
         )}
 
-        {/* IMPORT/RESET TOOLS */}
-        {canManageShifts && (
-          <div className="flex bg-slate-100 p-1 rounded-2xl gap-1 items-center">
-            <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
-            
-            {/* Download Template Button */}
-            <button onClick={downloadTemplate} className="flex items-center gap-2 bg-white text-emerald-600 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-emerald-100 shadow-sm hover:bg-emerald-50 transition-all active:scale-95" title="Scarica Modello Excel/CSV per Importazioni" aria-label="Scarica Modello Importazione">
-              <FileDown width={16} height={16} /> <span className="hidden xl:inline">Modello</span>
-            </button>
-            
-            <button onClick={() => triggerImport("base")} className="flex items-center gap-2 bg-white text-blue-600 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-blue-100 shadow-sm hover:bg-blue-50 transition-all active:scale-95" title="Importa Turni da Excel" aria-label="Importa Turni">
-              <UploadCloud width={16} height={16} /> <span className="hidden xl:inline">Import Turni</span>
-            </button>
-            <button onClick={() => triggerImport("rep")} className="flex items-center gap-2 bg-white text-purple-600 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-purple-100 shadow-sm hover:bg-purple-50 transition-all active:scale-95" title="Importa Reperibilità da Excel">
-              <UploadCloud width={16} height={16} /> <span className="hidden xl:inline">Import REP</span>
-            </button>
-            <div className="w-[1px] h-6 bg-slate-200 mx-1"></div>
-            <button disabled={isClearing} onClick={() => onClear("base")} className="text-[10px] font-black text-rose-500 hover:bg-rose-50 px-3 py-2.5 rounded-xl uppercase tracking-tighter disabled:opacity-50" title="Reset Turni" aria-label="Azzera Turni Base">Reset <span className="hidden sm:inline">Turni</span></button>
-            <button disabled={isClearing} onClick={() => onClear("rep")} className="text-[10px] font-black text-rose-500 hover:bg-rose-50 px-3 py-2.5 rounded-xl uppercase tracking-tighter disabled:opacity-50" title="Reset REP" aria-label="Azzera Reperibilità">Reset <span className="hidden sm:inline">REP</span></button>
-          </div>
-        )}
-
-        {/* COMMUNICATION TOOLS (The real power) */}
         {canConfigureSystem && (
-          <div className="flex bg-slate-900 p-1 rounded-2xl gap-1">
-          <button 
-            onClick={onShowBacheca} 
-            className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all active:scale-95 shadow-md shadow-indigo-500/20"
-            title="Gestisci Comunicazioni e Bacheca"
-          >
+          <button onClick={onShowBacheca} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all active:scale-95 shadow-md shadow-indigo-500/20">
             <Megaphone width={16} height={16} /> Bacheca
           </button>
-          <button 
-            disabled={isSendingPec || !isPublished} 
-            onClick={onSendPec} 
-            className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all active:scale-95 disabled:opacity-30"
-            title="Invia PEC con valore di notifica legale"
-          >
-            <Mail width={16} height={16} /> Invia PEC
-          </button>
-          <button 
-            disabled={isSendingAlert} 
-            onClick={onSendAlert} 
-            className="flex items-center gap-2 bg-rose-600 text-white px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-500 transition-all active:scale-95 disabled:opacity-30"
-            title="Chiama tutti i reperibili di oggi via Telegram"
-          >
-            <Radio width={16} height={16} /> Chiama Reperibili
-          </button>
-        </div>
         )}
 
-        {/* AI & SYNC TOOLS */}
         {canManageShifts && (
-          <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
-             <button 
-              disabled={isResolving || isGenerating} 
-              onClick={onGenerateMonth} 
-              className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all active:scale-95 disabled:opacity-50"
-              title="Generazione Automatica Reperibilità Mensile"
-            >
-              <RefreshCw className={isGenerating ? "animate-spin" : ""} width={16} height={16} /> Generatore Auto
-            </button>
-             <button 
-              disabled={isResolving || isGenerating} 
-              onClick={onAIResolve} 
-              className="flex items-center gap-2 bg-white text-fuchsia-700 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-fuchsia-100 shadow-sm hover:bg-fuchsia-50 transition-all active:scale-95 disabled:opacity-50"
-              title="Copertura buchi organico con AI"
-            >
-              <Wand2 width={16} height={16} /> AI Resolver
-            </button>
-            <button 
-              onClick={onShowVerbatel} 
-              className="flex items-center gap-2 bg-white text-orange-600 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest border border-orange-100 shadow-sm hover:bg-orange-50 transition-all active:scale-95"
-            >
-              <RefreshCw width={16} height={16} /> Verbatel Sync
-            </button>
-          </div>
+          <button disabled={isSendingAlert} onClick={onSendAlert} className="flex items-center gap-2 bg-rose-600 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-500 transition-all active:scale-95 disabled:opacity-30">
+            <Radio width={16} height={16} /> <span className="hidden md:inline">Chiama REP</span>
+          </button>
         )}
 
-        {/* EXPORT TOOLS */}
-        <div className="flex bg-slate-900 p-1 rounded-2xl gap-1" role="group" aria-label="Strumenti di Esportazione">
-           <button onClick={onExportPDF} disabled={isExportingPDF} className="flex items-center gap-2 bg-white/10 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-white/20 transition-all active:scale-95" title="PDF Prospetto" aria-label="Esporta PDF Generale">
-              <Printer width={16} height={16} /> <span className="hidden sm:inline">PDF PRO</span>
-           </button>
-           <button onClick={onExportRepPDF} disabled={isExportingPDF} className="flex items-center gap-2 bg-white/10 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-white/20 transition-all active:scale-95" title="PDF Reperibilità" aria-label="Esporta PDF Reperibilità">
-              <Printer width={16} height={16} /> <span className="hidden sm:inline">PDF REP</span>
-           </button>
-           <button onClick={onExportExcel} className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-emerald-500 transition-all active:scale-95" title="Esporta Excel Turni" aria-label="Esporta in Excel">
-              <FileDown width={16} height={16} /> <span className="hidden sm:inline">Excel</span>
-           </button>
-           <button onClick={onExportRepExcel} className="flex items-center gap-2 bg-violet-600 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-violet-500 transition-all active:scale-95" title="Esporta Solo Reperibilità in Excel" aria-label="Esporta Reperibilità in Excel">
-              <FileDown width={16} height={16} /> <span className="hidden sm:inline">Excel REP</span>
-           </button>
-           <button onClick={onExportPayroll} className="flex items-center gap-2 bg-pink-600 text-white px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-pink-500 transition-all active:scale-95" title="Esporta Riepilogo Mensile per Ufficio Paghe (Excel/CSV)" aria-label="Esporta per Paghe">
-              <FileDown width={16} height={16} /> <span className="hidden sm:inline">Export Paghe</span>
-           </button>
-        </div>
+        {/* DROPDOWN: Strumenti */}
+        {canManageShifts && (
+          <DropdownMenu label="Strumenti" icon={Wrench}>
+            <button onClick={onGenerateMonth} disabled={isGenerating} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-[11px] font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-all disabled:opacity-50">
+              <RefreshCw width={14} height={14} className={isGenerating ? "animate-spin" : ""} /> Generatore Automatico
+            </button>
+            <button onClick={onAIResolve} disabled={isResolving} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-[11px] font-bold text-slate-700 hover:bg-fuchsia-50 hover:text-fuchsia-700 transition-all disabled:opacity-50">
+              <Wand2 width={14} height={14} /> AI Resolver
+            </button>
+            <button onClick={onShowVerbatel} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-[11px] font-bold text-slate-700 hover:bg-orange-50 hover:text-orange-700 transition-all">
+              <RefreshCw width={14} height={14} /> Verbatel Sync
+            </button>
+            <div className="h-px bg-slate-100 mx-2 my-1" />
+            <button onClick={onShowBulkAbsence} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-[11px] font-bold text-slate-700 hover:bg-sky-50 hover:text-sky-700 transition-all">
+              <CalendarIcon width={14} height={14} /> Assenze Multiple
+            </button>
+            <button onClick={onShowAudit} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-[11px] font-bold text-slate-700 hover:bg-slate-100 transition-all">
+              <ClipboardList width={14} height={14} /> Audit Log
+            </button>
+            <div className="h-px bg-slate-100 mx-2 my-1" />
+            <button onClick={downloadTemplate} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-[11px] font-bold text-emerald-700 hover:bg-emerald-50 transition-all">
+              <FileDown width={14} height={14} /> Scarica Modello CSV
+            </button>
+            <button onClick={() => triggerImport("base")} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-[11px] font-bold text-blue-700 hover:bg-blue-50 transition-all">
+              <UploadCloud width={14} height={14} /> Import Turni
+            </button>
+            <button onClick={() => triggerImport("rep")} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-[11px] font-bold text-purple-700 hover:bg-purple-50 transition-all">
+              <UploadCloud width={14} height={14} /> Import Reperibilità
+            </button>
+            <div className="h-px bg-slate-100 mx-2 my-1" />
+            <button disabled={isClearing} onClick={() => onClear("base")} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-[11px] font-bold text-rose-600 hover:bg-rose-50 transition-all disabled:opacity-50">
+              <Trash2 width={14} height={14} /> Reset Turni
+            </button>
+            <button disabled={isClearing} onClick={() => onClear("rep")} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-[11px] font-bold text-rose-600 hover:bg-rose-50 transition-all disabled:opacity-50">
+              <Trash2 width={14} height={14} /> Reset Reperibilità
+            </button>
+          </DropdownMenu>
+        )}
+
+        {/* DROPDOWN: Export */}
+        <DropdownMenu label="Export" icon={Package}>
+          <button onClick={onExportPDF} disabled={isExportingPDF} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-[11px] font-bold text-slate-700 hover:bg-slate-100 transition-all disabled:opacity-50">
+            <Printer width={14} height={14} /> PDF Prospetto Generale
+          </button>
+          <button onClick={onExportRepPDF} disabled={isExportingPDF} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-[11px] font-bold text-slate-700 hover:bg-violet-50 hover:text-violet-700 transition-all disabled:opacity-50">
+            <Printer width={14} height={14} /> PDF Reperibilità
+          </button>
+          <div className="h-px bg-slate-100 mx-2 my-1" />
+          <button onClick={onExportExcel} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-[11px] font-bold text-emerald-700 hover:bg-emerald-50 transition-all">
+            <FileDown width={14} height={14} /> Excel Turni
+          </button>
+          <button onClick={onExportRepExcel} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-[11px] font-bold text-violet-700 hover:bg-violet-50 transition-all">
+            <FileDown width={14} height={14} /> Excel Reperibilità
+          </button>
+          <div className="h-px bg-slate-100 mx-2 my-1" />
+          <button onClick={onExportPayroll} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-[11px] font-bold text-pink-700 hover:bg-pink-50 transition-all">
+            <FileDown width={14} height={14} /> Export Paghe
+          </button>
+          {canConfigureSystem && (
+            <>
+              <div className="h-px bg-slate-100 mx-2 my-1" />
+              <button disabled={isSendingPec || !isPublished} onClick={onSendPec} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-[11px] font-bold text-blue-700 hover:bg-blue-50 transition-all disabled:opacity-30">
+                <Mail width={14} height={14} /> Invia PEC
+              </button>
+            </>
+          )}
+        </DropdownMenu>
 
         {/* SYSTEM TOOLS */}
         <div className="flex items-center gap-2 ml-auto">
