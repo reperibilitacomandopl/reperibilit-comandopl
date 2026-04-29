@@ -28,11 +28,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ userId: 
     const tenantId = user.tenantId;
 
     // All REP shifts for this user, scoped by tenant
+    // Tutte le reperibilità dell'utente (sia da repType che da type)
     const shifts = await prisma.shift.findMany({
       where: {
         userId,
         tenantId: tenantId || null,
-        repType: { not: null }
+        OR: [
+          { repType: { contains: 'REP', mode: 'insensitive' } },
+          { repType: { in: ['RP', 'RS'] } },
+          { type: { contains: 'REP', mode: 'insensitive' } }
+        ]
       }
     })
 

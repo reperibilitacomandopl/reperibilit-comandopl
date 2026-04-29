@@ -59,8 +59,8 @@ export default function AgentSyncModal({ userId, onClose }: AgentSyncModalProps)
           >
             <div className="p-3 bg-slate-100 rounded-xl shrink-0"><Globe size={24} className="text-slate-700" /></div>
             <div>
-              <p className="font-bold text-sm text-slate-800">Google Calendar</p>
-              <p className="text-xs text-slate-500">Apre Google Calendar e aggiunge l&apos;abbonamento. Tutti gli eventi REP appariranno automaticamente.</p>
+              <p className="font-bold text-sm text-slate-800">Google Calendar / Android</p>
+              <p className="text-xs text-slate-500">Sincronizza con Google. Riceverai una notifica sul tuo smartphone 1 ora prima di ogni turno di reperibilità.</p>
             </div>
           </button>
 

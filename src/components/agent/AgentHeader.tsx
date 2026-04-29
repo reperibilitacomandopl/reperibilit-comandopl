@@ -312,9 +312,9 @@ export default function AgentHeader({
                 <button 
                   onClick={() => setShowSyncModal(true)}
                   className="flex-1 flex items-center justify-center gap-3 bg-white text-[#0f172a] py-5 rounded-[2rem] font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 shadow-2xl"
-                  aria-label="Installa PWA"
+                  aria-label="Sincronizza Calendario"
                 >
-                  <CalendarDays size={18} className="text-blue-600" /> PWA
+                  <CalendarDays size={18} className="text-blue-600" /> Sincronizza
                 </button>
               </div>
             </div>
