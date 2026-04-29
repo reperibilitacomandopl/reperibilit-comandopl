@@ -68,7 +68,8 @@ export default function OdsDailyEditor() {
         setVehicles(dataVehs.vehicles)
         cacheDataset('ods-vehicles', dataVehs.vehicles)
       }
-    } catch { 
+    } catch (err) { 
+      console.error("[ODS EDITOR] Error loading data:", err)
       // Fallback offline
       const [cShifts, cCats, cVehs] = await Promise.all([
         getCachedDataset(`ods-shifts-${date}`),
@@ -80,8 +81,9 @@ export default function OdsDailyEditor() {
       if (cVehs) setVehicles(cVehs)
       
       toast.error("Offline: Caricamento dati dalla cache locale")
+    } finally {
+      if (!silent) setLoading(false)
     }
-    if (!silent) setLoading(false)
   }, [date])
 
   useEffect(() => { 
@@ -92,6 +94,7 @@ export default function OdsDailyEditor() {
   const autoGenerate = async () => {
     if (!confirm("Verranno applicate le automazioni e sovrascritte le assegnazioni non salvate per questa data. Procedere?")) return
     setLoading(true)
+    console.log("[ODS EDITOR] Starting auto-generation for date:", date)
     try {
       const res = await fetch("/api/admin/ods/generate", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -100,13 +103,14 @@ export default function OdsDailyEditor() {
       const data = await res.json()
       if (res.ok) {
         toast.success(`Magia applicata! ${data.count} turni assegnati in automatico.`)
-        loadData()
+        await loadData(true) // Aggiorna silenziosamente
       } else {
         toast.error(data.error || "Errore durante l'autocompilazione")
-        setLoading(false)
       }
-    } catch {
-      toast.error("Impossibile autocompilare in modalità offline.")
+    } catch (err) {
+      console.error("[ODS EDITOR] Auto-generate error:", err)
+      toast.error("Impossibile autocompilare. Verificare la connessione.")
+    } finally {
       setLoading(false)
     }
   }
