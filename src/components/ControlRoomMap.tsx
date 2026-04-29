@@ -318,8 +318,12 @@ export default function ControlRoomMap() {
         </div>
         <div className="overflow-y-auto custom-scrollbar p-2 space-y-1">
           {agents.length === 0 ? (
-            <div className="py-10 text-center">
-              <p className="text-[10px] font-bold text-slate-500 uppercase">Nessun agente attivo</p>
+            <div className="py-8 text-center px-4">
+              <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <MapPin size={20} className="text-slate-400" />
+              </div>
+              <p className="text-[11px] font-black text-slate-600 uppercase tracking-tight">Nessun agente in rete</p>
+              <p className="text-[9px] text-slate-400 font-semibold mt-1">Le posizioni si aggiornano quando gli agenti timbrano il servizio</p>
             </div>
           ) : (
             agents.map(agent => (

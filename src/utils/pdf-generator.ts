@@ -90,7 +90,8 @@ export async function generatePlanningPDF({
   shifts,
   dayInfo,
   tenantName = "Comando Polizia Locale",
-  logoUrl
+  logoUrl,
+  isPublished = true
 }: {
   monthName: string,
   month: number,
@@ -99,7 +100,8 @@ export async function generatePlanningPDF({
   shifts: Shift[],
   dayInfo: DayInfo[],
   tenantName?: string,
-  logoUrl?: string | null
+  logoUrl?: string | null,
+  isPublished?: boolean
 }) {
   try {
     console.log("[PDF] Avvio generazione professionale...");
@@ -154,6 +156,29 @@ export async function generatePlanningPDF({
     doc.setLineWidth(0.8);
     doc.setDrawColor(navelBlue[0], navelBlue[1], navelBlue[2]);
     doc.line(14, 28, 283, 28);
+
+    // Watermark BOZZA se non pubblicato
+    if (!isPublished) {
+      const addWatermark = (d: jsPDFWithAutoTable) => {
+        d.setFontSize(90);
+        d.setTextColor(220, 38, 38);
+        d.setFont("helvetica", "bold");
+        const pageW = d.internal.pageSize.getWidth();
+        const pageH = d.internal.pageSize.getHeight();
+        // Simulate opacity with very light color
+        d.setTextColor(253, 226, 226); // Very light red
+        d.text("BOZZA", pageW / 2, pageH / 2, { align: "center", angle: 35 });
+        // Reset colors
+        d.setTextColor(0, 0, 0);
+      };
+      addWatermark(doc);
+      const origAddPage = doc.addPage.bind(doc);
+      doc.addPage = (...args: any[]) => {
+        const result = origAddPage(...args);
+        addWatermark(doc);
+        return result;
+      };
+    }
 
     // 2. Preparazione Dati
     const headers = ["Agente", ...dayInfo.map(d => d.day.toString()), "TOT"];
