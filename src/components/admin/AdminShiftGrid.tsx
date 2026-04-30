@@ -243,8 +243,13 @@ export default function AdminShiftGrid({
         const dateIso = new Date(Date.UTC(currentYear, currentMonth - 1, dayNum)).toISOString().split('T')[0]
         
         const existing = shifts.find(s => {
-          const sDate = new Date(s.date).toISOString().split('T')[0]
-          return s.userId === aId && sDate === dateIso
+          if (!s || !s.date) return false
+          try {
+            const sDate = new Date(s.date).toISOString().split('T')[0]
+            return s.userId === aId && sDate === dateIso
+          } catch {
+            return false
+          }
         })
         return { userId: aId, date: dateIso, type: existing?.type || "", dayNum }
       })

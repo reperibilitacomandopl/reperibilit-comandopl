@@ -135,12 +135,12 @@ export async function PUT(request: Request) {
     // BATCH 1: Bulk INSERT new shifts (single query)
     if (toInsert.length > 0) {
       const insertValues = toInsert.map(op =>
-        Prisma.sql`(gen_random_uuid(), ${op.userId}, ${op.date + "T00:00:00.000Z"}::timestamp, ${op.type}, ${op.timeRange})`
+        Prisma.sql`(gen_random_uuid(), ${session.user.tenantId}, ${op.userId}, ${op.date + "T00:00:00.000Z"}::timestamp, ${op.type}, ${op.timeRange})`
       )
       await prisma.$executeRaw`
-        INSERT INTO "Shift" ("id", "userId", "date", "type", "timeRange")
+        INSERT INTO "Shift" ("id", "tenantId", "userId", "date", "type", "timeRange")
         VALUES ${Prisma.join(insertValues)}
-        ON CONFLICT ("userId", "date") DO UPDATE SET 
+        ON CONFLICT ("userId", "date", "tenantId") DO UPDATE SET 
           "type" = EXCLUDED."type",
           "timeRange" = EXCLUDED."timeRange"
       `
