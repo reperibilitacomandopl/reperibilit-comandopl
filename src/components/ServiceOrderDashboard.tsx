@@ -295,16 +295,32 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
              )}
              
              {/* Categorie Agenti */}
-             {Object.entries(gruppiAgenti).map(([catName, servs]) => (
-               <React.Fragment key={catName}>
-                 <tr>
-                   <td colSpan={4} className="bg-purple-100/50 py-1 text-center font-bold text-purple-900 text-[11px] border-b border-slate-200 border-t border-slate-300">
-                     {catName}
-                   </td>
-                 </tr>
-                 {servs.map((s) => renderRigaTabella(s))}
-               </React.Fragment>
-             ))}
+             {Object.entries(gruppiAgenti).map(([catName, servs]) => {
+               // Ordiniamo gli agenti per mantenere vicini i membri della stessa pattuglia
+               const sortedServs = [...servs].sort((a, b) => {
+                 const gA = a.patrolGroupId || "";
+                 const gB = b.patrolGroupId || "";
+                 if (gA !== gB) {
+                   if (gA === "") return 1; // Chi non ha pattuglia va dopo
+                   if (gB === "") return -1;
+                   return gA.localeCompare(gB);
+                 }
+                 const nameA = users.find(u => u.id === a.userId)?.name || "";
+                 const nameB = users.find(u => u.id === b.userId)?.name || "";
+                 return nameA.localeCompare(nameB);
+               });
+
+               return (
+                 <React.Fragment key={catName}>
+                   <tr>
+                     <td colSpan={4} className="bg-purple-100/50 py-1 text-center font-bold text-purple-900 text-[11px] border-b border-slate-200 border-t border-slate-300">
+                       {catName}
+                     </td>
+                   </tr>
+                   {sortedServs.map((s) => renderRigaTabella(s))}
+                 </React.Fragment>
+               );
+             })}
            </tbody>
         </table>
       </div>

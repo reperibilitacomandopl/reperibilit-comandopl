@@ -152,8 +152,21 @@ export default function OdsDailyEditor() {
     }
   }
 
-  const updateShift = (id: string, field: string, value: string | number | boolean | null) => {
-    setShifts(prev => prev.map(s => s.id === id ? { ...s, [field]: value === "" ? null : value } : s))
+  const updateShift = (id: string, field: string, value: any) => {
+    setShifts(prev => {
+      const target = prev.find(s => s.id === id);
+      if (!target) return prev;
+      
+      const finalValue = value === "" ? null : value;
+      let next = prev.map(s => s.id === id ? { ...s, [field]: finalValue } : s);
+      
+      // LOGICA SINCRONIZZAZIONE VEICOLI PATTUGLIA
+      if (field === "vehicleId" && target.patrolGroupId) {
+        next = next.map(s => (s.patrolGroupId === target.patrolGroupId && s.id !== id) ? { ...s, vehicleId: finalValue } : s);
+      }
+      
+      return next;
+    });
   }
 
   const togglePatrolSelection = (id: string) => {

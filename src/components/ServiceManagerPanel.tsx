@@ -214,71 +214,89 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
     const finalWeaponId = weaponId === undefined ? existingObj?.weaponId : weaponId;
     const finalArmorId = armorId === undefined ? existingObj?.armorId : armorId;
 
+    // --- LOGICA SINCRONIZZAZIONE PATTUGLIA ---
+    const patrolGroupId = existingObj?.patrolGroupId;
+    const affectedUserIds = [userId];
+    const updates: any[] = [{
+      id: existingObj?.id, 
+      userId: userId,
+      date: dateStr,
+      type: targetTypeString,
+      serviceCategoryId: categoryId,
+      serviceTypeId: typeId,
+      vehicleId: finalVehicleId,
+      radioId: finalRadioId,
+      weaponId: finalWeaponId,
+      armorId: finalArmorId,
+      timeRange,
+      serviceDetails
+    }];
+
+    // Se c'è una pattuglia e stiamo assegnando un VEICOLO, sincronizziamo il partner
+    if (patrolGroupId && finalVehicleId !== undefined) {
+      const partners = shifts.filter(s => s.patrolGroupId === patrolGroupId && s.userId !== userId);
+      partners.forEach(p => {
+        affectedUserIds.push(p.userId);
+        updates.push({
+          id: p.id,
+          userId: p.userId,
+          date: dateStr,
+          type: p.type,
+          serviceCategoryId: p.serviceCategoryId || categoryId,
+          serviceTypeId: p.serviceTypeId || typeId,
+          vehicleId: finalVehicleId,
+          radioId: p.radioId || finalRadioId,
+          weaponId: p.weaponId || finalWeaponId,
+          armorId: p.armorId || finalArmorId,
+          timeRange: p.timeRange || timeRange,
+          serviceDetails: p.serviceDetails || serviceDetails
+        });
+      });
+    }
+
     // Optimistic UI Update
     const oldShifts = [...shifts]
     setShifts(prev => {
-      const exists = prev.find(s => s.userId === userId)
-      if (exists) {
-        return prev.map(s => s.userId === userId ? {
-          ...s,
-          type: targetTypeString,
-          serviceCategoryId: categoryId,
-          serviceTypeId: typeId,
-          vehicleId: finalVehicleId,
-          radioId: finalRadioId,
-          weaponId: finalWeaponId,
-          armorId: finalArmorId,
-          timeRange,
-          serviceDetails
-        } : s)
-      } else {
-        // If it's a new shift, we add a temporary one
-        return [...prev, {
-          id: `temp_${Date.now()}`,
-          userId,
-          type: targetTypeString,
-          serviceCategoryId: categoryId,
-          serviceTypeId: typeId,
-          vehicleId: finalVehicleId,
-          radioId: finalRadioId,
-          weaponId: finalWeaponId,
-          armorId: finalArmorId,
-          timeRange,
-          serviceDetails
-        }]
-      }
-    })
+      let next = [...prev];
+      updates.forEach(upd => {
+        const exists = next.find(s => s.userId === upd.userId);
+        if (exists) {
+          next = next.map(s => s.userId === upd.userId ? { ...s, ...upd } : s);
+        } else {
+          // Creiamo un nuovo oggetto senza l'id (che è undefined) e poi mettiamo l'id temporaneo
+          const { id: _, ...updWithoutId } = upd;
+          next.push({ id: `temp_${Date.now()}_${upd.userId}`, ...updWithoutId } as any);
+        }
+      });
+      return next;
+    });
 
     try {
       saveStateForUndo()
-      const res = await fetch("/api/admin/shifts/daily", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          date: dateStr,
-          type: targetTypeString,
-          serviceCategoryId: categoryId,
-          serviceTypeId: typeId,
-          vehicleId: finalVehicleId,
-          radioId: finalRadioId,
-          weaponId: finalWeaponId,
-          armorId: finalArmorId,
-          timeRange: timeRange,
-          serviceDetails: serviceDetails
+      
+      // Se abbiamo più di un aggiornamento (pattuglia), usiamo l'API bulk /api/admin/ods/daily
+      // Altrimenti usiamo quella singola che gestisce meglio la creazione di nuovi shift
+      if (updates.length > 1) {
+        const res = await fetch("/api/admin/ods/daily", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ updates })
+        });
+        if (!res.ok) throw new Error("Errore sincronizzazione pattuglia");
+      } else {
+        const res = await fetch("/api/admin/shifts/daily", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updates[0])
         })
-      })
-      
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || "Errore salvataggio")
+        if (!res.ok) {
+          const err = await res.json()
+          throw new Error(err.error || "Errore salvataggio")
+        }
       }
       
-      // Update with the actual shift from server (includes the real ID)
-      const data = await res.json()
-      if (data.shift) {
-        setShifts(prev => prev.map(s => s.userId === userId ? data.shift : s))
-      }
+      // Ricarichiamo silenziosamente per avere gli ID reali
+      loadData(true)
       
     } catch (e: any) {
       console.error(e)

@@ -619,10 +619,25 @@ async function drawODSPageContent({
   const isWorkingShift = (type: string) => /^[MPN]\d/.test((type || "").toUpperCase().replace(/[()]/g, "").trim());
   const currentShifts = shifts.filter(s => isWorkingShift(s.type));
   
-  const sortedShifts = [...currentShifts].sort((a,b) => {
-    if (a.type !== b.type) return a.type.localeCompare(b.type);
-    if (a.patrolGroupId && b.patrolGroupId) return a.patrolGroupId.localeCompare(b.patrolGroupId);
-    return (a.patrolGroupId ? -1 : 1);
+  const sortedShifts = [...currentShifts].sort((a, b) => {
+    // 1. Ordina per macro-turno (M, P, N)
+    const tA = a.type.charAt(0).toUpperCase();
+    const tB = b.type.charAt(0).toUpperCase();
+    if (tA !== tB) return tA.localeCompare(tB);
+
+    // 2. Mantieni vicini i membri della stessa pattuglia
+    const gA = a.patrolGroupId || "";
+    const gB = b.patrolGroupId || "";
+    if (gA !== gB) {
+      if (gA === "") return 1; 
+      if (gB === "") return -1;
+      return gA.localeCompare(gB);
+    }
+
+    // 3. Ordine alfabetico per nome utente
+    const nameA = users.find(u => u.id === a.userId)?.name || "";
+    const nameB = users.find(u => u.id === b.userId)?.name || "";
+    return nameA.localeCompare(nameB);
   });
 
   type ODSBodyRow = jsPDFCellConfig[] & { isPatrol?: boolean };
