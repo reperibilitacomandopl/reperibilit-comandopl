@@ -238,8 +238,9 @@ export default function AdminShiftGrid({
     try {
       // 1. Preparazione Undo (Valori Precedenti)
       const previousStates = Array.from(selectedCells).map(cellKey => {
-        const [aId, dStr] = cellKey.split('-')
-        const dayNum = parseInt(dStr, 10)
+        const sepIdx = cellKey.lastIndexOf('|')
+        const aId = cellKey.substring(0, sepIdx)
+        const dayNum = parseInt(cellKey.substring(sepIdx + 1), 10)
         const dateIso = new Date(Date.UTC(currentYear, currentMonth - 1, dayNum)).toISOString().split('T')[0]
         
         const existing = shifts.find(s => {
@@ -297,7 +298,7 @@ export default function AdminShiftGrid({
   /* ─── DRAG TO SELECT LOGIC ─── */
   const handleMouseDown = (agentId: string, agentIndex: number, day: number, rType: string, sType: string) => {
     if (readOnly) return
-    const cellKey = `${agentId}-${day}`
+    const cellKey = `${agentId}|${day}`
     
     // Se clicchiamo su una cella che fa già parte di una selezione multipla, 
     // NON resettiamo la selezione, ma apriamo l'editor bulk al mouseUp o se clicchiamo di nuovo.
@@ -321,7 +322,7 @@ export default function AdminShiftGrid({
 
       for (let i = minAgentIdx; i <= maxAgentIdx; i++) {
         for (let d = minDay; d <= maxDay; d++) {
-          newSelected.add(`${agents[i].id}-${d}`)
+          newSelected.add(`${agents[i].id}|${d}`)
         }
       }
       setSelectedCells(newSelected)
@@ -550,7 +551,7 @@ export default function AdminShiftGrid({
                   const style = getCellStyle(sType, rType, di.isWeekend)
                   const hasRep = rType.toLowerCase().includes("rep")
                   const baseShift = hasRep && sType && !sType.includes("REP") && sType !== "RP" ? sType : ""
-                  const isSelected = selectedCells.has(`${agent.id}-${di.day}`)
+                  const isSelected = selectedCells.has(`${agent.id}|${di.day}`)
 
                     return (
                       <td key={di.isNextMonth ? `next-${di.day}` : `day-${agent.id}-${di.day}`}
