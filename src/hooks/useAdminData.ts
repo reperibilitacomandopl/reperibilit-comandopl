@@ -343,32 +343,67 @@ export function useAdminData(
 
   const handleBulkShiftEdit = async (updates: { userId: string, date: string, type: string, hours?: number }[]) => {
     setIsSavingCell(true)
-    try {
-      const res = await fetch('/api/admin/shifts/monthly', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ updates })
-      })
-      if (!res.ok) throw new Error()
-      
-      // Aggiornamento ottimistico locale
-      setShifts(prev => {
-        const next = [...prev]
-        updates.forEach(u => {
-          const idx = next.findIndex(s => {
-            const sDate = (typeof s.date === 'string' ? s.date : new Date(s.date).toISOString()).split('T')[0];
-            return s.userId === u.userId && sDate === u.date;
-          })
-          if (idx !== -1) {
-            if (u.type.toLowerCase().includes("rep")) next[idx] = { ...next[idx], repType: u.type }
-            else next[idx] = { ...next[idx], type: u.type, repType: null }
-          }
-        })
-        return next
-      })
+    let successCount = 0
+    let failCount = 0
 
-      toast.success(`${updates.length} turni aggiornati`)
-      router.refresh()
+    try {
+      // Eseguiamo le chiamate in sequenza usando la stessa API
+      // collaudata del salvataggio singolo, che gestisce correttamente
+      // upsert, normalizzazione, REP vs turno base, e tenantId.
+      for (const u of updates) {
+        try {
+          // Costruiamo la data ISO completa come fa handleSaveCellEdit
+          const dateIso = u.date.includes('T') ? u.date : u.date + "T00:00:00.000Z"
+
+          const res = await fetch('/api/admin/edit-shift', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: u.userId,
+              date: dateIso,
+              type: u.type
+            })
+          })
+          if (res.ok) successCount++
+          else failCount++
+        } catch {
+          failCount++
+        }
+      }
+
+      if (failCount > 0) {
+        toast.error(`${failCount} turni non salvati`)
+      }
+      if (successCount > 0) {
+        // Aggiornamento ottimistico locale
+        setShifts(prev => {
+          const next = [...prev]
+          const isRep = (t: string) => t.toLowerCase().includes("rep")
+          updates.forEach(u => {
+            const dateIso = u.date.includes('T') ? u.date : u.date + "T00:00:00.000Z"
+            const idx = next.findIndex(s => {
+              const sIso = (typeof s.date === 'string' ? s.date : new Date(s.date).toISOString())
+              return s.userId === u.userId && sIso.split('T')[0] === u.date.split('T')[0]
+            })
+            if (idx !== -1) {
+              if (isRep(u.type)) next[idx] = { ...next[idx], repType: u.type }
+              else next[idx] = { ...next[idx], type: u.type.toUpperCase(), repType: null }
+            } else {
+              next.push({
+                id: `temp-${Date.now()}-${Math.random()}`,
+                userId: u.userId,
+                date: dateIso,
+                type: isRep(u.type) ? "" : u.type.toUpperCase(),
+                repType: isRep(u.type) ? u.type : null
+              })
+            }
+          })
+          return next
+        })
+
+        toast.success(`${successCount} turni aggiornati`)
+        router.refresh()
+      }
     } catch {
       toast.error("Errore nel salvataggio multiplo")
     } finally {
