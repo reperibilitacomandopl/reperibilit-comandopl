@@ -3,25 +3,30 @@
 import { useState, useEffect } from "react"
 import { Clock, Calendar, LogIn, LogOut, CheckCircle2, ChevronRight, Activity, CalendarDays } from "lucide-react"
 
-export default function PersonalClockHistory() {
-  const [records, setRecords] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetch("/api/agent/clock-records?limit=30")
-      .then(res => res.json())
-      .then(data => {
-        if (data.records) setRecords(data.records)
-      })
-      .finally(() => setLoading(false))
-  }, [])
-
+export default function PersonalClockHistory({ 
+  onViewHistory, 
+  records = [], 
+  loading = false 
+}: { 
+  onViewHistory?: () => void,
+  records?: any[],
+  loading?: boolean
+}) {
   const groupedByDay = records.reduce((acc: any, r: any) => {
     const d = new Date(r.timestamp).toLocaleDateString('it-IT')
     if (!acc[d]) acc[d] = []
     acc[d].push(r)
     return acc
   }, {})
+
+  // Prendi solo gli ultimi 2 giorni che hanno record
+  const last2Days = Object.keys(groupedByDay)
+    .sort((a, b) => {
+      const [da, ma, ya] = a.split('/').map(Number)
+      const [db, mb, yb] = b.split('/').map(Number)
+      return new Date(yb, mb - 1, db).getTime() - new Date(ya, ma - 1, da).getTime()
+    })
+    .slice(0, 2)
 
   return (
     <div className="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden">
@@ -31,10 +36,20 @@ export default function PersonalClockHistory() {
             <Clock size={24} className="text-purple-600" />
           </div>
           <div>
-            <h3 className="font-black text-xl text-slate-900">Il Mio Cartellino</h3>
-            <p className="text-xs text-slate-500 font-medium tracking-tight">Storico timbrature recenti (ultimi 30 eventi)</p>
+            <h3 className="font-black text-xl text-slate-900">Ultime Timbrature</h3>
+            <p className="text-xs text-slate-500 font-medium tracking-tight">Attività degli ultimi 2 giorni</p>
           </div>
         </div>
+
+        {onViewHistory && (
+          <button 
+            onClick={onViewHistory}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm"
+          >
+            <CalendarDays size={14} className="text-purple-500" />
+            Storico Completo
+          </button>
+        )}
       </div>
 
       <div className="p-4 sm:p-6 bg-slate-50/30">
@@ -53,7 +68,7 @@ export default function PersonalClockHistory() {
           </div>
         ) : (
           <div className="space-y-4">
-            {Object.keys(groupedByDay).map(date => {
+            {last2Days.map(date => {
               const dayRecords = groupedByDay[date]
               return (
                 <div key={date} className="bg-white rounded-3xl border border-slate-100 shadow-sm p-4 sm:p-5">

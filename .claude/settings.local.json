@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/casad/.gemini/antigravity/scratch/**)",
+      "Bash(cp -r \"reperibilit-comandopl\" \"reperibilit-copia-dev\")"
+    ]
+  }
+}

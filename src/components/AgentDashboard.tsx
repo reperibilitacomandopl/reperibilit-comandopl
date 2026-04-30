@@ -29,6 +29,7 @@ import OfficerDutyPanel from "./agent/OfficerDutyPanel"
 import NextShiftCard from "./agent/NextShiftCard"
 import PersonalBalances from "./agent/PersonalBalances"
 import PersonalClockHistory from "./agent/PersonalClockHistory"
+import ClockHistoryModal from "./agent/ClockHistoryModal"
 import AgentCalendarView from "./agent/AgentCalendarView"
 import AgentYearlyCard from "./agent/AgentYearlyCard"
 import { useGpsTracking } from "@/hooks/useGpsTracking"
@@ -112,6 +113,7 @@ export default function AgentDashboard({
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'yearly'>('calendar')
   const [selectedShiftForSwap, setSelectedShiftForSwap] = useState<DashboardShift | null>(null)
   const [agendaDate, setAgendaDate] = useState('')
+  const [showClockHistory, setShowClockHistory] = useState(false)
 
   // Date Helpers
   const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
@@ -234,7 +236,11 @@ export default function AgentDashboard({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         <PersonalBalances />
-        <PersonalClockHistory />
+        <PersonalClockHistory 
+          onViewHistory={() => setShowClockHistory(true)} 
+          records={admin.clockRecords}
+          loading={admin.clockLoading}
+        />
       </div>
 
       {/* NEXT SHIFT PROACTIVE WIDGET */}
@@ -557,6 +563,13 @@ export default function AgentDashboard({
         <AgentSosModal 
           onClose={() => setShowSosModal(false)}
           onSendSos={admin.handleSendFullSos}
+        />
+      )}
+
+      {showClockHistory && (
+        <ClockHistoryModal 
+          onClose={() => setShowClockHistory(false)}
+          records={admin.clockRecords}
         />
       )}
     </div>

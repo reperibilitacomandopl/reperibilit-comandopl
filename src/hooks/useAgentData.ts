@@ -36,6 +36,7 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts }:
   const [myOds, setMyOds] = useState<OdsData | null>(null)
   const [isClockedIn, setIsClockedIn] = useState<'IN' | 'OUT' | null>(null)
   const [lastClockTime, setLastClockTime] = useState<string | null>(null)
+  const [clockRecords, setClockRecords] = useState<any[]>([])
   
   // UI State (for hooks/actions)
   const [clockLoading, setClockLoading] = useState(false)
@@ -98,16 +99,21 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts }:
     }
   }, [currentMonth, currentYear])
 
-  const fetchClockStatus = useCallback(async () => {
+  const fetchClockRecords = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/clock-in')
+      const res = await fetch('/api/agent/clock-records?limit=100')
       const data = await res.json()
-      if (data.records && data.records.length > 0) {
-        const last = data.records[0]
-        const today = new Date().toDateString()
-        if (new Date(last.timestamp).toDateString() === today) {
-          setIsClockedIn(last.type)
-          setLastClockTime(new Date(last.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+      if (data.records) {
+        setClockRecords(data.records)
+        if (data.records.length > 0) {
+          const last = data.records[0]
+          const today = new Date().toDateString()
+          if (new Date(last.timestamp).toDateString() === today) {
+            setIsClockedIn(last.type)
+            setLastClockTime(new Date(last.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+          } else {
+            setIsClockedIn('OUT')
+          }
         }
       }
     } catch { /* silent */ }
@@ -135,7 +141,7 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts }:
     fetchDutyTeam()
     fetchSwaps()
     fetchBalances()
-    fetchClockStatus()
+    fetchClockRecords()
     fetchOds()
     fetchAgenda()
 
@@ -145,7 +151,7 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts }:
     }
     window.addEventListener('online', handleOnline)
     return () => window.removeEventListener('online', handleOnline)
-  }, [currentMonth, currentYear, fetchDutyTeam, fetchSwaps, fetchBalances, fetchClockStatus, fetchOds, fetchAgenda])
+  }, [currentMonth, currentYear, fetchDutyTeam, fetchSwaps, fetchBalances, fetchClockRecords, fetchOds, fetchAgenda])
 
   const handleClockAction = async (type: 'IN' | 'OUT') => {
     if (!navigator.geolocation) {
@@ -345,6 +351,7 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts }:
     myOds,
     isClockedIn,
     lastClockTime,
+    clockRecords,
     clockLoading,
     swapLoading,
     agendaSaving,
@@ -359,7 +366,8 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts }:
     handleSendFullSos,
     fetchSwaps,
     fetchBalances,
-    fetchAgenda
+    fetchAgenda,
+    fetchClockRecords
   }
 }
 
