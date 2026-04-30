@@ -216,14 +216,23 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
 
     // --- LOGICA SINCRONIZZAZIONE PATTUGLIA ---
     const patrolGroupId = existingObj?.patrolGroupId;
+    const isSyncTrigger = patrolGroupId && (
+      vehicleId !== undefined || 
+      radioId !== undefined || 
+      weaponId !== undefined || 
+      armorId !== undefined ||
+      typeId !== undefined ||
+      categoryId !== undefined
+    );
+
     const affectedUserIds = [userId];
     const updates: any[] = [{
       id: existingObj?.id, 
       userId: userId,
       date: dateStr,
       type: targetTypeString,
-      serviceCategoryId: categoryId,
-      serviceTypeId: typeId,
+      serviceCategoryId: categoryId === undefined ? existingObj?.serviceCategoryId : categoryId,
+      serviceTypeId: typeId === undefined ? existingObj?.serviceTypeId : typeId,
       vehicleId: finalVehicleId,
       radioId: finalRadioId,
       weaponId: finalWeaponId,
@@ -232,8 +241,8 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
       serviceDetails
     }];
 
-    // Se c'è una pattuglia e stiamo assegnando un VEICOLO, sincronizziamo il partner
-    if (patrolGroupId && finalVehicleId !== undefined) {
+    // Se c'è una pattuglia e stiamo assegnando dotazioni o servizi, sincronizziamo il partner
+    if (isSyncTrigger) {
       const partners = shifts.filter(s => s.patrolGroupId === patrolGroupId && s.userId !== userId);
       partners.forEach(p => {
         affectedUserIds.push(p.userId);
@@ -242,12 +251,12 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
           userId: p.userId,
           date: dateStr,
           type: p.type,
-          serviceCategoryId: p.serviceCategoryId || categoryId,
-          serviceTypeId: p.serviceTypeId || typeId,
-          vehicleId: finalVehicleId,
-          radioId: p.radioId || finalRadioId,
-          weaponId: p.weaponId || finalWeaponId,
-          armorId: p.armorId || finalArmorId,
+          serviceCategoryId: categoryId === undefined ? p.serviceCategoryId : categoryId,
+          serviceTypeId: typeId === undefined ? p.serviceTypeId : typeId,
+          vehicleId: vehicleId === undefined ? p.vehicleId : vehicleId,
+          radioId: radioId === undefined ? p.radioId : radioId,
+          weaponId: weaponId === undefined ? p.weaponId : weaponId,
+          armorId: armorId === undefined ? p.armorId : armorId,
           timeRange: p.timeRange || timeRange,
           serviceDetails: p.serviceDetails || serviceDetails
         });

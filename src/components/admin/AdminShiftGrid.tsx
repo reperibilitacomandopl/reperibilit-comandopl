@@ -137,6 +137,8 @@ export default function AdminShiftGrid({
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState<{ agentIndex: number, day: number } | null>(null)
   const [isSavingBulk, setIsSavingBulk] = useState(false)
+  const [filterText, setFilterText] = useState("")
+  const [selectedSquad, setSelectedSquad] = useState("")
 
   // Disabilita drag di default quando si muove il mouse per evitare glitch
   React.useEffect(() => {
@@ -144,6 +146,58 @@ export default function AdminShiftGrid({
     window.addEventListener("mouseup", onMouseUp)
     return () => window.removeEventListener("mouseup", onMouseUp)
   }, [])
+
+  /* ─── FILTRAGGIO AGENTI ─── */
+  const squads = useMemo(() => {
+    const s = new Set<string>()
+    agents.forEach(a => { if (a.squadra) s.add(a.squadra) })
+    return Array.from(s).sort()
+  }, [agents])
+
+  const filteredAgents = useMemo(() => {
+    let result = [...agents]
+    if (filterText) {
+      const q = filterText.toLowerCase()
+      result = result.filter(a => 
+        a.name.toLowerCase().includes(q) || 
+        (a.qualifica && a.qualifica.toLowerCase().includes(q))
+      )
+    }
+    if (selectedSquad) {
+      result = result.filter(a => a.squadra === selectedSquad)
+    }
+    return result
+  }, [agents, filterText, selectedSquad])
+
+  const massimaliWarnings = useMemo(() => {
+    if (!editingCell || !editingCell.isBulk || !editValue.toLowerCase().includes("rep")) return []
+    
+    const warnings: string[] = []
+    const affectedAgents = new Set<string>()
+    selectedCells.forEach(key => {
+      const sepIdx = key.lastIndexOf('|')
+      affectedAgents.add(key.substring(0, sepIdx))
+    })
+
+    affectedAgents.forEach(aId => {
+      const agent = agents.find(a => a.id === aId)
+      if (!agent) return
+
+      // Calcola quanti nuovi giorni di REP stiamo aggiungendo
+      const newDaysCount = Array.from(selectedCells)
+        .filter(key => key.startsWith(aId + '|'))
+        .length
+
+      // Quanti ne ha già (escludendo quelli che stiamo sovrascrivendo se erano già REP)
+      const currentRepCount = agent.repTotal || 0
+      // Nota: questa è una stima semplice, per precisione dovremmo sottrarre i giorni sovrascritti
+      
+      if (currentRepCount + newDaysCount > (agent.massimale || 7)) {
+        warnings.push(`${agent.name}: supererà il massimale (${currentRepCount + newDaysCount}/${agent.massimale || 7})`)
+      }
+    })
+    return warnings
+  }, [editingCell, editValue, selectedCells, agents])
 
   /* ─── TOTALI GIORNALIERI ─── */
   const dayStats = useMemo(() => {
@@ -398,6 +452,42 @@ export default function AdminShiftGrid({
         )}
       </div>
 
+      {/* ─── TOOLBAR FILTRI ─── */}
+      <div className="px-6 py-4 bg-white border-b border-slate-200 flex flex-wrap items-center gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <input
+            type="text"
+            placeholder="Cerca agente o qualifica..."
+            value={filterText}
+            onChange={(e) => setFilterText(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+          />
+          <div className="absolute left-3 top-2.5 text-slate-400">
+             <ArrowUpDown size={16} />
+          </div>
+          {filterText && (
+            <button onClick={() => setFilterText("")} className="absolute right-3 top-2.5 text-slate-400 hover:text-rose-500">
+              <X size={16} />
+            </button>
+          )}
+        </div>
+
+        <select
+          value={selectedSquad}
+          onChange={(e) => setSelectedSquad(e.target.value)}
+          className="px-4 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+        >
+          <option value="">Tutte le squadre</option>
+          {squads.map(s => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+
+        <div className="ml-auto flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+          <span>Mostrati: {filteredAgents.length} di {agents.length}</span>
+        </div>
+      </div>
+
       <div className="overflow-auto custom-scrollbar-horizontal max-h-[calc(100vh-320px)] border-b-2 border-slate-200 rounded-b-3xl" suppressHydrationWarning>
       <table className="w-full border-collapse text-xs">
         <thead className="sticky top-0 z-[50] bg-white">
@@ -505,9 +595,9 @@ export default function AdminShiftGrid({
 
         {/* ─── BODY ─── */}
         <tbody>
-          {agents.length === 0 ? (
+          {filteredAgents.length === 0 ? (
             <tr><td colSpan={dayInfo.length + 4} className="p-12 text-center text-slate-400 text-sm">NESSUN AGENTE TROVATO</td></tr>
-          ) : agents.map((agent, idx) => {
+          ) : filteredAgents.map((agent, idx) => {
             const effectiveMassimale = agent.isUfficiale ? (settings?.massimaleUfficiale ?? 6) : (settings?.massimaleAgente ?? 5)
             let repFest = 0, repFer = 0, repTotal = 0
             const repDays: number[] = []
@@ -670,25 +760,38 @@ export default function AdminShiftGrid({
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[150] flex items-center justify-center p-4" onClick={() => setEditingCell(null)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
 
-            {/* Header */}
-            <div className="px-5 py-4 border-b border-slate-200 flex justify-between items-center bg-gradient-to-r from-indigo-600 to-indigo-700">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                  <Calendar width={20} height={20} className="text-white" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-white">
-                    {editingCell.isBulk ? "Modifica Massiva" : "Modifica Turno"}
+            {/* Header Editor */}
+            <div className="px-5 py-4 bg-slate-900 text-white shrink-0 flex justify-between items-start">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="w-8 h-8 bg-indigo-500/20 rounded-lg flex items-center justify-center">
+                    <Calendar width={16} height={16} className="text-indigo-400" />
+                  </div>
+                  <h3 className="text-sm font-black uppercase tracking-widest">
+                    {editingCell.isBulk ? `Modifica ${selectedCells.size} Celle` : editingCell.agentName}
                   </h3>
-                  <p className="text-indigo-200 text-xs font-semibold">
-                    {editingCell.isBulk 
-                      ? `${editingCell.size} celle selezionate` 
-                      : `${editingCell.agentName} — Giorno ${editingCell.day}`}
-                  </p>
                 </div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">
+                  {editingCell.isBulk ? "Azione Massiva" : `Giorno ${editingCell.day}`}
+                </p>
+
+                {/* Warning Massimali */}
+                {massimaliWarnings.length > 0 && (
+                  <div className="mt-3 p-2 bg-rose-500/10 border border-rose-500/30 rounded-lg">
+                    <div className="flex items-center gap-2 mb-1">
+                      <AlertCircle size={10} className="text-rose-400" />
+                      <span className="text-[8px] font-black text-rose-400 uppercase tracking-widest">Attenzione Massimali</span>
+                    </div>
+                    <div className="max-h-16 overflow-y-auto custom-scrollbar pr-1">
+                      {massimaliWarnings.map((w, i) => (
+                        <p key={i} className="text-[8px] text-rose-300/80 font-bold leading-tight mb-0.5">• {w}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-              <button onClick={() => { setEditingCell(null); setSelectedCells(new Set()); }} className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/20 rounded-lg">
-                <X width={18} height={18} />
+              <button onClick={() => setEditingCell(null)} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-white/50 hover:text-white">
+                <X size={18} />
               </button>
             </div>
 
