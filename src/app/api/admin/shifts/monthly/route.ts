@@ -88,7 +88,9 @@ export async function PUT(request: Request) {
     // Build a lookup map: "userId|date" -> existing shift
     const existingMap = new Map<string, any>()
     existingShifts.forEach((s: any) => {
-      const key = `${s.userId}|${s.date.toISOString().split('T')[0]}`
+      const d = s.date
+      const dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+      const key = `${s.userId}|${dateStr}`
       existingMap.set(key, s)
     })
 
@@ -134,9 +136,11 @@ export async function PUT(request: Request) {
 
     // BATCH 1: Bulk INSERT new shifts (single query)
     if (toInsert.length > 0) {
-      const insertValues = toInsert.map(op =>
-        Prisma.sql`(gen_random_uuid(), ${session.user.tenantId}, ${op.userId}, ${op.date + "T00:00:00.000Z"}::timestamp, ${op.type}, ${op.timeRange})`
-      )
+      const insertValues = toInsert.map(op => {
+        const id = crypto.randomUUID()
+        const date = new Date(op.date + "T00:00:00.000Z")
+        return Prisma.sql`(${id}, ${session.user.tenantId}, ${op.userId}, ${date}, ${op.type}, ${op.timeRange})`
+      })
       await prisma.$executeRaw`
         INSERT INTO "Shift" ("id", "tenantId", "userId", "date", "type", "timeRange")
         VALUES ${Prisma.join(insertValues)}
@@ -168,9 +172,17 @@ export async function PUT(request: Request) {
     }
 
     return NextResponse.json({ success: true, count: toUpdate.length + toInsert.length })
-  } catch (error) {
-    console.error("[MONTHLY SHIFTS PUT]", error)
-    return NextResponse.json({ error: "Internal Error" }, { status: 500 })
+  } catch (error: any) {
+    console.error("[MONTHLY SHIFTS PUT ERROR]:", {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+      meta: error.meta
+    })
+    return NextResponse.json({ 
+      error: "Internal Error", 
+      details: error.message 
+    }, { status: 500 })
   }
 }
 
