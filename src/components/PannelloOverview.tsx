@@ -42,11 +42,12 @@ interface PannelloOverviewProps {
   tenantSlug: string
   tenantName: string
   totalScadenze?: number
+  weekCoverage?: { date: string; dayLabel: string; operativi: number; totale: number }[]
 }
 
 const MESI = ["", "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
 
-export default function PannelloOverview({ totalAgents, todayShifts, isPublished, currentMonth, currentYear, settings, totalVehicles, pendingSwaps, tenantSlug, tenantName, totalScadenze = 0 }: PannelloOverviewProps) {
+export default function PannelloOverview({ totalAgents, todayShifts, isPublished, currentMonth, currentYear, settings, totalVehicles, pendingSwaps, tenantSlug, tenantName, totalScadenze = 0, weekCoverage = [] }: PannelloOverviewProps) {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [collapsedPattuglie, setCollapsedPattuglie] = useState(false)
   const [collapsedEccezioni, setCollapsedEccezioni] = useState(false)
@@ -248,6 +249,37 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
               <div className="h-4 w-full bg-white/5 rounded-full overflow-hidden shadow-inner border border-white/10 p-1">
                  <div className={`h-full rounded-full transition-all duration-1000 shadow-[0_0_20px_rgba(0,0,0,0.5)] ${coperturaPercent >= 80 ? 'bg-emerald-500' : coperturaPercent >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${coperturaPercent}%` }}></div>
               </div>
+
+               {/* Mini-Grafico Copertura Ultimi 7 Giorni */}
+               {weekCoverage.length > 0 && (
+                 <div className="mt-6">
+                   <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3">Copertura Ultimi 7 Giorni</p>
+                   <div className="flex items-end gap-1.5 h-16">
+                     {weekCoverage.map((day, i) => {
+                       const pct = day.totale > 0 ? Math.round((day.operativi / day.totale) * 100) : 0
+                       const isLast = i === weekCoverage.length - 1
+                       const barColor = pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-rose-500'
+                       return (
+                         <div key={day.date} className="flex-1 flex flex-col items-center gap-1 group/bar">
+                           <div className="relative w-full">
+                             {/* Tooltip */}
+                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover/bar:block z-50 bg-white text-slate-900 text-[9px] font-black px-2 py-1 rounded-lg shadow-xl whitespace-nowrap border border-slate-200">
+                               {day.operativi}/{day.totale} ({pct}%)
+                             </div>
+                             <div
+                               className={`w-full rounded-t-md transition-all duration-500 ${barColor} ${isLast ? 'opacity-100 ring-1 ring-white/30' : 'opacity-60'}`}
+                               style={{ height: `${Math.max(pct * 0.5, 4)}px` }}
+                             />
+                           </div>
+                           <span className={`text-[7px] font-black uppercase tracking-wider ${isLast ? 'text-white' : 'text-slate-600'}`}>
+                             {day.dayLabel}
+                           </span>
+                         </div>
+                       )
+                     })}
+                   </div>
+                 </div>
+               )}
            </div>
 
            <div className="hidden md:block w-px h-24 bg-white/10 relative z-10"></div>

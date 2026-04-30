@@ -126,7 +126,9 @@ export default function AdminDashboard({
           onSendAlert={() => setShowAlertModal(true)}
           onImportShifts={admin.handleImportShifts}
           onGenerateMonth={admin.handleGenerateMonth}
+          onCopyMonth={admin.handleCopyMonth}
           isGenerating={admin.isGenerating}
+          isCopyingMonth={admin.isCopyingMonth}
           isResolving={admin.isResolving}
           isSendingPec={admin.isSendingPec}
           isSendingAlert={admin.isSendingAlert}

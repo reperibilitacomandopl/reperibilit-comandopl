@@ -130,6 +130,19 @@ export default function AdminShiftGrid({
   const [editValue, setEditValue] = useState("")
   const [editHours, setEditHours] = useState<string>("")
 
+  /* ─── MULTI-SELECT & DRAG ─── */
+  const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set())
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState<{ agentIndex: number, day: number } | null>(null)
+  const [isSavingBulk, setIsSavingBulk] = useState(false)
+
+  // Disabilita drag di default quando si muove il mouse per evitare glitch
+  React.useEffect(() => {
+    const onMouseUp = () => setIsDragging(false)
+    window.addEventListener("mouseup", onMouseUp)
+    return () => window.removeEventListener("mouseup", onMouseUp)
+  }, [])
+
   /* ─── TOTALI GIORNALIERI ─── */
   const dayStats = useMemo(() => {
     const stats: Record<number, { total: number, officers: number, agents: any[] }> = {}
@@ -187,10 +200,79 @@ export default function AdminShiftGrid({
     setEditValue(currentType)
     setEditHours("")
   }
-  const handleSave = async (val: string, hours?: number) => {
-    await onSaveCell(editingCell.agentId, editingCell.day, val, hours)
-    setEditingCell(null)
+
+  const openBulkEditor = () => {
+    setEditingCell({ isBulk: true, size: selectedCells.size })
+    setEditValue("")
     setEditHours("")
+  }
+
+  const handleSave = async (val: string, hours?: number) => {
+    if (editingCell?.isBulk) {
+      await executeBulkSave(val, hours)
+    } else {
+      await onSaveCell(editingCell.agentId, editingCell.day, val, hours)
+      setEditingCell(null)
+      setEditHours("")
+      setSelectedCells(new Set())
+    }
+  }
+
+  const executeBulkSave = async (val: string, hours?: number) => {
+    if (!val) return
+    setIsSavingBulk(true)
+    let finalValue = val.trim()
+    if (finalValue.toUpperCase() === "REP") { finalValue = "rep" } 
+    else { finalValue = finalValue.toUpperCase() }
+
+    try {
+      const promises = Array.from(selectedCells).map(cellKey => {
+        const [aId, dStr] = cellKey.split('-')
+        return onSaveCell(aId, parseInt(dStr, 10), finalValue, hours)
+      })
+      await Promise.allSettled(promises)
+      window.location.reload()
+    } catch(e) {
+      console.error(e)
+    } finally {
+      setIsSavingBulk(false)
+    }
+  }
+
+  /* ─── DRAG TO SELECT LOGIC ─── */
+  const handleMouseDown = (agentId: string, agentIndex: number, day: number, rType: string, sType: string) => {
+    if (readOnly) return
+    setIsDragging(true)
+    setDragStart({ agentIndex, day })
+    setSelectedCells(new Set([`${agentId}-${day}`]))
+  }
+
+  const handleMouseEnter = (agentId: string, agentIndex: number, day: number) => {
+    if (isDragging && dragStart && !readOnly) {
+      const newSelected = new Set<string>()
+      const minDay = Math.min(dragStart.day, day)
+      const maxDay = Math.max(dragStart.day, day)
+      const minAgentIdx = Math.min(dragStart.agentIndex, agentIndex)
+      const maxAgentIdx = Math.max(dragStart.agentIndex, agentIndex)
+
+      for (let i = minAgentIdx; i <= maxAgentIdx; i++) {
+        for (let d = minDay; d <= maxDay; d++) {
+          newSelected.add(`${agents[i].id}-${d}`)
+        }
+      }
+      setSelectedCells(newSelected)
+    }
+  }
+
+  const handleMouseUp = (agentId: string, agentName: string, day: number, rType: string, sType: string) => {
+    if (readOnly) return
+    if (isDragging) {
+      setIsDragging(false)
+      // Se abbiamo selezionato solo una cella, apriamo direttamente la modale
+      if (selectedCells.size === 1) {
+        openCellEditor(agentId, agentName, day, rType || sType)
+      }
+    }
   }
 
   /* ─── MOBILE ─── */
@@ -401,13 +483,15 @@ export default function AdminShiftGrid({
 
                   const style = getCellStyle(sType, rType, di.isWeekend)
                   const hasRep = rType.toLowerCase().includes("rep")
-                  // Mostra il turno base sotto REP (se diverso da RP/REP e non vuoto)
                   const baseShift = hasRep && sType && !sType.includes("REP") && sType !== "RP" ? sType : ""
+                  const isSelected = selectedCells.has(`${agent.id}-${di.day}`)
 
                     return (
                       <td key={di.isNextMonth ? `next-${di.day}` : `day-${agent.id}-${di.day}`}
-                        className={`px-0 py-0.5 text-center border-r border-slate-100/80 ${style.bg} ${di.isNextMonth ? "opacity-30 grayscale" : (readOnly ? "cursor-default" : "cursor-pointer hover:brightness-95")}`}
-                        onClick={() => !readOnly && !di.isNextMonth && openCellEditor(agent.id, agent.name, di.day, rType || sType)}>
+                        className={`px-0 py-0.5 text-center border-r border-slate-100/80 ${style.bg} ${di.isNextMonth ? "opacity-30 grayscale" : (readOnly ? "cursor-default select-none" : "cursor-pointer hover:brightness-95 select-none")} ${isSelected ? "ring-2 ring-indigo-500 ring-inset bg-indigo-50/50" : ""}`}
+                        onMouseDown={() => !di.isNextMonth && handleMouseDown(agent.id, idx, di.day, rType, sType)}
+                        onMouseEnter={() => !di.isNextMonth && handleMouseEnter(agent.id, idx, di.day)}
+                        onMouseUp={() => !di.isNextMonth && handleMouseUp(agent.id, agent.name, di.day, rType, sType)}>
                         {style.badge && (
                           <div className="flex flex-col items-center justify-center min-h-[28px] gap-0">
                             <div className={`mx-auto w-[34px] ${baseShift ? 'h-[14px] leading-[14px]' : 'h-[20px] leading-[20px]'} flex items-center justify-center rounded text-[8px] font-black shadow-sm ${style.badgeClass}`}>
@@ -526,11 +610,17 @@ export default function AdminShiftGrid({
                   <Calendar width={20} height={20} className="text-white" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg text-white">Modifica Turno</h3>
-                  <p className="text-indigo-200 text-xs font-semibold">{editingCell.agentName} — Giorno {editingCell.day}</p>
+                  <h3 className="font-bold text-lg text-white">
+                    {editingCell.isBulk ? "Modifica Massiva" : "Modifica Turno"}
+                  </h3>
+                  <p className="text-indigo-200 text-xs font-semibold">
+                    {editingCell.isBulk 
+                      ? `${editingCell.size} celle selezionate` 
+                      : `${editingCell.agentName} — Giorno ${editingCell.day}`}
+                  </p>
                 </div>
               </div>
-              <button onClick={() => setEditingCell(null)} className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/20 rounded-lg">
+              <button onClick={() => { setEditingCell(null); setSelectedCells(new Set()); }} className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/20 rounded-lg">
                 <X width={18} height={18} />
               </button>
             </div>
@@ -553,9 +643,9 @@ export default function AdminShiftGrid({
                     </optgroup>
                   ))}
                 </select>
-                <button onClick={() => handleSave(editValue, editHours ? parseFloat(editHours) : undefined)} disabled={!editValue || (isHoursCode(editValue) && !editHours)}
+                <button onClick={() => handleSave(editValue, editHours ? parseFloat(editHours) : undefined)} disabled={!editValue || (isHoursCode(editValue) && !editHours) || isSavingBulk}
                   className="absolute right-1.5 px-4 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                  Salva
+                  {isSavingBulk ? "Salvataggio..." : "Salva"}
                 </button>
               </div>
 
@@ -638,6 +728,22 @@ export default function AdminShiftGrid({
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {/* ─── FLOATING ACTION BAR MULTI-SELECT ─── */}
+      {selectedCells.size > 1 && !editingCell && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-2xl shadow-2xl z-[150] flex items-center gap-4 animate-in slide-in-from-bottom-8">
+          <div className="flex items-center gap-2">
+            <div className="bg-indigo-500 w-6 h-6 flex items-center justify-center rounded-full text-[10px] font-black">{selectedCells.size}</div>
+            <span className="text-sm font-bold">celle selezionate</span>
+          </div>
+          <div className="h-4 w-px bg-slate-700 mx-2" />
+          <button onClick={openBulkEditor} className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest transition-colors">
+            Modifica
+          </button>
+          <button onClick={() => setSelectedCells(new Set())} className="hover:bg-slate-800 p-1.5 rounded-lg text-slate-400 hover:text-white transition-colors">
+            <X size={18} />
+          </button>
         </div>
       )}
     </div>

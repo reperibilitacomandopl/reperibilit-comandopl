@@ -91,6 +91,7 @@ export function useAdminData(
   const [isSendingPec, setIsSendingPec] = useState(false)
   const [isSendingAlert, setIsSendingAlert] = useState(false)
   const [isExportingPDF, setIsExportingPDF] = useState(false)
+  const [isCopyingMonth, setIsCopyingMonth] = useState(false)
   
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [isLoadingAudit, setIsLoadingAudit] = useState(false)
@@ -843,6 +844,32 @@ export function useAdminData(
     }
   }
 
+  const handleCopyMonth = async () => {
+    const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1
+    const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear
+    const prevMonthName = monthNames[prevMonth - 1]
+    if (!confirm(`Vuoi copiare i turni da ${prevMonthName} ${prevYear} nel mese corrente?\n\nI turni già esistenti NON verranno sovrascritti.`)) return
+    setIsCopyingMonth(true)
+    try {
+      const res = await fetch('/api/admin/shifts/copy-month', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year: currentYear, month: currentMonth })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(`Copiati ${data.created} turni da ${prevMonthName}. Saltati: ${data.skipped}`)
+        window.location.reload()
+      } else {
+        toast.error(data.error || "Errore durante la copia")
+      }
+    } catch {
+      toast.error("Errore di connessione")
+    } finally {
+      setIsCopyingMonth(false)
+    }
+  }
+
   const handleSendAlert = async (message?: string) => {
      setIsSendingAlert(true)
      try {
@@ -1055,6 +1082,8 @@ export function useAdminData(
     handleNextMonth,
     handleImportShifts,
     handleSendAlert,
+    handleCopyMonth,
+    isCopyingMonth,
     setEditingCell,
     todayReperibili,
     

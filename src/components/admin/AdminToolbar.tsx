@@ -76,7 +76,9 @@ interface AdminToolbarProps {
   onSendAlert: () => void
   onImportShifts: (file: File, type: "base" | "rep") => void
   onGenerateMonth: () => void
+  onCopyMonth: () => void
   isGenerating: boolean
+  isCopyingMonth: boolean
   isResolving: boolean
   isSendingPec: boolean
   isSendingAlert: boolean
@@ -96,7 +98,7 @@ export function AdminToolbar({
   pendingSwapsCount, pendingRequestsCount,
   onSearch, onRoleFilter, onExportExcel, onExportRepExcel, onExportUfficialiExcel, onExportPayroll, onExportPDF, onExportRepPDF,
   onPrevMonth, onNextMonth, onClear, onSyncVerbatel, onAIResolve, onSendPec, onSendAlert,
-  onImportShifts, onGenerateMonth, isGenerating, isResolving, isSendingPec, isSendingAlert, 
+  onImportShifts, onGenerateMonth, onCopyMonth, isGenerating, isCopyingMonth, isResolving, isSendingPec, isSendingAlert, 
   isExportingPDF, isPublishing, isClearing, uploadStatus,
   isMobileView, onToggleMobileView,
   onShowSalaOperativa, onShowStampaOds, onShowParcoAuto, onShowRadio, onShowArmeria, onShowSezioni,
@@ -307,6 +309,9 @@ export function AdminToolbar({
           <DropdownMenu label="Strumenti" icon={Wrench}>
             <button onClick={onGenerateMonth} disabled={isGenerating} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-[11px] font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-all disabled:opacity-50">
               <RefreshCw width={14} height={14} className={isGenerating ? "animate-spin" : ""} /> Generatore Automatico
+            </button>
+            <button onClick={onCopyMonth} disabled={isCopyingMonth} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-[11px] font-bold text-slate-700 hover:bg-cyan-50 hover:text-cyan-700 transition-all disabled:opacity-50">
+              <ClipboardList width={14} height={14} className={isCopyingMonth ? "animate-pulse" : ""} /> Copia da Mese Precedente
             </button>
             <button onClick={onAIResolve} disabled={isResolving} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-left text-[11px] font-bold text-slate-700 hover:bg-fuchsia-50 hover:text-fuchsia-700 transition-all disabled:opacity-50">
               <Wand2 width={14} height={14} /> AI Resolver

@@ -1,6 +1,6 @@
 "use client"
-import React from "react"
-import { Clock, Car, Radio, Users, ChevronRight, MapPin, CalendarDays } from "lucide-react"
+import React, { useState, useEffect } from "react"
+import { Clock, Car, Radio, Users, ChevronRight, MapPin, CalendarDays, Timer } from "lucide-react"
 
 interface NextShiftProps {
   shift: any
@@ -8,7 +8,68 @@ interface NextShiftProps {
   allShifts: any[]
 }
 
+/** Calcola l'orario di inizio turno dalla stringa timeRange o dal codice turno */
+function getShiftStartTime(shift: any): Date | null {
+  const dateObj = new Date(shift.date)
+  
+  // Prima prova dal timeRange (es. "08:00 - 14:00")
+  if (shift.timeRange) {
+    const match = shift.timeRange.match(/^(\d{1,2}):(\d{2})/)
+    if (match) {
+      dateObj.setHours(parseInt(match[1], 10), parseInt(match[2], 10), 0, 0)
+      return dateObj
+    }
+  }
+  
+  // Fallback dal codice turno
+  const type = (shift.type || "").toUpperCase().replace(/\s/g, "")
+  if (type.startsWith("M")) {
+    const num = parseInt(type.replace("M", ""), 10)
+    dateObj.setHours(!isNaN(num) ? num : 8, 0, 0, 0)
+  } else if (type.startsWith("P")) {
+    const num = parseInt(type.replace("P", ""), 10)
+    dateObj.setHours(!isNaN(num) ? num : 14, 0, 0, 0)
+  } else {
+    dateObj.setHours(8, 0, 0, 0) // default
+  }
+  return dateObj
+}
+
 export default function NextShiftCard({ shift, allAgents, allShifts }: NextShiftProps) {
+  const [countdown, setCountdown] = useState("")
+
+  useEffect(() => {
+    if (!shift) return
+
+    const calcCountdown = () => {
+      const start = getShiftStartTime(shift)
+      if (!start) { setCountdown(""); return }
+
+      const now = new Date()
+      const diffMs = start.getTime() - now.getTime()
+      
+      if (diffMs <= 0) {
+        setCountdown("In corso")
+        return
+      }
+
+      const totalMinutes = Math.floor(diffMs / 60000)
+      const days = Math.floor(totalMinutes / 1440)
+      const hours = Math.floor((totalMinutes % 1440) / 60)
+      const minutes = totalMinutes % 60
+
+      if (days > 0) {
+        setCountdown(`${days}g ${hours}h ${minutes}m`)
+      } else {
+        setCountdown(`${hours}h ${minutes}m`)
+      }
+    }
+
+    calcCountdown()
+    const interval = setInterval(calcCountdown, 60000) // aggiorna ogni minuto
+    return () => clearInterval(interval)
+  }, [shift])
+
   if (!shift) return null
 
   // Trova colleghi nella stessa pattuglia (se presente)
@@ -60,6 +121,19 @@ export default function NextShiftCard({ shift, allAgents, allShifts }: NextShift
                    <p className="text-white text-2xl font-black tracking-tight">{shift.timeRange || (shift.type.startsWith('M') ? '08:00 - 14:00' : '14:00 - 20:00')}</p>
                 </div>
               </div>
+
+              {/* Countdown Timer */}
+              {countdown && (
+                <div className="mt-6 flex items-center gap-3 bg-white/5 rounded-2xl px-5 py-3 border border-white/10 backdrop-blur-sm">
+                  <Timer size={18} className="text-blue-400 shrink-0" />
+                  <div>
+                    <p className="text-white/40 text-[8px] font-black uppercase tracking-[0.3em]">Inizio tra</p>
+                    <p className={`text-lg font-black tracking-tight ${countdown === "In corso" ? "text-emerald-400" : "text-blue-400"}`}>
+                      {countdown}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

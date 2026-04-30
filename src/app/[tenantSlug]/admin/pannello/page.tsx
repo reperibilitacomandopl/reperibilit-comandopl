@@ -43,6 +43,32 @@ export default async function PannelloPage() {
     prisma.shiftSwapRequest.count({ where: { status: "PENDING", ...tf } })
   ])
 
+  // Copertura ultimi 7 giorni (per mini-grafico)
+  const weekDays: { date: string; dayLabel: string; operativi: number; totale: number }[] = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now)
+    d.setDate(d.getDate() - i)
+    const dayStart = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+    const dayEnd = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate() + 1))
+    const dayShifts = await prisma.shift.findMany({
+      where: { ...tf, date: { gte: dayStart, lt: dayEnd } },
+      select: { type: true }
+    })
+    const assenti = dayShifts.filter((s: { type: string | null }) => {
+      const t = (s.type || "").toUpperCase()
+      return t === "FERIE" || t.startsWith("FERIE_") || t === "MAL" || t === "MALATT" || t === "MALATTIA" ||
+             t === "RR" || t === "RP" || t === "RPS" || t.startsWith("CONG") || t === "104" ||
+             t.startsWith("104_") || t === "MOT_PE" || t === "MOT_PERS" || t === "ALLATT" || t === "BR" ||
+             t === "DON_SA" || t === "DON_SANGUE" || t.startsWith("FEST_")
+    }).length
+    weekDays.push({
+      date: dayStart.toISOString(),
+      dayLabel: d.toLocaleDateString('it-IT', { weekday: 'short' }).substring(0, 3).toUpperCase(),
+      operativi: totalAgents - assenti,
+      totale: totalAgents
+    })
+  }
+
   // Calcolo totale scadenze a 30 giorni
   const alertDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
   const [patenti, armi, kevlar, veicoliScad] = await Promise.all([
@@ -67,6 +93,7 @@ export default async function PannelloPage() {
         tenantSlug={session.user.tenantSlug || ""}
         tenantName={session.user.tenantName || ""}
         totalScadenze={totalScadenze}
+        weekCoverage={weekDays}
       />
     </div>
   )
