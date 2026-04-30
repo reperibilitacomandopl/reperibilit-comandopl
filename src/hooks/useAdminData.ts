@@ -341,6 +341,41 @@ export function useAdminData(
     }
   }
 
+  const handleBulkShiftEdit = async (updates: { userId: string, date: string, type: string, hours?: number }[]) => {
+    setIsSavingCell(true)
+    try {
+      const res = await fetch('/api/admin/shifts/monthly', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates })
+      })
+      if (!res.ok) throw new Error()
+      
+      // Aggiornamento ottimistico locale
+      setShifts(prev => {
+        const next = [...prev]
+        updates.forEach(u => {
+          const idx = next.findIndex(s => {
+            const sDate = (typeof s.date === 'string' ? s.date : new Date(s.date).toISOString()).split('T')[0];
+            return s.userId === u.userId && sDate === u.date;
+          })
+          if (idx !== -1) {
+            if (u.type.toLowerCase().includes("rep")) next[idx] = { ...next[idx], repType: u.type }
+            else next[idx] = { ...next[idx], type: u.type, repType: null }
+          }
+        })
+        return next
+      })
+
+      toast.success(`${updates.length} turni aggiornati`)
+      router.refresh()
+    } catch {
+      toast.error("Errore nel salvataggio multiplo")
+    } finally {
+      setIsSavingCell(false)
+    }
+  }
+
   const handleRecalcAgent = async (agentId: string) => {
     setRecalcAgent(agentId)
     try {
@@ -1060,6 +1095,7 @@ export function useAdminData(
     handleToggleUff,
     handleRecalcAgent,
     handleSaveCellEdit,
+    handleBulkShiftEdit,
     handleExportPDF,
     handleExportRepPDF,
     handleExportExcel,

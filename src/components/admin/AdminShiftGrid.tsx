@@ -14,6 +14,7 @@ interface AdminShiftGridProps {
   onToggleUfficiale: (id: string) => void
   onRecalcAgent: (id: string) => void
   onSaveCell: (agentId: string, day: number, value: string, hours?: number) => Promise<void>
+  onBulkSave?: (updates: { userId: string, date: string, type: string, hours?: number }[]) => Promise<void>
   sortConfig?: { field: string, direction: 'asc' | 'desc' }
   onSort?: (config: { field: string, direction: 'asc' | 'desc' }) => void
   readOnly?: boolean
@@ -123,7 +124,7 @@ const CAT_THEME: Record<string, { border: string; bg: string; text: string; btnB
 
 export default function AdminShiftGrid({
   agents, shifts, isMobileView, dayInfo,
-  onToggleUfficiale, onRecalcAgent, onSaveCell,
+  onToggleUfficiale, onRecalcAgent, onSaveCell, onBulkSave,
   sortConfig, onSort, readOnly
 }: AdminShiftGridProps) {
   const { currentYear, currentMonth, settings, allAgents } = useAdminState()
@@ -235,39 +236,54 @@ export default function AdminShiftGrid({
     else { finalValue = finalValue.toUpperCase() }
 
     try {
-      // Memorizziamo i valori precedenti per l'Undo
+      // 1. Preparazione Undo (Valori Precedenti)
       const previousStates = Array.from(selectedCells).map(cellKey => {
         const [aId, dStr] = cellKey.split('-')
         const dayNum = parseInt(dStr, 10)
-        // Cerchiamo il turno attuale negli shifts passati come prop
+        const dateIso = new Date(Date.UTC(currentYear, currentMonth - 1, dayNum)).toISOString().split('T')[0]
+        
         const existing = shifts.find(s => {
-          const sDate = new Date(s.date)
-          return s.userId === aId && sDate.getUTCDate() === dayNum
+          const sDate = new Date(s.date).toISOString().split('T')[0]
+          return s.userId === aId && sDate === dateIso
         })
-        return { aId, dayNum, oldVal: existing?.type || "" }
+        return { userId: aId, date: dateIso, type: existing?.type || "", dayNum }
       })
 
-      const promises = Array.from(selectedCells).map(cellKey => {
-        const [aId, dStr] = cellKey.split('-')
-        return onSaveCell(aId, parseInt(dStr, 10), finalValue, hours)
-      })
-      await Promise.allSettled(promises)
+      // 2. Preparazione Updates per API Bulk
+      const updates = previousStates.map(ps => ({
+        userId: ps.userId,
+        date: ps.date,
+        type: finalValue,
+        hours
+      }))
 
-      // Mostra Undo Toast per bulk
+      // 3. Esecuzione Salvataggio
+      if (onBulkSave) {
+        await onBulkSave(updates)
+      } else {
+        // Fallback se onBulkSave non è passato (per sicurezza)
+        const promises = updates.map(u => onSaveCell(u.userId, parseInt(u.date.split('-')[2]), u.type, u.hours))
+        await Promise.allSettled(promises)
+      }
+
+      // 4. Mostra Undo Toast
       showUndoToast(
         `Modificati ${selectedCells.size} turni`,
         async () => {
-          const undoPromises = previousStates.map(ps => onSaveCell(ps.aId, ps.dayNum, ps.oldVal))
-          await Promise.allSettled(undoPromises)
-          // Dopo l'undo massivo, ricarichiamo (opzionale, ma utile per coerenza)
-          window.location.reload()
+          if (onBulkSave) {
+            await onBulkSave(previousStates.map(ps => ({ userId: ps.userId, date: ps.date, type: ps.type })))
+          } else {
+            const undoPromises = previousStates.map(ps => onSaveCell(ps.userId, ps.dayNum, ps.type))
+            await Promise.allSettled(undoPromises)
+          }
         }
       )
 
       setEditingCell(null)
+      setEditHours("")
       setSelectedCells(new Set())
-    } catch(e) {
-      console.error(e)
+    } catch (err) {
+      console.error("[BULK SAVE ERROR]", err)
     } finally {
       setIsSavingBulk(false)
     }
@@ -278,8 +294,9 @@ export default function AdminShiftGrid({
     if (readOnly) return
     const cellKey = `${agentId}-${day}`
     
-    // Se clicchiamo su una cella che fa già parte di una selezione multipla, apriamo direttamente la modale bulk
-    if (selectedCells.size > 1 && selectedCells.has(cellKey)) {
+    // Se clicchiamo su una cella che fa già parte di una selezione multipla, 
+    // NON resettiamo la selezione, ma apriamo l'editor bulk al mouseUp o se clicchiamo di nuovo.
+    if (selectedCells.has(cellKey) && selectedCells.size > 1) {
       openBulkEditor()
       return
     }
@@ -310,9 +327,11 @@ export default function AdminShiftGrid({
     if (readOnly) return
     if (isDragging) {
       setIsDragging(false)
-      // Se abbiamo selezionato solo una cella, apriamo direttamente la modale
+      // Apri l'editor appropriato in base a quante celle sono state selezionate
       if (selectedCells.size === 1) {
         openCellEditor(agentId, agentName, day, rType || sType)
+      } else if (selectedCells.size > 1) {
+        openBulkEditor()
       }
     }
   }

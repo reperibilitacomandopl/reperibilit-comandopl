@@ -150,13 +150,14 @@ export default function AdminDashboard({
         <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
           <AdminShiftGrid 
             agents={admin.sortedAgents}
-            shifts={shifts}
+            shifts={admin.shifts}
             isMobileView={isMobileView}
             dayInfo={admin.dayInfo}
             readOnly={!canManageShifts}
             onToggleUfficiale={admin.handleToggleUff}
             onRecalcAgent={admin.handleRecalcAgent}
             onSaveCell={admin.handleSaveCellEdit}
+            onBulkSave={admin.handleBulkShiftEdit}
             sortConfig={admin.sortConfig}
             onSort={admin.setSortConfig}
           />
