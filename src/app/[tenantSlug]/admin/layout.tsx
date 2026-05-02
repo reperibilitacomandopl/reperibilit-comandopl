@@ -29,10 +29,10 @@ export default async function AdminLayout({
 
   const { name, matricola } = session.user
 
-  // Fetch tenant trial info
+  // Fetch tenant info (logo, plan, etc)
   const tenant = session.user.tenantId ? await prisma.tenant.findUnique({
     where: { id: session.user.tenantId },
-    select: { trialEndsAt: true, planType: true }
+    select: { trialEndsAt: true, planType: true, logoUrl: true }
   }) : null
 
   return (
@@ -43,6 +43,7 @@ export default async function AdminLayout({
         userMatricola={matricola || ""}
         tenantName={session.user.tenantName}
         tenantSlug={tenantSlug}
+        logoUrl={tenant?.logoUrl}
         isSuperAdmin={session.user.isSuperAdmin}
         currentTenantId={session.user.tenantId}
         signOutAction={async () => {

@@ -87,6 +87,7 @@ interface AdminSidebarProps {
   userMatricola: string
   tenantName?: string | null
   tenantSlug?: string | null
+  logoUrl?: string | null
   isSuperAdmin?: boolean
   currentTenantId?: string | null
   signOutAction: () => Promise<void>
@@ -103,6 +104,7 @@ export default function AdminSidebar({
   userMatricola, 
   tenantName, 
   tenantSlug,
+  logoUrl,
   isSuperAdmin, 
   currentTenantId, 
   signOutAction,
@@ -177,9 +179,15 @@ export default function AdminSidebar({
       {/* Brand Header Premium */}
       <div className="px-5 py-8 border-b border-white/5 flex items-center gap-3 shrink-0 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-600/5 to-transparent pointer-events-none"></div>
-        <div className="w-11 h-11 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-xs shadow-lg shadow-blue-500/20 shrink-0 ring-1 ring-white/20 relative z-10 transition-transform hover:scale-110">
-          PL
-        </div>
+        {logoUrl ? (
+          <div className="w-11 h-11 bg-white rounded-2xl flex items-center justify-center p-1 shadow-lg shadow-blue-500/10 shrink-0 ring-1 ring-white/10 relative z-10 transition-transform hover:scale-110 overflow-hidden">
+             <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+          </div>
+        ) : (
+          <div className="w-11 h-11 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-xs shadow-lg shadow-blue-500/20 shrink-0 ring-1 ring-white/20 relative z-10 transition-transform hover:scale-110">
+            PL
+          </div>
+        )}
         {!collapsed && (
           <div className="overflow-hidden font-sans relative z-10 min-w-0">
             <h1 className="text-base font-black text-white tracking-tighter leading-tight uppercase">
