@@ -139,7 +139,7 @@ function addSecurityHeaders(response: NextResponse, isPublic: boolean = false): 
     default-src 'self';
     script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://*.tile.openstreetmap.org;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com;
-    img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://unpkg.com https://*.googleusercontent.com https://raw.githubusercontent.com;
+    img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://unpkg.com https://*.googleusercontent.com https://raw.githubusercontent.com https://upload.wikimedia.org;
     font-src 'self' https://fonts.gstatic.com;
     connect-src 'self' https://api.telegram.org https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://unpkg.com https://assets.mixkit.co;
     media-src 'self' https://assets.mixkit.co;

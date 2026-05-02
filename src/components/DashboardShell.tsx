@@ -46,9 +46,15 @@ export default function DashboardShell({
       <header className="fixed top-0 left-0 right-0 bg-white/70 backdrop-blur-xl border-b border-slate-200 z-[100] h-16 flex items-center">
         <div className={`${containerClass} flex items-center justify-between`}>
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 tech-gradient rounded-2xl flex items-center justify-center text-white font-black text-xs shadow-lg shadow-blue-900/20 shrink-0">
-              PL
-            </div>
+            {logoUrl ? (
+              <div className="w-11 h-11 bg-white rounded-2xl flex items-center justify-center p-1 shadow-md border border-slate-100 shrink-0">
+                <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+              </div>
+            ) : (
+              <div className="w-11 h-11 tech-gradient rounded-2xl flex items-center justify-center text-white font-black text-xs shadow-lg shadow-blue-900/20 shrink-0">
+                PL
+              </div>
+            )}
             <div className="flex flex-col">
               <h1 className="text-[10px] sm:text-xs font-black text-slate-900 leading-tight uppercase tracking-widest">
                 Polizia Locale
