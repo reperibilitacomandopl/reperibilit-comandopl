@@ -144,6 +144,43 @@ export default function ControlRoomMap() {
       }).addTo(mapRef.current)
       
       circle.bindTooltip(zone.name, { permanent: false, direction: 'center' })
+      
+      // Popup con bottone elimina
+      const popupContent = document.createElement('div')
+      popupContent.innerHTML = `
+        <div style="text-align:center; min-width: 150px;">
+          <strong style="font-size:14px;">${zone.name}</strong>
+          <p style="font-size:11px; color:#666; margin:4px 0;">Raggio: ${zone.radius}m</p>
+          <button id="delete-zone-${zone.id}" style="
+            margin-top:8px; padding:6px 16px; background:#ef4444; color:white; 
+            border:none; border-radius:8px; font-size:11px; font-weight:bold;
+            cursor:pointer; width:100%;
+          ">🗑 Elimina Zona</button>
+        </div>
+      `
+      circle.bindPopup(popupContent)
+      
+      circle.on('popupopen', () => {
+        const btn = document.getElementById(`delete-zone-${zone.id}`)
+        if (btn) {
+          btn.onclick = async () => {
+            if (!confirm(`Eliminare la zona "${zone.name}"?`)) return
+            const loadingId = toast.loading("Eliminazione zona...")
+            try {
+              const res = await fetch(`/api/admin/geofence?id=${zone.id}`, { method: "DELETE" })
+              if (res.ok) {
+                toast.success("Zona eliminata!", { id: loadingId })
+                fetchGeofences()
+              } else {
+                throw new Error()
+              }
+            } catch {
+              toast.error("Errore durante l'eliminazione", { id: loadingId })
+            }
+          }
+        }
+      })
+      
       geofencesRef.current[zone.id] = circle
     })
   }

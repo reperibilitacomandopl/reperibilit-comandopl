@@ -21,7 +21,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const session = await auth()
-    if (!session?.user || !session.user.isSuperAdmin) {
+    if (!session?.user || (session.user.role !== "ADMIN" && !session.user.isSuperAdmin)) {
       return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
     }
 
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const session = await auth()
-    if (!session?.user || !session.user.isSuperAdmin) {
+    if (!session?.user || (session.user.role !== "ADMIN" && !session.user.isSuperAdmin)) {
       return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
     }
 
