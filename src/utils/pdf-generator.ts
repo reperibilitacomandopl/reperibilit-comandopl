@@ -80,6 +80,28 @@ async function generateHash(content: string | ArrayBuffer): Promise<string> {
 }
 
 /**
+ * Carica un'immagine da URL e la converte in Base64 per jsPDF
+ * Gestisce CORS e formati diversi
+ */
+async function getBase64Image(url: string): Promise<{ data: string, format: string } | null> {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const format = blob.type.split('/')[1].toUpperCase(); // e.g. "PNG", "JPEG"
+    
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve({ data: reader.result as string, format: format === 'JPG' ? 'JPEG' : format });
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.warn("[PDF] Impossibile convertire immagine in base64:", e);
+    return null;
+  }
+}
+
+/**
  * Genera il PDF professionale della pianificazione mensile
  */
 export async function generatePlanningPDF({
@@ -129,7 +151,14 @@ export async function generatePlanningPDF({
     // 1. Intestazione
     if (logoUrl) {
       try {
-        doc.addImage(logoUrl, "PNG", 14, 10, 25, 25);
+        const img = await getBase64Image(logoUrl);
+        if (img) {
+          doc.addImage(img.data, img.format, 14, 10, 25, 25);
+        } else {
+          // Fallback se fetch base64 fallisce (es. CORS) - prova caricamento diretto
+          const format = logoUrl.toLowerCase().endsWith(".png") ? "PNG" : "JPEG";
+          doc.addImage(logoUrl, format, 14, 10, 25, 25);
+        }
         doc.setFontSize(22);
         doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
         doc.setFont("helvetica", "bold");
@@ -387,7 +416,13 @@ export async function generateReperibilitaPDF({
     // 1. Intestazione Specifica
     if (logoUrl) {
       try {
-        doc.addImage(logoUrl, "PNG", 14, 10, 25, 25);
+        const img = await getBase64Image(logoUrl);
+        if (img) {
+          doc.addImage(img.data, img.format, 14, 10, 25, 25);
+        } else {
+          const format = logoUrl.toLowerCase().endsWith(".png") ? "PNG" : "JPEG";
+          doc.addImage(logoUrl, format, 14, 10, 25, 25);
+        }
         doc.setFontSize(22);
         doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
         doc.setFont("helvetica", "bold");
@@ -576,7 +611,13 @@ async function drawODSPageContent({
   // 1. Header Istituzionale
   if (logoUrl) {
     try {
-      doc.addImage(logoUrl, "PNG", (pageWidth / 2) - 50, 10, 18, 18);
+      const img = await getBase64Image(logoUrl);
+      if (img) {
+        doc.addImage(img.data, img.format, (pageWidth / 2) - 50, 10, 18, 18);
+      } else {
+        const format = logoUrl.toLowerCase().endsWith(".png") ? "PNG" : "JPEG";
+        doc.addImage(logoUrl, format, (pageWidth / 2) - 50, 10, 18, 18);
+      }
       doc.setFontSize(20);
       doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
       doc.setFont("helvetica", "bold");

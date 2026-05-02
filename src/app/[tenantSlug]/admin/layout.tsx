@@ -67,6 +67,11 @@ export default async function AdminLayout({
         <header className="sticky top-0 z-40 w-full bg-slate-950/80 backdrop-blur-xl border-b border-white/5 pl-16 pr-4 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="h-8 w-[2px] bg-indigo-500 rounded-full hidden lg:block"></div>
+            {tenant?.logoUrl && (
+              <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center p-0.5 mr-2">
+                <img src={tenant.logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+              </div>
+            )}
             <h2 className="text-white text-xs font-black uppercase tracking-[0.2em] opacity-80">
               Admin Dashboard <span className="text-slate-500 mx-2">/</span> <span className="text-indigo-400 capitalize">{tenantSlug}</span>
             </h2>

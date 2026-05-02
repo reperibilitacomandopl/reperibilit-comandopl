@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Settings, Mail, X, Save, Eye, EyeOff, AlertCircle, Loader2, BarChart3, Hash, Wand2, Shield } from "lucide-react"
+import { Settings, Mail, X, Save, Eye, EyeOff, AlertCircle, Loader2, BarChart3, Hash, Wand2, Shield, Upload } from "lucide-react"
 import StatisticsDashboard from "./StatisticsDashboard"
 import AdminInitialBalances from "./AdminInitialBalances"
 import ServicesSettings from "./ServicesSettings"
@@ -133,6 +133,23 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
       showFeedback("✅ Logo istituzionale salvato")
     } catch { showFeedback("❌ Errore") }
     setSaving(false)
+  }
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    if (file.size > 800 * 1024) { 
+      showFeedback("⚠️ File troppo grande (Max 800KB)")
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string
+      setTenantInfo(t => t ? ({ ...t, logoUrl: base64 }) : null)
+    }
+    reader.readAsDataURL(file)
   }
 
   const innerContent = (
@@ -483,15 +500,24 @@ export default function SettingsPanel({ onClose, embedded, initialTab = "algorit
                      </div>
 
                      <div className="w-full space-y-4">
-                        <div>
-                          <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">URL Logo Istituzionale</label>
-                          <input 
-                            type="text" 
-                            placeholder="https://.../stemma.png" 
-                            value={tenantInfo?.logoUrl || ""}
-                            onChange={e => setTenantInfo(t => t ? ({ ...t, logoUrl: e.target.value }) : null)}
-                            className="w-full bg-white border-2 border-slate-200 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 transition-all shadow-inner"
-                          />
+                        <div className="flex flex-col md:flex-row gap-4">
+                          <div className="flex-1 text-left">
+                            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">URL Logo Istituzionale</label>
+                            <input 
+                              type="text" 
+                              placeholder="https://.../stemma.png" 
+                              value={tenantInfo?.logoUrl || ""}
+                              onChange={e => setTenantInfo(t => t ? ({ ...t, logoUrl: e.target.value }) : null)}
+                              className="w-full bg-white border-2 border-slate-200 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 transition-all shadow-inner"
+                            />
+                          </div>
+                          <div className="flex flex-col justify-end">
+                            <label className="flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest cursor-pointer shadow-lg transition-all active:scale-95">
+                               <Upload size={18} />
+                               Carica Foto
+                               <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} />
+                            </label>
+                          </div>
                         </div>
                         <p className="text-[10px] text-slate-400 italic">
                           Per ora incolla l&apos;URL di un&apos;immagine (PNG/JPG con sfondo trasparente consigliato).<br/>

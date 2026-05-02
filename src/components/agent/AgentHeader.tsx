@@ -32,7 +32,8 @@ export default function AgentHeader({
   telegramCode,
   onGenerateTelegramCode,
   telegramLoading,
-  signOutAction
+  signOutAction,
+  logoUrl
 }: any) {
   const [show2faSetup, setShow2faSetup] = React.useState(false)
   const [telegramOptIn, setTelegramOptIn] = React.useState(currentUser?.telegramOptIn !== false) // Default true se non esplicitamente false
@@ -105,9 +106,17 @@ export default function AgentHeader({
           <div className="flex-1 space-y-12 w-full">
             {/* 1. Header Identity */}
             <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                 <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.8)]"></div>
-                 <span className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.4em] opacity-80">Sentinel Hub 3.0</span>
+              <div className="flex items-center gap-4">
+                {logoUrl ? (
+                   <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center p-1 shadow-xl">
+                      <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+                   </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.8)]"></div>
+                    <span className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.4em] opacity-80">Sentinel Hub 3.0</span>
+                  </div>
+                )}
               </div>
               <h2 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tighter leading-none">
                 Ciao, {currentUser?.name?.split(" ")[0]}! 👋
