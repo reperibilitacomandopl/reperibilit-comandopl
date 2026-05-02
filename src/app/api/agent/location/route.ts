@@ -40,6 +40,36 @@ export async function POST(req: Request) {
       }
     })
 
+    // 3. Logica Storico Posizioni (LocationHistory)
+    const settings = await prisma.globalSettings.findUnique({
+      where: { tenantId }
+    })
+    const intervalMinutes = settings?.gpsHistoryIntervalMinutes || 60
+
+    const lastHistory = await prisma.locationHistory.findFirst({
+      where: { userId, tenantId },
+      orderBy: { timestamp: 'desc' }
+    })
+
+    let shouldSaveHistory = true
+    if (lastHistory) {
+      const diffMinutes = (new Date().getTime() - lastHistory.timestamp.getTime()) / 60000
+      if (diffMinutes < intervalMinutes) {
+        shouldSaveHistory = false
+      }
+    }
+
+    if (shouldSaveHistory) {
+      await prisma.locationHistory.create({
+        data: {
+          userId,
+          tenantId,
+          lat,
+          lng
+        }
+      })
+    }
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("[GPS_UPDATE_ERROR]", error)

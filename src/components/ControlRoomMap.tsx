@@ -22,12 +22,18 @@ export default function ControlRoomMap() {
   const [loading, setLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
   const [mapError, setMapError] = useState(false)
+  const [geofences, setGeofences] = useState<any[]>([])
+  const [agentHistory, setAgentHistory] = useState<any[]>([])
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
   const markersRef = useRef<Record<string, any>>({})
+  const geofencesRef = useRef<Record<string, any>>({})
+  const historyLineRef = useRef<any>(null)
   const [selectedAgent, setSelectedAgent] = useState<AgentLocation | null>(null)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingBlob, setRecordingBlob] = useState<Blob | null>(null)
+  const [showGeofenceModal, setShowGeofenceModal] = useState(false)
+  const [newGeofence, setNewGeofence] = useState({ name: '', radius: 1000, color: '#ef4444' })
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
 
@@ -104,6 +110,82 @@ export default function ControlRoomMap() {
     }
   }
 
+  const fetchGeofences = async () => {
+    try {
+      const res = await fetch("/api/admin/geofence")
+      const data = await res.json()
+      if (data.success) {
+        setGeofences(data.zones)
+        drawGeofences(data.zones)
+      }
+    } catch (err) {
+      console.error("Error fetching geofences:", err)
+    }
+  }
+
+  const drawGeofences = (zones: any[]) => {
+    // @ts-ignore
+    const L = window.L
+    if (!L || !mapRef.current) return
+
+    // Clean old
+    Object.values(geofencesRef.current).forEach(c => c.remove())
+    geofencesRef.current = {}
+
+    zones.forEach(zone => {
+      if (!zone.isActive) return
+      const circle = L.circle([zone.lat, zone.lng], {
+        color: zone.color || '#ef4444',
+        fillColor: zone.color || '#ef4444',
+        fillOpacity: 0.1,
+        radius: zone.radius,
+        weight: 2,
+        dashArray: '5, 10'
+      }).addTo(mapRef.current)
+      
+      circle.bindTooltip(zone.name, { permanent: false, direction: 'center' })
+      geofencesRef.current[zone.id] = circle
+    })
+  }
+
+  const fetchAgentHistory = async (userId: string) => {
+    try {
+      const res = await fetch(`/api/admin/agents-history?userId=${userId}`)
+      const data = await res.json()
+      if (data.success) {
+        setAgentHistory(data.history)
+        drawAgentHistory(data.history)
+      }
+    } catch (err) {
+      console.error("Error fetching history:", err)
+    }
+  }
+
+  const drawAgentHistory = (history: any[]) => {
+    // @ts-ignore
+    const L = window.L
+    if (!L || !mapRef.current) return
+
+    if (historyLineRef.current) {
+      historyLineRef.current.remove()
+      historyLineRef.current = null
+    }
+
+    if (history.length < 2) return
+
+    const latlngs = history.map(h => [h.lat, h.lng])
+    historyLineRef.current = L.polyline(latlngs, {
+      color: '#3b82f6',
+      weight: 3,
+      opacity: 0.7,
+      dashArray: '10, 10',
+      lineCap: 'round'
+    }).addTo(mapRef.current)
+
+    // Optional: fit bounds
+    // mapRef.current.fitBounds(historyLineRef.current.getBounds(), { padding: [50, 50] })
+  }
+
   const updateMarkers = (agentData: AgentLocation[]) => {
     // @ts-ignore
     const L = window.L
@@ -143,6 +225,7 @@ export default function ControlRoomMap() {
           const marker = L.marker(pos, { icon }).addTo(mapRef.current)
           marker.on('click', () => {
             setSelectedAgent(agent)
+            fetchAgentHistory(agent.id)
           })
           marker.bindPopup(`
             <div class="p-2 min-w-[150px]">
@@ -249,11 +332,53 @@ export default function ControlRoomMap() {
     }
   }
 
+  const handleCreateGeofence = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!mapRef.current) return
+
+    const center = mapRef.current.getCenter()
+    const loadingId = toast.loading("Creazione zona...")
+
+    try {
+      const res = await fetch("/api/admin/geofence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newGeofence.name,
+          lat: center.lat,
+          lng: center.lng,
+          radius: newGeofence.radius,
+          color: newGeofence.color
+        })
+      })
+
+      if (res.ok) {
+        toast.success("Zona operativa creata!", { id: loadingId })
+        setShowGeofenceModal(false)
+        fetchGeofences() // Ricarica le zone sulla mappa
+      } else {
+        throw new Error()
+      }
+    } catch (err) {
+      toast.error("Errore durante la creazione", { id: loadingId })
+    }
+  }
+
   useEffect(() => {
     fetchLocations()
+    fetchGeofences()
     const interval = setInterval(fetchLocations, 30000) // Aggiorna ogni 30s
     return () => clearInterval(interval)
   }, [])
+
+  // Pulizia storico alla deselezione
+  useEffect(() => {
+    if (!selectedAgent && historyLineRef.current) {
+      historyLineRef.current.remove()
+      historyLineRef.current = null
+      setAgentHistory([])
+    }
+  }, [selectedAgent])
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] bg-slate-50 rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-2xl relative">
@@ -298,7 +423,13 @@ export default function ControlRoomMap() {
           </div>
           <div className="h-8 w-px bg-slate-200"></div>
           <button 
-            onClick={() => { setLoading(true); fetchLocations(); }}
+            onClick={() => setShowGeofenceModal(true)}
+            className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border border-blue-200"
+          >
+            + Nuova Zona
+          </button>
+          <button 
+            onClick={() => { setLoading(true); fetchLocations(); fetchGeofences(); }}
             className="p-3 bg-slate-100 hover:bg-slate-200 rounded-2xl text-slate-400 hover:text-slate-600 transition-all"
             title="Aggiorna Mappa"
           >
@@ -382,7 +513,14 @@ export default function ControlRoomMap() {
               </div>
               <div>
                 <p className="text-xs font-black text-slate-900 uppercase">{selectedAgent.name}</p>
-                <p className="text-[9px] text-slate-500 font-bold uppercase">{selectedAgent.qualifica || 'Agente'}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[9px] text-slate-500 font-bold uppercase">{selectedAgent.qualifica || 'Agente'}</p>
+                  {agentHistory.length > 0 && (
+                    <span className="text-[8px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded font-black tracking-widest uppercase">
+                      Storico 24h: {agentHistory.length} posizioni
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <button onClick={() => setSelectedAgent(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-all">
@@ -469,8 +607,71 @@ export default function ControlRoomMap() {
             <div className="w-2 h-2 rounded-full bg-rose-600 animate-pulse"></div>
             <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Allerta SOS</span>
           </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full border border-rose-500 bg-rose-500/20"></div>
+            <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Zone (Geofence)</span>
+          </div>
         </div>
       </div>
+
+      {/* Geofence Modal */}
+      {showGeofenceModal && (
+        <div className="absolute inset-0 z-[2000] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <h3 className="text-lg font-black text-slate-900 uppercase tracking-tighter">Crea Zona Operativa</h3>
+              <button onClick={() => setShowGeofenceModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleCreateGeofence} className="p-6 space-y-4">
+              <div className="p-4 bg-blue-50 text-blue-800 text-xs rounded-xl border border-blue-100">
+                <p className="font-bold mb-1">Posizione Zona</p>
+                La zona verrà creata <b>esattamente al centro della mappa</b> attualmente inquadrata. Sposta la mappa prima di salvare.
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Nome Zona</label>
+                <input 
+                  type="text" 
+                  required
+                  value={newGeofence.name}
+                  onChange={e => setNewGeofence({...newGeofence, name: e.target.value})}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-blue-600 outline-none"
+                  placeholder="Es. Centro Storico"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Raggio (Metri)</label>
+                  <input 
+                    type="number" 
+                    required min="50" max="10000"
+                    value={newGeofence.radius}
+                    onChange={e => setNewGeofence({...newGeofence, radius: parseInt(e.target.value)})}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-blue-600 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Colore</label>
+                  <input 
+                    type="color" 
+                    value={newGeofence.color}
+                    onChange={e => setNewGeofence({...newGeofence, color: e.target.value})}
+                    className="w-full h-[46px] rounded-xl cursor-pointer border-0 p-1"
+                  />
+                </div>
+              </div>
+
+              <button type="submit" className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl shadow-xl shadow-blue-500/20 uppercase tracking-widest text-xs transition-all">
+                Salva e Attiva Zona
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

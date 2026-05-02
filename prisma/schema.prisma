@@ -52,6 +52,8 @@ model Tenant {
   armors             Armor[]
   ShiftRule          ShiftRule[]
   trainingRecords    TrainingRecord[]
+  locationHistory    LocationHistory[]
+  geofenceZones      GeofenceZone[]
 }
 
 model User {
@@ -134,6 +136,7 @@ model User {
   armors                 Armor[]            @relation("ArmorAssegnatario")
   announcements          Announcement[]
   trainingRecords        TrainingRecord[]
+  locationHistory        LocationHistory[]
 
   @@unique([tenantId, matricola])
 }
@@ -340,6 +343,8 @@ model GlobalSettings {
   bpStaccoMinTurno1 Float @default(6.0)
   bpStaccoMaxPausa  Float @default(2.0)
   bpStaccoMinTurno2 Float @default(2.0)
+
+  gpsHistoryIntervalMinutes Int @default(60)
 
   tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
@@ -637,4 +642,36 @@ model TrainingRecord {
 
   @@index([userId, tenantId])
   @@index([expiryDate])
+}
+
+model LocationHistory {
+  id        String   @id @default(uuid())
+  tenantId  String?
+  userId    String
+  lat       Float
+  lng       Float
+  timestamp DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([userId, timestamp])
+  @@index([tenantId])
+}
+
+model GeofenceZone {
+  id        String   @id @default(uuid())
+  tenantId  String?
+  name      String
+  lat       Float
+  lng       Float
+  radius    Int      // Raggio in metri
+  color     String   @default("#ef4444")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
 }
