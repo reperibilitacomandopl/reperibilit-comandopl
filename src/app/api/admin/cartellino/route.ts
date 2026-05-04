@@ -66,12 +66,12 @@ export async function GET(req: Request) {
       })
     ])
 
-    const usedFerie = yearShifts.filter(s => {
+    const usedFerie = yearShifts.filter((s: any) => {
       const t = (s.type || "").toUpperCase()
       return t === "FERIE" || t === "FERIE_" || t === "FERIE_AP" || t === "(F)" || t === "F"
     }).length
 
-    const usedMalattia = yearShifts.filter(s => {
+    const usedMalattia = yearShifts.filter((s: any) => {
       const t = (s.type || "").toUpperCase()
       return t === "MALATT" || t === "MALATTIA" || t === "MAL" || t === "M" || t === "(M)" || t === "MAL_FI" || t === "MAL_FIGLIO"
     }).length
