@@ -33,7 +33,10 @@ export async function GET(req: Request) {
     const startDate = new Date(Date.UTC(year, month - 1, 1))
     const endDate = new Date(Date.UTC(year, month, 1))
 
-    const [shifts, requests, clockRecords, agenda, balances, settings] = await Promise.all([
+    const startOfYear = new Date(Date.UTC(year, 0, 1))
+    const endOfYear = new Date(Date.UTC(year + 1, 0, 1))
+
+    const [shifts, requests, clockRecords, agenda, balances, settings, yearShifts] = await Promise.all([
       prisma.shift.findMany({
         where: { userId, date: { gte: startDate, lt: endDate }, ...tf },
         orderBy: { date: "asc" }
@@ -56,8 +59,22 @@ export async function GET(req: Request) {
       }),
       prisma.globalSettings.findUnique({
         where: { tenantId: tenantId || "default" }
+      }),
+      prisma.shift.findMany({
+        where: { userId, date: { gte: startOfYear, lt: endOfYear }, ...tf },
+        select: { type: true }
       })
     ])
+
+    const usedFerie = yearShifts.filter(s => {
+      const t = (s.type || "").toUpperCase()
+      return t === "FERIE" || t === "FERIE_" || t === "FERIE_AP" || t === "(F)" || t === "F"
+    }).length
+
+    const usedMalattia = yearShifts.filter(s => {
+      const t = (s.type || "").toUpperCase()
+      return t === "MALATT" || t === "MALATTIA" || t === "MAL" || t === "M" || t === "(M)" || t === "MAL_FI" || t === "MAL_FIGLIO"
+    }).length
 
     return NextResponse.json({
        agents,
@@ -66,7 +83,11 @@ export async function GET(req: Request) {
        clockRecords,
        agenda,
        balances,
-       settings
+       settings,
+       yearlyStats: {
+         usedFerie,
+         usedMalattia
+       }
     })
 
   } catch (error) {

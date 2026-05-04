@@ -162,7 +162,7 @@ export default function CartellinoPanel() {
               </div>
               <h3 className="text-slate-400 text-sm font-medium mb-1">Ferie Residue ({year})</h3>
               <p className="text-3xl font-bold text-white">
-                {data.balances?.details?.find((d: any) => d.code === "FERIE")?.initialValue || 0} <span className="text-lg font-normal text-slate-500">gg</span>
+                {Math.max(0, (data.balances?.details?.find((d: any) => d.code === "FERIE")?.initialValue || 0) - (data.yearlyStats?.usedFerie || 0))} <span className="text-lg font-normal text-slate-500">gg</span>
               </p>
             </div>
             
@@ -182,7 +182,7 @@ export default function CartellinoPanel() {
               </div>
               <h3 className="text-slate-400 text-sm font-medium mb-1">Malattia Anno</h3>
               <p className="text-3xl font-bold text-rose-400">
-                {data.shifts.filter((s: any) => s.type?.toUpperCase().includes("(M)")).length} <span className="text-lg font-normal text-slate-500">gg</span>
+                {data.yearlyStats?.usedMalattia || 0} <span className="text-lg font-normal text-slate-500">gg</span>
               </p>
             </div>
 
