@@ -54,6 +54,7 @@ const NAV_SECTIONS: NavSection[] = [
     accent: "text-emerald-400",
     items: [
       { label: "Anagrafica & Squadre", href: "/admin/risorse", icon: Users, description: "Gestione Agenti e Composizione Ufficio" },
+      { label: "Gestione Cartellino", href: "/admin/cartellino", icon: CalendarDays, description: "Presenze, Straordinari e Saldi HR" },
       { label: "Richieste Agenti", href: "/admin/richieste", icon: FileText, description: "Inbox Ferie e Permessi" },
       { label: "Timbrature GPS", href: "/admin/timbrature", icon: Clock, description: "Registro Ingressi e Uscite" },
     ],

@@ -1,0 +1,280 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { format, getDaysInMonth } from "date-fns"
+import { it } from "date-fns/locale"
+import { Calendar as CalendarIcon, Clock, Edit2, AlertCircle, CheckCircle2, RefreshCcw, Download, User, Info } from "lucide-react"
+
+export default function CartellinoPanel() {
+  const [agents, setAgents] = useState<any[]>([])
+  const [selectedUserId, setSelectedUserId] = useState<string>("")
+  const [month, setMonth] = useState<number>(new Date().getMonth() + 1)
+  const [year, setYear] = useState<number>(new Date().getFullYear())
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    fetchAgents()
+  }, [])
+
+  useEffect(() => {
+    if (selectedUserId) {
+      fetchCartellinoData()
+    }
+  }, [selectedUserId, month, year])
+
+  async function fetchAgents() {
+    try {
+      const res = await fetch("/api/admin/cartellino")
+      const json = await res.json()
+      if (json.agents) {
+        setAgents(json.agents)
+        if (json.agents.length > 0) setSelectedUserId(json.agents[0].id)
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  async function fetchCartellinoData() {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/admin/cartellino?userId=${selectedUserId}&month=${month}&year=${year}`)
+      const json = await res.json()
+      setData(json)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const daysInMonth = getDaysInMonth(new Date(year, month - 1))
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
+
+  return (
+    <div className="space-y-6">
+      {/* Header and Controls */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/50 backdrop-blur-md p-5 rounded-2xl border border-slate-700/50 shadow-xl">
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+            <User className="text-blue-400" size={24} />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white tracking-tight">Cartellino Presenze</h2>
+            <p className="text-sm text-slate-400">Gestione orari, straordinari e giustificativi</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={selectedUserId}
+            onChange={(e) => setSelectedUserId(e.target.value)}
+            className="bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]"
+          >
+            {agents.map(a => (
+              <option key={a.id} value={a.id}>{a.name} ({a.matricola})</option>
+            ))}
+          </select>
+
+          <select
+            value={month}
+            onChange={(e) => setMonth(Number(e.target.value))}
+            className="bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {Array.from({ length: 12 }, (_, i) => (
+              <option key={i + 1} value={i + 1}>
+                {format(new Date(2020, i, 1), "MMMM", { locale: it }).toUpperCase()}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+            className="bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {[2024, 2025, 2026].map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center p-20">
+          <RefreshCcw className="animate-spin text-blue-500" size={32} />
+        </div>
+      ) : !data ? null : (
+        <>
+          {/* Dashboard Saldi */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <CalendarIcon size={64} />
+              </div>
+              <h3 className="text-slate-400 text-sm font-medium mb-1">Ferie Residue ({year})</h3>
+              <p className="text-3xl font-bold text-white">
+                {data.balances?.details?.find((d: any) => d.code === "FERIE")?.initialValue || 0} <span className="text-lg font-normal text-slate-500">gg</span>
+              </p>
+            </div>
+            
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <Clock size={64} />
+              </div>
+              <h3 className="text-slate-400 text-sm font-medium mb-1">Straordinari Mensili</h3>
+              <p className="text-3xl font-bold text-emerald-400">
+                {data.shifts.reduce((acc: number, s: any) => acc + (s.overtimeHours || 0), 0)} <span className="text-lg font-normal text-slate-500">ore</span>
+              </p>
+            </div>
+
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <AlertCircle size={64} />
+              </div>
+              <h3 className="text-slate-400 text-sm font-medium mb-1">Malattia Anno</h3>
+              <p className="text-3xl font-bold text-rose-400">
+                {data.shifts.filter((s: any) => s.type?.toUpperCase().includes("(M)")).length} <span className="text-lg font-normal text-slate-500">gg</span>
+              </p>
+            </div>
+
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <CheckCircle2 size={64} />
+              </div>
+              <h3 className="text-slate-400 text-sm font-medium mb-1">Turni Effettuati</h3>
+              <p className="text-3xl font-bold text-blue-400">
+                {data.shifts.filter((s: any) => s.type && !s.type.startsWith("(")).length} <span className="text-lg font-normal text-slate-500">turni</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Tabella Cartellino */}
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-300">
+                <thead className="bg-slate-800 text-slate-400 uppercase text-xs">
+                  <tr>
+                    <th className="px-4 py-4 font-semibold w-24">Data</th>
+                    <th className="px-4 py-4 font-semibold">Turno (Pianificato)</th>
+                    <th className="px-4 py-4 font-semibold">Timbrature</th>
+                    <th className="px-4 py-4 font-semibold">Straordinario</th>
+                    <th className="px-4 py-4 font-semibold">Assenze / Note</th>
+                    <th className="px-4 py-4 font-semibold w-16 text-center">Azioni</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/50">
+                  {days.map(day => {
+                    const dateObj = new Date(Date.UTC(year, month - 1, day))
+                    const dateStr = dateObj.toISOString().split('T')[0]
+                    const isWeekend = dateObj.getUTCDay() === 0 || dateObj.getUTCDay() === 6
+
+                    // Find data for this day
+                    const shifts = data.shifts.filter((s: any) => new Date(s.date).toISOString().split('T')[0] === dateStr)
+                    const requests = data.requests.filter((r: any) => new Date(r.date).toISOString().split('T')[0] === dateStr)
+                    const clocks = data.clockRecords.filter((c: any) => new Date(c.timestamp).toISOString().split('T')[0] === dateStr)
+
+                    // Aggregate
+                    const primaryShift = shifts[0]
+                    const overtime = shifts.reduce((acc: number, s: any) => acc + (s.overtimeHours || 0), 0)
+                    const isAbsence = primaryShift?.type?.startsWith("(") || primaryShift?.type === "R" || primaryShift?.type === "RR"
+
+                    return (
+                      <tr 
+                        key={day} 
+                        className={`hover:bg-slate-800/50 transition-colors ${isWeekend ? 'bg-slate-800/20' : ''}`}
+                      >
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="flex flex-col">
+                            <span className={`font-medium ${isWeekend ? 'text-amber-500' : 'text-slate-200'}`}>
+                              {day} {format(dateObj, "MMM", { locale: it })}
+                            </span>
+                            <span className="text-xs text-slate-500 capitalize">
+                              {format(dateObj, "EEEE", { locale: it })}
+                            </span>
+                          </div>
+                        </td>
+                        
+                        <td className="px-4 py-3">
+                          {primaryShift ? (
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${
+                                isAbsence ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                              }`}>
+                                {primaryShift.type}
+                              </span>
+                              {!isAbsence && primaryShift.timeRange && (
+                                <span className="text-slate-400 text-xs flex items-center gap-1">
+                                  <Clock size={12} /> {primaryShift.timeRange}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-600 italic text-xs">Nessun turno</span>
+                          )}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          {clocks.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {clocks.map((c: any, i: number) => (
+                                <span key={i} className={`text-xs px-2 py-0.5 rounded border ${
+                                  c.type === 'IN' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : 'border-orange-500/30 text-orange-400 bg-orange-500/10'
+                                }`}>
+                                  {c.type === 'IN' ? 'Entrata' : 'Uscita'} {format(new Date(c.timestamp), "HH:mm")}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-slate-600">-</span>
+                          )}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          {overtime > 0 ? (
+                            <span className="inline-flex items-center gap-1 text-emerald-400 font-medium bg-emerald-400/10 px-2 py-1 rounded text-xs">
+                              +{overtime}h
+                            </span>
+                          ) : (
+                            <span className="text-slate-600">-</span>
+                          )}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col gap-1">
+                            {requests.map((r: any, i: number) => (
+                              <span key={i} className="text-xs text-amber-400 bg-amber-400/10 px-2 py-1 rounded inline-block w-fit">
+                                {r.hours ? `${r.hours}h ` : ''}{r.code}
+                              </span>
+                            ))}
+                            {primaryShift?.serviceDetails && (
+                              <span className="text-xs text-slate-400 flex items-center gap-1">
+                                <Info size={12} /> {primaryShift.serviceDetails}
+                              </span>
+                            )}
+                            {requests.length === 0 && !primaryShift?.serviceDetails && <span className="text-slate-600">-</span>}
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-3 text-center">
+                          <button 
+                            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors"
+                            title="Modifica Dettagli Giornata"
+                            onClick={() => alert("La modale di modifica sarà implementata nel prossimo step.")}
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}

@@ -193,7 +193,7 @@ PDF pianificazione e reperibilità funzionanti (appena corretti). Grafica unifor
 3. ~~Cookie banner GDPR (1.6)~~ ✅ Completato — Componente `CookieBanner.tsx`
 4. ~~Form demo → collegare a email (1.4, 1.5)~~ ✅ Completato — API `/api/demo-request` + Telegram
 5. ~~Mappa GPS non caricata (5.1)~~ ✅ Completato — Placeholder informativo migliorato
-6. Link impostazioni nella sidebar (8.1)
+6. ~~Link impostazioni nella sidebar (8.1)~~ ✅ Completato — Già presente in `AdminSidebar`
 
 ### 🟡 Sprint 2 — UX Admin (2-3 settimane)
 7. ~~Riorganizzazione toolbar Pianificazione (3.1, 3.2)~~ ✅ Completato — 2 dropdown (Strumenti + Export)
@@ -201,19 +201,22 @@ PDF pianificazione e reperibilità funzionanti (appena corretti). Grafica unifor
 9. ~~KPI cliccabili nell'overview (2.5)~~ ✅ Completato — Link a pagine corrispondenti
 10. ~~Contatore richieste pendenti (2.6)~~ ✅ Già presente (badge Approvazioni)
 11. ~~Conferma long-press SOS (6.1)~~ ✅ Completato — 2.5s con progress ring SVG
-12. Template ODS riutilizzabili (4.4)
+12. ~~Template ODS riutilizzabili (4.4)~~ ✅ Completato
 
 ### 🟢 Sprint 3 — Funzionalità Avanzate (3-4 settimane)
-13. Mini-grafico storico copertura (2.2)
-14. Multi-select celle turni (3.8)
+13. ~~Mini-grafico storico copertura (2.2)~~ ✅ Completato
+14. ~~Multi-select celle turni (3.8)~~ ✅ Completato
 15. ~~PDF watermark BOZZA (7.4)~~ ✅ Completato
-16. Countdown prossimo turno (6.3)
+16. ~~Countdown prossimo turno (6.3)~~ ✅ Completato
 17. ~~Legenda colori nella griglia (3.6)~~ ✅ Completato — Barra collassabile
 18. ~~Notifica Telegram auto su ODS (4.6)~~ ✅ Completato — Auto-invio alla certificazione
+- ~~Copia-incolla mese (3.9)~~ ✅ Completato
+- ~~Conflitti visivi (3.10)~~ ✅ Completato
+- ~~Storico personale agenti (6.5)~~ ✅ Completato
 
 ### 🟣 Sprint 4 — Innovazione (4-6 settimane)
 19. ~~Video/mockup hero landing (1.1)~~ ✅ Completato — Sezione screenshot carousel
 20. Geofencing GPS (5.4)
 21. Chat pattuglia (6.7)
-22. Undo/Redo turni (3.7)
+22. ~~Undo/Redo turni (3.7)~~ ✅ Completato
 23. Storico posizioni GPS (5.5)
