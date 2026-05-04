@@ -12,6 +12,12 @@ export default function CartellinoPanel() {
   const [year, setYear] = useState<number>(new Date().getFullYear())
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  
+  // --- STATO MODALE ---
+  const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const [selectedCell, setSelectedCell] = useState<{userId: string, dateStr: string, day: number} | null>(null)
+  const [detailData, setDetailData] = useState<{type: string, overtimeHours: number, note: string}>({type: "", overtimeHours: 0, note: ""})
+  const [savingDetail, setSavingDetail] = useState(false)
 
   useEffect(() => {
     fetchAgents()
@@ -51,6 +57,47 @@ export default function CartellinoPanel() {
 
   const daysInMonth = getDaysInMonth(new Date(year, month - 1))
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
+
+  const openDetailModal = (day: number, primaryShift: any) => {
+    const dateObj = new Date(Date.UTC(year, month - 1, day))
+    const dateStr = dateObj.toISOString().split('T')[0]
+    
+    setSelectedCell({ userId: selectedUserId, dateStr, day })
+    setDetailData({
+      type: primaryShift?.type || "",
+      overtimeHours: primaryShift?.overtimeHours || 0,
+      note: primaryShift?.serviceDetails || ""
+    })
+    setDetailModalOpen(true)
+  }
+
+  const saveDetailModal = async () => {
+    if (!selectedCell) return
+    setSavingDetail(true)
+    
+    try {
+      const res = await fetch("/api/admin/shifts/monthly", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+           updates: [{ 
+              userId: selectedCell.userId, 
+              date: selectedCell.dateStr, 
+              type: detailData.type,
+              overtimeHours: detailData.overtimeHours,
+              serviceDetails: detailData.note
+           }] 
+        })
+      })
+      if (!res.ok) throw new Error("Errore API")
+      setDetailModalOpen(false)
+      fetchCartellinoData() // Refresh data
+    } catch (e) {
+      alert("Errore durante il salvataggio dei dettagli")
+    } finally {
+      setSavingDetail(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -261,7 +308,7 @@ export default function CartellinoPanel() {
                           <button 
                             className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors"
                             title="Modifica Dettagli Giornata"
-                            onClick={() => alert("La modale di modifica sarà implementata nel prossimo step.")}
+                            onClick={() => openDetailModal(day, primaryShift)}
                           >
                             <Edit2 size={16} />
                           </button>
@@ -274,6 +321,99 @@ export default function CartellinoPanel() {
             </div>
           </div>
         </>
+      )}
+      )}
+
+      {/* ═══════════ MODALE DETTAGLIO GIORNATA ═══════════ */}
+      {detailModalOpen && selectedCell && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-700 animate-in zoom-in-95 duration-200">
+            <div className="bg-slate-800 p-4 border-b border-slate-700 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Edit2 size={18} className="text-blue-400" /> Modifica Dettagli
+              </h3>
+              <button onClick={() => setDetailModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+                <AlertCircle size={20} className="opacity-0" /> {/* Just for spacing or placeholder if needed, let's use X actually, but since I didn't import X, I'll just use text */}
+                <span className="text-xl leading-none">&times;</span>
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-5">
+              <div>
+                <p className="text-sm text-slate-400 font-medium uppercase tracking-widest">Agente</p>
+                <p className="text-lg font-bold text-white">{agents.find(a => a.id === selectedCell.userId)?.name}</p>
+                <p className="text-xs text-blue-400 font-medium">{selectedCell.dateStr}</p>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1">Tipologia Turno / Assenza</label>
+                <select 
+                  value={detailData.type}
+                  onChange={e => setDetailData(prev => ({ ...prev, type: e.target.value }))}
+                  className="w-full p-2.5 bg-slate-800 border border-slate-700 text-white rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">Seleziona (nessuno)...</option>
+                  <optgroup label="Turni Operativi">
+                    <option value="M1">M1 (Mattina)</option>
+                    <option value="P1">P1 (Pomeriggio)</option>
+                    <option value="N">N (Notte)</option>
+                    <option value="RP">RP (Riposo Programmato)</option>
+                    <option value="RR">RR (Riposo Recupero)</option>
+                  </optgroup>
+                  <optgroup label="Assenze Intere (Codici HR)">
+                    <option value="(F)">Ferie (F)</option>
+                    <option value="(M)">Malattia (M)</option>
+                    <option value="(L 104)">Legge 104 (L 104)</option>
+                    <option value="(REC)">Recupero (REC)</option>
+                    <option value="(CONGEDO)">Congedo (CONGEDO)</option>
+                    <option value="(PERM)">Permesso (PERM)</option>
+                  </optgroup>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1">Ore di Straordinario</label>
+                <div className="relative">
+                  <input 
+                    type="number" 
+                    min="0" max="12" step="0.5"
+                    value={detailData.overtimeHours || ""}
+                    onChange={e => setDetailData(prev => ({ ...prev, overtimeHours: parseFloat(e.target.value) || 0 }))}
+                    className="w-full p-2.5 pl-10 bg-slate-800 border border-slate-700 text-white rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    placeholder="Es: 2.5"
+                  />
+                  <Clock className="absolute left-3 top-3 text-slate-500" size={16} />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1">Note / Motivazione</label>
+                <textarea 
+                  placeholder="Es: Servizio ordine pubblico"
+                  value={detailData.note}
+                  onChange={e => setDetailData(prev => ({ ...prev, note: e.target.value }))}
+                  className="w-full p-2.5 bg-slate-800 border border-slate-700 text-white rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 min-h-[80px] resize-none"
+                />
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button 
+                  onClick={() => setDetailModalOpen(false)}
+                  className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold rounded-xl transition-colors"
+                >
+                  Annulla
+                </button>
+                <button 
+                  onClick={saveDetailModal}
+                  disabled={savingDetail}
+                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  {savingDetail ? <RefreshCcw className="animate-spin" size={18} /> : "Salva Modifiche"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
