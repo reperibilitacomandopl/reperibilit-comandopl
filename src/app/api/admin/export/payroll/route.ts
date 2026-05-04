@@ -138,14 +138,36 @@ export async function GET(req: Request) {
       let totalNotti = 0;
       let totalSerali = 0;
 
+      let giorniFerie = 0;
+      let giorniMalattia = 0;
+      let giorniRiposo = 0;
+      let giorniL104 = 0;
+      let altreAssenze = 0;
+      let totaleBuoniPasto = 0;
+
+      // Raggruppiamo i turni per giorno per calcolare i Buoni Pasto
+      const turniPerGiorno: Record<string, typeof agentShifts> = {};
+
       for(const s of agentShifts) {
         if (!s.type) continue;
         const upType = s.type.toUpperCase().trim();
 
-        // 🛑 FILTRO ASSENZE GIORNALIERE INTERE: (F), (L 104), R, RR
-        if (upType === "R" || upType === "RR" || upType.startsWith("(")) {
+        // 🛑 CONTEGGIO ASSENZE GIORNALIERE INTERE
+        if (upType === "R" || upType === "RR") {
+           giorniRiposo++;
            continue; 
         }
+        if (upType.startsWith("(")) {
+           if (upType.includes("F")) giorniFerie++;
+           else if (upType.includes("M")) giorniMalattia++;
+           else if (upType.includes("L 104") || upType.includes("104")) giorniL104++;
+           else altreAssenze++;
+           continue;
+        }
+
+        const dateStr = new Date(s.date).toISOString().split('T')[0];
+        if (!turniPerGiorno[dateStr]) turniPerGiorno[dateStr] = [];
+        turniPerGiorno[dateStr].push(s);
 
         totalStraordinari += (s.overtimeHours || 0);
 
@@ -180,6 +202,68 @@ export async function GET(req: Request) {
         }
       }
 
+      // Calcolo Buoni Pasto
+      for (const dateStr in turniPerGiorno) {
+        const turniLavorati = turniPerGiorno[dateStr];
+        if (turniLavorati.length === 0) continue;
+
+        const fasceOrarie = turniLavorati
+          .map(s => {
+            let start = 0, end = 0, duration = 0;
+            if (s.timeRange) {
+              const parts = s.timeRange.split("-");
+              if (parts.length === 2) {
+                const [h1, m1] = parts[0].split(":").map(Number);
+                const [h2, m2] = parts[1].split(":").map(Number);
+                start = h1 + (m1 || 0)/60;
+                end = h2 + (m2 || 0)/60;
+                if (end < start) end += 24;
+                duration = end - start;
+              }
+            } else {
+               duration = s.durationHours && s.durationHours !== 6 ? s.durationHours : 6;
+            }
+            return { start, end, duration };
+          })
+          .sort((a, b) => a.start - b.start);
+
+        let maturaBuono = false;
+
+        // Regola 1: 7 ore continuative
+        if (fasceOrarie.some(f => f.duration >= 7)) {
+          maturaBuono = true;
+        } 
+        // Regola 2: 6 ore totali, max 2h pausa, intervallo min 10m, min 2h consecutive lavorate
+        else if (fasceOrarie.length >= 2) {
+          let oreTotali = 0;
+          let pausaMax = 0;
+          let pausaMin = 999;
+          let turniValidi = 0; // turni >= 2 ore
+
+          for (let i = 0; i < fasceOrarie.length; i++) {
+            const f = fasceOrarie[i];
+            oreTotali += f.duration;
+            if (f.duration >= 2) turniValidi++;
+
+            if (i > 0 && fasceOrarie[i-1].start !== 0) { // check if timeRange was parsed
+              let pausa = fasceOrarie[i].start - fasceOrarie[i-1].end;
+              if (pausa < 0) pausa += 24; // in caso di turno notturno spezzato
+              if (pausa > pausaMax) pausaMax = pausa;
+              if (pausa < pausaMin) pausaMin = pausa;
+            }
+          }
+
+          // 10 minuti = 0.166...
+          if (oreTotali >= 6 && turniValidi >= 2 && pausaMax <= 2 && pausaMin >= (10/60)) {
+            maturaBuono = true;
+          }
+        }
+
+        if (maturaBuono) {
+          totaleBuoniPasto++;
+        }
+      }
+
       // Consegna al Foglio Excel
       return {
         "Matricola": agent.matricola,
@@ -193,6 +277,13 @@ export async function GET(req: Request) {
         "Indennità Notturna (Turni)": totalNotti,
         "Indennità Serale (Turni)": totalSerali,
         "Extra / Straordinari (Ore)": totalStraordinari,
+        // Assenze e Buoni Pasto
+        "Buoni Pasto Maturati": totaleBuoniPasto,
+        "Giorni Ferie (F)": giorniFerie,
+        "Giorni Malattia (M)": giorniMalattia,
+        "Giorni Riposo (R/RR)": giorniRiposo,
+        "Giorni L. 104": giorniL104,
+        "Altre Assenze": altreAssenze
       }
     })
 
@@ -205,13 +296,19 @@ export async function GET(req: Request) {
       { wch: 15 }, // Matricola
       { wch: 35 }, // Nome
       { wch: 25 }, // Qualifica
-      { wch: 25 }, // Ore Feriali
-      { wch: 25 }, // Ore Festive
-      { wch: 25 }, // Permessi Detratti
-      { wch: 28 }, // Gettoni Festivi
-      { wch: 28 }, // Gettoni Notti
-      { wch: 28 }, // Gettoni Serali
-      { wch: 28 }, // Straordinari
+      { wch: 20 }, // Ore Feriali
+      { wch: 20 }, // Ore Festive
+      { wch: 22 }, // Permessi Detratti
+      { wch: 22 }, // Gettoni Festivi
+      { wch: 22 }, // Gettoni Notti
+      { wch: 22 }, // Gettoni Serali
+      { wch: 22 }, // Straordinari
+      { wch: 20 }, // Buoni Pasto
+      { wch: 15 }, // Ferie
+      { wch: 18 }, // Malattia
+      { wch: 20 }, // Riposo
+      { wch: 15 }, // 104
+      { wch: 15 }, // Altre
     ]
 
     const buffer = xlsx.write(workbook, { type: "buffer", bookType: "xlsx" })
