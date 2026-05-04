@@ -1,6 +1,5 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
-import DashboardShell from "@/components/DashboardShell"
 import CartellinoPanel from "@/components/admin/CartellinoPanel"
 
 export default async function CartellinoPage({ params }: { params: Promise<{ tenantSlug: string }> }) {
@@ -12,8 +11,8 @@ export default async function CartellinoPage({ params }: { params: Promise<{ ten
   }
 
   return (
-    <DashboardShell>
+    <div className="p-2 sm:p-4 lg:p-6 relative z-10 h-full">
       <CartellinoPanel />
-    </DashboardShell>
+    </div>
   )
 }
