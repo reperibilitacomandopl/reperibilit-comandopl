@@ -3,7 +3,17 @@
 import { useState, useEffect } from "react"
 import { format, getDaysInMonth } from "date-fns"
 import { it } from "date-fns/locale"
-import { Calendar as CalendarIcon, Clock, Edit2, AlertCircle, CheckCircle2, RefreshCcw, Download, User, Info } from "lucide-react"
+import { Calendar as CalendarIcon, Clock, Edit2, AlertCircle, CheckCircle2, RefreshCcw, Download, User, Info, X } from "lucide-react"
+import { AGENDA_CATEGORIES } from "@/utils/agenda-codes"
+
+const CAT_THEME: Record<string, { border: string; bg: string; text: string; btnBg: string; btnText: string; btnHover: string }> = {
+  amber:  { border: "border-yellow-300", bg: "bg-yellow-50",  text: "text-yellow-800", btnBg: "bg-yellow-500",  btnText: "text-white", btnHover: "hover:bg-yellow-600" },
+  rose:   { border: "border-pink-300",   bg: "bg-pink-50",    text: "text-pink-800",   btnBg: "bg-pink-500",    btnText: "text-white", btnHover: "hover:bg-pink-600" },
+  blue:   { border: "border-sky-300",    bg: "bg-sky-50",     text: "text-sky-800",    btnBg: "bg-sky-500",     btnText: "text-white", btnHover: "hover:bg-sky-600" },
+  red:    { border: "border-red-300",    bg: "bg-red-50",     text: "text-red-800",    btnBg: "bg-red-500",     btnText: "text-white", btnHover: "hover:bg-red-600" },
+  teal:   { border: "border-teal-300",   bg: "bg-teal-50",    text: "text-teal-800",   btnBg: "bg-teal-500",    btnText: "text-white", btnHover: "hover:bg-teal-600" },
+  indigo: { border: "border-indigo-300", bg: "bg-indigo-50",  text: "text-indigo-800", btnBg: "bg-indigo-500",  btnText: "text-white", btnHover: "hover:bg-indigo-600" },
+}
 
 export default function CartellinoPanel() {
   const [agents, setAgents] = useState<any[]>([])
@@ -325,89 +335,158 @@ export default function CartellinoPanel() {
 
       {/* ═══════════ MODALE DETTAGLIO GIORNATA ═══════════ */}
       {detailModalOpen && selectedCell && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-700 animate-in zoom-in-95 duration-200">
-            <div className="bg-slate-800 p-4 border-b border-slate-700 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Edit2 size={18} className="text-blue-400" /> Modifica Dettagli
-              </h3>
-              <button onClick={() => setDetailModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
-                <AlertCircle size={20} className="opacity-0" /> {/* Just for spacing or placeholder if needed, let's use X actually, but since I didn't import X, I'll just use text */}
-                <span className="text-xl leading-none">&times;</span>
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
+            <div className="px-5 py-4 bg-slate-900 text-white shrink-0 flex justify-between items-start">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="w-8 h-8 bg-indigo-500/20 rounded-lg flex items-center justify-center">
+                    <CalendarIcon width={16} height={16} className="text-indigo-400" />
+                  </div>
+                  <h3 className="text-sm font-black uppercase tracking-widest">
+                    {agents.find(a => a.id === selectedCell.userId)?.name}
+                  </h3>
+                </div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">
+                  Giorno {selectedCell.day}
+                </p>
+              </div>
+              <button onClick={() => setDetailModalOpen(false)} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-white/50 hover:text-white">
+                <X size={18} />
               </button>
             </div>
             
-            <div className="p-6 space-y-5">
-              <div>
-                <p className="text-sm text-slate-400 font-medium uppercase tracking-widest">Agente</p>
-                <p className="text-lg font-bold text-white">{agents.find(a => a.id === selectedCell.userId)?.name}</p>
-                <p className="text-xs text-blue-400 font-medium">{selectedCell.dateStr}</p>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1">Tipologia Turno / Assenza</label>
-                <select 
-                  value={detailData.type}
-                  onChange={e => setDetailData(prev => ({ ...prev, type: e.target.value }))}
-                  className="w-full p-2.5 bg-slate-800 border border-slate-700 text-white rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="">Seleziona (nessuno)...</option>
-                  <optgroup label="Turni Operativi">
-                    <option value="M1">M1 (Mattina)</option>
-                    <option value="P1">P1 (Pomeriggio)</option>
-                    <option value="N">N (Notte)</option>
-                    <option value="RP">RP (Riposo Programmato)</option>
-                    <option value="RR">RR (Riposo Recupero)</option>
-                  </optgroup>
-                  <optgroup label="Assenze Intere (Codici HR)">
-                    <option value="(F)">Ferie (F)</option>
-                    <option value="(M)">Malattia (M)</option>
-                    <option value="(L 104)">Legge 104 (L 104)</option>
-                    <option value="(REC)">Recupero (REC)</option>
-                    <option value="(CONGEDO)">Congedo (CONGEDO)</option>
-                    <option value="(PERM)">Permesso (PERM)</option>
-                  </optgroup>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1">Ore di Straordinario</label>
-                <div className="relative">
-                  <input 
-                    type="number" 
-                    min="0" max="12" step="0.5"
-                    value={detailData.overtimeHours || ""}
-                    onChange={e => setDetailData(prev => ({ ...prev, overtimeHours: parseFloat(e.target.value) || 0 }))}
-                    className="w-full p-2.5 pl-10 bg-slate-800 border border-slate-700 text-white rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    placeholder="Es: 2.5"
-                  />
-                  <Clock className="absolute left-3 top-3 text-slate-500" size={16} />
+            <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
+              <div className="p-5 space-y-5">
+                
+                {/* Selezione Codice come nella vecchia modale */}
+                <div>
+                  <div className="relative flex items-center">
+                    <select 
+                      value={detailData.type} 
+                      onChange={e => setDetailData(prev => ({ ...prev, type: e.target.value }))}
+                      className="w-full bg-slate-100 border-2 border-slate-200 rounded-xl pl-4 pr-4 py-3 text-sm font-bold text-slate-900 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none hover:bg-slate-50 cursor-pointer transition-colors"
+                    >
+                      <option value="">Seleziona codice...</option>
+                      <optgroup label="Tipi di Turno e Riposo">
+                        {["M7", "M8", "P12", "P14", "P15", "P16", "R", "RR", "REP", "REP_I"].map(c => <option key={c} value={c}>{c}</option>)}
+                      </optgroup>
+                      {AGENDA_CATEGORIES.map(cat => (
+                        <optgroup key={cat.group} label={`${cat.emoji} ${cat.group}`}>
+                          {cat.items.map(item => (
+                            <option key={item.shortCode} value={item.shortCode}>{item.shortCode} - {item.label}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1">Note / Motivazione</label>
-                <textarea 
-                  placeholder="Es: Servizio ordine pubblico"
-                  value={detailData.note}
-                  onChange={e => setDetailData(prev => ({ ...prev, note: e.target.value }))}
-                  className="w-full p-2.5 bg-slate-800 border border-slate-700 text-white rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 min-h-[80px] resize-none"
-                />
-              </div>
+                {/* Turni Rapidi */}
+                <div>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Turni Rapidi</p>
+                  <div className="grid grid-cols-6 gap-1.5">
+                    {["M7", "M8", "P12", "P14", "P15", "REP"].map(code => (
+                      <button 
+                        key={code} 
+                        onClick={() => setDetailData(prev => ({ ...prev, type: code }))}
+                        className={`py-2 rounded-lg text-[10px] font-black transition-all border ${
+                          detailData.type === code 
+                            ? "ring-2 ring-indigo-500 shadow-md " 
+                            : ""
+                        } ${
+                          code === "REP"
+                          ? "bg-violet-600 text-white border-violet-700 hover:bg-violet-700"
+                          : code.startsWith("M")
+                            ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-500 hover:text-white"
+                            : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-500 hover:text-white"
+                        }`}
+                      >
+                        {code}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-              <div className="pt-2 flex gap-3">
+                {/* Categorie Agenda */}
+                <div className="space-y-2.5">
+                  {AGENDA_CATEGORIES.map(cat => {
+                    const theme = CAT_THEME[cat.color] || CAT_THEME.indigo
+                    return (
+                      <div key={cat.group} className={`border ${theme.border} rounded-xl overflow-hidden`}>
+                        <div className={`${theme.bg} px-3 py-2 flex items-center gap-2`}>
+                          <span className="text-sm">{cat.emoji}</span>
+                          <span className={`text-[11px] font-bold ${theme.text} uppercase tracking-wide`}>{cat.group}</span>
+                        </div>
+                        <div className="p-2 bg-white grid grid-cols-2 gap-1.5">
+                          {cat.items.map(item => (
+                            <button 
+                              key={item.shortCode} 
+                              onClick={() => setDetailData(prev => ({ ...prev, type: item.shortCode }))}
+                              className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-all border hover:border-slate-300 hover:shadow-sm group/btn ${
+                                detailData.type === item.shortCode ? "border-indigo-500 ring-1 ring-indigo-500 bg-indigo-50" : "border-slate-100"
+                              }`}
+                            >
+                              <span className={`${theme.btnBg} ${theme.btnText} text-[8px] font-black rounded px-1.5 py-0.5 min-w-[36px] text-center whitespace-nowrap`}>
+                                {item.shortCode.length > 6 ? item.shortCode.substring(0, 6) : item.shortCode}
+                              </span>
+                              <span className="text-[10px] font-semibold text-slate-700 leading-tight truncate">{item.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <hr className="border-slate-200" />
+
+                {/* Campi Straordinario e Note */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Ore di Straordinario</label>
+                    <div className="relative">
+                      <input 
+                        type="number" 
+                        min="0" max="12" step="0.5"
+                        value={detailData.overtimeHours || ""}
+                        onChange={e => setDetailData(prev => ({ ...prev, overtimeHours: parseFloat(e.target.value) || 0 }))}
+                        className="w-full p-2.5 pl-10 bg-white border border-slate-300 text-slate-900 rounded-lg outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-bold"
+                        placeholder="Es: 2.5"
+                      />
+                      <Clock className="absolute left-3 top-3 text-slate-400" size={16} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Note / Motivazione</label>
+                    <textarea 
+                      placeholder="Es: Servizio ordine pubblico"
+                      value={detailData.note}
+                      onChange={e => setDetailData(prev => ({ ...prev, note: e.target.value }))}
+                      className="w-full p-2.5 bg-white border border-slate-300 text-slate-900 rounded-lg outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 min-h-[80px] resize-none text-sm"
+                    />
+                  </div>
+                </div>
+
+              </div>
+            </div>
+            
+            {/* Footer con bottoni */}
+            <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex flex-col gap-2">
+              <div className="flex gap-2 w-full">
                 <button 
-                  onClick={() => setDetailModalOpen(false)}
-                  className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold rounded-xl transition-colors"
+                  onClick={() => setDetailData(prev => ({ ...prev, type: "" }))}
+                  className="w-1/3 py-2.5 text-slate-500 hover:text-red-600 hover:bg-red-50 bg-white rounded-xl text-[11px] font-bold uppercase border border-slate-200 transition-all"
                 >
-                  Annulla
+                  Svuota
                 </button>
                 <button 
                   onClick={saveDetailModal}
                   disabled={savingDetail}
-                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2"
+                  className="w-2/3 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2"
                 >
-                  {savingDetail ? <RefreshCcw className="animate-spin" size={18} /> : "Salva Modifiche"}
+                  {savingDetail ? <RefreshCcw className="animate-spin" size={16} /> : "Salva Modifiche"}
                 </button>
               </div>
             </div>
