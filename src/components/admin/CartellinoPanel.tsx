@@ -322,7 +322,6 @@ export default function CartellinoPanel() {
           </div>
         </>
       )}
-      )}
 
       {/* ═══════════ MODALE DETTAGLIO GIORNATA ═══════════ */}
       {detailModalOpen && selectedCell && (
