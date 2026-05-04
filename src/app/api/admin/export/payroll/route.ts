@@ -124,6 +124,17 @@ export async function GET(req: Request) {
       where: { date: { gte: startDate, lt: endDate }, status: 'APPROVED', hours: { gt: 0 }, ...tf },
       select: { userId: true, date: true, hours: true, code: true }
     })
+    // 3.5 Fetch GlobalSettings per le regole dei buoni pasto
+    let settings = null;
+    if (tenantId) {
+       settings = await prisma.globalSettings.findUnique({ where: { tenantId } });
+    } else {
+       settings = await prisma.globalSettings.findFirst();
+    }
+    const bpTurnoContinuato = settings?.bpTurnoContinuato ?? 7.0;
+    const bpStaccoMinTurno1 = settings?.bpStaccoMinTurno1 ?? 6.0;
+    const bpStaccoMaxPausa = settings?.bpStaccoMaxPausa ?? 2.0;
+    const bpStaccoMinTurno2 = settings?.bpStaccoMinTurno2 ?? 2.0;
 
     // 4. Analitica Motore Calcolo (Ore vs Gettoni)
     const payrollData = agents.map(agent => {
@@ -229,21 +240,21 @@ export async function GET(req: Request) {
 
         let maturaBuono = false;
 
-        // Regola 1: 7 ore continuative
-        if (fasceOrarie.some(f => f.duration >= 7)) {
+        // Regola 1: Turno continuativo
+        if (fasceOrarie.some(f => f.duration >= bpTurnoContinuato)) {
           maturaBuono = true;
         } 
-        // Regola 2: 6 ore totali, max 2h pausa, intervallo min 10m, min 2h consecutive lavorate
+        // Regola 2: Turno spezzato con pause e minimi
         else if (fasceOrarie.length >= 2) {
           let oreTotali = 0;
           let pausaMax = 0;
           let pausaMin = 999;
-          let turniValidi = 0; // turni >= 2 ore
+          let turniValidi = 0; // turni >= bpStaccoMinTurno2
 
           for (let i = 0; i < fasceOrarie.length; i++) {
             const f = fasceOrarie[i];
             oreTotali += f.duration;
-            if (f.duration >= 2) turniValidi++;
+            if (f.duration >= bpStaccoMinTurno2) turniValidi++;
 
             if (i > 0 && fasceOrarie[i-1].start !== 0) { // check if timeRange was parsed
               let pausa = fasceOrarie[i].start - fasceOrarie[i-1].end;
@@ -254,7 +265,7 @@ export async function GET(req: Request) {
           }
 
           // 10 minuti = 0.166...
-          if (oreTotali >= 6 && turniValidi >= 2 && pausaMax <= 2 && pausaMin >= (10/60)) {
+          if (oreTotali >= bpStaccoMinTurno1 && turniValidi >= 2 && pausaMax <= bpStaccoMaxPausa && pausaMin >= (10/60)) {
             maturaBuono = true;
           }
         }
