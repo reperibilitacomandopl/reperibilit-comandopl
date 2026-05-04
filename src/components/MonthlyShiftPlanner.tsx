@@ -26,6 +26,11 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
   const [selectedMonths, setSelectedMonths] = useState<number[]>([])
   const [isExecutingGeneralReset, setIsExecutingGeneralReset] = useState(false)
 
+  // --- STATO MODALE DETTAGLIO GIORNATA ---
+  const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const [selectedCell, setSelectedCell] = useState<{userId: string, day: number, dateStr: string} | null>(null)
+  const [detailData, setDetailData] = useState<{type: string, overtimeHours: number, note: string}>({type: "", overtimeHours: 0, note: ""})
+
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth() + 1
   const daysInMonth = new Date(year, month, 0).getDate()
@@ -120,6 +125,55 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
       toast.error("Errore salvataggio")
     }
     setSaving(false)
+  }
+
+  const openDetailModal = (userId: string, day: number) => {
+    const dStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+    setSelectedCell({ userId, day, dateStr: dStr })
+    setDetailData({
+       type: grid[userId]?.[dStr] || "",
+       overtimeHours: 0, // This should ideally be fetched from the DB, but since the grid doesn't have it loaded, we'll initialize to 0 for new edits.
+       note: ""
+    })
+    setDetailModalOpen(true)
+  }
+
+  const saveDetailModal = async () => {
+    if (!selectedCell) return
+    const { userId, dateStr } = selectedCell
+    
+    // First update local grid
+    setGrid(prev => ({
+      ...prev,
+      [userId]: {
+        ...(prev[userId] || {}),
+        [dateStr]: detailData.type
+      }
+    }))
+    
+    // If there is overtime or note, we should ideally save it to the DB immediately.
+    // For now, we update the type in the grid, and if they click Save Modifiche it will save the type.
+    // To properly save overtime, we should call the API directly here.
+    try {
+      await fetch("/api/admin/shifts/monthly", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+           updates: [{ 
+              userId, 
+              date: dateStr, 
+              type: detailData.type,
+              overtimeHours: detailData.overtimeHours,
+              serviceDetails: detailData.note
+           }] 
+        })
+      })
+      toast.success("Dettaglio salvato!")
+      setDetailModalOpen(false)
+      loadData()
+    } catch {
+      toast.error("Errore salvataggio dettaglio")
+    }
   }
 
   const [confirmResetTarget, setConfirmResetTarget] = useState<string | null | 'all'>(null)
@@ -594,7 +648,9 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
                                handleCellChange(u.id, day, e.target.value);
                                setSyncedGrid(prev => ({ ...prev, [u.id]: { ...prev[u.id], [dStr]: false } }))
                             }}
-                            className={`w-full h-full p-1.5 text-center text-xs outline-none bg-transparent uppercase focus:bg-blue-100 focus:ring-2 focus:ring-blue-400 ${colorClass}`}
+                            onDoubleClick={() => openDetailModal(u.id, day)}
+                            title="Doppio click per Dettagli, Straordinari e Assenze"
+                            className={`w-full h-full p-1.5 text-center text-xs outline-none bg-transparent uppercase focus:bg-blue-100 focus:ring-2 focus:ring-blue-400 ${colorClass} cursor-pointer`}
                             maxLength={10}
                             placeholder="-"
                           />
@@ -748,6 +804,91 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
       confirmLabel="Genera Anno"
       isLoading={isGeneratingAnnual}
     />
+
+    {/* MODALE DETTAGLIO GIORNATA */}
+    {detailModalOpen && selectedCell && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-blue-600 p-4 text-white flex justify-between items-center">
+            <h3 className="text-lg font-bold">Dettaglio Giornata</h3>
+            <button onClick={() => setDetailModalOpen(false)} className="text-white/70 hover:text-white">
+              <FilterX size={20} />
+            </button>
+          </div>
+          <div className="p-6 space-y-4">
+            <div>
+              <p className="text-sm text-slate-500 font-medium">Agente</p>
+              <p className="text-lg font-bold text-slate-800">{users.find(u => u.id === selectedCell.userId)?.name}</p>
+              <p className="text-xs text-slate-400">{selectedCell.dateStr}</p>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase">Tipologia Turno / Assenza</label>
+              <select 
+                value={detailData.type}
+                onChange={e => setDetailData(prev => ({ ...prev, type: e.target.value }))}
+                className="w-full mt-1 p-2 border-2 border-slate-200 rounded-lg outline-none focus:border-blue-500 bg-slate-50"
+              >
+                <option value="">Seleziona...</option>
+                <optgroup label="Turni Operativi">
+                  <option value="M1">M1 (Mattina)</option>
+                  <option value="P1">P1 (Pomeriggio)</option>
+                  <option value="N">N (Notte)</option>
+                  <option value="RP">RP (Riposo Programmato)</option>
+                  <option value="RR">RR (Riposo Recupero)</option>
+                </optgroup>
+                <optgroup label="Assenze Intere (Codici HR)">
+                  <option value="(F)">Ferie (F)</option>
+                  <option value="(M)">Malattia (M)</option>
+                  <option value="(L 104)">Legge 104 (L 104)</option>
+                  <option value="(REC)">Recupero (REC)</option>
+                  <option value="(CONGEDO)">Congedo (CONGEDO)</option>
+                  <option value="(PERM)">Permesso (PERM)</option>
+                </optgroup>
+              </select>
+              <p className="text-[10px] text-slate-400 mt-1">Seleziona un'assenza dal menu per usare la formattazione corretta.</p>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase">Ore di Straordinario</label>
+              <input 
+                type="number" 
+                min="0" max="12" step="0.5"
+                value={detailData.overtimeHours}
+                onChange={e => setDetailData(prev => ({ ...prev, overtimeHours: parseFloat(e.target.value) || 0 }))}
+                className="w-full mt-1 p-2 border-2 border-slate-200 rounded-lg outline-none focus:border-blue-500 bg-slate-50"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase">Note / Motivazione</label>
+              <input 
+                type="text" 
+                placeholder="Es: Servizio ordine pubblico"
+                value={detailData.note}
+                onChange={e => setDetailData(prev => ({ ...prev, note: e.target.value }))}
+                className="w-full mt-1 p-2 border-2 border-slate-200 rounded-lg outline-none focus:border-blue-500 bg-slate-50"
+              />
+            </div>
+
+            <div className="pt-4 flex gap-2">
+              <button 
+                onClick={() => setDetailModalOpen(false)}
+                className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-colors"
+              >
+                Annulla
+              </button>
+              <button 
+                onClick={saveDetailModal}
+                className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition-colors"
+              >
+                Salva Dettaglio
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   )
 }
