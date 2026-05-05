@@ -14,6 +14,7 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   reactCompiler: true,
   async headers() {
     return [
