@@ -6,7 +6,7 @@ import * as jose from "jose"
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "super-secret-key-for-dev")
 
 async function verifyAuth(req: Request) {
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const token = cookieStore.get("auth_token")?.value
   if (!token) return null
 
