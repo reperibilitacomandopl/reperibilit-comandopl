@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback } from "react"
 
-interface HoldButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface HoldButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children'> {
   onHoldComplete: () => void
   holdDuration?: number
   children: (pressing: boolean, progress: number) => React.ReactNode
