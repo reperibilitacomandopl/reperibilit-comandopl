@@ -496,19 +496,41 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
   }
 
   const toggleLink = async (shiftId: string, currentGroupId: string | null) => {
+    const selectedIds = Array.from(patrolSelection)
+    
+    // Se l'agente cliccato non è nella selezione, usiamo solo lui
+    // Se invece fa parte di una selezione multi-agente, uniamo tutti i selezionati
+    const targetShiftIds = selectedIds.includes(shiftId) ? selectedIds : [shiftId]
+    
+    // Generiamo un nuovo ID gruppo se stiamo unendo, o null se stiamo separando
     const newGroupId = currentGroupId ? null : `manual_${Date.now()}`
+    const dateStr = currentDate.toISOString().split("T")[0]
+    
+    setLoading(true)
     try {
-        const res = await fetch("/api/admin/shifts/daily", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId: shifts.find(s => s.id === shiftId)?.userId,
-              date: currentDate.toISOString().split("T")[0],
-              patrolGroupId: newGroupId
-            })
+      // Eseguiamo l'aggiornamento per ogni agente nel gruppo
+      await Promise.all(targetShiftIds.map(async (sId) => {
+        const shift = shifts.find(s => s.id === sId)
+        if (!shift) return
+        
+        return fetch("/api/admin/shifts/daily", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: shift.userId,
+            date: dateStr,
+            patrolGroupId: newGroupId
+          })
         })
-        if(res.ok) loadData()
-    } catch { toast.error("Errore aggiornamento pattuglia") }
+      }))
+      
+      toast.success(newGroupId ? "Pattuglia creata!" : "Pattuglia separata")
+      setPatrolSelection(new Set()) // Puliamo la selezione
+      loadData()
+    } catch { 
+      toast.error("Errore aggiornamento pattuglia") 
+    }
+    setLoading(false)
   }
 
   // ===== COPY/PASTE GIORNATA =====
