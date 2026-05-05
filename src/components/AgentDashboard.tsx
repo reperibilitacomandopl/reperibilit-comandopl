@@ -585,7 +585,7 @@ export default function AgentDashboard({
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
           <ChatPanel 
             currentUser={{ id: currentUser.id, name: currentUser.name }}
-            patrolGroupId={admin.myOds.shift.id}
+            patrolGroupId={admin.myOds.shift.patrolGroupId}
             tenantSlug={tenantSlug}
             onClose={() => setShowChat(false)}
           />
