@@ -21,6 +21,7 @@ interface ServiceManagerToolbarProps {
   copyDay: () => void
   pasteDay: () => Promise<void>
   onClose?: () => void
+  patrolSelectionSize: number
   createPatrolFromSelection: () => Promise<void>
   tenantSlug: string
   assignedCount: number
