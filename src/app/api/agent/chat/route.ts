@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import prisma from "@/lib/prisma"
+import { prisma } from "@/lib/prisma"
 import * as jose from "jose"
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "super-secret-key-for-dev")
