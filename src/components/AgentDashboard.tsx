@@ -36,10 +36,10 @@ import AgentYearlyCard from "./agent/AgentYearlyCard"
 import { useGpsTracking } from "@/hooks/useGpsTracking"
 
 import { isAssenza } from "@/utils/shift-logic"
-import { Shield, CalendarDays, BookOpen, FileDown, MessageSquare } from "lucide-react"
+import { Shield, CalendarDays, BookOpen, FileDown, MessageSquare, Users } from "lucide-react"
 
 export interface AgentDashboardProps {
-  currentUser: { id: string, matricola: string, name: string, isUfficiale?: boolean, telegramChatId?: string | null }
+  currentUser: { id: string, matricola: string, name: string, squadra?: string | null, isUfficiale?: boolean, telegramChatId?: string | null }
   shifts: DashboardShift[]
   allAgents: { id: string; name: string; matricola: string }[]
   currentYear: number
@@ -610,7 +610,7 @@ export default function AgentDashboard({
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
           <ChatPanel 
             currentUser={{ id: currentUser.id, name: currentUser.name }}
-            patrolGroupId={admin.myOds.shift.patrolGroupId}
+            patrolGroupId={(admin.myOds.shift as any).patrolGroupId}
             tenantSlug={tenantSlug}
             onClose={() => setShowChat(false)}
             type="PATROL"
