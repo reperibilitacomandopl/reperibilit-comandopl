@@ -103,7 +103,7 @@ export default function ServiceAgentCard({
                 title="Orario Turno (Modificabile)"
                 type="text" 
                 defaultValue={timeRangeStr}
-                onBlur={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, shiftAssegnato.radioId, e.target.value, shiftAssegnato.serviceDetails)}
+                onBlur={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, shiftAssegnato.radioId, shiftAssegnato.weaponId, shiftAssegnato.armorId, e.target.value, shiftAssegnato.serviceDetails)}
                 className={`text-[11px] font-black bg-transparent border-none p-0 focus:ring-0 w-[70px] rounded focus:bg-white/20 ${isDark ? 'text-blue-100 hover:bg-white/10' : 'text-slate-700 hover:bg-slate-100'}`}
                 placeholder="hh:mm-hh:mm"
               />
@@ -171,7 +171,7 @@ export default function ServiceAgentCard({
                             <button 
                               key={s.id}
                               onClick={() => {
-                                assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, shiftAssegnato.radioId, timeRangeStr, noteText)
+                                assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, shiftAssegnato.radioId, shiftAssegnato.weaponId, shiftAssegnato.armorId, timeRangeStr, noteText)
                                 toast.success(`Abbinato: ${s.name}`)
                               }}
                               className="w-full flex items-center justify-between text-left px-2 py-1.5 hover:bg-amber-50 rounded text-[10px] font-bold text-slate-700 transition-colors"
@@ -210,7 +210,7 @@ export default function ServiceAgentCard({
 
           <select 
             value={shiftAssegnato.vehicleId || ""}
-            onChange={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, e.target.value, shiftAssegnato.radioId, timeRangeStr, shiftAssegnato.serviceDetails)}
+            onChange={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, e.target.value, shiftAssegnato.radioId, shiftAssegnato.weaponId, shiftAssegnato.armorId, timeRangeStr, shiftAssegnato.serviceDetails)}
             className="text-[10px] bg-slate-100 font-black px-2 py-1.5 rounded-md border border-slate-200 focus:border-blue-500 transition-all text-slate-800 max-w-[120px] truncate"
           >
             <option value="">+ Veicolo</option>
@@ -221,7 +221,7 @@ export default function ServiceAgentCard({
 
           <select 
             value={shiftAssegnato.radioId || ""}
-            onChange={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, e.target.value, timeRangeStr, shiftAssegnato.serviceDetails)}
+            onChange={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, e.target.value, shiftAssegnato.weaponId, shiftAssegnato.armorId, timeRangeStr, shiftAssegnato.serviceDetails)}
             className="text-[10px] bg-slate-100 font-black px-2 py-1.5 rounded-md border border-slate-200 focus:border-blue-500 transition-all text-slate-800 max-w-[100px] truncate"
           >
             <option value="">+ Radio</option>
