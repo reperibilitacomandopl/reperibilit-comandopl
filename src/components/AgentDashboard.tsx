@@ -581,11 +581,11 @@ export default function AgentDashboard({
         />
       )}
 
-      {showChat && admin.myOds?.shift.patrolGroupId && (
+      {showChat && admin.myOds && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
           <ChatPanel 
             currentUser={{ id: currentUser.id, name: currentUser.name }}
-            patrolGroupId={admin.myOds.shift.patrolGroupId}
+            patrolGroupId={admin.myOds.shift.id}
             tenantSlug={tenantSlug}
             onClose={() => setShowChat(false)}
           />
