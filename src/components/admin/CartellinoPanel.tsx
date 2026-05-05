@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { format, getDaysInMonth } from "date-fns"
 import { it } from "date-fns/locale"
 import { Calendar as CalendarIcon, Clock, Edit2, AlertCircle, CheckCircle2, RefreshCcw, Download, User, Info, X } from "lucide-react"
@@ -22,6 +22,30 @@ export default function CartellinoPanel() {
   const [year, setYear] = useState<number>(new Date().getFullYear())
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const [rotationGroups, setRotationGroups] = useState<any[]>([])
+  
+  const allAvailableShiftCodes = useMemo(() => {
+    const baseCodes = ["M7", "M8", "P12", "P14", "P15", "P16", "R", "RR", "REP", "REP_I"];
+    const customCodes = new Set<string>();
+    rotationGroups.forEach(g => {
+      try {
+         const data = JSON.parse(g.pattern);
+         if (Array.isArray(data)) {
+           data.forEach((c: string) => customCodes.add(c));
+         } else {
+           const seq = data.sequence || [];
+           seq.forEach((c: string) => customCodes.add(c));
+           const times = data.shiftTimes || {};
+           Object.keys(times).forEach((c: string) => customCodes.add(c));
+           const enabled = data.enabledCodes || [];
+           enabled.forEach((c: string) => customCodes.add(c));
+           const customs = data.customCodes || [];
+           customs.forEach((c: any) => customCodes.add(c.code));
+         }
+      } catch {}
+    });
+    return Array.from(new Set([...baseCodes, ...Array.from(customCodes)])).sort();
+  }, [rotationGroups]);
   
   // --- STATO MODALE ---
   const [detailModalOpen, setDetailModalOpen] = useState(false)
@@ -31,7 +55,16 @@ export default function CartellinoPanel() {
 
   useEffect(() => {
     fetchAgents()
+    fetchRotationGroups()
   }, [])
+
+  async function fetchRotationGroups() {
+    try {
+      const res = await fetch("/api/admin/rotation-groups")
+      const data = await res.json()
+      if (Array.isArray(data)) setRotationGroups(data)
+    } catch {}
+  }
 
   useEffect(() => {
     if (selectedUserId) {
@@ -368,8 +401,8 @@ export default function CartellinoPanel() {
                       className="w-full bg-slate-100 border-2 border-slate-200 rounded-xl pl-4 pr-4 py-3 text-sm font-bold text-slate-900 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none hover:bg-slate-50 cursor-pointer transition-colors"
                     >
                       <option value="">Seleziona codice...</option>
-                      <optgroup label="Tipi di Turno e Riposo">
-                        {["M7", "M8", "P12", "P14", "P15", "P16", "R", "RR", "REP", "REP_I"].map(c => <option key={c} value={c}>{c}</option>)}
+                      <optgroup label="Codici Turno Disponibili">
+                        {allAvailableShiftCodes.map(c => <option key={c} value={c}>{c}</option>)}
                       </optgroup>
                       {AGENDA_CATEGORIES.map(cat => (
                         <optgroup key={cat.group} label={`${cat.emoji} ${cat.group}`}>
@@ -386,7 +419,7 @@ export default function CartellinoPanel() {
                 <div>
                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Turni Rapidi</p>
                   <div className="grid grid-cols-6 gap-1.5">
-                    {["M7", "M8", "P12", "P14", "P15", "REP"].map(code => (
+                    {allAvailableShiftCodes.filter(c => ["M", "P", "N", "R"].some(prefix => c.startsWith(prefix))).slice(0, 12).map(code => (
                       <button 
                         key={code} 
                         onClick={() => setDetailData(prev => ({ ...prev, type: code }))}
@@ -395,11 +428,15 @@ export default function CartellinoPanel() {
                             ? "ring-2 ring-indigo-500 shadow-md " 
                             : ""
                         } ${
-                          code === "REP"
+                          code === "REP" || code === "REP_I"
                           ? "bg-violet-600 text-white border-violet-700 hover:bg-violet-700"
                           : code.startsWith("M")
                             ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-500 hover:text-white"
-                            : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-500 hover:text-white"
+                            : code.startsWith("P")
+                              ? "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-500 hover:text-white"
+                              : code.startsWith("N")
+                                ? "bg-slate-800 text-white border-slate-700 hover:bg-slate-900"
+                                : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-500 hover:text-white"
                         }`}
                       >
                         {code}

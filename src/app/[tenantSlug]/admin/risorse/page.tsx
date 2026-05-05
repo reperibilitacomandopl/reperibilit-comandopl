@@ -3,6 +3,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import RisorseTabs from "@/components/RisorseTabs"
+import { Suspense } from "react"
 
 export const dynamic = "force-dynamic"
 
@@ -61,25 +62,27 @@ export default async function RisorsePage({ params }: { params: Promise<{ tenant
         hasParentalLeave: true,
         hasChildSicknessLeave: true
       },
-    }),
+    }).catch(() => []),
     prisma.rotationGroup.findMany({ 
       where: { tenantId: tenantId },
       orderBy: { name: "asc" } 
-    }),
+    }).catch(() => []),
     prisma.serviceCategory.findMany({ 
       where: { tenantId: tenantId },
       include: { types: true }, 
       orderBy: { orderIndex: "asc" } 
-    }),
+    }).catch(() => []),
   ])
 
   return (
     <div className="p-6 lg:p-8 relative z-10 h-full">
-      <RisorseTabs
-        agents={users as any}
-        rotationGroups={rotationGroups}
-        categories={categories}
-      />
+      <Suspense fallback={<div className="p-10 text-center font-bold text-slate-400">Inizializzazione Pannello...</div>}>
+        <RisorseTabs
+          agents={(users || []) as any}
+          rotationGroups={(rotationGroups || [])}
+          categories={(categories || [])}
+        />
+      </Suspense>
     </div>
   )
 }

@@ -18,7 +18,7 @@ export async function GET() {
     const today = new Date(`${localDateStr}T00:00:00.000Z`)
 
     // 2. Verifica accesso: Admin, Ufficiale o reperibile oggi
-    const isAdmin = session.user.role === "ADMIN"
+    const isAdmin = session.user.role === "ADMIN" || session.user.isSuperAdmin === true || session.user.canManageShifts === true;
     
     // Controlla se l'utente è un ufficiale (anche non in reperibilità oggi)
     const userRecord = await prisma.user.findUnique({

@@ -300,8 +300,10 @@ export default function AdminShiftGrid({
         const existing = shifts.find(s => {
           if (!s || !s.date) return false
           try {
-            const sDate = new Date(s.date).toISOString().split('T')[0]
-            return s.userId === aId && sDate === dateIso
+            const sDate = new Date(s.date)
+            // Usa UTC per essere consistente con la data isolata
+            const sDateStr = `${sDate.getUTCFullYear()}-${String(sDate.getUTCMonth() + 1).padStart(2, '0')}-${String(sDate.getUTCDate()).padStart(2, '0')}`
+            return s.userId === aId && sDateStr === dateIso.split('T')[0]
           } catch {
             return false
           }
@@ -627,8 +629,16 @@ export default function AdminShiftGrid({
 
                 {/* Celle giornaliere */}
                 {dayInfo.map(di => {
-                  const targetDate = new Date(Date.UTC(currentYear, di.isNextMonth ? currentMonth : currentMonth - 1, di.day)).toISOString()
-                  const shift = shifts.find(s => s.userId === agent.id && new Date(s.date).toISOString() === targetDate)
+                  const targetYearStr = currentYear;
+                  const targetMonthStr = String(di.isNextMonth ? currentMonth : currentMonth - 1 + 1).padStart(2, '0');
+                  const targetDayStr = String(di.day).padStart(2, '0');
+                  const targetDateStr = `${targetYearStr}-${targetMonthStr}-${targetDayStr}`;
+
+                  const shift = shifts.find(s => {
+                    const d = new Date(s.date);
+                    const sDateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+                    return s.userId === agent.id && sDateStr === targetDateStr;
+                  })
                   const sType = (shift?.type || "").toUpperCase()
                   const rType = (shift?.repType || "")
 

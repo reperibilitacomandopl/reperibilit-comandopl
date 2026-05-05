@@ -115,6 +115,7 @@ export default function ServiceBoard({
                   users={users}
                   shifts={shifts}
                   handleDragStart={handleDragStart}
+                  categories={categories}
                 />
               )
             })}
@@ -197,6 +198,7 @@ export default function ServiceBoard({
                                 users={users}
                                 shifts={shifts}
                                 handleDragStart={handleDragStart}
+                                categories={categories}
                               />
                             )
                           })}
@@ -271,6 +273,7 @@ export default function ServiceBoard({
                                             users={users}
                                             shifts={shifts}
                                             handleDragStart={handleDragStart}
+                                            categories={categories}
                                           />
                                         ) : null;
                                       })}
@@ -302,6 +305,7 @@ export default function ServiceBoard({
                                   users={users}
                                   shifts={shifts}
                                   handleDragStart={handleDragStart}
+                                  categories={categories}
                                 />
                               ) : null;
                             });

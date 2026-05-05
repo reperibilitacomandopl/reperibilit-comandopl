@@ -90,26 +90,58 @@ export async function PUT(req: Request) {
         durationUpdate = { durationHours, overtimeHours }
       }
 
-      const updatedShift = await prisma.shift.update({
-        where: { 
-          id: update.id,
-          tenantId: tenantId || null
-        },
-        data: {
-          serviceCategoryId: update.serviceCategoryId !== undefined ? update.serviceCategoryId : undefined,
-          serviceTypeId: update.serviceTypeId !== undefined ? update.serviceTypeId : undefined,
-          vehicleId: update.vehicleId !== undefined ? update.vehicleId : undefined,
-          timeRange: update.timeRange !== undefined ? update.timeRange : undefined,
-          patrolGroupId: update.patrolGroupId !== undefined ? update.patrolGroupId : undefined,
-          serviceDetails: update.serviceDetails !== undefined ? update.serviceDetails : undefined,
-          ...durationUpdate
-        },
-        include: { serviceType: true }
-      })
+      // Se non abbiamo l'id, dobbiamo trovarlo tramite userId + date
+      let shiftId = update.id;
+      if (!shiftId && update.userId && update.date) {
+        const existing = await prisma.shift.findFirst({
+          where: { userId: update.userId, date: new Date(update.date), tenantId }
+        });
+        shiftId = existing?.id;
+      }
+
+      let updatedShift;
+      if (shiftId) {
+        updatedShift = await prisma.shift.update({
+          where: { id: shiftId },
+          data: {
+            serviceCategoryId: update.serviceCategoryId !== undefined ? update.serviceCategoryId : undefined,
+            serviceTypeId: update.serviceTypeId !== undefined ? update.serviceTypeId : undefined,
+            vehicleId: update.vehicleId !== undefined ? update.vehicleId : undefined,
+            radioId: update.radioId !== undefined ? update.radioId : undefined,
+            weaponId: update.weaponId !== undefined ? update.weaponId : undefined,
+            armorId: update.armorId !== undefined ? update.armorId : undefined,
+            timeRange: update.timeRange !== undefined ? update.timeRange : undefined,
+            patrolGroupId: update.patrolGroupId !== undefined ? update.patrolGroupId : undefined,
+            serviceDetails: update.serviceDetails !== undefined ? update.serviceDetails : undefined,
+            ...durationUpdate
+          },
+          include: { serviceType: true }
+        })
+      } else if (update.userId && update.date) {
+        // Creazione se non esiste
+        updatedShift = await prisma.shift.create({
+          data: {
+            tenantId,
+            userId: update.userId,
+            date: new Date(update.date),
+            type: update.type || "M8",
+            serviceCategoryId: update.serviceCategoryId,
+            serviceTypeId: update.serviceTypeId,
+            vehicleId: update.vehicleId,
+            radioId: update.radioId,
+            weaponId: update.weaponId,
+            armorId: update.armorId,
+            timeRange: update.timeRange,
+            patrolGroupId: update.patrolGroupId,
+            serviceDetails: update.serviceDetails,
+            ...durationUpdate
+          },
+          include: { serviceType: true }
+        })
+      }
 
       // Invia Notifica Push (opzionale, asincrona)
-      if (update.serviceCategoryId || update.serviceTypeId) {
-        // Non attendiamo l'invio della notifica per non rallentare la risposta principale
+      if (updatedShift && (update.serviceCategoryId || update.serviceTypeId)) {
         sendPushNotification(updatedShift.userId, {
           title: "📋 Nuovo Ordine di Servizio",
           body: `Sei stato assegnato al servizio: ${updatedShift.serviceType?.name || 'Vedi dettagli'}. Controlla il pannello agenti.`,

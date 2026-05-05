@@ -26,117 +26,113 @@ model Tenant {
   lng                Float?
   primaryColor       String              @default("#4f46e5")
   absences           Absence[]
-  announcements      Announcement[]
   agendaEntries      AgendaEntry[]
   agentBalances      AgentBalance[]
   agentRequests      AgentRequest[]
+  announcements      Announcement[]
+  armors             Armor[]
   auditLogs          AuditLog[]
   certifiedDocuments CertifiedDocument[]
   clockRecords       ClockRecord[]
   emergencyAlerts    EmergencyAlert[]
+  geofenceZones      GeofenceZone[]
   globalSettings     GlobalSettings?
+  locationHistory    LocationHistory[]
   monthStatuses      MonthStatus[]
   notifications      Notification[]
   patrolTemplates    PatrolTemplate[]
   pecSettings        PecSettings?
+  radios             Radio[]
   rotationGroups     RotationGroup[]
   schools            School[]
   serviceCategories  ServiceCategory[]
   serviceTypes       ServiceType[]
   shifts             Shift[]
+  ShiftRule          ShiftRule[]
   shiftSwapRequests  ShiftSwapRequest[]
+  trainingRecords    TrainingRecord[]
   users              User[]
   vehicles           Vehicle[]
-  radios             Radio[]
   weapons            Weapon[]
-  armors             Armor[]
-  ShiftRule          ShiftRule[]
-  trainingRecords    TrainingRecord[]
-  locationHistory    LocationHistory[]
-  geofenceZones      GeofenceZone[]
 }
 
 model User {
-  id                       String    @id @default(uuid())
+  id                       String             @id @default(uuid())
   tenantId                 String?
   matricola                String
   name                     String
-  isSuperAdmin             Boolean   @default(false)
-  email                    String?   @unique
+  isSuperAdmin             Boolean            @default(false)
+  email                    String?            @unique
   phone                    String?
   password                 String
-  role                     String    @default("AGENTE")
-  isUfficiale              Boolean   @default(false)
-  qualifica                String?   @default("Agente di P.L.")
-  gradoLivello             Int       @default(13)
-  massimale                Int       @default(8)
+  role                     String             @default("AGENTE")
+  isUfficiale              Boolean            @default(false)
+  qualifica                String?            @default("Agente di P.L.")
+  gradoLivello             Int                @default(13)
+  massimale                Int                @default(8)
   squadra                  String?
   servizio                 String?
   rotationGroupId          String?
   defaultServiceCategoryId String?
   defaultServiceTypeId     String?
   fixedRestDay             Int?
-  forcePasswordChange      Boolean   @default(true)
+  forcePasswordChange      Boolean            @default(true)
   telegramChatId           String?
   telegramLinkCode         String?
   telegramLinkExpires      DateTime?
-  telegramOptIn            Boolean   @default(true) // Consenso GDPR Notifiche Telegram
   dataAssunzione           DateTime?
-  dataDiNascita            DateTime?
   scadenzaPatente          DateTime?
   scadenzaPortoArmi        DateTime?
-  tipoContratto            String?
   noteInterne              String?
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+  canConfigureSystem       Boolean            @default(false)
+  canManageShifts          Boolean            @default(false)
+  canManageUsers           Boolean            @default(false)
+  canVerifyClockIns        Boolean            @default(false)
+  isActive                 Boolean            @default(true)
+  dataDiNascita            DateTime?
   defaultPartnerIds        String[]
   fixedServiceDays         String[]
-  createdAt                DateTime  @default(now())
-  updatedAt                DateTime  @updatedAt
-  canConfigureSystem       Boolean   @default(false)
-  canManageShifts          Boolean   @default(false)
-  canManageUsers           Boolean   @default(false)
-  canVerifyClockIns        Boolean   @default(false)
-  isActive                 Boolean   @default(true)
-  gpsConsent               Boolean   @default(false)
-  privacyConsent           Boolean   @default(false)
+  tipoContratto            String?
+  hasChildSicknessLeave    Boolean            @default(false)
+  hasL104                  Boolean            @default(false)
+  hasParentalLeave         Boolean            @default(false)
+  hasStudyLeave            Boolean            @default(false)
+  l104Assistiti            Int                @default(1)
+  lastLat                  Float?
+  lastLng                  Float?
+  lastSeenAt               DateTime?
   gpsAcceptedAt            DateTime?
+  gpsConsent               Boolean            @default(false)
   privacyAcceptedAt        DateTime?
+  privacyConsent           Boolean            @default(false)
+  twoFactorEnabled         Boolean            @default(false)
   twoFactorSecret          String?
-  twoFactorEnabled         Boolean   @default(false)
-
-  // GPS Real-time (solo durante il servizio)
-  lastLat    Float?
-  lastLng    Float?
-  lastSeenAt DateTime?
-
-  // Diritti & Agevolazioni
-  hasL104                Boolean            @default(false)
-  l104Assistiti          Int                @default(1)
-  hasStudyLeave          Boolean            @default(false)
-  hasParentalLeave       Boolean            @default(false)
-  hasChildSicknessLeave  Boolean            @default(false)
-  absences               Absence[]
-  agendaEntries          AgendaEntry[]      @relation("agendaEntries")
-  agentBalances          AgentBalance[]     @relation("AgentBalances")
-  agentRequests          AgentRequest[]     @relation("AgentRequests")
-  receivedAlerts         AlertRecipient[]   @relation("AlertRecipientUser")
-  clockRecords           ClockRecord[]
-  adminAlerts            EmergencyAlert[]   @relation("AdminAlerts")
-  notifications          Notification[]
-  pushSubscriptions      PushSubscription[]
-  shifts                 Shift[]
-  sentSwaps              ShiftSwapRequest[] @relation("SentSwaps")
-  receivedSwaps          ShiftSwapRequest[] @relation("ReceivedSwaps")
-  defaultServiceCategory ServiceCategory?   @relation("DefaultCategory", fields: [defaultServiceCategoryId], references: [id])
-  defaultServiceType     ServiceType?       @relation("DefaultType", fields: [defaultServiceTypeId], references: [id])
-  rotationGroup          RotationGroup?     @relation(fields: [rotationGroupId], references: [id])
-  tenant                 Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  patrolTemplates        PatrolTemplate[]   @relation("PatrolMembers")
-  radios                 Radio[]            @relation("RadioAssegnatario")
-  weapons                Weapon[]           @relation("WeaponAssegnatario")
-  armors                 Armor[]            @relation("ArmorAssegnatario")
-  announcements          Announcement[]
-  trainingRecords        TrainingRecord[]
-  locationHistory        LocationHistory[]
+  telegramOptIn            Boolean            @default(true)
+  absences                 Absence[]
+  agendaEntries            AgendaEntry[]      @relation("agendaEntries")
+  agentBalances            AgentBalance[]     @relation("AgentBalances")
+  agentRequests            AgentRequest[]     @relation("AgentRequests")
+  receivedAlerts           AlertRecipient[]   @relation("AlertRecipientUser")
+  announcements            Announcement[]
+  armors                   Armor[]            @relation("ArmorAssegnatario")
+  clockRecords             ClockRecord[]
+  adminAlerts              EmergencyAlert[]   @relation("AdminAlerts")
+  locationHistory          LocationHistory[]
+  notifications            Notification[]
+  pushSubscriptions        PushSubscription[]
+  radios                   Radio[]            @relation("RadioAssegnatario")
+  shifts                   Shift[]
+  sentSwaps                ShiftSwapRequest[] @relation("SentSwaps")
+  receivedSwaps            ShiftSwapRequest[] @relation("ReceivedSwaps")
+  trainingRecords          TrainingRecord[]
+  defaultServiceCategory   ServiceCategory?   @relation("DefaultCategory", fields: [defaultServiceCategoryId], references: [id])
+  defaultServiceType       ServiceType?       @relation("DefaultType", fields: [defaultServiceTypeId], references: [id])
+  rotationGroup            RotationGroup?     @relation(fields: [rotationGroupId], references: [id])
+  tenant                   Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  weapons                  Weapon[]           @relation("WeaponAssegnatario")
+  patrolTemplates          PatrolTemplate[]   @relation("PatrolMembers")
 
   @@unique([tenantId, matricola])
 }
@@ -172,17 +168,17 @@ model Shift {
   durationHours      Float              @default(6)
   overtimeHours      Float              @default(0)
   createdAt          DateTime           @default(now())
+  radioId            String?
+  armorId            String?
+  weaponId           String?
+  armor              Armor?             @relation(fields: [armorId], references: [id])
+  radio              Radio?             @relation(fields: [radioId], references: [id])
   serviceCategory    ServiceCategory?   @relation(fields: [serviceCategoryId], references: [id])
   serviceType        ServiceType?       @relation(fields: [serviceTypeId], references: [id])
   tenant             Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   vehicle            Vehicle?           @relation(fields: [vehicleId], references: [id])
-  radioId            String?
-  radio              Radio?             @relation(fields: [radioId], references: [id])
-  weaponId           String?
   weapon             Weapon?            @relation(fields: [weaponId], references: [id])
-  armorId            String?
-  armor              Armor?             @relation(fields: [armorId], references: [id])
   swaps              ShiftSwapRequest[]
 
   @@unique([userId, date, tenantId])
@@ -197,16 +193,16 @@ model PatrolTemplate {
   vehicleId         String?
   preferredShift    String?          @default("ALL")
   createdAt         DateTime         @default(now())
+  radioId           String?
+  armorId           String?
+  weaponId          String?
+  armor             Armor?           @relation(fields: [armorId], references: [id])
+  radio             Radio?           @relation(fields: [radioId], references: [id])
   serviceCategory   ServiceCategory? @relation(fields: [serviceCategoryId], references: [id])
   serviceType       ServiceType?     @relation(fields: [serviceTypeId], references: [id])
   tenant            Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   vehicle           Vehicle?         @relation(fields: [vehicleId], references: [id])
-  radioId           String?
-  radio             Radio?           @relation(fields: [radioId], references: [id])
-  weaponId          String?
   weapon            Weapon?          @relation(fields: [weaponId], references: [id])
-  armorId           String?
-  armor             Armor?           @relation(fields: [armorId], references: [id])
   members           User[]           @relation("PatrolMembers")
 
   @@unique([name, tenantId])
@@ -266,10 +262,10 @@ model Radio {
   assegnazioneFissaId String?
   dataAssegnazione    DateTime?
   cambioBatteria      DateTime?
-  shifts              Shift[]
   patrolTemplates     PatrolTemplate[]
-  tenant              Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   assegnatario        User?            @relation("RadioAssegnatario", fields: [assegnazioneFissaId], references: [id])
+  tenant              Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shifts              Shift[]
 
   @@unique([name, tenantId])
 }
@@ -284,10 +280,10 @@ model Weapon {
   assegnazioneFissaId String?
   dataAssegnazione    DateTime?
   note                String?
-  shifts              Shift[]
   patrolTemplates     PatrolTemplate[]
-  tenant              Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  shifts              Shift[]
   assegnatario        User?            @relation("WeaponAssegnatario", fields: [assegnazioneFissaId], references: [id])
+  tenant              Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([name, tenantId])
 }
@@ -302,10 +298,10 @@ model Armor {
   assegnazioneFissaId String?
   dataAssegnazione    DateTime?
   scadenzaKevlar      DateTime?
-  shifts              Shift[]
-  patrolTemplates     PatrolTemplate[]
-  tenant              Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   assegnatario        User?            @relation("ArmorAssegnatario", fields: [assegnazioneFissaId], references: [id])
+  tenant              Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patrolTemplates     PatrolTemplate[]
+  shifts              Shift[]
 
   @@unique([name, tenantId])
 }
@@ -328,25 +324,22 @@ model RotationGroup {
 }
 
 model GlobalSettings {
-  id                  Int     @id @default(autoincrement())
-  tenantId            String? @unique
-  minUfficiali        Int     @default(1)
-  usaProporzionale    Boolean @default(true)
-  annoCorrente        Int     @default(2026)
-  meseCorrente        Int     @default(4)
-  massimaleAgente     Int     @default(8)
-  massimaleUfficiale  Int     @default(8)
-  distaccoMinimo      Int     @default(2)
-  permettiConsecutivi Boolean @default(false)
-
-  bpTurnoContinuato Float @default(7.0)
-  bpStaccoMinTurno1 Float @default(6.0)
-  bpStaccoMaxPausa  Float @default(2.0)
-  bpStaccoMinTurno2 Float @default(2.0)
-
-  gpsHistoryIntervalMinutes Int @default(60)
-
-  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id                        Int     @id @default(autoincrement())
+  tenantId                  String? @unique
+  minUfficiali              Int     @default(1)
+  usaProporzionale          Boolean @default(true)
+  annoCorrente              Int     @default(2026)
+  meseCorrente              Int     @default(4)
+  massimaleAgente           Int     @default(8)
+  massimaleUfficiale        Int     @default(8)
+  distaccoMinimo            Int     @default(2)
+  permettiConsecutivi       Boolean @default(false)
+  bpStaccoMaxPausa          Float   @default(2.0)
+  bpStaccoMinTurno1         Float   @default(6.0)
+  bpStaccoMinTurno2         Float   @default(2.0)
+  bpTurnoContinuato         Float   @default(7.0)
+  gpsHistoryIntervalMinutes Int     @default(60)
+  tenant                    Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model MonthStatus {
@@ -399,9 +392,9 @@ model AuditLog {
   targetId   String?
   targetName String?
   details    String
+  createdAt  DateTime @default(now())
   ipAddress  String?
   userAgent  String?
-  createdAt  DateTime @default(now())
   tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
@@ -584,15 +577,15 @@ model Announcement {
   authorName   String             @default("Comando")
   title        String
   body         String
-  category     String             @default("AVVISO") // AVVISO, URGENTE, ODG, CIRCOLARE
   priority     String             @default("NORMAL")
   requiresRead Boolean            @default(false)
   isPinned     Boolean            @default(false)
-  attachments  String[]           @default([])
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
-  tenant       Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  attachments  String[]           @default([])
+  category     String             @default("AVVISO")
   author       User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  tenant       Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   reads        AnnouncementRead[]
 }
 
@@ -610,9 +603,9 @@ model ShiftRule {
   id         String   @id @default(uuid())
   tenantId   String?
   name       String
-  type       String // e.g. 'LIMIT', 'DISTANCE', 'SCORE_MODIFIER', 'FORBIDDEN_BASE_SHIFT'
-  targetRole String   @default("ALL") // 'AGENT', 'OFFICER', 'ALL'
-  config     String // JSON string containing specific rule parameters
+  type       String
+  targetRole String   @default("ALL")
+  config     String
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -622,23 +615,22 @@ model ShiftRule {
 }
 
 model TrainingRecord {
-  id              String   @id @default(uuid())
+  id              String    @id @default(uuid())
   tenantId        String?
   userId          String
   courseName      String
-  category        String   @default("GENERALE") // SIA, Guida Sicura, Armi, Primo Soccorso, etc.
+  category        String    @default("GENERALE")
   description     String?
   issueDate       DateTime
   expiryDate      DateTime?
   certificationId String?
-  status          String   @default("VALID") // VALID, EXPIRING, EXPIRED
-  attachments     String[] @default([]) // URLs to documents
+  status          String    @default("VALID")
+  attachments     String[]  @default([])
   notes           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  tenant          Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, tenantId])
   @@index([expiryDate])
@@ -651,9 +643,8 @@ model LocationHistory {
   lat       Float
   lng       Float
   timestamp DateTime @default(now())
-  
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, timestamp])
   @@index([tenantId])
@@ -665,12 +656,11 @@ model GeofenceZone {
   name      String
   lat       Float
   lng       Float
-  radius    Int      // Raggio in metri
+  radius    Int
   color     String   @default("#ef4444")
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
   tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])

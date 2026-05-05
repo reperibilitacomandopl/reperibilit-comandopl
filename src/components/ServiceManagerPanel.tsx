@@ -679,6 +679,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
             currentDate={currentDate}
             users={users}
             handleDragStart={handleDragStart}
+            categories={categories}
           />
 
           {/* MAIN OPERATIONAL BOARDS */}

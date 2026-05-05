@@ -71,8 +71,16 @@ export default function PlanningMobileView({
   const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
 
   const getShiftFor = (agentId: string, day: number) => {
-    const targetDate = new Date(Date.UTC(currentYear, currentMonth - 1, day)).toISOString()
-    return shifts.find(s => s.userId === agentId && new Date(s.date).toISOString() === targetDate)
+    const targetYearStr = currentYear;
+    const targetMonthStr = String(currentMonth).padStart(2, '0');
+    const targetDayStr = String(day).padStart(2, '0');
+    const targetDateStr = `${targetYearStr}-${targetMonthStr}-${targetDayStr}`;
+
+    return shifts.find(s => {
+      const d = new Date(s.date);
+      const sDateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+      return s.userId === agentId && sDateStr === targetDateStr;
+    })
   }
 
   const renderBadge = (shift?: Shift) => {

@@ -1,18 +1,30 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { Loader2, ChevronLeft, ChevronRight, Save, Trash2, CalendarClock, RotateCcw, Wand2, FilterX } from "lucide-react"
+import { useState, useEffect, useCallback, useMemo } from "react"
+import { Loader2, ChevronLeft, ChevronRight, Save, Trash2, CalendarClock, RotateCcw, Wand2, FilterX, Calendar as CalendarIcon, Clock, X, RefreshCcw } from "lucide-react"
 import toast from "react-hot-toast"
 import Link from "next/link"
 import { formatShiftCode, isAssenza, isMalattia, isMattina, isPomeriggio } from "@/utils/shift-logic"
 import ShiftCodeLegend from "@/components/ui/ShiftCodeLegend"
 import ConfirmModal from "@/components/ui/ConfirmModal"
+import { AGENDA_CATEGORIES } from "@/utils/agenda-codes"
+
+const CAT_THEME: Record<string, { border: string; bg: string; text: string; btnBg: string; btnText: string; btnHover: string }> = {
+  amber:  { border: "border-yellow-300", bg: "bg-yellow-50",  text: "text-yellow-800", btnBg: "bg-yellow-500",  btnText: "text-white", btnHover: "hover:bg-yellow-600" },
+  rose:   { border: "border-pink-300",   bg: "bg-pink-50",    text: "text-pink-800",   btnBg: "bg-pink-500",    btnText: "text-white", btnHover: "hover:bg-pink-600" },
+  blue:   { border: "border-sky-300",    bg: "bg-sky-50",     text: "text-sky-800",    btnBg: "bg-sky-500",     btnText: "text-white", btnHover: "hover:bg-sky-600" },
+  red:    { border: "border-red-300",    bg: "bg-red-50",     text: "text-red-800",    btnBg: "bg-red-500",     btnText: "text-white", btnHover: "hover:bg-red-600" },
+  teal:   { border: "border-teal-300",   bg: "bg-teal-50",    text: "text-teal-800",   btnBg: "bg-teal-500",    btnText: "text-white", btnHover: "hover:bg-teal-600" },
+  indigo: { border: "border-indigo-300", bg: "bg-indigo-50",  text: "text-indigo-800", btnBg: "bg-indigo-500",  btnText: "text-white", btnHover: "hover:bg-indigo-600" },
+}
 
 export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: string }) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  
+
+
+
   const [users, setUsers] = useState<{ id: string; name: string; rotationGroupId?: string; fixedRestDay?: number | null }[]>([])
   // Map of userId -> "YYYY-MM-DD" -> type
   const [grid, setGrid] = useState<Record<string, Record<string, string>>>({})
@@ -28,8 +40,8 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
 
   // --- STATO MODALE DETTAGLIO GIORNATA ---
   const [detailModalOpen, setDetailModalOpen] = useState(false)
-  const [selectedCell, setSelectedCell] = useState<{userId: string, day: number, dateStr: string} | null>(null)
-  const [detailData, setDetailData] = useState<{type: string, overtimeHours: number, note: string}>({type: "", overtimeHours: 0, note: ""})
+  const [selectedCell, setSelectedCell] = useState<{userId: string, dateStr: string, day: number} | null>(null)
+  const [detailData, setDetailData] = useState<{type: string, overtimeHours: string | number, note: string}>({type: "", overtimeHours: 0, note: ""})
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth() + 1
@@ -98,8 +110,23 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
         const oldVal = originalGrid[userId]?.[dateStr]
         if (newVal !== oldVal) {
           let timeRange: string | undefined = undefined
-          if (newVal.startsWith("M") && group) timeRange = `${group.mStartTime || "07:00"}-${group.mEndTime || "13:00"}`
-          else if (newVal.startsWith("P") && group) timeRange = `${group.pStartTime || "13:00"}-${group.pEndTime || "19:00"}`
+          if (group) {
+            let times: Record<string, { start: string, end: string }> = {}
+            try {
+              const parsed = JSON.parse(group.pattern)
+              if (!Array.isArray(parsed) && parsed.shiftTimes) {
+                times = parsed.shiftTimes
+              }
+            } catch {}
+
+            if (times[newVal]) {
+               timeRange = `${times[newVal].start}-${times[newVal].end}`
+            } else if (newVal.startsWith("M")) {
+               timeRange = `${group.mStartTime || "07:00"}-${group.mEndTime || "13:00"}`
+            } else if (newVal.startsWith("P")) {
+               timeRange = `${group.pStartTime || "13:00"}-${group.pEndTime || "19:00"}`
+            }
+          }
           
           updates.push({ userId, date: dateStr, type: newVal, timeRange })
         }
@@ -128,13 +155,10 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
   }
 
   const openDetailModal = (userId: string, day: number) => {
-    const dStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
-    setSelectedCell({ userId, day, dateStr: dStr })
-    setDetailData({
-       type: grid[userId]?.[dStr] || "",
-       overtimeHours: 0, // This should ideally be fetched from the DB, but since the grid doesn't have it loaded, we'll initialize to 0 for new edits.
-       note: ""
-    })
+    const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+    setSelectedCell({ userId, dateStr, day })
+    const val = grid[userId]?.[dateStr] || ""
+    setDetailData({ type: val, overtimeHours: 0, note: "" })
     setDetailModalOpen(true)
   }
 
@@ -154,6 +178,28 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
     // If there is overtime or note, we should ideally save it to the DB immediately.
     // For now, we update the type in the grid, and if they click Save Modifiche it will save the type.
     // To properly save overtime, we should call the API directly here.
+    // Calcolo timeRange
+    let timeRange: string | undefined = undefined
+    const u = users.find(u => u.id === userId)
+    const group = rotationGroups.find(g => g.id === u?.rotationGroupId)
+    if (group && detailData.type) {
+      let times: Record<string, { start: string, end: string }> = {}
+      try {
+        const parsed = JSON.parse(group.pattern)
+        if (!Array.isArray(parsed) && parsed.shiftTimes) {
+          times = parsed.shiftTimes
+        }
+      } catch {}
+
+      if (times[detailData.type]) {
+         timeRange = `${times[detailData.type].start}-${times[detailData.type].end}`
+      } else if (detailData.type.startsWith("M")) {
+         timeRange = `${group.mStartTime || "07:00"}-${group.mEndTime || "13:00"}`
+      } else if (detailData.type.startsWith("P")) {
+         timeRange = `${group.pStartTime || "13:00"}-${group.pEndTime || "19:00"}`
+      }
+    }
+
     try {
       await fetch("/api/admin/shifts/monthly", {
         method: "PUT",
@@ -163,6 +209,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
               userId, 
               date: dateStr, 
               type: detailData.type,
+              timeRange,
               overtimeHours: detailData.overtimeHours,
               serviceDetails: detailData.note
            }] 
@@ -280,6 +327,30 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
   const [wizardGroupId, setWizardGroupId] = useState("")
   const [wizardStartDay, setWizardStartDay] = useState(0) // 0-27: quale giorno del ciclo corrisponde al 1° del mese
   const [rotationGroups, setRotationGroups] = useState<{ id: string; name: string; pattern: string; mStartTime?: string; mEndTime?: string; pStartTime?: string; pEndTime?: string; startDate?: string; users?: { id: string }[] }[]>([])
+  
+  const allAvailableShiftCodes = useMemo(() => {
+    const baseCodes = ["M7", "M8", "P12", "P14", "P15", "P16", "R", "RR", "REP", "REP_I"];
+    const customCodes = new Set<string>();
+    rotationGroups.forEach(g => {
+      try {
+         const data = JSON.parse(g.pattern);
+         if (Array.isArray(data)) {
+           data.forEach((c: string) => customCodes.add(c));
+         } else {
+           const seq = data.sequence || [];
+           seq.forEach((c: string) => customCodes.add(c));
+           const times = data.shiftTimes || {};
+           Object.keys(times).forEach((c: string) => customCodes.add(c));
+           const enabled = data.enabledCodes || [];
+           enabled.forEach((c: string) => customCodes.add(c));
+           const customs = data.customCodes || [];
+           customs.forEach((c: any) => customCodes.add(c.code));
+         }
+      } catch {}
+    });
+    return Array.from(new Set([...baseCodes, ...Array.from(customCodes)])).sort();
+  }, [rotationGroups]);
+
   const [filterText, setFilterText] = useState("")
 
   // Carica i gruppi di rotazione dal database
@@ -353,7 +424,10 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
            const grp = rotationGroups.find(g => g.id === u.rotationGroupId)
            if (!grp) return; // Salta agenti senza gruppo assegnato
            uGroup = grp;
-           try { uPattern = JSON.parse(grp.pattern) } catch { return }
+           try { 
+             const data = JSON.parse(grp.pattern) 
+             uPattern = Array.isArray(data) ? data : (data.sequence || [])
+           } catch { return }
            
            // Calcola start index automaticamente per il suo gruppo
            if (grp.startDate) {
@@ -361,12 +435,16 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
              const firstOfMonth = new Date(year, month - 1, 1)
              const diffTime = firstOfMonth.getTime() - sDate.getTime()
              const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24))
-             uStartIndex = ((diffDays % 28) + 28) % 28
+             const pLen = uPattern.length > 0 ? uPattern.length : 28
+             uStartIndex = ((diffDays % pLen) + pLen) % pLen
            } else {
              uStartIndex = 0
            }
         } else {
-           try { uPattern = JSON.parse(group!.pattern) } catch { return }
+           try { 
+             const data = JSON.parse(group!.pattern) 
+             uPattern = Array.isArray(data) ? data : (data.sequence || [])
+           } catch { return }
            if (uPattern.length === 0) return;
         }
 
@@ -399,10 +477,13 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
           const pVal = uPattern[patternIndex]
           
           if (pVal === "M") {
+            // Pattern generico legacy — converti con gli orari del gruppo
             nextGrid[u.id][dStr] = formatShiftCode("M", uGroup?.mStartTime)
           } else if (pVal === "P") {
+            // Pattern generico legacy — converti con gli orari del gruppo
             nextGrid[u.id][dStr] = formatShiftCode("P", uGroup?.pStartTime)
           } else {
+            // Codice specifico (M7, M8, P14, P15, N, RP, RR, etc.) — scrivi diretto
             nextGrid[u.id][dStr] = pVal
           }
         })
@@ -520,16 +601,28 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
                 value={wizardStartDay} onChange={(e) => setWizardStartDay(parseInt(e.target.value))}
                 className="p-2 rounded border-2 border-blue-300 bg-white text-sm font-bold shadow-sm text-slate-800 outline-none min-w-[220px]"
               >
-                {Array.from({length: 28}, (_, i) => {
+                {(() => {
                   const selectedGroup = rotationGroups.find(g => g.id === wizardGroupId)
-                  let patternVal = ""
+                  let pLength = 28
+                  let parsedPattern: string[] = []
                   if (selectedGroup) {
-                    try { const p = JSON.parse(selectedGroup.pattern); patternVal = ` → ${p[i] || "?"}` } catch {}
+                    try { 
+                      const data = JSON.parse(selectedGroup.pattern)
+                      parsedPattern = Array.isArray(data) ? data : (data.sequence || [])
+                      pLength = parsedPattern.length > 0 ? parsedPattern.length : 28
+                    } catch {}
                   }
-                  const weekNum = Math.floor(i / 7) + 1
-                  const dayInWeek = (i % 7) + 1
-                  return <option key={i} value={i}>Giorno {i + 1} (S{weekNum}.G{dayInWeek}{patternVal})</option>
-                })}
+                  
+                  return Array.from({length: pLength}, (_, i) => {
+                    let patternVal = ""
+                    if (selectedGroup && parsedPattern.length > 0) {
+                      patternVal = ` → ${parsedPattern[i] || "?"}`
+                    }
+                    const weekNum = Math.floor(i / 7) + 1
+                    const dayInWeek = (i % 7) + 1
+                    return <option key={i} value={i}>Giorno {i + 1} (S{weekNum}.G{dayInWeek}{patternVal})</option>
+                  })
+                })()}
               </select>
             </div>
           </div>
@@ -805,89 +898,164 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
       isLoading={isGeneratingAnnual}
     />
 
-    {/* MODALE DETTAGLIO GIORNATA */}
+    {/* ═══════════ MODALE DETTAGLIO GIORNATA (AVANZATA) ═══════════ */}
     {detailModalOpen && selectedCell && (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-          <div className="bg-blue-600 p-4 text-white flex justify-between items-center">
-            <h3 className="text-lg font-bold">Dettaglio Giornata</h3>
-            <button onClick={() => setDetailModalOpen(false)} className="text-white/70 hover:text-white">
-              <FilterX size={20} />
-            </button>
-          </div>
-          <div className="p-6 space-y-4">
-            <div>
-              <p className="text-sm text-slate-500 font-medium">Agente</p>
-              <p className="text-lg font-bold text-slate-800">{users.find(u => u.id === selectedCell.userId)?.name}</p>
-              <p className="text-xs text-slate-400">{selectedCell.dateStr}</p>
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase">Tipologia Turno / Assenza</label>
-              <select 
-                value={detailData.type}
-                onChange={e => setDetailData(prev => ({ ...prev, type: e.target.value }))}
-                className="w-full mt-1 p-2 border-2 border-slate-200 rounded-lg outline-none focus:border-blue-500 bg-slate-50"
-              >
-                <option value="">Seleziona...</option>
-                <optgroup label="Turni Operativi">
-                  <option value="M1">M1 (Mattina)</option>
-                  <option value="P1">P1 (Pomeriggio)</option>
-                  <option value="N">N (Notte)</option>
-                  <option value="RP">RP (Riposo Programmato)</option>
-                  <option value="RR">RR (Riposo Recupero)</option>
-                </optgroup>
-                <optgroup label="Assenze Intere (Codici HR)">
-                  <option value="(F)">Ferie (F)</option>
-                  <option value="(M)">Malattia (M)</option>
-                  <option value="(L 104)">Legge 104 (L 104)</option>
-                  <option value="(REC)">Recupero (REC)</option>
-                  <option value="(CONGEDO)">Congedo (CONGEDO)</option>
-                  <option value="(PERM)">Permesso (PERM)</option>
-                </optgroup>
-              </select>
-              <p className="text-[10px] text-slate-400 mt-1">Seleziona un'assenza dal menu per usare la formattazione corretta.</p>
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase">Ore di Straordinario</label>
-              <input 
-                type="number" 
-                min="0" max="12" step="0.5"
-                value={detailData.overtimeHours}
-                onChange={e => setDetailData(prev => ({ ...prev, overtimeHours: parseFloat(e.target.value) || 0 }))}
-                className="w-full mt-1 p-2 border-2 border-slate-200 rounded-lg outline-none focus:border-blue-500 bg-slate-50"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase">Note / Motivazione</label>
-              <input 
-                type="text" 
-                placeholder="Es: Servizio ordine pubblico"
-                value={detailData.note}
-                onChange={e => setDetailData(prev => ({ ...prev, note: e.target.value }))}
-                className="w-full mt-1 p-2 border-2 border-slate-200 rounded-lg outline-none focus:border-blue-500 bg-slate-50"
-              />
-            </div>
-
-            <div className="pt-4 flex gap-2">
-              <button 
-                onClick={() => setDetailModalOpen(false)}
-                className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-colors"
-              >
-                Annulla
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
+            <div className="px-5 py-4 bg-slate-900 text-white shrink-0 flex justify-between items-start">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="w-8 h-8 bg-indigo-500/20 rounded-lg flex items-center justify-center">
+                    <CalendarIcon width={16} height={16} className="text-indigo-400" />
+                  </div>
+                  <h3 className="text-sm font-black uppercase tracking-widest">
+                    {users.find(u => u.id === selectedCell.userId)?.name}
+                  </h3>
+                </div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">
+                  Giorno {selectedCell.day}
+                </p>
+              </div>
+              <button onClick={() => setDetailModalOpen(false)} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-white/50 hover:text-white">
+                <X size={18} />
               </button>
-              <button 
-                onClick={saveDetailModal}
-                className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition-colors"
-              >
-                Salva Dettaglio
-              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto custom-scrollbar bg-white">
+              <div className="p-5 space-y-5">
+                
+                {/* Selezione Codice */}
+                <div>
+                  <div className="relative flex items-center">
+                    <select 
+                      value={detailData.type} 
+                      onChange={e => setDetailData(prev => ({ ...prev, type: e.target.value }))}
+                      className="w-full bg-slate-100 border-2 border-slate-200 rounded-xl pl-4 pr-4 py-3 text-sm font-bold text-slate-900 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none hover:bg-slate-50 cursor-pointer transition-colors"
+                    >
+                      <option value="">Seleziona codice...</option>
+                      <optgroup label="Tipi di Turno e Riposo">
+                        {allAvailableShiftCodes.map(c => <option key={c} value={c}>{c}</option>)}
+                      </optgroup>
+                      {AGENDA_CATEGORIES.map(cat => (
+                        <optgroup key={cat.group} label={`${cat.emoji} ${cat.group}`}>
+                          {cat.items.map(item => (
+                            <option key={item.shortCode} value={item.shortCode}>{item.shortCode} - {item.label}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Turni Rapidi */}
+                <div>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Turni Rapidi</p>
+                  <div className="grid grid-cols-4 md:grid-cols-6 gap-1.5">
+                    {allAvailableShiftCodes.filter(c => !["R", "RR"].includes(c)).slice(0, 12).map(code => (
+                      <button 
+                        key={code} 
+                        onClick={() => setDetailData(prev => ({ ...prev, type: code }))}
+                        className={`py-2 rounded-lg text-[10px] font-black transition-all border ${
+                          detailData.type === code 
+                            ? "ring-2 ring-indigo-500 shadow-md " 
+                            : ""
+                        } ${
+                          code === "REP"
+                          ? "bg-violet-600 text-white border-violet-700 hover:bg-violet-700"
+                          : code.startsWith("M")
+                            ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-500 hover:text-white"
+                            : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-500 hover:text-white"
+                        }`}
+                      >
+                        {code}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Categorie Agenda */}
+                <div className="space-y-2.5">
+                  {AGENDA_CATEGORIES.map(cat => {
+                    const theme = CAT_THEME[cat.color] || CAT_THEME.indigo
+                    return (
+                      <div key={cat.group} className={`border ${theme.border} rounded-xl overflow-hidden`}>
+                        <div className={`${theme.bg} px-3 py-2 flex items-center gap-2`}>
+                          <span className="text-sm">{cat.emoji}</span>
+                          <span className={`text-[11px] font-bold ${theme.text} uppercase tracking-wide`}>{cat.group}</span>
+                        </div>
+                        <div className="p-2 bg-white grid grid-cols-2 gap-1.5">
+                          {cat.items.map(item => (
+                            <button 
+                              key={item.shortCode} 
+                              onClick={() => setDetailData(prev => ({ ...prev, type: item.shortCode }))}
+                              className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-all border hover:border-slate-300 hover:shadow-sm group/btn ${
+                                detailData.type === item.shortCode ? "border-indigo-500 ring-1 ring-indigo-500 bg-indigo-50" : "border-slate-100"
+                              }`}
+                            >
+                              <span className={`${theme.btnBg} ${theme.btnText} text-[8px] font-black rounded px-1.5 py-0.5 min-w-[36px] text-center whitespace-nowrap`}>
+                                {item.shortCode.length > 6 ? item.shortCode.substring(0, 6) : item.shortCode}
+                              </span>
+                              <span className="text-[10px] font-semibold text-slate-700 leading-tight truncate">{item.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <hr className="border-slate-200" />
+
+                {/* Campi Straordinario e Note */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Ore di Straordinario</label>
+                    <div className="relative">
+                      <input 
+                        type="number" 
+                        min="0" max="12" step="0.5"
+                        value={detailData.overtimeHours || ""}
+                        onChange={e => setDetailData(prev => ({ ...prev, overtimeHours: parseFloat(e.target.value) || 0 }))}
+                        className="w-full p-2.5 pl-10 bg-white border border-slate-300 text-slate-900 rounded-lg outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-bold"
+                        placeholder="Es: 2.5"
+                      />
+                      <Clock className="absolute left-3 top-3 text-slate-400" size={16} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Note / Motivazione</label>
+                    <textarea 
+                      placeholder="Es: Servizio ordine pubblico"
+                      value={detailData.note}
+                      onChange={e => setDetailData(prev => ({ ...prev, note: e.target.value }))}
+                      className="w-full p-2.5 bg-white border border-slate-300 text-slate-900 rounded-lg outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 min-h-[80px] resize-none text-sm"
+                    />
+                  </div>
+                </div>
+
+              </div>
+            </div>
+            
+            {/* Footer con bottoni */}
+            <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex flex-col gap-2">
+              <div className="flex gap-2 w-full">
+                <button 
+                  onClick={() => setDetailData(prev => ({ ...prev, type: "" }))}
+                  className="w-1/3 py-2.5 text-slate-500 hover:text-red-600 hover:bg-red-50 bg-white rounded-xl text-[11px] font-bold uppercase border border-slate-200 transition-all"
+                >
+                  Svuota Turno
+                </button>
+                <button 
+                  onClick={saveDetailModal}
+                  className="w-2/3 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  <Save size={16} /> Salva Modifiche
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
     )}
     </>
   )

@@ -34,6 +34,7 @@ interface ServiceManagerSidebarProps {
   currentDate: Date
   users: any[]
   handleDragStart: any
+  categories: any[]
 }
 
 export default function ServiceManagerSidebar({
@@ -63,7 +64,8 @@ export default function ServiceManagerSidebar({
   schools,
   currentDate,
   users,
-  handleDragStart
+  handleDragStart,
+  categories
 }: ServiceManagerSidebarProps) {
   return (
     <div 
@@ -131,6 +133,7 @@ export default function ServiceManagerSidebar({
                             users={users}
                             shifts={shifts}
                             handleDragStart={handleDragStart}
+                            categories={categories}
                          />
                       </div>
                     )

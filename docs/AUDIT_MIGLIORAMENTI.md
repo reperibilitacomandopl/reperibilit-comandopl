@@ -220,3 +220,8 @@ PDF pianificazione e reperibilità funzionanti (appena corretti). Grafica unifor
 21. Chat pattuglia (6.7)
 22. ~~Undo/Redo turni (3.7)~~ ✅ Completato
 23. Storico posizioni GPS (5.5)
+
+### 🔵 Extra — Interventi Straordinari (Completati)
+24. ~~Rifacimento UI Cartellino Admin~~ ✅ Completato — Inserimento straordinari, giustificativi, note.
+25. ~~Generazione dati Ambiente Test~~ ✅ Completato — Dati fittizi completi (Maggio 2026) su tenant `comando-test`.
+26. ~~Fix permessi Squadra Reperibilità~~ ✅ Completato — Gestione corretta privilegi SuperAdmin.

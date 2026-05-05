@@ -1,10 +1,11 @@
 "use client"
 
 import React, { useState, useEffect, useCallback } from "react"
-import { Loader2, Printer, X, GraduationCap, ShieldCheck } from "lucide-react"
+import { Loader2, Printer, X, GraduationCap, ShieldCheck, Layers } from "lucide-react"
 import toast from "react-hot-toast"
 import { generateODSPDF, generateWeeklyODSPDF } from "@/utils/pdf-generator"
 import WeatherWidget from "@/components/WeatherWidget"
+import QuickServiceManager from "@/components/QuickServiceManager"
 
 interface DashboardUser {
   id: string;
@@ -35,9 +36,8 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
   
   const [users, setUsers] = useState<DashboardUser[]>([])
   const [shifts, setShifts] = useState<DashboardShift[]>([])
-  // categories is currently unused but kept for future logic if needed, 
-  // but for Zero Noise we comment it out if lint complaints or use it.
-  // const [categories, setCategories] = useState<DashboardCategory[]>([])
+  const [categories, setCategories] = useState<any[]>([])
+  const [showServiceManager, setShowServiceManager] = useState(false)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -46,10 +46,16 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
     const d = String(currentDate.getDate()).padStart(2, "0")
     
     try {
-      const res = await fetch(`/api/admin/shifts/daily?date=${y}-${m}-${d}`)
-      const data = await res.json()
+      const [resShifts, resCats] = await Promise.all([
+        fetch(`/api/admin/shifts/daily?date=${y}-${m}-${d}`),
+        fetch("/api/admin/services")
+      ])
+      const data = await resShifts.json()
+      const dataCats = await resCats.json()
+      
       if (data.users) setUsers(data.users)
       if (data.shifts) setShifts(data.shifts)
+      if (dataCats.categories) setCategories(dataCats.categories)
       setIsCertified(!!data.isCertified)
     } catch { toast.error("Errore caricamento dati OdS") }
     setLoading(false)
@@ -345,7 +351,41 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
            {orario}
         </td>
         <td className="p-2 border-r border-slate-200 font-medium text-slate-700">
-           {serviceName} <span className="text-slate-400 font-normal">{vehicleName}</span>
+           <div className="flex flex-col">
+              {isCertified ? (
+                <span className="font-bold">{serviceName}</span>
+              ) : (
+                <select 
+                  value={s.serviceType?.id || ""}
+                  onChange={async (e) => {
+                    const newTypeId = e.target.value;
+                    setShifts(prev => prev.map(sh => sh.id === s.id ? { ...sh, serviceType: newTypeId ? { id: newTypeId, name: "" } : null } : sh));
+                    await fetch("/api/admin/shifts/daily", {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        date: currentDate.toISOString().split("T")[0],
+                        userId: s.userId,
+                        type: s.type,
+                        serviceTypeId: newTypeId || null
+                      })
+                    });
+                    loadData();
+                  }}
+                  className="bg-transparent border-none p-0 font-bold text-slate-800 outline-none focus:ring-0 cursor-pointer hover:text-indigo-600"
+                >
+                  <option value="">{u.servizio || "Vigilanza"}</option>
+                  {categories.map(c => (
+                    <optgroup key={c.id} label={c.name.toUpperCase()}>
+                      {c.types.map((t: any) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              )}
+              <span className="text-[10px] text-slate-400 font-normal">{vehicleName}</span>
+           </div>
         </td>
         <td className="p-0 align-top">
            <input 
@@ -409,6 +449,14 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
               >
                 <Printer width={18} height={18}/> Stampa Settimana
               </button>
+
+              <button 
+                onClick={() => setShowServiceManager(true)}
+                disabled={isCertified}
+                className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-900 font-black px-4 py-2.5 rounded-xl transition-all border border-slate-200"
+              >
+                <Layers width={18} height={18}/> Gestione Servizi
+              </button>
             {onClose && (
               <button onClick={onClose} className="p-2 bg-slate-800 text-slate-400 hover:bg-rose-500 hover:text-white rounded-lg transition-all border border-slate-700">
                 <X width={16} height={16}/>
@@ -458,6 +506,14 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
          )}
       </div>
 
+      {showServiceManager && (
+        <QuickServiceManager 
+          onClose={() => {
+            setShowServiceManager(false)
+            loadData()
+          }} 
+        />
+      )}
     </div>
   )
 }

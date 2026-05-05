@@ -48,6 +48,7 @@ interface ServiceAgentCardProps {
   users: any[]
   shifts: any[]
   handleDragStart: (e: React.DragEvent, userId: string) => void
+  categories: { id: string; name: string; types?: { id: string; name: string }[] }[]
 }
 
 export default function ServiceAgentCard({
@@ -70,7 +71,8 @@ export default function ServiceAgentCard({
   currentDate,
   users,
   shifts,
-  handleDragStart
+  handleDragStart,
+  categories
 }: ServiceAgentCardProps) {
   const timeRangeStr = shiftAssegnato.timeRange || (shiftAssegnato.type === "M7" ? "07:00-13:00" : shiftAssegnato.type === "M8" ? "08:00-14:00" : "14:00-20:00")
 
@@ -244,13 +246,30 @@ export default function ServiceAgentCard({
           </button>
         </div>
       </div>
-      <input 
-        type="text"
-        defaultValue={shiftAssegnato.serviceDetails || ""}
-        onBlur={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, shiftAssegnato.radioId, shiftAssegnato.timeRange, e.target.value)}
-        placeholder="Inserisci dettagli servizio o zona..."
-        className="w-full text-[11px] font-bold text-slate-700 bg-white border border-slate-200 rounded px-2 py-1 focus:border-blue-500 outline-none"
-      />
+       <div className="flex gap-1 mt-1">
+          <select 
+            value={shiftAssegnato.serviceTypeId || ""}
+            onChange={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, e.target.value, shiftAssegnato.vehicleId, shiftAssegnato.radioId, shiftAssegnato.weaponId, shiftAssegnato.armorId, timeRangeStr, shiftAssegnato.serviceDetails)}
+            className="flex-1 text-[11px] font-black bg-white border border-slate-200 rounded px-2 py-1.5 focus:border-blue-500 transition-all text-slate-800"
+          >
+            <option value="">{agente.servizio || "+ Servizio"}</option>
+            {categories.map(c => (
+              <optgroup key={c.id} label={c.name.toUpperCase()}>
+                {c.types?.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          
+          <input 
+            type="text"
+            defaultValue={shiftAssegnato.serviceDetails || ""}
+            onBlur={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, shiftAssegnato.radioId, shiftAssegnato.weaponId, shiftAssegnato.armorId, timeRangeStr, e.target.value)}
+            placeholder="Dettagli zona..."
+            className="flex-1 text-[11px] font-bold text-slate-700 bg-white border border-slate-200 rounded px-2 py-1 focus:border-blue-500 outline-none"
+          />
+       </div>
     </div>
   )
 }

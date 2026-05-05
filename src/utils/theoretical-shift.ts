@@ -43,24 +43,39 @@ export function resolveTheoreticalShift({
 
   // 3. Calcolo dal Pattern di Rotazione
   if (user.rotationGroup && user.rotationGroup.pattern) {
-    let pattern: string[] = [];
+    let sequence: string[] = [];
+    let shiftTimes: Record<string, { start: string; end: string }> = {};
+
     try {
-      pattern = JSON.parse(user.rotationGroup.pattern);
+      const parsed = JSON.parse(user.rotationGroup.pattern);
+      if (Array.isArray(parsed)) {
+        sequence = parsed;
+      } else {
+        sequence = parsed.sequence || [];
+        shiftTimes = parsed.shiftTimes || {};
+      }
     } catch {
-      pattern = [];
+      sequence = [];
     }
 
-    if (pattern.length > 0 && user.rotationGroup.startDate) {
+    if (sequence.length > 0 && user.rotationGroup.startDate) {
       const anchor = new Date(user.rotationGroup.startDate);
       const diffTime = targetDate.getTime() - anchor.getTime();
       const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-      const patternIndex = ((diffDays % 28) + 28) % 28;
-      const pVal = pattern[patternIndex];
+      const pLen = sequence.length;
+      const patternIndex = ((diffDays % pLen) + pLen) % pLen;
+      const pVal = sequence[patternIndex];
 
       if (pVal) {
-        // Se è M o P, converti nel codice completo se possibile
+        // Se è M o P legacy, usa i campi fissi del gruppo
         if (pVal === "M") return formatShiftCode("M", user.rotationGroup.mStartTime);
         if (pVal === "P") return formatShiftCode("P", user.rotationGroup.pStartTime);
+        
+        // Se abbiamo un orario specifico salvato per questo codice nel pattern
+        if (shiftTimes[pVal]) {
+          return formatShiftCode(pVal, shiftTimes[pVal].start);
+        }
+
         return pVal.toUpperCase().trim();
       }
     }
