@@ -21,9 +21,11 @@ interface ServiceManagerToolbarProps {
   copyDay: () => void
   pasteDay: () => Promise<void>
   onClose?: () => void
-  patrolSelectionSize: number
   createPatrolFromSelection: () => Promise<void>
   tenantSlug: string
+  assignedCount: number
+  totalAvailable: number
+  completionPercentage: number
 }
 
 export default function ServiceManagerToolbar({
@@ -43,7 +45,10 @@ export default function ServiceManagerToolbar({
   onClose,
   patrolSelectionSize,
   createPatrolFromSelection,
-  tenantSlug
+  tenantSlug,
+  assignedCount,
+  totalAvailable,
+  completionPercentage
 }: ServiceManagerToolbarProps) {
   return (
     <div className="bg-[#0f172a] text-slate-200 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between shrink-0 border-b border-slate-800 z-20 shadow-2xl">
@@ -56,6 +61,20 @@ export default function ServiceManagerToolbar({
           <p className="text-[10px] sm:text-xs text-slate-300 font-bold tracking-widest uppercase">Pianificazione OdS e Pattuglie
             {copiedDay && <span className="ml-2 text-indigo-400">• OdS copiato da {copiedDay.date}</span>}
           </p>
+        </div>
+      </div>
+
+      {/* COMPLETION INDICATOR */}
+      <div className="hidden lg:flex items-center gap-4 bg-slate-800/50 px-4 py-2 rounded-2xl border border-slate-700/50">
+        <div className="flex flex-col">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Avanzamento OdS</span>
+          <span className="text-sm font-black text-white">{assignedCount} <span className="text-slate-500">/ {totalAvailable}</span></span>
+        </div>
+        <div className="w-32 h-2.5 bg-slate-900 rounded-full overflow-hidden shadow-inner border border-slate-800">
+          <div 
+            className={`h-full rounded-full transition-all duration-1000 ${completionPercentage === 100 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-blue-500'}`} 
+            style={{ width: `${completionPercentage}%` }}
+          />
         </div>
       </div>
 
@@ -163,8 +182,8 @@ export default function ServiceManagerToolbar({
             </button>
           )}
 
-          <a href={`/${tenantSlug || 'admin'}/admin/stampa-ods`} className="hidden sm:flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm">
-             Stampa
+          <a href={`/${tenantSlug || 'admin'}/admin/stampa-ods`} target="_blank" rel="noopener noreferrer" className="hidden sm:flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm">
+             Stampa 1-Click
           </a>
         </div>
 

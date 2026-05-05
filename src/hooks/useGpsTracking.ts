@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 
 interface UseGpsTrackingProps {
   isClockedIn: 'IN' | 'OUT' | 'LOADING'
@@ -10,6 +10,7 @@ interface UseGpsTrackingProps {
 export function useGpsTracking({ isClockedIn, intervalMs = 60000 }: UseGpsTrackingProps) {
   const watchId = useRef<number | null>(null)
   const lastUpdate = useRef<number>(0)
+  const [coords, setCoords] = useState<{ lat: number, lng: number } | null>(null)
 
   useEffect(() => {
     // Se non è in servizio, interrompiamo qualsiasi tracciamento esistente (PRIVACY)
@@ -27,6 +28,8 @@ export function useGpsTracking({ isClockedIn, intervalMs = 60000 }: UseGpsTracki
         async (position) => {
           const { latitude, longitude } = position.coords
           const now = Date.now()
+          
+          setCoords({ lat: latitude, lng: longitude })
 
           // Evitiamo di intasare il server: aggiorniamo solo ogni 'intervalMs'
           if (now - lastUpdate.current > intervalMs) {
@@ -59,4 +62,6 @@ export function useGpsTracking({ isClockedIn, intervalMs = 60000 }: UseGpsTracki
       }
     }
   }, [isClockedIn, intervalMs])
+
+  return coords
 }

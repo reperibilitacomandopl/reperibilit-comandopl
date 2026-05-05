@@ -70,3 +70,31 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Internal Error" }, { status: 500 })
   }
 }
+
+export async function PUT(req: Request) {
+  try {
+    const session = await auth()
+    if (!session?.user || (session.user.role !== "ADMIN" && !session.user.isSuperAdmin)) {
+      return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
+    }
+
+    const { id, lat, lng, radius, name, color } = await req.json()
+    if (!id) return NextResponse.json({ error: "ID mancante" }, { status: 400 })
+
+    const zone = await prisma.geofenceZone.update({
+      where: { id, tenantId: session.user.tenantId },
+      data: {
+        lat,
+        lng,
+        radius,
+        name,
+        color
+      }
+    })
+
+    return NextResponse.json({ success: true, zone })
+  } catch (error) {
+    console.error("[GEOFENCE_PUT_ERROR]", error)
+    return NextResponse.json({ error: "Internal Error" }, { status: 500 })
+  }
+}

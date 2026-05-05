@@ -3,6 +3,7 @@ import React from "react"
 import Link from "next/link"
 import { ShieldCheck, CalendarDays, Clock, Users, ArrowRightLeft, MapPin, RefreshCw, ChevronLeft, ChevronRight, CheckCircle2, X, Shield, Smartphone, Send, LogOut, Lock, Eye } from "lucide-react"
 import TwoFactorSetupModal from "../TwoFactorSetupModal"
+import HoldButton from "../ui/HoldButton"
 
 export default function AgentHeader({
   currentUser,
@@ -225,9 +226,9 @@ export default function AgentHeader({
                     localStorage.setItem('high-contrast', isHC ? 'true' : 'false');
                   }}
                   className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white px-6 py-4 rounded-[2rem] text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 border border-white/5"
-                  title="Attiva/Disattiva Modalità Alto Contrasto (WCAG)"
+                  title="Attiva/Disattiva Tema Scuro / Alto Contrasto"
                 >
-                  <Eye size={16} /> Contrasto
+                  <Eye size={16} /> Tema Scuro
                 </button>
 
                 {!currentUser.twoFactorEnabled && (
@@ -285,19 +286,31 @@ export default function AgentHeader({
                 </div>
               </div>
 
-              <button 
-                onClick={() => setShowSosModal(true)}
-                className="bg-rose-600 hover:bg-rose-500 p-6 rounded-[2.5rem] flex flex-col justify-between h-40 shadow-2xl shadow-rose-900/40 transition-all active:scale-95 group border border-rose-400/20"
-                aria-label="Invia SOS Emergenza"
+              <HoldButton 
+                onHoldComplete={() => setShowSosModal(true)}
+                className="bg-rose-600 hover:bg-rose-500 p-6 rounded-[2.5rem] flex flex-col justify-between h-40 shadow-2xl shadow-rose-900/40 transition-all active:scale-95 group border border-rose-400/20 relative overflow-hidden"
+                aria-label="Invia SOS Emergenza (Tieni premuto)"
               >
-                <div className="p-4 bg-white/20 rounded-2xl w-fit group-hover:scale-110 transition-transform">
-                  <Shield className="text-white" size={24} />
-                </div>
-                <div className="text-left">
-                  <p className="text-[10px] text-white/60 font-black uppercase tracking-widest mb-1">S.O.S.</p>
-                  <p className="text-xl font-black text-white uppercase tracking-tighter">Emergenza</p>
-                </div>
-              </button>
+                {(pressing, progress) => (
+                  <>
+                    {pressing && (
+                      <div 
+                        className="absolute bottom-0 left-0 h-2 bg-white/40 transition-all"
+                        style={{ width: `${progress * 100}%` }}
+                      />
+                    )}
+                    <div className={`p-4 rounded-2xl w-fit transition-transform ${pressing ? 'bg-white/40 scale-110 animate-pulse' : 'bg-white/20 group-hover:scale-110'}`}>
+                      <Shield className="text-white" size={24} />
+                    </div>
+                    <div className="text-left relative z-10">
+                      <p className="text-[10px] text-white/60 font-black uppercase tracking-widest mb-1">
+                        {pressing ? "TIENI PREMUTO..." : "S.O.S."}
+                      </p>
+                      <p className="text-xl font-black text-white uppercase tracking-tighter">Emergenza</p>
+                    </div>
+                  </>
+                )}
+              </HoldButton>
             </div>
             
             <div className="flex flex-col gap-4">

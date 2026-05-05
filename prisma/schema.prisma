@@ -54,6 +54,7 @@ model Tenant {
   users              User[]
   vehicles           Vehicle[]
   weapons            Weapon[]
+  chatMessages       ChatMessage[]
 }
 
 model User {
@@ -133,6 +134,7 @@ model User {
   tenant                   Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   weapons                  Weapon[]           @relation("WeaponAssegnatario")
   patrolTemplates          PatrolTemplate[]   @relation("PatrolMembers")
+  sentMessages             ChatMessage[]      @relation("SentMessages")
 
   @@unique([tenantId, matricola])
 }
@@ -664,4 +666,18 @@ model GeofenceZone {
   tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
+}
+
+model ChatMessage {
+  id            String   @id @default(uuid())
+  tenantId      String?
+  patrolGroupId String
+  senderId      String
+  message       String
+  createdAt     DateTime @default(now())
+  
+  sender        User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  tenant        Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@index([patrolGroupId, createdAt])
 }

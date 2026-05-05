@@ -615,6 +615,15 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
       return sa.localeCompare(sb)
   })
 
+  const assignedCount = users.filter(u => {
+    if (indisponibili.includes(u)) return false
+    const shift = shifts.find(s => s.userId === u.id)
+    return shift && (shift.serviceTypeId || shift.serviceCategoryId)
+  }).length
+
+  const totalAvailable = disponibiliNonAssegnati.length + assignedCount
+  const completionPercentage = totalAvailable > 0 ? Math.round((assignedCount / totalAvailable) * 100) : 0
+
   // Funzione Rendering Blocco Fase (Mattino / Pomeriggio) rimossa e sostituita con ServiceBoard
 
 
@@ -641,6 +650,9 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
         patrolSelectionSize={patrolSelection.size}
         createPatrolFromSelection={createPatrolFromSelection}
         tenantSlug={tenantSlug || ""}
+        assignedCount={assignedCount}
+        totalAvailable={totalAvailable}
+        completionPercentage={completionPercentage}
       />
 
       {loading ? (

@@ -142,28 +142,95 @@ export default function ControlRoomMap() {
         weight: 2,
         dashArray: '5, 10'
       }).addTo(mapRef.current)
+
+      // Creiamo un marker trasparente al centro per permettere il trascinamento
+      const dragMarker = L.marker([zone.lat, zone.lng], {
+        draggable: true,
+        icon: L.divIcon({
+          className: 'bg-transparent',
+          html: `<div style="width:12px; h:12px; background:${zone.color}; border:2px solid white; border-radius:50%; shadow: 0 0 10px rgba(0,0,0,0.3);"></div>`,
+          iconSize: [12, 12],
+          iconAnchor: [6, 6]
+        })
+      }).addTo(mapRef.current)
+
+      circle.bindTooltip(zone.name, { permanent: false, direction: 'top', className: 'font-black uppercase text-[10px]' })
       
-      circle.bindTooltip(zone.name, { permanent: false, direction: 'center' })
-      
-      // Popup con bottone elimina
+      // Quando trascini il marker, sposta il cerchio
+      dragMarker.on('drag', (e: any) => {
+        circle.setLatLng(e.target.getLatLng())
+      })
+
+      // Quando finisci di trascinare, salva la posizione
+      dragMarker.on('dragend', async (e: any) => {
+        const newPos = e.target.getLatLng()
+        try {
+          await fetch("/api/admin/geofence", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: zone.id,
+              lat: newPos.lat,
+              lng: newPos.lng
+            })
+          })
+          toast.success(`Posizione "${zone.name}" aggiornata`)
+        } catch (err) {
+          toast.error("Errore salvataggio posizione")
+        }
+      })
+
+      // Popup con gestione zona
       const popupContent = document.createElement('div')
+      popupContent.className = "p-2 min-w-[200px]"
       popupContent.innerHTML = `
-        <div style="text-align:center; min-width: 150px;">
-          <strong style="font-size:14px;">${zone.name}</strong>
-          <p style="font-size:11px; color:#666; margin:4px 0;">Raggio: ${zone.radius}m</p>
-          <button id="delete-zone-${zone.id}" style="
-            margin-top:8px; padding:6px 16px; background:#ef4444; color:white; 
-            border:none; border-radius:8px; font-size:11px; font-weight:bold;
-            cursor:pointer; width:100%;
-          ">🗑 Elimina Zona</button>
+        <div style="text-align:center;">
+          <h4 style="margin:0; font-size:14px; font-weight:900; text-transform:uppercase;">${zone.name}</h4>
+          <p style="font-size:10px; color:#64748b; font-weight:700; margin:4px 0 12px 0;">ZONA OPERATIVA · ${zone.radius}m</p>
+          
+          <div style="background:#f8fafc; border-radius:12px; padding:8px; margin-bottom:12px; border:1px solid #e2e8f0;">
+             <p style="font-size:9px; font-weight:900; color:#94a3b8; text-transform:uppercase; margin-bottom:4px;">Operatori Area</p>
+             <div id="zone-agents-${zone.id}" style="font-size:11px; font-weight:bold; color:#1e293b;">
+                Calcolo copertura...
+             </div>
+          </div>
+
+          <div style="display:grid; grid-template-cols: 1fr 1fr; gap:8px;">
+            <button id="resize-zone-${zone.id}" style="
+              padding:8px; background:#f1f5f9; color:#475569; 
+              border:none; border-radius:8px; font-size:10px; font-weight:900;
+              cursor:pointer; text-transform:uppercase;
+            ">📏 Raggio</button>
+            <button id="delete-zone-${zone.id}" style="
+              padding:8px; background:#fee2e2; color:#ef4444; 
+              border:none; border-radius:8px; font-size:10px; font-weight:900;
+              cursor:pointer; text-transform:uppercase;
+            ">🗑 Elimina</button>
+          </div>
+          <p style="font-size:8px; color:#94a3b8; margin-top:8px;">Trascina il cerchio per spostarlo</p>
         </div>
       `
       circle.bindPopup(popupContent)
       
       circle.on('popupopen', () => {
-        const btn = document.getElementById(`delete-zone-${zone.id}`)
-        if (btn) {
-          btn.onclick = async () => {
+        // Calcola agenti dentro la zona
+        const zoneAgents = agents.filter(a => {
+          if (!a.lastLat || !a.lastLng) return false
+          const dist = L.latLng(zone.lat, zone.lng).distanceTo(L.latLng(a.lastLat, a.lastLng))
+          return dist <= zone.radius
+        })
+        
+        const agentListDiv = document.getElementById(`zone-agents-${zone.id}`)
+        if (agentListDiv) {
+          agentListDiv.innerHTML = zoneAgents.length > 0 
+            ? zoneAgents.map(a => `• ${a.name}`).join('<br>')
+            : 'Nessun operatore in area'
+        }
+
+        // Evento Elimina
+        const btnDelete = document.getElementById(`delete-zone-${zone.id}`)
+        if (btnDelete) {
+          btnDelete.onclick = async () => {
             if (!confirm(`Eliminare la zona "${zone.name}"?`)) return
             const loadingId = toast.loading("Eliminazione zona...")
             try {
@@ -171,11 +238,29 @@ export default function ControlRoomMap() {
               if (res.ok) {
                 toast.success("Zona eliminata!", { id: loadingId })
                 fetchGeofences()
-              } else {
-                throw new Error()
-              }
-            } catch {
-              toast.error("Errore durante l'eliminazione", { id: loadingId })
+              } else { throw new Error() }
+            } catch { toast.error("Errore", { id: loadingId }) }
+          }
+        }
+
+        // Evento Ridimensiona (semplice prompt per ora)
+        const btnResize = document.getElementById(`resize-zone-${zone.id}`)
+        if (btnResize) {
+          btnResize.onclick = async () => {
+            const newRadius = prompt("Inserisci il nuovo raggio in metri (es: 500):", zone.radius.toString())
+            if (newRadius && !isNaN(parseInt(newRadius))) {
+              const loadingId = toast.loading("Aggiornamento raggio...")
+              try {
+                const res = await fetch("/api/admin/geofence", {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ id: zone.id, radius: parseInt(newRadius) })
+                })
+                if (res.ok) {
+                  toast.success("Raggio aggiornato", { id: loadingId })
+                  fetchGeofences()
+                } else { throw new Error() }
+              } catch { toast.error("Errore", { id: loadingId }) }
             }
           }
         }

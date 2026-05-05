@@ -25,6 +25,7 @@ import AgentSwapModal from "./agent/AgentSwapModal"
 import AgentAgendaModal from "./agent/AgentAgendaModal"
 import AgentSyncModal from "./agent/AgentSyncModal"
 import AgentSosModal from "./agent/AgentSosModal"
+import ChatPanel from "./agent/ChatPanel"
 import OfficerDutyPanel from "./agent/OfficerDutyPanel"
 import NextShiftCard from "./agent/NextShiftCard"
 import PersonalBalances from "./agent/PersonalBalances"
@@ -35,7 +36,7 @@ import AgentYearlyCard from "./agent/AgentYearlyCard"
 import { useGpsTracking } from "@/hooks/useGpsTracking"
 
 import { isAssenza } from "@/utils/shift-logic"
-import { Shield, CalendarDays, BookOpen, FileDown } from "lucide-react"
+import { Shield, CalendarDays, BookOpen, FileDown, MessageSquare } from "lucide-react"
 
 export interface AgentDashboardProps {
   currentUser: { id: string, matricola: string, name: string, isUfficiale?: boolean, telegramChatId?: string | null }
@@ -73,7 +74,7 @@ export default function AgentDashboard({
   const admin = useAgentData({ currentUser, currentYear, currentMonth, shifts });
 
   // GPS REAL-TIME TRACKING (SOLO IN SERVIZIO)
-  useGpsTracking({ 
+  const coords = useGpsTracking({ 
     isClockedIn: admin.isClockedIn || 'OUT', 
     intervalMs: 300000 // Aggiorna posizione ogni 5 minuti
   });
@@ -109,6 +110,7 @@ export default function AgentDashboard({
   const [showSwapModal, setShowSwapModal] = useState(false)
   const [showAbsenceModal, setShowAbsenceModal] = useState(false)
   const [showSosModal, setShowSosModal] = useState(false)
+  const [showChat, setShowChat] = useState(false)
   const [isMobileView, setIsMobileView] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'yearly'>('calendar')
   const [selectedShiftForSwap, setSelectedShiftForSwap] = useState<DashboardShift | null>(null)
@@ -176,7 +178,11 @@ export default function AgentDashboard({
       />
 
       <div className="mb-6">
-        <WeatherWidget city="Altamura" />
+        <WeatherWidget 
+          city={coords ? "Posizione Attuale" : "Altamura"} 
+          lat={coords?.lat?.toString() || "40.8286"} 
+          lon={coords?.lng?.toString() || "16.5516"} 
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -195,7 +201,16 @@ export default function AgentDashboard({
                     </div>
                     {admin.myOds.partners.length > 0 && (
                       <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                        <div className="text-amber-600 font-bold uppercase text-[9px] mb-1">Collega Pattuglia</div>
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="text-amber-600 font-bold uppercase text-[9px]">Collega Pattuglia</div>
+                          <button 
+                            onClick={() => setShowChat(true)}
+                            className="bg-amber-600 hover:bg-amber-500 text-white p-2 rounded-xl shadow-sm transition-transform hover:scale-105 flex items-center gap-2 text-[10px] font-black uppercase"
+                          >
+                            <MessageSquare size={14} />
+                            Chat
+                          </button>
+                        </div>
                         {admin.myOds.partners.map(p => (
                           <p key={p.id} className="font-black text-amber-900">{p.user.name}</p>
                         ))}
@@ -564,6 +579,17 @@ export default function AgentDashboard({
           onClose={() => setShowSosModal(false)}
           onSendSos={admin.handleSendFullSos}
         />
+      )}
+
+      {showChat && admin.myOds?.shift.patrolGroupId && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <ChatPanel 
+            currentUser={{ id: currentUser.id, name: currentUser.name }}
+            patrolGroupId={admin.myOds.shift.patrolGroupId}
+            tenantSlug={tenantSlug}
+            onClose={() => setShowChat(false)}
+          />
+        </div>
       )}
 
       {showClockHistory && (
