@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     // 1. Fetch user to get qualifica
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, matricola: true, qualifica: true, ruoloInSquadra: true }
+      select: { id: true, name: true, matricola: true, qualifica: true }
     })
 
     // 2. Fetch AgentBalance with all details
