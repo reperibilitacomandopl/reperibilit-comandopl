@@ -111,6 +111,7 @@ export default function AgentDashboard({
   const [showAbsenceModal, setShowAbsenceModal] = useState(false)
   const [showSosModal, setShowSosModal] = useState(false)
   const [showChat, setShowChat] = useState(false)
+  const [showSectionChat, setShowSectionChat] = useState(false)
   const [isMobileView, setIsMobileView] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'yearly'>('calendar')
   const [selectedShiftForSwap, setSelectedShiftForSwap] = useState<DashboardShift | null>(null)
@@ -223,8 +224,32 @@ export default function AgentDashboard({
                   <div className="w-16 h-16 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto text-slate-300">
                     <Shield size={32} />
                   </div>
-                  <h3 className="font-black text-slate-400 italic">Servizio non assegnato</h3>
+                  <h3 className="font-black text-slate-400 italic text-sm">Nessun servizio assegnato oggi</h3>
                 </div>
+            )}
+
+            {/* Section Chat Button - Always visible if user has a squad */}
+            {currentUser.squadra && (
+              <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden hover:shadow-2xl transition-all p-6">
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
+                      <Users size={24} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-0.5">Sezione / Reparto</p>
+                      <h3 className="text-lg font-black text-slate-900 leading-tight">{currentUser.squadra}</h3>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setShowSectionChat(true)}
+                    className="w-full bg-blue-600 hover:bg-blue-500 text-white px-6 py-3.5 rounded-2xl shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] active:scale-95 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+                  >
+                    <MessageSquare size={16} />
+                    Chat Sezione
+                  </button>
+                </div>
+              </div>
             )}
             
             <button 
@@ -588,6 +613,19 @@ export default function AgentDashboard({
             patrolGroupId={admin.myOds.shift.patrolGroupId}
             tenantSlug={tenantSlug}
             onClose={() => setShowChat(false)}
+            type="PATROL"
+          />
+        </div>
+      )}
+
+      {showSectionChat && currentUser.squadra && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <ChatPanel 
+            currentUser={{ id: currentUser.id, name: currentUser.name }}
+            patrolGroupId={`SECTION_${currentUser.squadra}`}
+            tenantSlug={tenantSlug}
+            onClose={() => setShowSectionChat(false)}
+            type="SECTION"
           />
         </div>
       )}

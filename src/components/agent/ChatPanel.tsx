@@ -18,9 +18,10 @@ interface ChatPanelProps {
   patrolGroupId: string
   tenantSlug?: string | null
   onClose?: () => void
+  type?: "PATROL" | "SECTION"
 }
 
-export default function ChatPanel({ currentUser, patrolGroupId, tenantSlug, onClose }: ChatPanelProps) {
+export default function ChatPanel({ currentUser, patrolGroupId, tenantSlug, onClose, type = "PATROL" }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [loading, setLoading] = useState(true)
@@ -96,8 +97,12 @@ export default function ChatPanel({ currentUser, patrolGroupId, tenantSlug, onCl
             <Users size={20} />
           </div>
           <div>
-            <h3 className="font-black tracking-wider uppercase text-sm">Chat Pattuglia</h3>
-            <p className="text-[10px] font-bold text-indigo-200 uppercase tracking-widest">Comunicazioni Interne</p>
+            <h3 className="font-black tracking-wider uppercase text-sm">
+              {type === "SECTION" ? "Chat Sezione" : "Chat Pattuglia"}
+            </h3>
+            <p className="text-[10px] font-bold text-indigo-200 uppercase tracking-widest">
+              {type === "SECTION" ? "Comunicazioni Reparto" : "Comunicazioni Interne"}
+            </p>
           </div>
         </div>
         {onClose && (
