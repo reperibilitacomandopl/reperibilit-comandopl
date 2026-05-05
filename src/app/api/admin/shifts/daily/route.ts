@@ -124,8 +124,8 @@ export async function PUT(req: Request) {
       serviceTypeId: serviceTypeId !== undefined ? serviceTypeId : existingShift?.serviceTypeId,
       vehicleId: vehicleId !== undefined ? vehicleId : existingShift?.vehicleId,
       radioId: radioId !== undefined ? radioId : existingShift?.radioId,
-      weaponId: weaponId !== undefined ? weaponId : existingShift?.weaponId,
-      armorId: armorId !== undefined ? armorId : existingShift?.armorId,
+      weaponId: weaponId !== undefined ? (weaponId || null) : existingShift?.weaponId,
+      armorId: armorId !== undefined ? (armorId || null) : existingShift?.armorId,
       repType: existingShift?.repType
     });
 

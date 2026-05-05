@@ -4,10 +4,12 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
 export async function GET(req: Request) {
+  const session = await auth()
+  if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  
+  const userId = session.user.id
+
   try {
-    const session = await auth()
-    if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    
     // Get year from query params or current year
     const url = new URL(req.url)
     const yearStr = url.searchParams.get("year")
@@ -15,7 +17,7 @@ export async function GET(req: Request) {
 
     // 1. Fetch user to get qualifica
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: userId },
       select: { id: true, name: true, matricola: true, qualifica: true, ruoloInSquadra: true }
     })
 
@@ -23,7 +25,7 @@ export async function GET(req: Request) {
     const balance = await prisma.agentBalance.findUnique({
       where: {
         userId_year: {
-          userId: session.user.id,
+          userId: userId,
           year: year
         }
       },
@@ -42,7 +44,7 @@ export async function GET(req: Request) {
     const shiftsCount = await prisma.shift.groupBy({
       by: ['type'],
       where: { 
-        userId: session.user.id,
+        userId: userId,
         date: { gte: startOfYear, lte: endOfYear } 
       },
       _count: { _all: true }
@@ -52,7 +54,7 @@ export async function GET(req: Request) {
     const agendaSums = await prisma.agendaEntry.groupBy({
       by: ['code'],
       where: { 
-        userId: session.user.id,
+        userId: userId,
         date: { gte: startOfYear, lte: endOfYear } 
       },
       _sum: { hours: true }
@@ -66,8 +68,6 @@ export async function GET(req: Request) {
       } else {
         // unit === "DAYS"
         used = shiftsCount.find(s => s.type === d.code)?._count._all || 0
-        // Special case: if code is 0015 (Ferie) or 0016 (Ferie AP), we might want to check both? 
-        // No, typically let's keep it strict by code for now.
       }
 
       return {
@@ -81,12 +81,10 @@ export async function GET(req: Request) {
        year,
        user,
        details: enrichedDetails,
-       // Legacy fields for backward compatibility (optional but safer)
        balance: {
          ferieTotali: enrichedDetails.find(d => d.code === "0015")?.initialValue || 28,
          ferieUsate: enrichedDetails.find(d => d.code === "0015")?.used || 0,
          ferieResidue: enrichedDetails.find(d => d.code === "0015")?.residue || 28,
-         // ... etc
        }
     })
 
@@ -94,7 +92,7 @@ export async function GET(req: Request) {
     console.error("[BALANCE_API_ERROR]", {
       message: err.message,
       stack: err.stack,
-      userId: session?.user?.id
+      userId: userId
     })
     return NextResponse.json({ error: "Internal Error", details: err.message }, { status: 500 })
   }
