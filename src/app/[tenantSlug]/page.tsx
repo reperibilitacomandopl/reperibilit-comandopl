@@ -53,7 +53,10 @@ export default async function Home({
     },
     include: { 
       user: { select: { name: true } },
-      vehicle: { select: { name: true } }
+      vehicle: { select: { id: true, name: true } },
+      serviceType: { select: { id: true, name: true } },
+      serviceCategory: { select: { id: true, name: true } },
+      radio: { select: { id: true, name: true } }
     }
   })
 
@@ -69,7 +72,7 @@ export default async function Home({
     }
   })
 
-  const [pubRec, settings, tenant] = await Promise.all([
+  const [pubRec, settings, tenant, certifiedDocs] = await Promise.all([
     prisma.monthStatus.findUnique({
       where: { month_year_tenantId: { month: currentMonth, year: currentYear, tenantId: tenantId || "" } }
     }),
@@ -78,9 +81,21 @@ export default async function Home({
     }),
     prisma.tenant.findUnique({
       where: { id: tenantId || "" }
+    }),
+    prisma.certifiedDocument.findMany({
+      where: { tenantId: tenantId || null, type: "ODS" },
+      select: { metadata: true }
     })
   ])
   const isPublished = pubRec ? pubRec.isPublished : false
+
+  // Estrai le date certificate dall'ODS
+  const certifiedDates: string[] = certifiedDocs.map((d: any) => {
+    try {
+      const meta = typeof d.metadata === 'string' ? JSON.parse(d.metadata) : d.metadata
+      return meta?.date || ''
+    } catch { return '' }
+  }).filter(Boolean)
 
   // Prepare dayInfo for the shell
   const daysInMonth = new Date(currentYear, currentMonth, 0).getDate()
@@ -106,6 +121,7 @@ export default async function Home({
       dayInfo={dayInfo}
       logoUrl={tenant?.logoUrl}
       tenant={tenant}
+      certifiedDates={certifiedDates}
     />
   )
 }

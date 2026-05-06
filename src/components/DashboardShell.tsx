@@ -132,6 +132,7 @@ export default function DashboardShell({
                   canConfigureSystem={canConfigureSystem}
                   logoUrl={logoUrl}
                   tenant={tenant}
+                  certifiedDates={certifiedDates}
                 />
               </div>
 

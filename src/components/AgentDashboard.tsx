@@ -55,6 +55,7 @@ export interface AgentDashboardProps {
   signOutAction?: () => Promise<void>
   logoUrl?: string | null
   tenant?: any
+  certifiedDates?: string[]
 }
 
 export default function AgentDashboard({ 
@@ -70,7 +71,8 @@ export default function AgentDashboard({
   canManageShifts,
   tenantSlug,
   logoUrl,
-  tenant
+  tenant,
+  certifiedDates
 }: AgentDashboardProps) {
   
   const admin = useAgentData({ currentUser, currentYear, currentMonth, shifts, tenant });
@@ -212,7 +214,8 @@ export default function AgentDashboard({
             <NextShiftCard 
               shift={currentShift} 
               allAgents={allAgents} 
-              allShifts={shifts} 
+              allShifts={shifts}
+              certifiedDates={certifiedDates}
             />
             
             {featuredShifts.length > 1 && (

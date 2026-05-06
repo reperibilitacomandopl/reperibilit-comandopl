@@ -6,6 +6,7 @@ interface NextShiftProps {
   shift: any
   allAgents: { id: string; name: string }[]
   allShifts: any[]
+  certifiedDates?: string[]
 }
 
 /** Calcola l'orario di inizio turno dalla stringa timeRange o dal codice turno */
@@ -35,7 +36,7 @@ function getShiftStartTime(shift: any): Date | null {
   return dateObj
 }
 
-export default function NextShiftCard({ shift, allAgents, allShifts }: NextShiftProps) {
+export default function NextShiftCard({ shift, allAgents, allShifts, certifiedDates }: NextShiftProps) {
   const [countdown, setCountdown] = useState("")
 
   useEffect(() => {
@@ -90,6 +91,10 @@ export default function NextShiftCard({ shift, allAgents, allShifts }: NextShift
 
   const dateObj = new Date(shift.date)
   const isToday = new Date().toDateString() === dateObj.toDateString()
+
+  // Controlla se l'ODS di questo giorno è certificato
+  const shiftDateForCert = `${dateObj.getUTCFullYear()}-${String(dateObj.getUTCMonth()+1).padStart(2,'0')}-${String(dateObj.getUTCDate()).padStart(2,'0')}`
+  const isOdsCertified = certifiedDates?.includes(shiftDateForCert) ?? false
   
   const formattedDate = dateObj.toLocaleDateString('it-IT', { 
     weekday: 'long', 
@@ -144,6 +149,7 @@ export default function NextShiftCard({ shift, allAgents, allShifts }: NextShift
 
           {/* Right Side: Operational Details */}
           <div className="w-full lg:w-2/3 p-6 lg:p-8 bg-white relative">
+             {isOdsCertified ? (
              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 
                 {/* Assignments */}
@@ -218,6 +224,17 @@ export default function NextShiftCard({ shift, allAgents, allShifts }: NextShift
                 </div>
 
              </div>
+             ) : (
+               <div className="flex flex-col items-center justify-center h-full py-12 text-center">
+                 <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mb-4">
+                   <Clock size={28} className="text-amber-500" />
+                 </div>
+                 <h4 className="text-sm font-black text-slate-700 mb-1">In attesa di certificazione</h4>
+                 <p className="text-[11px] text-slate-400 font-bold max-w-[280px]">
+                   I dettagli del servizio (veicolo, radio, pattuglia e disposizioni) saranno visibili dopo la certificazione dell'OdS da parte dell'amministrazione.
+                 </p>
+               </div>
+             )}
           </div>
 
         </div>
