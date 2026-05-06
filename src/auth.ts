@@ -85,7 +85,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           twoFactorVerified: false,
           privacyAcceptedAt: user.privacyAcceptedAt,
           gpsAcceptedAt: user.gpsAcceptedAt,
-          squadra: user.squadra
+          squadra: user.squadra,
+          isUfficiale: user.isUfficiale
         }
       }
     })
@@ -123,6 +124,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.privacyAcceptedAt = (user as any).privacyAcceptedAt as Date | null | undefined
         token.gpsAcceptedAt = (user as any).gpsAcceptedAt as Date | null | undefined
         token.squadra = (user as any).squadra as string | undefined
+        token.isUfficiale = (user as any).isUfficiale as boolean | undefined
       }
 
       if (trigger === "update") {
@@ -159,6 +161,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.privacyAcceptedAt = token.privacyAcceptedAt as Date | null
         session.user.gpsAcceptedAt = token.gpsAcceptedAt as Date | null
         session.user.squadra = token.squadra as string | undefined
+        session.user.isUfficiale = (token.isUfficiale as boolean) || false
         
         // Se è SuperAdmin, NON ci fidiamo della cache del token. Leggiamo SEMPRE il DB in tempo reale
         // per permettere allo switch (impersonification) di funzionare istantaneamente tramite cookie.

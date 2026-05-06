@@ -42,7 +42,7 @@ function getGradoLivello(qualifica: string | null | undefined): number {
 
 export async function GET(req: Request) {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageUsers) {
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageUsers && !session?.user?.isUfficiale) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
   try {

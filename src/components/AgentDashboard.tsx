@@ -630,7 +630,7 @@ export default function AgentDashboard({
       {showChat && chatPatrolGroupId && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
           <ChatPanel 
-            currentUser={{ id: currentUser.id, name: currentUser.name }}
+            currentUser={{ id: currentUser.id, name: currentUser.name, isUfficiale: currentUser.isUfficiale }}
             patrolGroupId={chatPatrolGroupId}
             tenantSlug={tenantSlug}
             onClose={() => { setShowChat(false); setChatPatrolGroupId(null) }}
@@ -642,7 +642,7 @@ export default function AgentDashboard({
       {showSectionChat && chatPatrolGroupId && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
           <ChatPanel 
-            currentUser={{ id: currentUser.id, name: currentUser.name }}
+            currentUser={{ id: currentUser.id, name: currentUser.name, isUfficiale: currentUser.isUfficiale }}
             patrolGroupId={chatPatrolGroupId}
             tenantSlug={tenantSlug}
             onClose={() => { setShowSectionChat(false); setChatPatrolGroupId(null) }}

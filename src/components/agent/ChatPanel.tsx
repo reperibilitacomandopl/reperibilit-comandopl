@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Send, X, Users, Loader2 } from "lucide-react"
+import { Send, X, Users, Loader2, Plus, Search, UserPlus } from "lucide-react"
+import toast from "react-hot-toast"
 
 interface Message {
   id: string
@@ -14,7 +15,7 @@ interface Message {
 }
 
 interface ChatPanelProps {
-  currentUser: { id: string; name: string }
+  currentUser: { id: string; name: string; isUfficiale?: boolean }
   patrolGroupId: string
   tenantSlug?: string | null
   onClose?: () => void
@@ -26,6 +27,12 @@ export default function ChatPanel({ currentUser, patrolGroupId, tenantSlug, onCl
   const [newMessage, setNewMessage] = useState("")
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
+  const [showMembers, setShowMembers] = useState(false)
+  const [members, setMembers] = useState<any[]>([])
+  const [showAddMember, setShowAddMember] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [allAgents, setAllAgents] = useState<any[]>([])
+  const [addingMember, setAddingMember] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const fetchMessages = async () => {
@@ -42,17 +49,81 @@ export default function ChatPanel({ currentUser, patrolGroupId, tenantSlug, onCl
     }
   }
 
+  const fetchMembers = async () => {
+    try {
+      const res = await fetch(`/api/agent/chat/members?patrolGroupId=${patrolGroupId}`)
+      const data = await res.json()
+      if (res.ok) {
+        setMembers(data.members)
+      }
+    } catch (err) {
+      console.error("Errore caricamento membri:", err)
+    }
+  }
+
+  const fetchAllAgents = async () => {
+    try {
+      const res = await fetch('/api/admin/users')
+      const data = await res.json()
+      if (res.ok) {
+        setAllAgents(data.users)
+      }
+    } catch (err) {
+      console.error("Errore caricamento agenti:", err)
+    }
+  }
+
   useEffect(() => {
     fetchMessages()
-    const interval = setInterval(fetchMessages, 5000) // Poll every 5s
+    fetchMembers()
+    const interval = setInterval(() => {
+      fetchMessages()
+      fetchMembers()
+    }, 5000)
     return () => clearInterval(interval)
   }, [patrolGroupId])
+
+  useEffect(() => {
+    if (showAddMember && allAgents.length === 0) {
+      fetchAllAgents()
+    }
+  }, [showAddMember])
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages])
+
+  const handleAddMember = async (userId: string) => {
+    setAddingMember(true)
+    try {
+      const res = await fetch('/api/agent/chat/members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patrolGroupId, userId })
+      })
+      if (res.ok) {
+        toast.success("Membro aggiunto alla chat")
+        fetchMembers()
+        setShowAddMember(false)
+      } else {
+        const d = await res.json()
+        toast.error(d.error || "Errore")
+      }
+    } catch {
+      toast.error("Errore di rete")
+    } finally {
+      setAddingMember(false)
+    }
+  }
+
+  const filteredAgents = allAgents.filter(a => 
+    a.id !== currentUser.id && 
+    !members.some(m => m.id === a.id) &&
+    (a.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+     a.matricola.includes(searchQuery))
+  )
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -105,12 +176,91 @@ export default function ChatPanel({ currentUser, patrolGroupId, tenantSlug, onCl
             </p>
           </div>
         </div>
-        {onClose && (
-          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-xl transition-colors">
-            <X size={20} />
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setShowMembers(!showMembers)} 
+            className={`p-2 rounded-xl transition-all ${showMembers ? 'bg-white text-indigo-600' : 'hover:bg-white/20 text-white'}`}
+            title="Membri"
+          >
+            <Users size={20} />
           </button>
-        )}
+          {onClose && (
+            <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-xl transition-colors">
+              <X size={20} />
+            </button>
+          )}
+        </div>
       </div>
+
+      {showMembers && (
+        <div className="bg-white border-b border-slate-200 animate-in slide-in-from-top duration-300 overflow-hidden">
+          <div className="p-4 bg-slate-50 flex items-center justify-between">
+            <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Partecipanti ({members.length})</h4>
+            {currentUser.isUfficiale && (
+              <button 
+                onClick={() => setShowAddMember(true)}
+                className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-700 font-black text-[9px] uppercase tracking-widest"
+              >
+                <Plus size={14} /> Aggiungi
+              </button>
+            )}
+          </div>
+          <div className="max-h-[150px] overflow-y-auto p-2">
+            <div className="grid grid-cols-1 gap-1">
+              {members.map(m => (
+                <div key={m.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${m.isUfficiale ? 'bg-indigo-500' : 'bg-emerald-500'}`}></div>
+                    <span className="text-xs font-bold text-slate-700">{m.name}</span>
+                  </div>
+                  <span className="text-[9px] font-black text-slate-400 uppercase">{m.qualifica || 'Agente'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddMember && (
+        <div className="absolute inset-0 z-50 bg-white flex flex-col animate-in fade-in duration-200">
+          <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+            <h3 className="font-black uppercase text-sm text-slate-800">Aggiungi alla Chat</h3>
+            <button onClick={() => setShowAddMember(false)} className="p-2 hover:bg-slate-100 rounded-xl"><X size={20} /></button>
+          </div>
+          <div className="p-4 border-b border-slate-100">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input 
+                type="text" 
+                placeholder="Cerca agente..." 
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+              />
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2">
+            {filteredAgents.length === 0 ? (
+              <div className="text-center py-10 text-slate-400 text-xs font-bold uppercase">Nessun agente trovato</div>
+            ) : (
+              filteredAgents.map(a => (
+                <button 
+                  key={a.id} 
+                  disabled={addingMember}
+                  onClick={() => handleAddMember(a.id)}
+                  className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-indigo-50 transition-colors group"
+                >
+                  <div className="flex flex-col items-start">
+                    <span className="text-sm font-black text-slate-800">{a.name}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Matr. {a.matricola} • {a.qualifica}</span>
+                  </div>
+                  <UserPlus className="text-slate-300 group-hover:text-indigo-600" size={18} />
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50" ref={scrollRef}>
         {loading && messages.length === 0 ? (
