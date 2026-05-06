@@ -1,12 +1,13 @@
 "use client"
 import React, { useState, useEffect } from "react"
-import { Clock, Car, Radio, Users, ChevronRight, MapPin, CalendarDays, Timer } from "lucide-react"
+import { Clock, Car, Radio, Users, ChevronRight, MapPin, CalendarDays, Timer, MessageSquare } from "lucide-react"
 
 interface NextShiftProps {
   shift: any
   allAgents: { id: string; name: string }[]
   allShifts: any[]
   certifiedDates?: string[]
+  onOpenChat?: (patrolGroupId: string) => void
 }
 
 /** Calcola l'orario di inizio turno dalla stringa timeRange o dal codice turno */
@@ -36,7 +37,7 @@ function getShiftStartTime(shift: any): Date | null {
   return dateObj
 }
 
-export default function NextShiftCard({ shift, allAgents, allShifts, certifiedDates }: NextShiftProps) {
+export default function NextShiftCard({ shift, allAgents, allShifts, certifiedDates, onOpenChat }: NextShiftProps) {
   const [countdown, setCountdown] = useState("")
 
   useEffect(() => {
@@ -220,6 +221,15 @@ export default function NextShiftCard({ shift, allAgents, allShifts, certifiedDa
                             </div>
                          )}
                       </div>
+                      {colleagues.length > 0 && shift.patrolGroupId && onOpenChat && (
+                        <button
+                          onClick={() => onOpenChat(shift.patrolGroupId)}
+                          className="mt-4 w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-blue-200"
+                        >
+                          <MessageSquare size={14} />
+                          Chat Pattuglia
+                        </button>
+                      )}
                    </div>
                 </div>
 

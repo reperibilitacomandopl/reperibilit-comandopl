@@ -122,6 +122,7 @@ export default function AgentDashboard({
   const [agendaDate, setAgendaDate] = useState('')
   const [showClockHistory, setShowClockHistory] = useState(false)
   const [activeShiftIndex, setActiveShiftIndex] = useState(0)
+  const [chatPatrolGroupId, setChatPatrolGroupId] = useState<string | null>(null)
 
   // Date Helpers
   const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
@@ -216,6 +217,10 @@ export default function AgentDashboard({
               allAgents={allAgents} 
               allShifts={shifts}
               certifiedDates={certifiedDates}
+              onOpenChat={(patrolGroupId) => {
+                setChatPatrolGroupId(patrolGroupId)
+                setShowChat(true)
+              }}
             />
             
             {featuredShifts.length > 1 && (
@@ -606,13 +611,13 @@ export default function AgentDashboard({
         />
       )}
 
-      {showChat && admin.myOds && (
+      {showChat && chatPatrolGroupId && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
           <ChatPanel 
             currentUser={{ id: currentUser.id, name: currentUser.name }}
-            patrolGroupId={(admin.myOds.shift as any).patrolGroupId}
+            patrolGroupId={chatPatrolGroupId}
             tenantSlug={tenantSlug}
-            onClose={() => setShowChat(false)}
+            onClose={() => { setShowChat(false); setChatPatrolGroupId(null) }}
             type="PATROL"
           />
         </div>
