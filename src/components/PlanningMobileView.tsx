@@ -19,6 +19,10 @@ interface Shift {
   date: Date | string
   type: string
   repType: string | null
+  serviceType?: { id: string; name: string } | null
+  serviceDetails?: string | null
+  vehicle?: { id: string; name: string } | null
+  radio?: { id: string; name: string } | null
 }
 
 interface DayInfo {
@@ -222,7 +226,7 @@ export default function PlanningMobileView({
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1.5">
-                        {renderBadge(shift as any)}
+                        {renderBadge(shift)}
                         {shift?.vehicle?.name && (
                           <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded flex items-center gap-1">
                             <Car size={10} /> {shift.vehicle.name}
