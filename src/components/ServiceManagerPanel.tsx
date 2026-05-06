@@ -751,6 +751,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                   toggleLink={toggleLink}
                   handleRemoveService={handleRemoveService}
                   handleDragStart={handleDragStart}
+                    isCertified={isCertified}
                 />
                 <ServiceBoard 
                   titolo="Turno Pomeriggio"
@@ -779,6 +780,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
                   toggleLink={toggleLink}
                   handleRemoveService={handleRemoveService}
                   handleDragStart={handleDragStart}
+                    isCertified={isCertified}
                 />
              </div>
           </div>
@@ -800,4 +802,3 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
     </>
   )
 }
-

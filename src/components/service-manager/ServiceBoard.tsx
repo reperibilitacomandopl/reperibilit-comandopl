@@ -202,6 +202,7 @@ export default function ServiceBoard({
                                 shifts={shifts}
                                 handleDragStart={handleDragStart}
                                 categories={categories}
+                                isCertified={isCertified}
                               />
                             )
                           })}
@@ -277,6 +278,7 @@ export default function ServiceBoard({
                                             shifts={shifts}
                                             handleDragStart={handleDragStart}
                                             categories={categories}
+                                            isCertified={isCertified}
                                           />
                                         ) : null;
                                       })}
@@ -309,6 +311,7 @@ export default function ServiceBoard({
                                   shifts={shifts}
                                   handleDragStart={handleDragStart}
                                   categories={categories}
+                                  isCertified={isCertified}
                                 />
                               ) : null;
                             });
