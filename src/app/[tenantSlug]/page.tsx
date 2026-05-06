@@ -105,6 +105,7 @@ export default async function Home({
       tenantSlug={urlSlug}
       dayInfo={dayInfo}
       logoUrl={tenant?.logoUrl}
+      tenant={tenant}
     />
   )
 }

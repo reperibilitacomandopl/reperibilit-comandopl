@@ -54,6 +54,7 @@ export interface AgentDashboardProps {
   userRole?: string
   signOutAction?: () => Promise<void>
   logoUrl?: string | null
+  tenant?: any
 }
 
 export default function AgentDashboard({ 
@@ -68,10 +69,11 @@ export default function AgentDashboard({
   canVerifyClockIns,
   canManageShifts,
   tenantSlug,
-  logoUrl
+  logoUrl,
+  tenant
 }: AgentDashboardProps) {
   
-  const admin = useAgentData({ currentUser, currentYear, currentMonth, shifts });
+  const admin = useAgentData({ currentUser, currentYear, currentMonth, shifts, tenant });
 
   // GPS REAL-TIME TRACKING (SOLO IN SERVIZIO)
   const coords = useGpsTracking({ 
@@ -138,7 +140,7 @@ export default function AgentDashboard({
   const nextDay1 = new Date(currentYear, currentMonth, 1)
   dayInfo.push({ day: 1, name: dayNames[nextDay1.getDay()], isWeekend: isHoliday(nextDay1), isNextMonth: true })
 
-  const repCount = admin.myShifts.filter(s => s.repType?.toUpperCase().includes("REP")).length
+  const repCount = admin.myShifts.filter((s: any) => s.repType?.toUpperCase().includes("REP")).length
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-8 space-y-8 pb-32">
@@ -212,7 +214,7 @@ export default function AgentDashboard({
                             Chat
                           </button>
                         </div>
-                        {admin.myOds.partners.map(p => (
+                        {admin.myOds.partners.map((p: any) => (
                           <p key={p.id} className="font-black text-amber-900">{p.user.name}</p>
                         ))}
                       </div>
@@ -289,12 +291,12 @@ export default function AgentDashboard({
         now.setHours(0, 0, 0, 0)
         
         const nextShift = admin.myShifts
-          .filter(s => {
+          .filter((s: any) => {
             const d = new Date(s.date)
             d.setHours(0, 0, 0, 0)
             return d >= now && !isAssenza(s.type)
           })
-          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0]
+          .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())[0]
 
         return nextShift ? (
           <NextShiftCard 
@@ -443,9 +445,9 @@ export default function AgentDashboard({
                   const ferieCodes = ['0015','0016','0010']
                   const recCodes = ['0009','0067','0008','0081','0036','0037']
                   
-                  const straHours = admin.agendaEntries.filter(e => straCodes.includes(e.code)).reduce((sum, e) => sum + (e.hours || 0), 0)
-                  const ferieDays = new Set(admin.agendaEntries.filter(e => ferieCodes.includes(e.code)).map(e => new Date(e.date).getUTCDate())).size
-                  const recHours = admin.agendaEntries.filter(e => recCodes.includes(e.code)).reduce((sum, e) => sum + (e.hours || 0), 0)
+                  const straHours = admin.agendaEntries.filter((e: any) => straCodes.includes(e.code)).reduce((sum: number, e: any) => sum + (e.hours || 0), 0)
+                  const ferieDays = new Set(admin.agendaEntries.filter((e: any) => ferieCodes.includes(e.code)).map((e: any) => new Date(e.date).getUTCDate())).size
+                  const recHours = admin.agendaEntries.filter((e: any) => recCodes.includes(e.code)).reduce((sum: number, e: any) => sum + (e.hours || 0), 0)
 
                   // @ts-ignore
                   autoTable(doc, {
@@ -466,7 +468,7 @@ export default function AgentDashboard({
                   const tableStartY = (doc as any).lastAutoTable.finalY + 15;
                   doc.text('Dettaglio Agenda Personale', 14, tableStartY)
                   
-                  const tableData = admin.agendaEntries.map(e => [
+                  const tableData = admin.agendaEntries.map((e: any) => [
                     new Date(e.date).toLocaleDateString('it-IT'),
                     getLabel(e.code),
                     e.hours ? `${e.hours}h` : '-',
@@ -498,7 +500,7 @@ export default function AgentDashboard({
 
           <div className="grid grid-cols-1 gap-12">
             {AGENDA_CATEGORIES.map((cat) => {
-              const catDetails = (admin.balances?.details || []).filter((d) => 
+              const catDetails = (admin.balances?.details || []).filter((d: any) => 
                 cat.items.some((i) => i.code === d.code) && d.initialValue > 0
               );
               if (catDetails.length === 0) return null;
@@ -515,7 +517,7 @@ export default function AgentDashboard({
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {catDetails.map((d) => {
+                    {catDetails.map((d: any) => {
                       const pct = Math.min(100, (d.used / d.initialValue) * 100);
                       return (
                         <div key={d.code} className="bg-white rounded-[2rem] border border-slate-200 p-6 shadow-sm hover:shadow-xl transition-all">

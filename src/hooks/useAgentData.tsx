@@ -17,15 +17,30 @@ import {
   AgendaItem 
 } from "@/types/dashboard"
 import { AGENDA_CATEGORIES } from "@/utils/agenda-codes"
+import { isAssenza } from "@/utils/shift-logic"
+
+function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371e3
+  const φ1 = lat1 * Math.PI / 180
+  const φ2 = lat2 * Math.PI / 180
+  const Δφ = (lat2 - lat1) * Math.PI / 180
+  const Δλ = (lon2 - lon1) * Math.PI / 180
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+          Math.cos(φ1) * Math.cos(φ2) *
+          Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
 
 interface UseAgentDataProps {
   currentUser: any
   currentYear: number
   currentMonth: number
   shifts: DashboardShift[]
+  tenant?: any
 }
 
-export function useAgentData({ currentUser, currentYear, currentMonth, shifts }: UseAgentDataProps) {
+export function useAgentData({ currentUser, currentYear, currentMonth, shifts, tenant }: UseAgentDataProps) {
   // Data State
   const [balances, setBalances] = useState<BalanceData | null>(null)
   const [dutyTeam, setDutyTeam] = useState<DutyMember[]>([])
@@ -107,13 +122,12 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts }:
         setClockRecords(data.records)
         if (data.records.length > 0) {
           const last = data.records[0]
-          const today = new Date().toDateString()
-          if (new Date(last.timestamp).toDateString() === today) {
-            setIsClockedIn(last.type)
-            setLastClockTime(new Date(last.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
-          } else {
-            setIsClockedIn('OUT')
-          }
+          // BUGFIX: Se l'ultimo record è IN, allora siamo IN anche se è passato un giorno.
+          // Solo se l'ultimo record è OUT allora siamo effettivamente fuori.
+          setIsClockedIn(last.type)
+          setLastClockTime(new Date(last.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+        } else {
+          setIsClockedIn('OUT')
         }
       }
     } catch { /* silent */ }
@@ -152,6 +166,118 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts }:
     window.addEventListener('online', handleOnline)
     return () => window.removeEventListener('online', handleOnline)
   }, [currentMonth, currentYear, fetchDutyTeam, fetchSwaps, fetchBalances, fetchClockRecords, fetchOds, fetchAgenda])
+
+  // --- PROACTIVE REMINDERS ---
+  useEffect(() => {
+    const reminderInterval = setInterval(() => {
+      const now = new Date()
+      const today = now.toISOString().split('T')[0]
+      const todayShift = myShifts.find(s => {
+        const sDate = s.date instanceof Date ? s.date.toISOString().split('T')[0] : s.date.split('T')[0]
+        return sDate === today && !isAssenza(s.type)
+      })
+
+      if (!todayShift || !todayShift.timeRange) return
+
+      try {
+        const parts = todayShift.timeRange.split(/[-–]/).map(p => p.trim())
+        const startTimeStr = parts[0]
+        const endTimeStr = parts[1]
+
+        const [sh, sm] = startTimeStr.split(':').map(Number)
+        const [eh, em] = endTimeStr.split(':').map(Number)
+
+        const startTime = new Date(now)
+        startTime.setHours(sh, sm, 0, 0)
+        
+        const endTime = new Date(now)
+        endTime.setHours(eh, em, 0, 0)
+        // Handle night shifts for end time
+        if (endTime < startTime) endTime.setDate(endTime.getDate() + 1)
+
+        // 1. ENTRY REMINDER (If not clocked in)
+        if (isClockedIn === 'OUT') {
+          const diffStart = (now.getTime() - startTime.getTime()) / (60 * 1000)
+          if (Math.abs(diffStart) <= 15) {
+            const lastReminder = localStorage.getItem('last_clockin_reminder_time')
+            if (lastReminder !== todayShift.id) {
+               toast("⏰ Promemoria: Il tuo servizio inizia/è iniziato ora. Non dimenticare di timbrare!", { 
+                 icon: '⏳',
+                 duration: 10000,
+                 style: { border: '2px solid #3b82f6', fontWeight: 'bold' }
+               })
+               localStorage.setItem('last_clockin_reminder_time', todayShift.id)
+            }
+          }
+
+          // Location-based reminder
+          if (tenant?.lat && tenant?.lng) {
+            navigator.geolocation.getCurrentPosition((pos) => {
+              const distance = getDistance(pos.coords.latitude, pos.coords.longitude, tenant.lat, tenant.lng)
+              const radius = tenant.clockInRadius || 500
+              if (distance <= radius + 50) {
+                const lastLocReminder = localStorage.getItem('last_clockin_reminder_loc')
+                const nowTime = Date.now()
+                if (!lastLocReminder || (nowTime - Number(lastLocReminder) > 3600000)) {
+                   toast("📍 Sei vicino al Comando! Vuoi timbrare l'entrata?", { 
+                     icon: '🏢',
+                     duration: 10000,
+                     style: { border: '2px solid #10b981', fontWeight: 'bold' }
+                   })
+                   localStorage.setItem('last_clockin_reminder_loc', nowTime.toString())
+                }
+              }
+            }, null, { enableHighAccuracy: false })
+          }
+        }
+
+        // 2. EXIT REMINDER (If clocked in)
+        if (isClockedIn === 'IN') {
+          const diffEnd = (now.getTime() - endTime.getTime()) / (60 * 1000)
+          // Remind 5 mins before or up to 15 mins after end time
+          if (diffEnd >= -5 && diffEnd <= 15) {
+            const lastExitReminder = localStorage.getItem('last_clockout_reminder_time')
+            if (lastExitReminder !== todayShift.id) {
+               toast((t) => (
+                 <div className="flex flex-col gap-2">
+                   <p className="font-bold">🏁 Il tuo turno sta per finire/è finito ({endTimeStr}).</p>
+                   <p className="text-xs">Stai ancora lavorando (straordinario) o hai terminato regolarmente?</p>
+                   <div className="flex gap-2 mt-2">
+                     <button 
+                       onClick={() => {
+                         toast.dismiss(t.id)
+                         toast.success("Ricevuto! Ricordati di timbrare l'uscita quando finisci.")
+                       }}
+                       className="bg-amber-500 text-white px-3 py-1 rounded text-[10px] font-bold uppercase"
+                     >
+                       Ancora Lavoro
+                     </button>
+                     <button 
+                       onClick={() => {
+                         toast.dismiss(t.id)
+                         handleClockAction('OUT')
+                       }}
+                       className="bg-emerald-600 text-white px-3 py-1 rounded text-[10px] font-bold uppercase"
+                     >
+                       Esco Ora
+                     </button>
+                   </div>
+                 </div>
+               ), { 
+                 duration: 20000,
+                 style: { border: '2px solid #f59e0b', padding: '12px' }
+               })
+               localStorage.setItem('last_clockout_reminder_time', todayShift.id)
+            }
+          }
+        }
+
+      } catch(e) { /* silent parse error */ }
+
+    }, 60000) // Check every minute
+
+    return () => clearInterval(reminderInterval)
+  }, [isClockedIn, myShifts, tenant])
 
   const handleClockAction = async (type: 'IN' | 'OUT') => {
     if (!navigator.geolocation) {

@@ -46,12 +46,19 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
         // Se c'è una nuova notifica di tipo ALERT, suona l'allarme e mostra un toast
         const newest = data.notifications[0]
         if (newest && newest.id !== lastNotificationId && newest.type === "ALERT" && !newest.isRead) {
-          playAlertSound()
-          toast.error(`🚨 EMERGENZA SOS: ${newest.message}`, { 
-            duration: 10000,
-            position: 'top-center',
-            style: { border: '2px solid #ef4444', padding: '16px', fontWeight: 'bold' }
-          })
+          // BUGFIX: Controlla che la notifica sia recente (es. ultimi 5 minuti) per evitare falsi allarmi al login
+          const createdAt = new Date(newest.createdAt).getTime()
+          const now = new Date().getTime()
+          const isRecent = (now - createdAt) < (5 * 60 * 1000)
+
+          if (isRecent) {
+            playAlertSound()
+            toast.error(`🚨 EMERGENZA SOS: ${newest.message}`, { 
+              duration: 10000,
+              position: 'top-center',
+              style: { border: '2px solid #ef4444', padding: '16px', fontWeight: 'bold' }
+            })
+          }
         }
         if (newest) setLastNotificationId(newest.id)
       }

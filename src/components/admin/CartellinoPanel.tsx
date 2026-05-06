@@ -250,6 +250,7 @@ export default function CartellinoPanel() {
                     <th className="px-4 py-4 font-semibold">Turno (Pianificato)</th>
                     <th className="px-4 py-4 font-semibold">Timbrature</th>
                     <th className="px-4 py-4 font-semibold">Straordinario</th>
+                    <th className="px-4 py-4 font-semibold">Delta Timbr.</th>
                     <th className="px-4 py-4 font-semibold">Assenze / Note</th>
                     <th className="px-4 py-4 font-semibold w-16 text-center">Azioni</th>
                   </tr>
@@ -261,14 +262,40 @@ export default function CartellinoPanel() {
                     const isWeekend = dateObj.getUTCDay() === 0 || dateObj.getUTCDay() === 6
 
                     // Find data for this day
-                    const shifts = data.shifts.filter((s: any) => new Date(s.date).toISOString().split('T')[0] === dateStr)
+                    const dayShifts = data.shifts.filter((s: any) => new Date(s.date).toISOString().split('T')[0] === dateStr)
                     const requests = data.requests.filter((r: any) => new Date(r.date).toISOString().split('T')[0] === dateStr)
                     const clocks = data.clockRecords.filter((c: any) => new Date(c.timestamp).toISOString().split('T')[0] === dateStr)
 
                     // Aggregate
-                    const primaryShift = shifts[0]
-                    const overtime = shifts.reduce((acc: number, s: any) => acc + (s.overtimeHours || 0), 0)
+                    const primaryShift = dayShifts[0]
+                    const overtime = dayShifts.reduce((acc: number, s: any) => acc + (s.overtimeHours || 0), 0)
                     const isAbsence = primaryShift?.type?.startsWith("(") || primaryShift?.type === "R" || primaryShift?.type === "RR"
+
+                    // Calculate Total Clocked Time
+                    let totalClockedMs = 0
+                    if (clocks.length >= 2) {
+                      for (let i = 0; i < clocks.length - 1; i += 2) {
+                        const start = new Date(clocks[i].timestamp).getTime()
+                        const end = clocks[i+1] ? new Date(clocks[i+1].timestamp).getTime() : 0
+                        if (end > start) totalClockedMs += (end - start)
+                      }
+                    }
+                    const totalClockedHours = totalClockedMs / (1000 * 60 * 60)
+
+                    // Calculate Expected Time from primaryShift.timeRange (e.g. "07:00 - 13:00")
+                    let expectedHours = 0
+                    if (primaryShift?.timeRange) {
+                      try {
+                        const parts = primaryShift.timeRange.split(/[-–]/).map((p: string) => p.trim())
+                        const [sh, sm] = parts[0].split(':').map(Number)
+                        const [eh, em] = parts[1].split(':').map(Number)
+                        let diff = (eh * 60 + em) - (sh * 60 + sm)
+                        if (diff < 0) diff += 1440 // Night shift
+                        expectedHours = diff / 60
+                      } catch {}
+                    }
+
+                    const delta = totalClockedHours > 0 ? (totalClockedHours - expectedHours) : 0
 
                     return (
                       <tr 
@@ -329,6 +356,25 @@ export default function CartellinoPanel() {
                           ) : (
                             <span className="text-slate-600">-</span>
                           )}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col gap-1">
+                            {totalClockedHours > 0 && (
+                              <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">
+                                Totale: {totalClockedHours.toFixed(2)}h
+                              </div>
+                            )}
+                            {delta !== 0 ? (
+                              <span className={`inline-flex items-center gap-1 font-bold px-2 py-1 rounded text-xs ${
+                                delta > 0 ? 'text-emerald-400 bg-emerald-400/10' : 'text-rose-400 bg-rose-400/10'
+                              }`}>
+                                {delta > 0 ? '+' : ''}{delta.toFixed(2)}h
+                              </span>
+                            ) : (
+                              <span className="text-slate-600">-</span>
+                            )}
+                          </div>
                         </td>
 
                         <td className="px-4 py-3">
