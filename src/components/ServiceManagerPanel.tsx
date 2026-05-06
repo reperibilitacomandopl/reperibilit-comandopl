@@ -35,6 +35,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
   const [currentDate, setCurrentDate] = useState(new Date())
   const [loading, setLoading] = useState(true)
   const [isAutoAssigning, setIsAutoAssigning] = useState(false)
+  const [isCertified, setIsCertified] = useState(false)
   
   const [users, setUsers] = useState<{ id: string; name: string; qualifica?: string; isUfficiale?: boolean; servizio?: string }[]>([])
   const [shifts, setShifts] = useState<{ id: string; userId: string; type: string; serviceCategoryId?: string | null; serviceTypeId?: string | null; vehicleId?: string | null; radioId?: string | null; weaponId?: string | null; armorId?: string | null; timeRange?: string | null; serviceDetails?: string | null; patrolGroupId?: string | null }[]>([])
@@ -156,6 +157,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
       if (data.radios) setRadios(data.radios)
       if (data.weapons) setWeapons(data.weapons)
       if (data.armors) setArmors(data.armors)
+      setIsCertified(!!data.isCertified)
       
       // Load schools only once or if specifically needed, but for now we keep it here
       // but maybe wrap it in a condition if we want even more speed
@@ -714,6 +716,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
             users={users}
             handleDragStart={handleDragStart}
             categories={categories}
+            isCertified={isCertified}
           />
 
           {/* MAIN OPERATIONAL BOARDS */}

@@ -33,6 +33,7 @@ interface ServiceBoardProps {
   toggleLink: any
   handleRemoveService: any
   handleDragStart: any
+  isCertified?: boolean
 }
 
 export default function ServiceBoard({
@@ -61,7 +62,8 @@ export default function ServiceBoard({
   copiedAgent,
   toggleLink,
   handleRemoveService,
-  handleDragStart
+  handleDragStart,
+  isCertified = false
 }: ServiceBoardProps) {
   const agentiFase = shifts.filter(s => {
     if (indisponibili.some(indisp => indisp.id === s.userId)) return false;
@@ -116,6 +118,7 @@ export default function ServiceBoard({
                   shifts={shifts}
                   handleDragStart={handleDragStart}
                   categories={categories}
+                  isCertified={isCertified}
                 />
               )
             })}

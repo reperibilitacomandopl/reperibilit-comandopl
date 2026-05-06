@@ -49,6 +49,7 @@ interface ServiceAgentCardProps {
   shifts: any[]
   handleDragStart: (e: React.DragEvent, userId: string) => void
   categories: { id: string; name: string; types?: { id: string; name: string }[] }[]
+  isCertified?: boolean
 }
 
 export default function ServiceAgentCard({
@@ -72,7 +73,8 @@ export default function ServiceAgentCard({
   users,
   shifts,
   handleDragStart,
-  categories
+  categories,
+  isCertified = false
 }: ServiceAgentCardProps) {
   const timeRangeStr = shiftAssegnato.timeRange || (shiftAssegnato.type === "M7" ? "07:00-13:00" : shiftAssegnato.type === "M8" ? "08:00-14:00" : "14:00-20:00")
 
@@ -89,8 +91,9 @@ export default function ServiceAgentCard({
             checked={patrolSelection.has(shiftAssegnato.id)}
             onChange={() => togglePatrolSelect(shiftAssegnato.id)}
             onClick={(e) => e.stopPropagation()}
-            className="w-4 h-4 rounded text-indigo-600 border-slate-300 cursor-pointer shrink-0"
-            title="Seleziona per pattuglia"
+            disabled={isCertified}
+            className="w-4 h-4 rounded text-indigo-600 border-slate-300 cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            title={isCertified ? "Non modificabile (Certificato)" : "Seleziona per pattuglia"}
           />
           <div className={`w-1.5 h-1.5 rounded-full shadow-[0_0_5px_rgba(16,185,129,0.8)] ${agente.isUfficiale ? 'bg-blue-400' : 'bg-emerald-400'}`}></div>
           <div className="flex flex-col">
@@ -208,49 +211,54 @@ export default function ServiceAgentCard({
             </button>
           )}
 
-          <select 
-            value={shiftAssegnato.vehicleId || ""}
-            onChange={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, e.target.value, shiftAssegnato.radioId, shiftAssegnato.weaponId, shiftAssegnato.armorId, timeRangeStr, shiftAssegnato.serviceDetails)}
-            className="text-[10px] bg-slate-100 font-black px-2 py-1.5 rounded-md border border-slate-200 focus:border-blue-500 transition-all text-slate-800 max-w-[120px] truncate"
-          >
-            <option value="">+ Veicolo</option>
-            {vehicles.map(v => (
-              <option key={v.id} value={v.id}>{v.name}</option>
-            ))}
-          </select>
+          {!isCertified && (
+            <>
+              <select 
+                value={shiftAssegnato.vehicleId || ""}
+                onChange={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, e.target.value, shiftAssegnato.radioId, shiftAssegnato.weaponId, shiftAssegnato.armorId, timeRangeStr, shiftAssegnato.serviceDetails)}
+                className="text-[10px] bg-slate-100 font-black px-2 py-1.5 rounded-md border border-slate-200 focus:border-blue-500 transition-all text-slate-800 max-w-[120px] truncate"
+              >
+                <option value="">+ Veicolo</option>
+                {vehicles.map(v => (
+                  <option key={v.id} value={v.id}>{v.name}</option>
+                ))}
+              </select>
 
-          <select 
-            value={shiftAssegnato.radioId || ""}
-            onChange={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, e.target.value, shiftAssegnato.weaponId, shiftAssegnato.armorId, timeRangeStr, shiftAssegnato.serviceDetails)}
-            className="text-[10px] bg-slate-100 font-black px-2 py-1.5 rounded-md border border-slate-200 focus:border-blue-500 transition-all text-slate-800 max-w-[100px] truncate"
-          >
-            <option value="">+ Radio</option>
-            {radios.map(r => (
-              <option key={r.id} value={r.id}>{r.name}</option>
-            ))}
-          </select>
+              <select 
+                value={shiftAssegnato.radioId || ""}
+                onChange={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, shiftAssegnato.serviceTypeId, shiftAssegnato.vehicleId, e.target.value, shiftAssegnato.weaponId, shiftAssegnato.armorId, timeRangeStr, shiftAssegnato.serviceDetails)}
+                className="text-[10px] bg-slate-100 font-black px-2 py-1.5 rounded-md border border-slate-200 focus:border-blue-500 transition-all text-slate-800 max-w-[100px] truncate"
+              >
+                <option value="">+ Radio</option>
+                {radios.map(r => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
 
-          <button 
-            onClick={() => toggleLink(shiftAssegnato.id, shiftAssegnato.patrolGroupId || null)}
-            className={`p-1.5 rounded-md transition-colors ${shiftAssegnato.patrolGroupId ? 'text-indigo-700 bg-indigo-100 hover:bg-indigo-200' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
-            title={shiftAssegnato.patrolGroupId ? "Separa Pattuglia" : "Abbina ad altro membro (Crea Pattuglia)"}
-          >
-            <Radio width={14} height={14} className={shiftAssegnato.patrolGroupId ? 'rotate-90' : ''} />
-          </button>
+              <button 
+                onClick={() => toggleLink(shiftAssegnato.id, shiftAssegnato.patrolGroupId || null)}
+                className={`p-1.5 rounded-md transition-colors ${shiftAssegnato.patrolGroupId ? 'text-indigo-700 bg-indigo-100 hover:bg-indigo-200' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
+                title={shiftAssegnato.patrolGroupId ? "Separa Pattuglia" : "Abbina ad altro membro (Crea Pattuglia)"}
+              >
+                <Radio width={14} height={14} className={shiftAssegnato.patrolGroupId ? 'rotate-90' : ''} />
+              </button>
 
-          <button 
-            onClick={() => handleRemoveService(agente.id, shiftAssegnato.type)} 
-            className="text-slate-400 hover:text-red-600 p-1.5 bg-slate-50 hover:bg-red-50 rounded-md transition-colors font-black"
-          >
-            ✕
-          </button>
+              <button 
+                onClick={() => handleRemoveService(agente.id, shiftAssegnato.type)} 
+                className="text-slate-400 hover:text-red-600 p-1.5 bg-slate-50 hover:bg-red-50 rounded-md transition-colors font-black"
+              >
+                ✕
+              </button>
+            </>
+          )}
         </div>
       </div>
        <div className="flex gap-1 mt-1">
           <select 
             value={shiftAssegnato.serviceTypeId || ""}
+            disabled={isCertified}
             onChange={(e) => assignService(agente.id, shiftAssegnato.type, shiftAssegnato.serviceCategoryId, e.target.value, shiftAssegnato.vehicleId, shiftAssegnato.radioId, shiftAssegnato.weaponId, shiftAssegnato.armorId, timeRangeStr, shiftAssegnato.serviceDetails)}
-            className="flex-1 text-[11px] font-black bg-white border border-slate-200 rounded px-2 py-1.5 focus:border-blue-500 transition-all text-slate-800"
+            className="flex-1 text-[11px] font-black bg-white border border-slate-200 rounded px-2 py-1.5 focus:border-blue-500 transition-all text-slate-800 disabled:opacity-50"
           >
             <option value="">{agente.servizio || "+ Servizio"}</option>
             {categories.map(c => (

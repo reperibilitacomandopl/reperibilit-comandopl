@@ -103,9 +103,21 @@ export default function PlanningMobileView({
     }
 
     return (
-      <span className={`px-3 py-1 rounded-full text-[10px] tracking-widest uppercase shadow-sm ${badgeClass}`}>
-        {label}
-      </span>
+      <div className="flex flex-col items-end gap-1">
+        <span className={`px-3 py-1 rounded-full text-[10px] tracking-widest uppercase shadow-sm ${badgeClass}`}>
+          {label}
+        </span>
+        {shift.serviceType?.name && (
+          <span className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">
+            {shift.serviceType.name}
+          </span>
+        )}
+        {shift.serviceDetails && (
+          <span className="text-[9px] font-bold text-slate-500 italic max-w-[150px] truncate text-right">
+            {shift.serviceDetails}
+          </span>
+        )}
+      </div>
     )
   }
 
@@ -210,7 +222,7 @@ export default function PlanningMobileView({
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1.5">
-                        {renderBadge(shift)}
+                        {renderBadge(shift as any)}
                         {shift?.vehicle?.name && (
                           <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded flex items-center gap-1">
                             <Car size={10} /> {shift.vehicle.name}

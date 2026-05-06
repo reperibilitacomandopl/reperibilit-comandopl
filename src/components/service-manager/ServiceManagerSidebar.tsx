@@ -35,6 +35,7 @@ interface ServiceManagerSidebarProps {
   users: any[]
   handleDragStart: any
   categories: any[]
+  isCertified?: boolean
 }
 
 export default function ServiceManagerSidebar({
@@ -65,7 +66,8 @@ export default function ServiceManagerSidebar({
   currentDate,
   users,
   handleDragStart,
-  categories
+  categories,
+  isCertified = false
 }: ServiceManagerSidebarProps) {
   return (
     <div 
@@ -134,6 +136,7 @@ export default function ServiceManagerSidebar({
                             shifts={shifts}
                             handleDragStart={handleDragStart}
                             categories={categories}
+                            isCertified={isCertified}
                          />
                       </div>
                     )
