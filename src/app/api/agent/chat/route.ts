@@ -1,27 +1,11 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
+import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import * as jose from "jose"
-
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "super-secret-key-for-dev")
-
-async function verifyAuth(req: Request) {
-  const cookieStore = await cookies()
-  const token = cookieStore.get("auth_token")?.value
-  if (!token) return null
-
-  try {
-    const { payload } = await jose.jwtVerify(token, JWT_SECRET)
-    return payload
-  } catch {
-    return null
-  }
-}
 
 export async function GET(req: Request) {
   try {
-    const auth = await verifyAuth(req)
-    if (!auth) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
+    const session = await auth()
+    if (!session?.user) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
 
     const { searchParams } = new URL(req.url)
     const patrolGroupId = searchParams.get('patrolGroupId')
@@ -38,7 +22,7 @@ export async function GET(req: Request) {
           select: { id: true, name: true }
         }
       },
-      take: 50 // fetch last 50
+      take: 100 // fetch last 100
     })
 
     return NextResponse.json({ messages })
@@ -50,8 +34,8 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const auth = await verifyAuth(req)
-    if (!auth) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
+    const session = await auth()
+    if (!session?.user) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
 
     const { patrolGroupId, message } = await req.json()
 
@@ -63,8 +47,8 @@ export async function POST(req: Request) {
       data: {
         patrolGroupId,
         message: message.trim(),
-        senderId: auth.userId as string,
-        tenantId: auth.tenantId as string || null
+        senderId: session.user.id,
+        tenantId: session.user.tenantId || null
       },
       include: {
         sender: {
