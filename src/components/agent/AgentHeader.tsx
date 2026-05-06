@@ -140,8 +140,8 @@ export default function AgentHeader({
                           : 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-xl shadow-emerald-900/50 active:scale-95'
                     }`}
                   >
-                    {clockLoading && isClockedIn !== 'OUT' ? <RefreshCw size={16} className="animate-spin" /> : <div className="flex items-center gap-1"><MapPin size={16} /><Clock size={14} className="text-white/70" /></div>}
-                    {!currentUser?.gpsConsent ? 'Consenso GPS' : 'Entra'}
+                    {clockLoading && isClockedIn !== 'OUT' ? <RefreshCw size={16} className="animate-spin" /> : <div className="flex items-center gap-2"><MapPin size={16} /> Entra <Clock size={16} className="text-white ml-1" /></div>}
+                    {!currentUser?.gpsConsent && 'Consenso GPS'}
                   </button>
                   <button
                     disabled={clockLoading || isClockedIn !== 'IN'}
@@ -152,8 +152,8 @@ export default function AgentHeader({
                         : 'bg-rose-500 hover:bg-rose-400 text-white shadow-xl shadow-rose-900/50 active:scale-95'
                     }`}
                   >
-                    {clockLoading && isClockedIn === 'IN' ? <RefreshCw size={16} className="animate-spin" /> : <div className="flex items-center gap-1"><ArrowRightLeft size={16} /><Clock size={14} className="text-white/70" /></div>}
-                    Esci
+                    {clockLoading && isClockedIn === 'IN' ? <RefreshCw size={16} className="animate-spin" /> : <div className="flex items-center gap-2"><ArrowRightLeft size={16} /> Esci <Clock size={16} className="text-white ml-1" /></div>}
+                    
                   </button>
                </div>
 

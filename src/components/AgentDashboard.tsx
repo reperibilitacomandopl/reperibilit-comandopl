@@ -119,6 +119,7 @@ export default function AgentDashboard({
   const [selectedShiftForSwap, setSelectedShiftForSwap] = useState<DashboardShift | null>(null)
   const [agendaDate, setAgendaDate] = useState('')
   const [showClockHistory, setShowClockHistory] = useState(false)
+  const [activeShiftIndex, setActiveShiftIndex] = useState(0)
 
   // Date Helpers
   const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
@@ -190,45 +191,74 @@ export default function AgentDashboard({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1 space-y-6">
-            {admin.myOds ? (
-                <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden hover:shadow-2xl transition-all group">
-                  <div className="p-8 pb-4">
-                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2">Servizio di Oggi</p>
-                    <h3 className="text-3xl font-black text-slate-900">{admin.myOds.shift.timeRange || admin.myOds.shift.type}</h3>
-                  </div>
-                  <div className="px-8 pb-8 space-y-4">
-                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                         <div className="text-slate-400 font-bold uppercase text-[9px] mb-1">Zona / Mezzo</div>
-                         <p className="font-black text-slate-800">{admin.myOds.shift.serviceCategory?.name || "Operativo"}</p>
-                         {admin.myOds.shift.vehicle && <p className="text-emerald-600 text-[11px] font-bold mt-1">🚗 {admin.myOds.shift.vehicle.name as string}</p>}
+            {/* FEATURED SHIFTS CAROUSEL (TODAY + NEXT) */}
+            {(() => {
+              const now = new Date()
+              const todayStr = now.toDateString()
+              
+              const featuredShifts = admin.myShifts
+                .filter((s: any) => {
+                  const d = new Date(s.date)
+                  d.setHours(0,0,0,0)
+                  const today = new Date()
+                  today.setHours(0,0,0,0)
+                  return d >= today && !isAssenza(s.type)
+                })
+                .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                .slice(0, 3); // Take up to 3 shifts (Today + Next 2)
+
+              if (featuredShifts.length === 0) {
+                return (
+                  <div className="bg-white rounded-[2rem] p-8 border border-slate-200 text-center space-y-4 shadow-lg">
+                    <div className="w-16 h-16 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto text-slate-300">
+                      <Shield size={32} />
                     </div>
-                    {admin.myOds.partners.length > 0 && (
-                      <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                        <div className="flex justify-between items-center mb-2">
-                          <div className="text-amber-600 font-bold uppercase text-[9px]">Collega Pattuglia</div>
-                          <button 
-                            onClick={() => setShowChat(true)}
-                            className="bg-amber-600 hover:bg-amber-500 text-white p-2 rounded-xl shadow-sm transition-transform hover:scale-105 flex items-center gap-2 text-[10px] font-black uppercase"
-                          >
-                            <MessageSquare size={14} />
-                            Chat
-                          </button>
-                        </div>
-                        {admin.myOds.partners.map((p: any) => (
-                          <p key={p.id} className="font-black text-amber-900">{p.user.name}</p>
-                        ))}
-                      </div>
-                    )}
+                    <h3 className="font-black text-slate-400 italic text-sm">Nessun servizio assegnato</h3>
                   </div>
+                )
+              }
+
+              const currentShift = featuredShifts[activeShiftIndex] || featuredShifts[0];
+
+              return (
+                <div className="relative group">
+                  <NextShiftCard 
+                    shift={currentShift} 
+                    allAgents={allAgents} 
+                    allShifts={shifts} 
+                  />
+                  
+                  {featuredShifts.length > 1 && (
+                    <div className="absolute top-1/2 -translate-y-1/2 w-full flex justify-between px-2 pointer-events-none">
+                      <button 
+                        onClick={() => setActiveShiftIndex(prev => (prev > 0 ? prev - 1 : featuredShifts.length - 1))}
+                        className="w-10 h-10 bg-white/90 backdrop-blur shadow-lg rounded-full flex items-center justify-center text-slate-900 pointer-events-auto hover:bg-white transition-all active:scale-90 border border-slate-200"
+                      >
+                        <ChevronLeft size={20} />
+                      </button>
+                      <button 
+                        onClick={() => setActiveShiftIndex(prev => (prev < featuredShifts.length - 1 ? prev + 1 : 0))}
+                        className="w-10 h-10 bg-white/90 backdrop-blur shadow-lg rounded-full flex items-center justify-center text-slate-900 pointer-events-auto hover:bg-white transition-all active:scale-90 border border-slate-200"
+                      >
+                        <ChevronRight size={20} />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Dots indicator */}
+                  {featuredShifts.length > 1 && (
+                    <div className="flex justify-center gap-2 -mt-4 mb-6">
+                      {featuredShifts.map((_, i) => (
+                        <div 
+                          key={i} 
+                          className={`h-1.5 rounded-full transition-all ${i === activeShiftIndex ? 'w-6 bg-blue-600' : 'w-1.5 bg-slate-300'}`}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-            ) : (
-                <div className="bg-white rounded-[2rem] p-8 border border-slate-200 text-center space-y-4 shadow-lg">
-                  <div className="w-16 h-16 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto text-slate-300">
-                    <Shield size={32} />
-                  </div>
-                  <h3 className="font-black text-slate-400 italic text-sm">Nessun servizio assegnato oggi</h3>
-                </div>
-            )}
+              )
+            })()}
 
             {/* Section Chat Button - Always visible if user has a squad */}
             {currentUser.squadra && (
@@ -285,27 +315,7 @@ export default function AgentDashboard({
         />
       </div>
 
-      {/* NEXT SHIFT PROACTIVE WIDGET */}
-      {(() => {
-        const now = new Date()
-        now.setHours(0, 0, 0, 0)
-        
-        const nextShift = admin.myShifts
-          .filter((s: any) => {
-            const d = new Date(s.date)
-            d.setHours(0, 0, 0, 0)
-            return d >= now && !isAssenza(s.type)
-          })
-          .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())[0]
-
-        return nextShift ? (
-          <NextShiftCard 
-            shift={nextShift} 
-            allAgents={allAgents} 
-            allShifts={shifts} 
-          />
-        ) : null
-      })()}
+      {/* NEXT SHIFT PROACTIVE WIDGET REMOVED BECAUSE INTEGRATED IN CAROUSEL */}
 
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
