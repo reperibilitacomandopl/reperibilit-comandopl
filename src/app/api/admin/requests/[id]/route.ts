@@ -114,28 +114,72 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           }
 
           // 2.2 SINCRONIZZAZIONE CON TABELLA SHIFT (Fondamentale per OdS e Griglia Pianificazione)
-          await tx.shift.upsert({
-            where: {
-              userId_date_tenantId: {
+          const isPartial = agentRequest.hours != null || agentRequest.startTime != null;
+          const label = getLabel(agentRequest.code);
+          const detailStr = isPartial 
+             ? (agentRequest.startTime && agentRequest.endTime ? `${agentRequest.startTime}-${agentRequest.endTime} ${label}` : `Approvato: ${label} (${agentRequest.hours}h)`)
+             : `Approvato: ${label}`;
+
+          // If partial, don't overwrite type, just append to serviceDetails
+          if (isPartial) {
+            const existingShift = await tx.shift.findUnique({
+              where: {
+                userId_date_tenantId: {
+                  userId: agentRequest.userId,
+                  date: targetDate,
+                  tenantId: agentRequest.tenantId || ""
+                }
+              }
+            });
+            
+            const newDetails = existingShift?.serviceDetails 
+               ? `${existingShift.serviceDetails} + ${detailStr}`
+               : detailStr;
+
+            await tx.shift.upsert({
+              where: {
+                userId_date_tenantId: {
+                  userId: agentRequest.userId,
+                  date: targetDate,
+                  tenantId: agentRequest.tenantId || ""
+                }
+              },
+              update: {
+                serviceDetails: newDetails
+              },
+              create: {
+                tenantId: agentRequest.tenantId,
                 userId: agentRequest.userId,
                 date: targetDate,
-                tenantId: agentRequest.tenantId || ""
+                type: "M", // fallback
+                serviceDetails: newDetails
               }
-            },
-            update: {
-              type: getShortCode(agentRequest.code),
-              repType: null, // Rimuoviamo eventuale reperibilità se c'è un'assenza/richiesta approvata
-              serviceDetails: `Approvato: ${getLabel(agentRequest.code)}`
-            },
-            create: {
-              tenantId: agentRequest.tenantId,
-              userId: agentRequest.userId,
-              date: targetDate,
-              type: getShortCode(agentRequest.code),
-              repType: null,
-              serviceDetails: `Approvato: ${getLabel(agentRequest.code)}`
-            }
-          })
+            });
+          } else {
+            // Full day absence: overwrite type
+            await tx.shift.upsert({
+              where: {
+                userId_date_tenantId: {
+                  userId: agentRequest.userId,
+                  date: targetDate,
+                  tenantId: agentRequest.tenantId || ""
+                }
+              },
+              update: {
+                type: getShortCode(agentRequest.code),
+                repType: null, // Rimuoviamo eventuale reperibilità se c'è un'assenza/richiesta approvata full day
+                serviceDetails: detailStr
+              },
+              create: {
+                tenantId: agentRequest.tenantId,
+                userId: agentRequest.userId,
+                date: targetDate,
+                type: getShortCode(agentRequest.code),
+                repType: null,
+                serviceDetails: detailStr
+              }
+            });
+          }
         }
       }
 
