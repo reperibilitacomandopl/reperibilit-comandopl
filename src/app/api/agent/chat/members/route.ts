@@ -42,7 +42,7 @@ export async function GET(req: Request) {
       
       // Unique members
       const memberMap = new Map()
-      shifts.forEach(s => {
+      shifts.forEach((s: any) => {
         if (!memberMap.has(s.user.id)) {
           memberMap.set(s.user.id, s.user)
         }
@@ -61,7 +61,7 @@ export async function GET(req: Request) {
           }
         }
       })
-      members = shifts.map(s => s.user)
+      members = shifts.map((s: any) => s.user)
     }
 
     return NextResponse.json({ members })

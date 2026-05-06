@@ -24,6 +24,7 @@ declare module "next-auth" {
     privacyAcceptedAt: Date | null
     gpsAcceptedAt: Date | null
     squadra?: string | null
+    isUfficiale: boolean
   }
 
   interface Session {
@@ -55,5 +56,6 @@ declare module "next-auth/jwt" {
     privacyAcceptedAt: Date | null
     gpsAcceptedAt: Date | null
     squadra?: string | null
+    isUfficiale: boolean
   }
 }
