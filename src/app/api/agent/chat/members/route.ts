@@ -76,8 +76,9 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const session = await auth()
+    if (!session?.user) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
     
-    let isAuthorized = session?.user?.role === "ADMIN" || session?.user?.isUfficiale;
+    let isAuthorized = session.user.role === "ADMIN" || session.user.isUfficiale;
 
     // Fallback per token vecchi
     if (!isAuthorized && session?.user?.id) {
