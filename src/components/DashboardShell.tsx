@@ -29,7 +29,8 @@ export default function DashboardShell({
   dayInfo,
   adminData,
   logoUrl,
-  tenant
+  tenant,
+  certifiedDates
 }: any) {
   const [activeTab, setActiveTab] = useState('dashboard')
   const { role, name, matricola, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem } = session.user
