@@ -24,7 +24,7 @@ export async function GET(request: Request) {
         tenantId: session.user.tenantId,
         date: { gte: startDate, lte: endDate } 
       },
-      select: { id: true, userId: true, date: true, type: true, timeRange: true, isSyncedToVerbatel: true, repType: true }
+      select: { id: true, userId: true, date: true, type: true, timeRange: true, isSyncedToVerbatel: true, repType: true, overtimeHours: true, serviceDetails: true }
     })
 
     // === INIEZIONE TURNI TEORICI ===
@@ -82,7 +82,7 @@ export async function PUT(request: Request) {
         userId: { in: userIds },
         date: { gte: minDate, lte: maxDate }
       },
-      select: { id: true, userId: true, date: true, repType: true, serviceCategoryId: true, serviceTypeId: true, vehicleId: true }
+      select: { id: true, userId: true, date: true, repType: true, serviceCategoryId: true, serviceTypeId: true, vehicleId: true, overtimeHours: true, serviceDetails: true }
     })
 
     // Build a lookup map: "userId|date" -> existing shift
@@ -118,6 +118,8 @@ export async function PUT(request: Request) {
           id: existing.id,
           type: macroType,
           timeRange,
+          overtimeHours: diff.overtimeHours !== undefined ? diff.overtimeHours : existing.overtimeHours,
+          serviceDetails: diff.serviceDetails !== undefined ? diff.serviceDetails : existing.serviceDetails,
           // Preserve existing OdS fields
           repType: existing.repType,
           serviceCategoryId: isAssenza(macroType) ? null : existing.serviceCategoryId,
@@ -130,6 +132,8 @@ export async function PUT(request: Request) {
           date: diff.date,
           type: macroType,
           timeRange,
+          overtimeHours: diff.overtimeHours || 0,
+          serviceDetails: diff.serviceDetails || null
         })
       }
     }
@@ -139,14 +143,16 @@ export async function PUT(request: Request) {
       const insertValues = toInsert.map(op => {
         const id = crypto.randomUUID()
         const date = new Date(op.date + "T00:00:00.000Z")
-        return Prisma.sql`(${id}, ${session.user.tenantId}, ${op.userId}, ${date}, ${op.type}, ${op.timeRange})`
+        return Prisma.sql`(${id}, ${session.user.tenantId}, ${op.userId}, ${date}, ${op.type}, ${op.timeRange}, ${op.overtimeHours}, ${op.serviceDetails})`
       })
       await prisma.$executeRaw`
-        INSERT INTO "Shift" ("id", "tenantId", "userId", "date", "type", "timeRange")
+        INSERT INTO "Shift" ("id", "tenantId", "userId", "date", "type", "timeRange", "overtimeHours", "serviceDetails")
         VALUES ${Prisma.join(insertValues)}
         ON CONFLICT ("userId", "date", "tenantId") DO UPDATE SET 
           "type" = EXCLUDED."type",
-          "timeRange" = EXCLUDED."timeRange"
+          "timeRange" = EXCLUDED."timeRange",
+          "overtimeHours" = EXCLUDED."overtimeHours",
+          "serviceDetails" = EXCLUDED."serviceDetails"
       `
     }
 
@@ -161,6 +167,8 @@ export async function PUT(request: Request) {
             data: {
               type: op.type,
               timeRange: op.timeRange,
+              overtimeHours: op.overtimeHours,
+              serviceDetails: op.serviceDetails,
               repType: op.repType,
               serviceCategoryId: op.serviceCategoryId,
               serviceTypeId: op.serviceTypeId,
