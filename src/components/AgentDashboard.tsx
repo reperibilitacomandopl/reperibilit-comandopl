@@ -189,77 +189,62 @@ export default function AgentDashboard({
         />
       </div>
 
+      {/* FEATURED SHIFTS CAROUSEL (TODAY + NEXT) - FULL WIDTH */}
+      {(() => {
+        const now = new Date()
+        const featuredShifts = admin.myShifts
+          .filter((s: any) => {
+            const d = new Date(s.date)
+            d.setHours(0,0,0,0)
+            const today = new Date()
+            today.setHours(0,0,0,0)
+            return d >= today && !isAssenza(s.type)
+          })
+          .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+          .slice(0, 3);
+
+        if (featuredShifts.length === 0) return null;
+
+        const currentShift = featuredShifts[activeShiftIndex] || featuredShifts[0];
+
+        return (
+          <div className="relative group px-1">
+            <NextShiftCard 
+              shift={currentShift} 
+              allAgents={allAgents} 
+              allShifts={shifts} 
+            />
+            
+            {featuredShifts.length > 1 && (
+              <div className="absolute top-1/2 -translate-y-1/2 w-[calc(100%+1rem)] -left-2 flex justify-between pointer-events-none z-20">
+                <button 
+                  onClick={() => setActiveShiftIndex(prev => (prev > 0 ? prev - 1 : featuredShifts.length - 1))}
+                  className="w-10 h-10 bg-white shadow-2xl rounded-full flex items-center justify-center text-slate-900 pointer-events-auto hover:bg-slate-50 transition-all active:scale-90 border border-slate-200"
+                >
+                  <ChevronLeft size={22} />
+                </button>
+                <button 
+                  onClick={() => setActiveShiftIndex(prev => (prev < featuredShifts.length - 1 ? prev + 1 : 0))}
+                  className="w-10 h-10 bg-white shadow-2xl rounded-full flex items-center justify-center text-slate-900 pointer-events-auto hover:bg-slate-50 transition-all active:scale-90 border border-slate-200"
+                >
+                  <ChevronRight size={22} />
+                </button>
+              </div>
+            )}
+
+            {featuredShifts.length > 1 && (
+              <div className="flex justify-center gap-2 -mt-4 mb-6">
+                {featuredShifts.map((_, i) => (
+                  <div key={i} className={`h-1.5 rounded-full transition-all ${i === activeShiftIndex ? 'w-6 bg-blue-600' : 'w-1.5 bg-slate-300'}`} />
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1 space-y-6">
-            {/* FEATURED SHIFTS CAROUSEL (TODAY + NEXT) */}
-            {(() => {
-              const now = new Date()
-              const todayStr = now.toDateString()
-              
-              const featuredShifts = admin.myShifts
-                .filter((s: any) => {
-                  const d = new Date(s.date)
-                  d.setHours(0,0,0,0)
-                  const today = new Date()
-                  today.setHours(0,0,0,0)
-                  return d >= today && !isAssenza(s.type)
-                })
-                .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                .slice(0, 3); // Take up to 3 shifts (Today + Next 2)
-
-              if (featuredShifts.length === 0) {
-                return (
-                  <div className="bg-white rounded-[2rem] p-8 border border-slate-200 text-center space-y-4 shadow-lg">
-                    <div className="w-16 h-16 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto text-slate-300">
-                      <Shield size={32} />
-                    </div>
-                    <h3 className="font-black text-slate-400 italic text-sm">Nessun servizio assegnato</h3>
-                  </div>
-                )
-              }
-
-              const currentShift = featuredShifts[activeShiftIndex] || featuredShifts[0];
-
-              return (
-                <div className="relative group px-2 lg:px-4">
-                  <NextShiftCard 
-                    shift={currentShift} 
-                    allAgents={allAgents} 
-                    allShifts={shifts} 
-                  />
-                  
-                  {featuredShifts.length > 1 && (
-                    <div className="absolute top-1/2 -translate-y-1/2 w-[calc(100%+1.5rem)] -left-3 flex justify-between pointer-events-none">
-                      <button 
-                        onClick={() => setActiveShiftIndex(prev => (prev > 0 ? prev - 1 : featuredShifts.length - 1))}
-                        className="w-9 h-9 bg-white shadow-xl rounded-full flex items-center justify-center text-slate-900 pointer-events-auto hover:bg-slate-50 transition-all active:scale-90 border border-slate-200"
-                      >
-                        <ChevronLeft size={18} />
-                      </button>
-                      <button 
-                        onClick={() => setActiveShiftIndex(prev => (prev < featuredShifts.length - 1 ? prev + 1 : 0))}
-                        className="w-9 h-9 bg-white shadow-xl rounded-full flex items-center justify-center text-slate-900 pointer-events-auto hover:bg-slate-50 transition-all active:scale-90 border border-slate-200"
-                      >
-                        <ChevronRight size={18} />
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Dots indicator */}
-                  {featuredShifts.length > 1 && (
-                    <div className="flex justify-center gap-2 -mt-4 mb-6">
-                      {featuredShifts.map((_, i) => (
-                        <div 
-                          key={i} 
-                          className={`h-1.5 rounded-full transition-all ${i === activeShiftIndex ? 'w-6 bg-blue-600' : 'w-1.5 bg-slate-300'}`}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })()}
-
             {/* Section Chat Button - Always visible if user has a squad */}
             {currentUser.squadra && (
               <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden hover:shadow-2xl transition-all p-6">
