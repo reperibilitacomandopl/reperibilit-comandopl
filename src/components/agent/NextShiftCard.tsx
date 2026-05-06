@@ -206,7 +206,7 @@ export default function NextShiftCard({ shift, allAgents, allShifts, certifiedDa
                          </div>
                          <div>
                             <p className="text-[10px] font-black text-slate-900 uppercase tracking-tight">Pattuglia</p>
-                            <p className="text-xs font-bold text-slate-500">{shift.patrolGroupId || "Servizio Singolo"}</p>
+                            <p className="text-xs font-bold text-slate-500">{colleagues.length > 0 ? `Pattuglia (${colleagues.length + 1})` : "Servizio Singolo"}</p>
                          </div>
                       </div>
                       <div className="space-y-3">

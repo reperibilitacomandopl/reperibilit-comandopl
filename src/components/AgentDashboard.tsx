@@ -253,8 +253,20 @@ export default function AgentDashboard({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1 space-y-6">
-            {/* Section Chat Button - Always visible if user has a squad */}
-            {currentUser.squadra && (
+            {/* Section Chat Button - Always visible if user has a squad or service category */}
+            {(() => {
+              // Fallback: usa la serviceCategory del turno odierno se squadra è null
+              const todayStr = new Date().toISOString().split('T')[0]
+              const todayShift = shifts.find((s: any) => {
+                const sd = s.date instanceof Date ? s.date.toISOString().split('T')[0] : String(s.date).split('T')[0]
+                return sd === todayStr && s.userId === currentUser.id
+              })
+              const sectionName = currentUser.squadra || (todayShift as any)?.serviceCategory?.name || null
+              const sectionId = currentUser.squadra || (todayShift as any)?.serviceCategoryId || null
+
+              if (!sectionName) return null
+
+              return (
               <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden hover:shadow-2xl transition-all p-6">
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center gap-4">
@@ -263,11 +275,14 @@ export default function AgentDashboard({
                     </div>
                     <div>
                       <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-0.5">Sezione / Reparto</p>
-                      <h3 className="text-lg font-black text-slate-900 leading-tight">{currentUser.squadra}</h3>
+                      <h3 className="text-lg font-black text-slate-900 leading-tight">{sectionName}</h3>
                     </div>
                   </div>
                   <button 
-                    onClick={() => setShowSectionChat(true)}
+                    onClick={() => {
+                      setChatPatrolGroupId(`SECTION_${sectionId}`)
+                      setShowSectionChat(true)
+                    }}
                     className="w-full bg-blue-600 hover:bg-blue-500 text-white px-6 py-3.5 rounded-2xl shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] active:scale-95 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2"
                   >
                     <MessageSquare size={16} />
@@ -275,7 +290,8 @@ export default function AgentDashboard({
                   </button>
                 </div>
               </div>
-            )}
+              )
+            })()}
             
             <button 
                onClick={() => setShowAbsenceModal(true)}
@@ -623,13 +639,13 @@ export default function AgentDashboard({
         </div>
       )}
 
-      {showSectionChat && currentUser.squadra && (
+      {showSectionChat && chatPatrolGroupId && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
           <ChatPanel 
             currentUser={{ id: currentUser.id, name: currentUser.name }}
-            patrolGroupId={`SECTION_${currentUser.squadra}`}
+            patrolGroupId={chatPatrolGroupId}
             tenantSlug={tenantSlug}
-            onClose={() => setShowSectionChat(false)}
+            onClose={() => { setShowSectionChat(false); setChatPatrolGroupId(null) }}
             type="SECTION"
           />
         </div>
