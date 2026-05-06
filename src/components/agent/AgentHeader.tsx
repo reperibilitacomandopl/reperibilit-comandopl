@@ -140,7 +140,7 @@ export default function AgentHeader({
                           : 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-xl shadow-emerald-900/50 active:scale-95'
                     }`}
                   >
-                    {clockLoading && isClockedIn !== 'OUT' ? <RefreshCw size={16} className="animate-spin" /> : <div className="flex items-center gap-1"><MapPin size={16} /><Clock size={12} className="opacity-50" /></div>}
+                    {clockLoading && isClockedIn !== 'OUT' ? <RefreshCw size={16} className="animate-spin" /> : <div className="flex items-center gap-1"><MapPin size={16} /><Clock size={14} className="text-white/70" /></div>}
                     {!currentUser?.gpsConsent ? 'Consenso GPS' : 'Entra'}
                   </button>
                   <button
@@ -152,7 +152,7 @@ export default function AgentHeader({
                         : 'bg-rose-500 hover:bg-rose-400 text-white shadow-xl shadow-rose-900/50 active:scale-95'
                     }`}
                   >
-                    {clockLoading && isClockedIn === 'IN' ? <RefreshCw size={16} className="animate-spin" /> : <div className="flex items-center gap-1"><ArrowRightLeft size={16} /><Clock size={12} className="opacity-50" /></div>}
+                    {clockLoading && isClockedIn === 'IN' ? <RefreshCw size={16} className="animate-spin" /> : <div className="flex items-center gap-1"><ArrowRightLeft size={16} /><Clock size={14} className="text-white/70" /></div>}
                     Esci
                   </button>
                </div>
