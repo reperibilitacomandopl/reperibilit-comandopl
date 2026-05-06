@@ -38,6 +38,7 @@ export default function AgentHeader({
 }: any) {
   const [show2faSetup, setShow2faSetup] = React.useState(false)
   const [telegramOptIn, setTelegramOptIn] = React.useState(currentUser?.telegramOptIn !== false) // Default true se non esplicitamente false
+  const [currentTime, setCurrentTime] = React.useState(new Date())
   
   const handleToggleOptIn = async () => {
     const newValue = !telegramOptIn
@@ -58,6 +59,11 @@ export default function AgentHeader({
       document.documentElement.classList.add('theme-high-contrast');
     }
   }, []);
+
+  React.useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-700">
@@ -127,34 +133,44 @@ export default function AgentHeader({
 
             {/* 2. Primary Controls: Clocking & Navigation */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               {/* Clocking Controls */}
-               <div className="flex items-center gap-2 p-1.5 bg-white/5 rounded-[2.5rem] border border-white/10 backdrop-blur-md">
-                  <button
-                    disabled={clockLoading || isClockedIn === 'IN' || !currentUser?.gpsConsent}
-                    onClick={() => handleClockAction('IN')}
-                    className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-[2rem] font-black text-[11px] uppercase tracking-widest transition-all ${
-                      isClockedIn === 'IN'
-                        ? 'bg-white/5 text-white/20 cursor-not-allowed opacity-50'
-                        : !currentUser?.gpsConsent
-                          ? 'bg-amber-500/20 text-amber-500 cursor-not-allowed'
-                          : 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-xl shadow-emerald-900/50 active:scale-95'
-                    }`}
-                  >
-                    {clockLoading && isClockedIn !== 'OUT' ? <RefreshCw size={16} className="animate-spin" /> : <div className="flex items-center gap-2"><MapPin size={16} /> Entra <Clock size={16} className="text-white ml-1" /></div>}
-                    {!currentUser?.gpsConsent && 'Consenso GPS'}
-                  </button>
-                  <button
-                    disabled={clockLoading || isClockedIn !== 'IN'}
-                    onClick={() => handleClockAction('OUT')}
-                    className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-[2rem] font-black text-[11px] uppercase tracking-widest transition-all ${
-                      isClockedIn !== 'IN'
-                        ? 'bg-white/5 text-white/20 cursor-not-allowed opacity-50'
-                        : 'bg-rose-500 hover:bg-rose-400 text-white shadow-xl shadow-rose-900/50 active:scale-95'
-                    }`}
-                  >
-                    {clockLoading && isClockedIn === 'IN' ? <RefreshCw size={16} className="animate-spin" /> : <div className="flex items-center gap-2"><ArrowRightLeft size={16} /> Esci <Clock size={16} className="text-white ml-1" /></div>}
-                    
-                  </button>
+               {/* Digital Clock & Controls */}
+               <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between px-4 py-2 bg-slate-900 rounded-2xl border border-white/10 shadow-inner">
+                    <div className="flex items-center gap-2 text-white/50">
+                      <Clock size={14} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Ora Attuale</span>
+                    </div>
+                    <span className="text-xl font-black text-white tracking-tighter font-mono">
+                      {currentTime.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 p-1.5 bg-white/5 rounded-[2.5rem] border border-white/10 backdrop-blur-md">
+                    <button
+                      disabled={clockLoading || isClockedIn === 'IN' || !currentUser?.gpsConsent}
+                      onClick={() => handleClockAction('IN')}
+                      className={`flex-1 flex items-center justify-center py-4 rounded-[2rem] font-black text-[11px] uppercase tracking-widest transition-all ${
+                        isClockedIn === 'IN'
+                          ? 'bg-white/5 text-white/20 cursor-not-allowed opacity-50'
+                          : !currentUser?.gpsConsent
+                            ? 'bg-amber-500/20 text-amber-500 cursor-not-allowed'
+                            : 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-xl shadow-emerald-900/50 active:scale-95'
+                      }`}
+                    >
+                      {clockLoading && isClockedIn !== 'OUT' ? <RefreshCw size={16} className="animate-spin" /> : (!currentUser?.gpsConsent ? 'Consenso GPS' : 'Entra')}
+                    </button>
+                    <button
+                      disabled={clockLoading || isClockedIn !== 'IN'}
+                      onClick={() => handleClockAction('OUT')}
+                      className={`flex-1 flex items-center justify-center py-4 rounded-[2rem] font-black text-[11px] uppercase tracking-widest transition-all ${
+                        isClockedIn !== 'IN'
+                          ? 'bg-white/5 text-white/20 cursor-not-allowed opacity-50'
+                          : 'bg-rose-500 hover:bg-rose-400 text-white shadow-xl shadow-rose-900/50 active:scale-95'
+                      }`}
+                    >
+                      {clockLoading && isClockedIn === 'IN' ? <RefreshCw size={16} className="animate-spin" /> : 'Esci'}
+                    </button>
+                  </div>
                </div>
 
                {/* Month Navigator & Logout */}

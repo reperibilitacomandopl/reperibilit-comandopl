@@ -221,7 +221,7 @@ export default function AgentDashboard({
               const currentShift = featuredShifts[activeShiftIndex] || featuredShifts[0];
 
               return (
-                <div className="relative group">
+                <div className="relative group px-2 lg:px-4">
                   <NextShiftCard 
                     shift={currentShift} 
                     allAgents={allAgents} 
@@ -229,18 +229,18 @@ export default function AgentDashboard({
                   />
                   
                   {featuredShifts.length > 1 && (
-                    <div className="absolute top-1/2 -translate-y-1/2 w-full flex justify-between px-2 pointer-events-none">
+                    <div className="absolute top-1/2 -translate-y-1/2 w-[calc(100%+1.5rem)] -left-3 flex justify-between pointer-events-none">
                       <button 
                         onClick={() => setActiveShiftIndex(prev => (prev > 0 ? prev - 1 : featuredShifts.length - 1))}
-                        className="w-10 h-10 bg-white/90 backdrop-blur shadow-lg rounded-full flex items-center justify-center text-slate-900 pointer-events-auto hover:bg-white transition-all active:scale-90 border border-slate-200"
+                        className="w-9 h-9 bg-white shadow-xl rounded-full flex items-center justify-center text-slate-900 pointer-events-auto hover:bg-slate-50 transition-all active:scale-90 border border-slate-200"
                       >
-                        <ChevronLeft size={20} />
+                        <ChevronLeft size={18} />
                       </button>
                       <button 
                         onClick={() => setActiveShiftIndex(prev => (prev < featuredShifts.length - 1 ? prev + 1 : 0))}
-                        className="w-10 h-10 bg-white/90 backdrop-blur shadow-lg rounded-full flex items-center justify-center text-slate-900 pointer-events-auto hover:bg-white transition-all active:scale-90 border border-slate-200"
+                        className="w-9 h-9 bg-white shadow-xl rounded-full flex items-center justify-center text-slate-900 pointer-events-auto hover:bg-slate-50 transition-all active:scale-90 border border-slate-200"
                       >
-                        <ChevronRight size={20} />
+                        <ChevronRight size={18} />
                       </button>
                     </div>
                   )}

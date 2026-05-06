@@ -98,37 +98,37 @@ export default function NextShiftCard({ shift, allAgents, allShifts }: NextShift
         <div className="flex flex-col lg:flex-row">
           
           {/* Left Side: Time & Date Badge */}
-          <div className="lg:w-1/3 bg-slate-900 p-8 flex flex-col justify-between relative overflow-hidden">
+          <div className="w-full lg:w-1/3 bg-slate-900 p-6 lg:p-8 flex flex-col justify-between relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl -mr-16 -mt-16"></div>
             
             <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-3">
                 <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${isToday ? 'bg-emerald-500 text-white animate-pulse' : 'bg-blue-600 text-white'}`}>
                   {isToday ? 'Oggi' : 'Prossimo Turno'}
                 </div>
               </div>
-              <h4 className="text-white/40 text-[10px] font-black uppercase tracking-[0.3em] mb-1">Data Servizio</h4>
-              <p className="text-white text-xl font-black capitalize leading-tight">{formattedDate}</p>
+              <h4 className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Data Servizio</h4>
+              <p className="text-white text-lg lg:text-xl font-black capitalize leading-tight">{formattedDate}</p>
             </div>
 
-            <div className="mt-12 relative z-10">
+            <div className="mt-8 lg:mt-12 relative z-10">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center text-white backdrop-blur-md">
-                   <Clock size={28} />
+                <div className="w-12 h-12 lg:w-14 lg:h-14 bg-white/10 rounded-2xl flex items-center justify-center text-white backdrop-blur-md">
+                   <Clock size={24} className="lg:size-28" />
                 </div>
                 <div>
                    <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mb-0.5">Orario Previsto</p>
-                   <p className="text-white text-2xl font-black tracking-tight">{shift.timeRange || (shift.type.startsWith('M') ? '08:00 - 14:00' : '14:00 - 20:00')}</p>
+                   <p className="text-white text-xl lg:text-2xl font-black tracking-tight">{shift.timeRange || (shift.type.startsWith('M') ? '08:00 - 14:00' : '14:00 - 20:00')}</p>
                 </div>
               </div>
 
               {/* Countdown Timer */}
               {countdown && (
-                <div className="mt-6 flex items-center gap-3 bg-white/5 rounded-2xl px-5 py-3 border border-white/10 backdrop-blur-sm">
-                  <Timer size={18} className="text-blue-400 shrink-0" />
+                <div className="mt-4 lg:mt-6 flex items-center gap-3 bg-white/5 rounded-2xl px-4 lg:px-5 py-2 lg:py-3 border border-white/10 backdrop-blur-sm w-fit">
+                  <Timer size={16} className="text-blue-400 shrink-0" />
                   <div>
-                    <p className="text-white/40 text-[8px] font-black uppercase tracking-[0.3em]">Inizio tra</p>
-                    <p className={`text-lg font-black tracking-tight ${countdown === "In corso" ? "text-emerald-400" : "text-blue-400"}`}>
+                    <p className="text-white/40 text-[8px] font-black uppercase tracking-[0.2em]">Inizio tra</p>
+                    <p className={`text-base lg:text-lg font-black tracking-tight ${countdown === "In corso" ? "text-emerald-400" : "text-blue-400"}`}>
                       {countdown}
                     </p>
                   </div>
@@ -138,7 +138,7 @@ export default function NextShiftCard({ shift, allAgents, allShifts }: NextShift
           </div>
 
           {/* Right Side: Operational Details */}
-          <div className="lg:w-2/3 p-8 bg-white relative">
+          <div className="w-full lg:w-2/3 p-6 lg:p-8 bg-white relative">
              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 
                 {/* Assignments */}
