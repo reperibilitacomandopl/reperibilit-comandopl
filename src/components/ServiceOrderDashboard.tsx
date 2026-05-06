@@ -287,6 +287,7 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
   const presentShifts = shifts.filter(s => isWorking(s.type))
   const mattinieri = presentShifts.filter(s => /^M/i.test((s.type||"").replace(/[()]/g,"")))
   const pomeridiani = presentShifts.filter(s => /^P/i.test((s.type||"").replace(/[()]/g,"")))
+  const notturni = presentShifts.filter(s => /^N/i.test((s.type||"").replace(/[()]/g,"")))
 
   const renderFasciaOrizzontale = (titolo: string, listaTurni: DashboardShift[]) => {
     if (listaTurni.length === 0) return null
@@ -303,15 +304,20 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
       gruppiAgenti[catName].push(s)
     })
 
-    return (
-      <div className="mb-0">
-        {titolo === "POMERIGGIO" && (
-          <div className="bg-amber-100/80 border-y border-amber-300 text-center py-1 mt-4">
-            <h2 className="font-black text-amber-900 tracking-widest uppercase text-sm">POMERIGGIO</h2>
-          </div>
-        )}
+    const themeColors = {
+      "MATTINA": "bg-sky-100/80 border-sky-300 text-sky-900",
+      "POMERIGGIO": "bg-amber-100/80 border-amber-300 text-amber-900",
+      "NOTTE": "bg-indigo-100/80 border-indigo-300 text-indigo-900",
+    }
+    const colorClass = themeColors[titolo as keyof typeof themeColors] || "bg-slate-100/80 border-slate-300 text-slate-900"
 
-        <table className="w-full text-xs text-left border-collapse border border-slate-200 bg-white">
+    return (
+      <div className="mb-6 shadow-sm rounded-xl overflow-hidden border border-slate-200">
+        <div className={`${colorClass} border-b text-center py-2 flex items-center justify-center gap-2`}>
+          <h2 className="font-black tracking-[0.2em] uppercase text-sm">{titolo}</h2>
+        </div>
+
+        <table className="w-full text-xs text-left border-collapse bg-white">
            <thead className="bg-slate-50 border-b border-slate-200">
              <tr className="text-slate-500 font-bold tracking-wider">
                <th className="p-2 border-r border-slate-200 w-1/4">QUALIFICA E COGNOME NOME</th>
@@ -535,10 +541,26 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
                </div>
                {renderFasciaOrizzontale("MATTINA", mattinieri)}
                {renderFasciaOrizzontale("POMERIGGIO", pomeridiani)}
+               {renderFasciaOrizzontale("NOTTE", notturni)}
                
-               {mattinieri.length === 0 && pomeridiani.length === 0 && (
-                  <div className="p-12 text-center text-slate-400 italic">Vuoto per questa giornata.</div>
+               {mattinieri.length === 0 && pomeridiani.length === 0 && notturni.length === 0 && (
+                  <div className="p-12 text-center text-slate-400 font-medium italic bg-slate-50 rounded-2xl border border-slate-100 mt-4">Nessun turno assegnato per questa giornata.</div>
                )}
+
+               {/* Sezione Note Generali (Placeholder UI) */}
+               <div className="mt-8 border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                 <div className="bg-slate-100 border-b border-slate-200 px-4 py-2">
+                   <h3 className="font-black text-slate-700 text-xs tracking-widest uppercase flex items-center gap-2">
+                     📝 Disposizioni e Note Generali del Comando
+                   </h3>
+                 </div>
+                 <div className="p-4 bg-yellow-50/30">
+                   <textarea 
+                     className="w-full min-h-[80px] bg-transparent resize-y outline-none text-xs text-slate-700 font-medium placeholder:text-slate-400"
+                     placeholder="Inserisci qui eventuali disposizioni valide per tutti i turni (es. Attivare Pilomat, Obbligo Defibrillatore, ecc...)"
+                   />
+                 </div>
+               </div>
             </div>
          )}
       </div>
