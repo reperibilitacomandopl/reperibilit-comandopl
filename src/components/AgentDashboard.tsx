@@ -261,8 +261,8 @@ export default function AgentDashboard({
                 const sd = s.date instanceof Date ? s.date.toISOString().split('T')[0] : String(s.date).split('T')[0]
                 return sd === todayStr && s.userId === currentUser.id
               })
-              const sectionName = currentUser.squadra || (todayShift as any)?.serviceCategory?.name || null
-              const sectionId = currentUser.squadra || (todayShift as any)?.serviceCategoryId || null
+              const sectionName = (todayShift as any)?.serviceCategory?.name || currentUser.squadra || null
+              const sectionId = (todayShift as any)?.serviceCategoryId || currentUser.squadra || null
 
               if (!sectionName) return null
 

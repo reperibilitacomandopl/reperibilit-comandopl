@@ -1,19 +1,17 @@
-const { PrismaClient } = require('@prisma/client')
-const prisma = new PrismaClient()
-
-async function main() {
-  const d = new Date()
-  d.setHours(0,0,0,0)
-  const tomorrow = new Date(d)
-  tomorrow.setDate(d.getDate() + 1)
-
-  const s = await prisma.shift.findFirst({
-    where: {
-      user: { name: 'CRISTALLO ANTONELLA' },
-      date: { gte: d, lt: tomorrow }
+const{PrismaClient}=require('@prisma/client');
+const p=new PrismaClient();
+p.user.findFirst({
+  where:{matricola:'399'},
+  include:{
+    shifts:{
+      where:{date:{
+        gte: new Date(new Date().setHours(0,0,0,0)),
+        lt: new Date(new Date().setHours(23,59,59,999))
+      }},
+      include: { serviceCategory: true }
     }
-  })
-  console.log(JSON.stringify(s, null, 2))
-}
-
-main().catch(console.error).finally(() => prisma.$disconnect())
+  }
+}).then(u=>{
+  console.log(JSON.stringify(u,null,2));
+  p.$disconnect();
+});

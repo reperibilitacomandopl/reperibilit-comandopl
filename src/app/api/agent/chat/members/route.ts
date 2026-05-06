@@ -25,12 +25,14 @@ export async function GET(req: Request) {
       const sectionId = patrolGroupId.replace("SECTION_", "")
       
       // Fetch users assigned to this category today
+      // Support searching by ID or by name
       const shifts = await prisma.shift.findMany({
         where: {
           date: { gte: today, lt: tomorrow },
           OR: [
             { serviceCategoryId: sectionId },
-            { patrolGroupId: patrolGroupId } // Special case for added members
+            { serviceCategory: { name: sectionId } },
+            { patrolGroupId: patrolGroupId }
           ]
         },
         include: {
