@@ -5,10 +5,12 @@ import { prisma } from "@/lib/prisma"
 export async function GET(req: Request) {
   try {
     const session = await auth()
+    console.log("[CHAT_GET] Session:", !!session, "User:", session?.user?.id)
     if (!session?.user) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
 
     const { searchParams } = new URL(req.url)
     const patrolGroupId = searchParams.get('patrolGroupId')
+    console.log("[CHAT_GET] patrolGroupId:", patrolGroupId)
 
     if (!patrolGroupId) {
       return NextResponse.json({ error: "patrolGroupId mancante" }, { status: 400 })
@@ -35,9 +37,12 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const session = await auth()
+    console.log("[CHAT_POST] Session:", !!session, "User:", session?.user?.id)
     if (!session?.user) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
 
-    const { patrolGroupId, message } = await req.json()
+    const body = await req.json()
+    console.log("[CHAT_POST] Body:", body)
+    const { patrolGroupId, message } = body
 
     if (!patrolGroupId || !message) {
       return NextResponse.json({ error: "Parametri mancanti" }, { status: 400 })
