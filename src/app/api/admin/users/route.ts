@@ -42,15 +42,32 @@ function getGradoLivello(qualifica: string | null | undefined): number {
 
 export async function GET(req: Request) {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageUsers && !session?.user?.isUfficiale) {
+  
+  let isAuthorized = session?.user?.role === "ADMIN" || session?.user?.canManageUsers;
+  
+  // Fallback: se il token è vecchio e non ha isUfficiale, controlla nel DB
+  if (!isAuthorized && session?.user?.id) {
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { isUfficiale: true }
+    })
+    if (user?.isUfficiale) isAuthorized = true;
+  }
+
+  if (!isAuthorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
+
   try {
     const tenantId = session.user.tenantId
     if (!tenantId) return NextResponse.json({ error: "Tenant non identificato" }, { status: 400 })
     
     const users = await prisma.user.findMany({
-      where: { role: "AGENTE", tenantId, isActive: true },
+      where: { 
+        tenantId, 
+        isActive: true,
+        isSuperAdmin: false 
+      },
       orderBy: { name: "asc" }
     })
     return NextResponse.json({ users })

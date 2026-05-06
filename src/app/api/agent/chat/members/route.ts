@@ -76,8 +76,19 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const session = await auth()
-    // Solo ufficiali o admin possono aggiungere membri
-    if (!session?.user?.isUfficiale && session?.user?.role !== 'ADMIN') {
+    
+    let isAuthorized = session?.user?.role === "ADMIN" || session?.user?.isUfficiale;
+
+    // Fallback per token vecchi
+    if (!isAuthorized && session?.user?.id) {
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { isUfficiale: true }
+      })
+      if (user?.isUfficiale) isAuthorized = true;
+    }
+
+    if (!isAuthorized) {
       return NextResponse.json({ error: "Azione permessa solo agli ufficiali" }, { status: 403 })
     }
 
