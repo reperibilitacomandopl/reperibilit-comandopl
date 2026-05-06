@@ -56,6 +56,12 @@ export default function BachecaPanel({ isAdmin = false, onClose }: { isAdmin?: b
     setLoading(false)
   }
 
+  // Filtra solo annunci degli ultimi 3 giorni
+  const threeDaysAgo = new Date()
+  threeDaysAgo.setDate(threeDaysAgo.getDate() - 3)
+  threeDaysAgo.setHours(0, 0, 0, 0)
+  const recentAnnouncements = announcements.filter(a => new Date(a.createdAt) >= threeDaysAgo)
+
   useEffect(() => {
     loadAnnouncements()
   }, [])
@@ -189,15 +195,15 @@ export default function BachecaPanel({ isAdmin = false, onClose }: { isAdmin?: b
         </form>
       )}
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-white">
-        {announcements.length === 0 && !showConfig && (
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-white" style={{ maxHeight: '400px' }}>
+        {recentAnnouncements.length === 0 && !showConfig && (
            <div className="text-center py-20 border-2 border-dashed border-slate-100 rounded-[2.5rem]">
               <Megaphone className="w-12 h-12 text-slate-200 mx-auto mb-4" />
               <p className="text-xs font-black text-slate-300 uppercase tracking-[0.2em]">Nessuna comunicazione</p>
            </div>
         )}
 
-        {announcements.map((ann) => {
+        {recentAnnouncements.map((ann) => {
           const cat = CATEGORIES.find(c => c.value === ann.category) || CATEGORIES[0]
           return (
             <div key={ann.id} className={`p-5 bg-white border-2 rounded-2xl shadow-sm relative transition-all group hover:shadow-md ${ann.priority === 'URGENT' ? 'border-red-100 bg-red-50/5' : ann.priority === 'HIGH' ? 'border-amber-100' : 'border-slate-100'}`}>
