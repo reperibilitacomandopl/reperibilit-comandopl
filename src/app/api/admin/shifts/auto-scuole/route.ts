@@ -152,7 +152,18 @@ export async function POST(req: Request) {
 
     // --- Assign Afternoon Schools (Late Exit) ---
     const schoolsWithAfternoon = activeSchools.filter((s: any) => s.schedules[0]?.afternoonExitTime)
-    const availableAfternoon = afternoonShifts.filter(as => !assignedShiftIds.has(as.id))
+    const availableAfternoon = afternoonShifts.filter(as => {
+      if (assignedShiftIds.has(as.id)) return false;
+      
+      const tRange = as.timeRange || "";
+      const match = tRange.match(/^(\d{2}):/);
+      if (match) {
+        const startH = parseInt(match[1], 10);
+        // Se inizia alle 15:00 o 16:00 non può fare l'uscita delle 14:15
+        if (startH > 14) return false;
+      }
+      return true;
+    })
 
     for (let i = 0; i < Math.min(availableAfternoon.length, schoolsWithAfternoon.length); i++) {
       const shift = availableAfternoon[i]
