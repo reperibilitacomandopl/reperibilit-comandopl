@@ -592,6 +592,7 @@ async function drawODSPageContent({
   shifts,
   tenantName,
   logoUrl,
+  generalNotes,
   autoTable,
   isBatch = false
 }: {
@@ -601,6 +602,7 @@ async function drawODSPageContent({
   shifts: ODSShift[],
   tenantName: string,
   logoUrl?: string | null,
+  generalNotes?: string,
   autoTable: any,
   isBatch?: boolean
 }) {
@@ -660,81 +662,135 @@ async function drawODSPageContent({
   const isWorkingShift = (type: string) => /^[MPN]\d/.test((type || "").toUpperCase().replace(/[()]/g, "").trim());
   const currentShifts = shifts.filter(s => isWorkingShift(s.type));
   
-  const sortedShifts = [...currentShifts].sort((a, b) => {
-    // 1. Ordina per macro-turno (M, P, N)
-    const tA = a.type.charAt(0).toUpperCase();
-    const tB = b.type.charAt(0).toUpperCase();
-    if (tA !== tB) return tA.localeCompare(tB);
+  const renderTable = (titolo: string, listaTurni: ODSShift[], startY: number) => {
+    if (listaTurni.length === 0) return startY;
 
-    // 2. Mantieni vicini i membri della stessa pattuglia
-    const gA = a.patrolGroupId || "";
-    const gB = b.patrolGroupId || "";
-    if (gA !== gB) {
-      if (gA === "") return 1; 
-      if (gB === "") return -1;
-      return gA.localeCompare(gB);
-    }
+    const sortedShifts = [...listaTurni].sort((a, b) => {
+      // 1. Ordina per macro-turno (M, P, N)
+      const tA = a.type.charAt(0).toUpperCase();
+      const tB = b.type.charAt(0).toUpperCase();
+      if (tA !== tB) return tA.localeCompare(tB);
 
-    // 3. Ordine alfabetico per nome utente
-    const nameA = users.find(u => u.id === a.userId)?.name || "";
-    const nameB = users.find(u => u.id === b.userId)?.name || "";
-    return nameA.localeCompare(nameB);
-  });
-
-  type ODSBodyRow = jsPDFCellConfig[] & { isPatrol?: boolean };
-  
-  const body: ODSBodyRow[] = sortedShifts.map(s => {
-    const u = users.find(u => u.id === s.userId);
-    if (!u) return null;
-    
-    const qualifica = u.qualifica || (u.isUfficiale ? "Uff.le" : "Agente");
-    const orarioPrincipale = s.timeRange || (s.type.startsWith("M") ? "08:00-14:00" : s.type.startsWith("P") ? "14:00-20:00" : "22:00-04:00");
-    const disposizioni = s.serviceDetails || "";
-    const schoolTimeMatch = disposizioni.match(/(\d{2}:\d{2})(-(\d{2}:\d{2}))?/);
-    
-    let orarioStampa = orarioPrincipale;
-    if (schoolTimeMatch) orarioStampa = `${schoolTimeMatch[0]}\n(${orarioPrincipale})`;
-
-    const servizio = s.serviceType ? s.serviceType.name : (u.servizio || "Vigilanza");
-    const veicolo = s.vehicle ? `\n(${s.vehicle.name})` : "";
-    
-    const rowData: jsPDFCellConfig[] = [
-      { content: `${qualifica}\n${u.name}`, styles: { fontStyle: 'bold' } },
-      { content: orarioStampa, styles: { halign: 'center', fontSize: 8, fontStyle: 'bold' } },
-      { content: `${servizio}${veicolo}`, styles: { fontStyle: schoolTimeMatch ? 'bold' : 'normal' } },
-      { content: disposizioni, styles: { fontSize: 8 } }
-    ];
-    
-    const extendedRow = rowData as ODSBodyRow;
-    extendedRow.isPatrol = !!s.patrolGroupId;
-    return extendedRow;
-  }).filter((row): row is ODSBodyRow => row !== null);
-
-  // 3. Generazione Tabella
-  autoTable(doc, {
-    startY: 42,
-    head: [['QUALIFICA / NOME', 'ORARIO', 'SERVIZIO / MEZZO', 'DISPOSIZIONI E LUOGHI']],
-    body: body,
-    theme: 'grid',
-    headStyles: { fillColor: navelBlue, textColor: 255, fontSize: 10, halign: 'center', fontStyle: 'bold' },
-    bodyStyles: { fontSize: 9, cellPadding: 3, textColor: 40 },
-    alternateRowStyles: { fillColor: [245, 247, 250] },
-    columnStyles: {
-      0: { cellWidth: 45 },
-      1: { cellWidth: 28 },
-      2: { cellWidth: 45 },
-      3: { cellWidth: 'auto' }
-    },
-    didParseCell: (data: any) => {
-      const row = body[data.row.index];
-      if (row && row.isPatrol && data.section === 'body') {
-        data.cell.styles.fillColor = [230, 242, 255]; // Highlight Sentinel Blue
+      // 2. Mantieni vicini i membri della stessa pattuglia
+      const gA = a.patrolGroupId || "";
+      const gB = b.patrolGroupId || "";
+      if (gA !== gB) {
+        if (gA === "") return 1; 
+        if (gB === "") return -1;
+        return gA.localeCompare(gB);
       }
-    }
-  });
+
+      // 3. Ordine alfabetico per nome utente
+      const nameA = users.find(u => u.id === a.userId)?.name || "";
+      const nameB = users.find(u => u.id === b.userId)?.name || "";
+      return nameA.localeCompare(nameB);
+    });
+
+    type ODSBodyRow = jsPDFCellConfig[] & { isPatrol?: boolean };
+    
+    const body: ODSBodyRow[] = sortedShifts.map(s => {
+      const u = users.find(u => u.id === s.userId);
+      if (!u) return null;
+      
+      const qualifica = u.qualifica || (u.isUfficiale ? "Uff.le" : "Agente");
+      const orarioPrincipale = s.timeRange || (s.type.startsWith("M") ? "08:00-14:00" : s.type.startsWith("P") ? "14:00-20:00" : "22:00-04:00");
+      let disposizioni = s.serviceDetails || "";
+
+      // Cleanup redundant prefixes in PDF just in case
+      const servizio = s.serviceType ? s.serviceType.name : (u.servizio || "Vigilanza");
+      if (disposizioni.toLowerCase().startsWith(`${servizio.toLowerCase()} + `)) {
+        disposizioni = disposizioni.substring(servizio.length + 3);
+      } else if (disposizioni.toLowerCase() === servizio.toLowerCase()) {
+        disposizioni = "";
+      }
+
+      const schoolTimeMatch = disposizioni.match(/(\d{2}:\d{2})(-(\d{2}:\d{2}))?/);
+      
+      let orarioStampa = orarioPrincipale;
+      if (schoolTimeMatch) orarioStampa = `${schoolTimeMatch[0]}\n(${orarioPrincipale})`;
+
+      const veicolo = s.vehicle ? `\n(${s.vehicle.name})` : "";
+      
+      const rowData: jsPDFCellConfig[] = [
+        { content: `${qualifica}\n${u.name}`, styles: { fontStyle: 'bold' } },
+        { content: orarioStampa, styles: { halign: 'center', fontSize: 8, fontStyle: 'bold' } },
+        { content: `${servizio}${veicolo}`, styles: { fontStyle: schoolTimeMatch ? 'bold' : 'normal' } },
+        { content: disposizioni, styles: { fontSize: 8 } }
+      ];
+      
+      const extendedRow = rowData as ODSBodyRow;
+      extendedRow.isPatrol = !!s.patrolGroupId;
+      return extendedRow;
+    }).filter((row): row is ODSBodyRow => row !== null);
+
+    const themeColors = {
+      "MATTINA": [14, 165, 233] as [number, number, number],
+      "POMERIGGIO": [245, 158, 11] as [number, number, number],
+      "NOTTE": [99, 102, 241] as [number, number, number],
+    };
+    const headerColor = themeColors[titolo as keyof typeof themeColors] || navelBlue;
+
+    autoTable(doc, {
+      startY: startY,
+      head: [[titolo, '', '', '']],
+      body: body,
+      theme: 'grid',
+      headStyles: { fillColor: headerColor, textColor: 255, fontSize: 10, halign: 'center', fontStyle: 'bold' },
+      bodyStyles: { fontSize: 9, cellPadding: 3, textColor: 40 },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+      columnStyles: {
+        0: { cellWidth: 45 },
+        1: { cellWidth: 28 },
+        2: { cellWidth: 45 },
+        3: { cellWidth: 'auto' }
+      },
+      didParseCell: (data: any) => {
+        const row = body[data.row.index];
+        // Sostituisci header con intestazioni colonne sulla prima riga
+        if (data.section === 'head' && data.row.index === 0) {
+           data.cell.styles.fillColor = headerColor;
+           if (data.column.index === 0) data.cell.text = ["QUALIFICA / NOME"];
+           if (data.column.index === 1) data.cell.text = ["ORARIO"];
+           if (data.column.index === 2) data.cell.text = ["SERVIZIO / MEZZO"];
+           if (data.column.index === 3) data.cell.text = [`${titolo} - DISPOSIZIONI`];
+        }
+        if (row && row.isPatrol && data.section === 'body') {
+          data.cell.styles.fillColor = [240, 247, 255]; 
+        }
+      }
+    });
+
+    return (doc as any).lastAutoTable.finalY + 5;
+  };
+
+  const mattinieri = currentShifts.filter(s => /^M/i.test((s.type||"").replace(/[()]/g,"")));
+  const pomeridiani = currentShifts.filter(s => /^P/i.test((s.type||"").replace(/[()]/g,"")));
+  const notturni = currentShifts.filter(s => /^N/i.test((s.type||"").replace(/[()]/g,"")));
+
+  let nextY = 42;
+  nextY = renderTable("MATTINA", mattinieri, nextY);
+  nextY = renderTable("POMERIGGIO", pomeridiani, nextY);
+  nextY = renderTable("NOTTE", notturni, nextY);
+
+  if (generalNotes) {
+    doc.setFontSize(10);
+    doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+    doc.setFont("helvetica", "bold");
+    doc.text("Disposizioni e Note Generali del Comando", 14, nextY + 5);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(60, 60, 60);
+    
+    const splitNotes = doc.splitTextToSize(generalNotes, pageWidth - 28);
+    doc.text(splitNotes, 14, nextY + 10);
+    
+    nextY += 15 + (splitNotes.length * 4);
+  }
+
 
   // 4. Sezione Firme
-  const finalY = (doc as any).lastAutoTable.finalY + 15;
+  const finalY = Math.max(nextY, (doc as any).lastAutoTable?.finalY || nextY) + 15;
   doc.setFontSize(9);
   doc.setTextColor(60, 60, 60);
   doc.text("L'UFFICIALE DI SERVIZIO", 45, finalY, { align: "center" });
@@ -774,13 +830,15 @@ export async function generateODSPDF({
   users,
   shifts,
   tenantName = "Comando Polizia Locale",
-  logoUrl
+  logoUrl,
+  generalNotes
 }: {
   date: Date,
   users: ODSUser[],
   shifts: ODSShift[],
   tenantName?: string,
-  logoUrl?: string | null
+  logoUrl?: string | null,
+  generalNotes?: string
 }) {
   try {
     const { default: jsPDFLib } = await import("jspdf");
@@ -793,7 +851,7 @@ export async function generateODSPDF({
       format: "a4"
     }) as unknown as jsPDFWithAutoTable;
 
-    await drawODSPageContent({ doc, date, users, shifts, tenantName, logoUrl, autoTable });
+    await drawODSPageContent({ doc, date, users, shifts, tenantName, logoUrl, generalNotes, autoTable });
 
     // 5. Sigillo Digitale & QR
     const pdfOutput = doc.output("arraybuffer");
@@ -851,6 +909,7 @@ export async function generateWeeklyODSPDF({
         shifts: days[i].shifts, 
         tenantName, 
         logoUrl, 
+        generalNotes: undefined,
         autoTable,
         isBatch: true 
       });

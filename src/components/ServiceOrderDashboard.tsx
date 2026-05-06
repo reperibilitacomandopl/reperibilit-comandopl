@@ -38,6 +38,7 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
   const [shifts, setShifts] = useState<DashboardShift[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [showServiceManager, setShowServiceManager] = useState(false)
+  const [generalNotes, setGeneralNotes] = useState("")
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -145,7 +146,8 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
         users: users as any,
         shifts: shifts as any,
         tenantName: tenantName || "POLIZIA LOCALE",
-        logoUrl
+        logoUrl,
+        generalNotes
       })
       toast.success("PDF Ordine di Servizio Generato")
     } catch (e) {
@@ -556,6 +558,8 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
                  </div>
                  <div className="p-4 bg-yellow-50/30">
                    <textarea 
+                     value={generalNotes}
+                     onChange={(e) => setGeneralNotes(e.target.value)}
                      className="w-full min-h-[80px] bg-transparent resize-y outline-none text-xs text-slate-700 font-medium placeholder:text-slate-400"
                      placeholder="Inserisci qui eventuali disposizioni valide per tutti i turni (es. Attivare Pilomat, Obbligo Defibrillatore, ecc...)"
                    />
