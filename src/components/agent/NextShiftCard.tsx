@@ -73,11 +73,16 @@ export default function NextShiftCard({ shift, allAgents, allShifts }: NextShift
   if (!shift) return null
 
   // Trova colleghi nella stessa pattuglia (se presente)
+  const normalizeDate = (d: any) => {
+    const dt = new Date(d)
+    return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth()+1).padStart(2,'0')}-${String(dt.getUTCDate()).padStart(2,'0')}`
+  }
+  const shiftDateStr = normalizeDate(shift.date)
   const colleagues = shift.patrolGroupId 
     ? allShifts
         .filter(s => 
           s.patrolGroupId === shift.patrolGroupId && 
-          s.date === shift.date && 
+          normalizeDate(s.date) === shiftDateStr && 
           s.userId !== shift.userId
         )
         .map(s => allAgents.find(a => a.id === s.userId)?.name || "Collega")
@@ -159,6 +164,17 @@ export default function NextShiftCard({ shift, allAgents, allShifts }: NextShift
                          <p className="text-sm font-black text-slate-900 truncate">{shift.radio?.name || "Centrale"}</p>
                       </div>
                    </div>
+                   {shift.serviceType?.name && (
+                      <div className="p-4 bg-blue-50 rounded-3xl border border-blue-100 flex items-start gap-3">
+                         <div className="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
+                            <MapPin className="text-blue-600" size={14} />
+                         </div>
+                         <div>
+                            <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Tipo Servizio</p>
+                            <p className="text-sm font-black text-slate-900">{shift.serviceType.name}</p>
+                         </div>
+                      </div>
+                   )}
                    {shift.serviceDetails && (
                       <div className="p-4 bg-orange-50 rounded-3xl border border-orange-100 flex items-start gap-3">
                          <MapPin className="text-orange-600 shrink-0 mt-0.5" size={16} />

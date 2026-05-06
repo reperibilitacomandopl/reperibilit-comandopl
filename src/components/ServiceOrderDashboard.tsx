@@ -249,6 +249,39 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
     setLoading(false)
   }
 
+  const revokeCertification = async () => {
+    if (!confirm("⚠️ ATTENZIONE: Stai per revocare la certificazione di questo Ordine di Servizio. Questo permetterà nuove modifiche ai turni. Procedere?")) return
+    
+    setLoading(true)
+    try {
+      const y = currentDate.getFullYear()
+      const m = String(currentDate.getMonth() + 1).padStart(2, "0")
+      const d = String(currentDate.getDate()).padStart(2, "0")
+      const dateStr = `${y}-${m}-${d}`
+
+      const res = await fetch("/api/admin/certify", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: dateStr })
+      })
+
+      if (res.ok) {
+        setIsCertified(false)
+        toast.success("Certificazione revocata. Ora puoi modificare i turni.", {
+          duration: 4000,
+          icon: '🔓'
+        })
+      } else {
+        const err = await res.json()
+        toast.error(err.error || "Errore durante la revoca")
+      }
+    } catch (e) {
+      console.error("Errore Revoca:", e)
+      toast.error("Errore durante la revoca della certificazione")
+    }
+    setLoading(false)
+  }
+
   // --- LOGICA RAGGRUPPAMENTI ---
   const isWorking = (type: string) => /^[MPN]\d/.test((type || "").toUpperCase().replace(/[()]/g, "").trim())
   const presentShifts = shifts.filter(s => isWorking(s.type))
@@ -427,11 +460,15 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
               <GraduationCap width={14} height={14}/> {isAutoAssigning ? "Assegnazione..." : "🪄 Auto-Scuole"}
             </button>
             <button 
-                onClick={certifyAndEmit}
+                onClick={isCertified ? revokeCertification : certifyAndEmit}
                 disabled={loading}
-                className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black px-6 py-2.5 rounded-xl hover:shadow-lg hover:shadow-emerald-500/30 transition-all active:scale-95 disabled:opacity-50 text-xs tracking-wider border border-emerald-500/50"
+                className={`flex items-center gap-2 font-black px-6 py-2.5 rounded-xl hover:shadow-lg transition-all active:scale-95 disabled:opacity-50 text-xs tracking-wider border ${
+                  isCertified 
+                    ? 'bg-gradient-to-r from-red-600 to-rose-700 text-white border-red-500/50 hover:shadow-red-500/30' 
+                    : 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white border-emerald-500/50 hover:shadow-emerald-500/30'
+                }`}
               >
-                <ShieldCheck width={18} height={18}/> {loading ? "..." : "CERTIFICA ED EMETTI"}
+                <ShieldCheck width={18} height={18}/> {loading ? "..." : isCertified ? "🔓 REVOCA CERTIFICAZIONE" : "CERTIFICA ED EMETTI"}
               </button>
 
               <button 

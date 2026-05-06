@@ -66,3 +66,44 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
   }
 }
+
+export async function DELETE(req: Request) {
+  const session = await auth()
+  
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageShifts) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  try {
+    const { date } = await req.json()
+
+    if (!date) {
+      return NextResponse.json({ error: "Data mancante" }, { status: 400 })
+    }
+
+    const tenantId = session.user.tenantId
+
+    // Trova il documento certificato per questa data
+    const certifiedDoc = await prisma.certifiedDocument.findFirst({
+      where: { 
+        tenantId: tenantId || null,
+        type: "ODS",
+        metadata: { contains: date }
+      }
+    })
+
+    if (!certifiedDoc) {
+      return NextResponse.json({ error: "Nessuna certificazione trovata per questa data" }, { status: 404 })
+    }
+
+    // Elimina la certificazione
+    await prisma.certifiedDocument.delete({
+      where: { id: certifiedDoc.id }
+    })
+
+    return NextResponse.json({ success: true, message: "Certificazione revocata con successo" })
+  } catch (error: any) {
+    console.error("Revoke Certify Error:", error)
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+  }
+}
