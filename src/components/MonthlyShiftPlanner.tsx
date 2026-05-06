@@ -51,7 +51,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/shifts/monthly?year=${year}&month=${month}`)
+      const res = await fetch(`/api/admin/shifts/monthly?year=${year}&month=${month}&t=${Date.now()}`)
       const data = await res.json()
       if (data.users) setUsers(data.users)
       

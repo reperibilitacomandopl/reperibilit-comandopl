@@ -88,7 +88,7 @@ export default function CartellinoPanel() {
   async function fetchCartellinoData() {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/cartellino?userId=${selectedUserId}&month=${month}&year=${year}`)
+      const res = await fetch(`/api/admin/cartellino?userId=${selectedUserId}&month=${month}&year=${year}&t=${Date.now()}`)
       const json = await res.json()
       setData(json)
     } catch (e) {

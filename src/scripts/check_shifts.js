@@ -1,30 +1,14 @@
-const { PrismaClient } = require('@prisma/client')
-const prisma = new PrismaClient()
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 async function main() {
-  const d = new Date()
-  d.setHours(0,0,0,0)
-  const tomorrow = new Date(d)
-  tomorrow.setDate(d.getDate() + 1)
-
   const shifts = await prisma.shift.findMany({
-    where: {
-      date: {
-        gte: d,
-        lt: tomorrow
-      }
+    where: { 
+      date: new Date('2026-05-08T00:00:00Z')
     },
-    include: {
-      user: true,
-      serviceCategory: true,
-      serviceType: true
-    }
-  })
-
-  console.log('--- SHIFTS FOR TODAY ---')
-  shifts.forEach(s => {
-    console.log(`${s.user.name.padEnd(25)} | Type: ${s.type.padEnd(10)} | Cat: ${(s.serviceCategory?.name || 'NULL').padEnd(15)} | TypeID: ${s.serviceTypeId || 'NULL'}`)
-  })
+    include: { user: true }
+  });
+  console.dir(shifts.map(s => ({name: s.user.name, type: s.type, overtimeHours: s.overtimeHours, date: s.date})), {depth: null});
 }
 
-main().catch(console.error).finally(() => prisma.$disconnect())
+main().finally(() => prisma.$disconnect());
