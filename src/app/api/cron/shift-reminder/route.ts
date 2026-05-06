@@ -59,7 +59,7 @@ export async function GET(req: Request) {
     const todayShifts = await prisma.shift.findMany({
       where: {
         date: { gte: today, lt: tomorrow },
-        type: { not: null }
+        type: { notIn: ["", "RP", "MALATTIA", "FERIE", "CONGEDO", "ASPETTATIVA"] }
       },
       include: {
         user: {
