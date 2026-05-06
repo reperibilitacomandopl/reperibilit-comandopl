@@ -36,7 +36,7 @@ import AgentYearlyCard from "./agent/AgentYearlyCard"
 import { useGpsTracking } from "@/hooks/useGpsTracking"
 
 import { isAssenza } from "@/utils/shift-logic"
-import { Shield, CalendarDays, BookOpen, FileDown, MessageSquare, Users } from "lucide-react"
+import { Shield, CalendarDays, BookOpen, FileDown, MessageSquare, Users, ChevronLeft, ChevronRight } from "lucide-react"
 
 export interface AgentDashboardProps {
   currentUser: { id: string, matricola: string, name: string, squadra?: string | null, isUfficiale?: boolean, telegramChatId?: string | null }
