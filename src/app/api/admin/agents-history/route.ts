@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 export async function GET(req: Request) {
   try {
     const session = await auth()
-    if (!session?.user || !session.user.isSuperAdmin) {
+    if (session?.user?.role !== "ADMIN" && !session?.user?.canManageShifts) {
       return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
     }
 
