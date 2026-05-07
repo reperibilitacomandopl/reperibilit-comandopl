@@ -179,7 +179,20 @@ export async function PUT(request: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, count: toUpdate.length + toInsert.length })
+    // Log the action
+    if (toInsert.length > 0 || toUpdate.length > 0) {
+      await prisma.auditLog.create({
+        data: {
+          tenantId: session.user.tenantId,
+          adminId: session.user.id,
+          adminName: session.user.name,
+          action: "UPDATE_MONTHLY_SHIFTS",
+          details: `Modificati ${toInsert.length + toUpdate.length} turni nella pianificazione mensile.`
+        }
+      })
+    }
+
+    return NextResponse.json({ success: true, inserted: toInsert.length, updated: toUpdate.length })
   } catch (error: any) {
     console.error("[MONTHLY SHIFTS PUT ERROR]:", {
       message: error.message,

@@ -220,6 +220,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       console.error("[PUSH ERROR] Impossibile inviare notifica esito richiesta:", pushErr)
     }
 
+    // 6. Log the action
+    await prisma.auditLog.create({
+      data: {
+        tenantId: agentRequest.tenantId,
+        adminId: session.user.id,
+        adminName: session.user.name,
+        action: status === "APPROVED" ? "APPROVE_REQUEST" : "REJECT_REQUEST",
+        targetId: agentRequest.userId,
+        targetName: agentRequest.user?.name || "Agente",
+        details: `Richiesta di assenza/permesso (${agentRequest.code}) per il giorno ${agentRequest.date.toISOString().split('T')[0]} impostata su ${status}.`
+      }
+    })
+
     return NextResponse.json({ success: true, request: result })
 
   } catch (error) {

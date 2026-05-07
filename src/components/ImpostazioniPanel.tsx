@@ -3,14 +3,14 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import toast from "react-hot-toast"
-import { Settings, RefreshCw, FileDown, ClipboardList, Play, Shield, ArrowRight, Terminal, GraduationCap } from "lucide-react"
+import { Settings, RefreshCw, FileDown, ClipboardList, Play, Shield, ArrowRight, Terminal, GraduationCap, Database, Download } from "lucide-react"
 import SettingsPanel from "./SettingsPanel"
 import SchoolsManager from "./SchoolsManager"
 import Link from "next/link"
 
 export default function ImpostazioniPanel({ tenantSlug }: { tenantSlug?: string }) {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<"settings" | "audit" | "verbatel" | "schools">("settings")
+  const [activeTab, setActiveTab] = useState<"settings" | "audit" | "verbatel" | "schools" | "backup">("settings")
   const searchParams = useSearchParams()
 
   interface AuditLog {
@@ -74,6 +74,7 @@ export default function ImpostazioniPanel({ tenantSlug }: { tenantSlug?: string 
   const tabs = [
     { id: "settings" as const, label: "Configurazione", icon: Settings, accent: "indigo" },
     { id: "schools" as const, label: "Gestione Scuole", icon: GraduationCap, accent: "blue" },
+    { id: "backup" as const, label: "Disaster Recovery", icon: Database, accent: "emerald" },
     { id: "audit" as const, label: "Audit Log", icon: ClipboardList, accent: "slate" },
     { id: "verbatel" as const, label: "Integrazione Verbatel", icon: FileDown, accent: "orange" },
   ]
@@ -129,6 +130,32 @@ export default function ImpostazioniPanel({ tenantSlug }: { tenantSlug?: string 
       {activeTab === "schools" && (
         <div className="slide-in-from-right-4 animate-in duration-500">
            <SchoolsManager />
+        </div>
+      )}
+
+      {/* Backup Tab */}
+      {activeTab === "backup" && (
+        <div className="slide-in-from-right-4 animate-in duration-500 space-y-6">
+          <div className="premium-card p-8 bg-emerald-50/50 border-emerald-100">
+            <div className="flex items-start gap-6">
+              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center shrink-0 shadow-inner">
+                <Database size={32} />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-2">Esportazione Sicura Dati (JSON)</h2>
+                <p className="text-sm text-slate-600 font-medium mb-6 max-w-2xl leading-relaxed">
+                  Scarica un archivio completo di tutti i dati del tuo Ente (Agenti, Turni, Timbrature, Richieste). Questo file funge da backup di emergenza e rispetta le direttive AgID per il disaster recovery manuale.
+                </p>
+                <a 
+                  href="/api/admin/backup" 
+                  download 
+                  className="inline-flex items-center gap-3 px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black uppercase tracking-widest text-xs shadow-xl shadow-emerald-600/20 transition-all active:scale-95"
+                >
+                  <Download size={18} /> Avvia Download Backup
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

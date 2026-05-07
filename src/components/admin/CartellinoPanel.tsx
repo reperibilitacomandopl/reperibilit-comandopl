@@ -352,7 +352,7 @@ export default function CartellinoPanel() {
                                   c.type === 'IN' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : 'border-orange-500/30 text-orange-400 bg-orange-500/10'
                                 }`}>
                                   {c.type === 'IN' ? 'Entrata' : 'Uscita'} {format(new Date(c.timestamp), "HH:mm")}
-                                  {c.isManual && <Edit2 size={10} className="inline ml-1" title="Modificata Manualmente" />}
+                                  {c.isManual && <span title="Modificata Manualmente"><Edit2 size={10} className="inline ml-1" /></span>}
                                 </span>
                               ))}
                             </div>

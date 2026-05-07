@@ -24,7 +24,7 @@ export async function PUT(req: Request) {
     nextDate.setDate(nextDate.getDate() + 1)
 
     // Eseguiamo in transazione
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: typeof prisma) => {
       // 1. Troviamo tutte le timbrature esistenti per quell'utente in quella data
       const existing = await tx.clockRecord.findMany({
         where: {
@@ -34,11 +34,11 @@ export async function PUT(req: Request) {
         }
       })
 
-      const existingIds = existing.map(c => c.id)
+      const existingIds = existing.map((c: { id: string }) => c.id)
       const newIds = clocks.filter((c: any) => c.id).map((c: any) => c.id)
 
       // 2. Cancelliamo quelle che non sono più nell'array
-      const idsToDelete = existingIds.filter(id => !newIds.includes(id))
+      const idsToDelete = existingIds.filter((id: string) => !newIds.includes(id))
       if (idsToDelete.length > 0) {
         await tx.clockRecord.deleteMany({
           where: { id: { in: idsToDelete } }
@@ -70,6 +70,20 @@ export async function PUT(req: Request) {
             }
           })
         }
+      }
+      // 4. Log the action
+      if (clocks.length > 0 || idsToDelete.length > 0) {
+        await tx.auditLog.create({
+          data: {
+            tenantId,
+            adminId: session.user.id,
+            adminName: session.user.name,
+            action: "UPDATE_CLOCK_RECORDS",
+            targetId: userId,
+            targetName: "Timbrature",
+            details: `Timbrature modificate manualmente per il giorno ${date}. Aggiunte/Modificate: ${clocks.length}, Eliminate: ${idsToDelete.length}`
+          }
+        })
       }
     })
 
