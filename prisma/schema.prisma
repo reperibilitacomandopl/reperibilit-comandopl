@@ -528,6 +528,7 @@ model ClockRecord {
   lng        Float?
   accuracy   Float?
   isVerified Boolean  @default(true)
+  isManual   Boolean  @default(false)
   tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 

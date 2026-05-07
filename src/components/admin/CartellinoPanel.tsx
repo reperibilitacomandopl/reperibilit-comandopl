@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { format, getDaysInMonth } from "date-fns"
 import { it } from "date-fns/locale"
 import { Calendar as CalendarIcon, Clock, Edit2, AlertCircle, CheckCircle2, RefreshCcw, Download, User, Info, X } from "lucide-react"
-import { AGENDA_CATEGORIES } from "@/utils/agenda-codes"
+import { AGENDA_CATEGORIES, getLabel } from "@/utils/agenda-codes"
 
 const CAT_THEME: Record<string, { border: string; bg: string; text: string; btnBg: string; btnText: string; btnHover: string }> = {
   amber:  { border: "border-yellow-300", bg: "bg-yellow-50",  text: "text-yellow-800", btnBg: "bg-yellow-500",  btnText: "text-white", btnHover: "hover:bg-yellow-600" },
@@ -50,7 +50,7 @@ export default function CartellinoPanel() {
   // --- STATO MODALE ---
   const [detailModalOpen, setDetailModalOpen] = useState(false)
   const [selectedCell, setSelectedCell] = useState<{userId: string, dateStr: string, day: number} | null>(null)
-  const [detailData, setDetailData] = useState<{type: string, overtimeHours: number, note: string}>({type: "", overtimeHours: 0, note: ""})
+  const [detailData, setDetailData] = useState<{type: string, overtimeHours: number, note: string, clocks: any[]}>({type: "", overtimeHours: 0, note: "", clocks: []})
   const [savingDetail, setSavingDetail] = useState(false)
 
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function CartellinoPanel() {
   const daysInMonth = getDaysInMonth(new Date(year, month - 1))
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
 
-  const openDetailModal = (day: number, primaryShift: any) => {
+  const openDetailModal = (day: number, primaryShift: any, clocks: any[]) => {
     const dateObj = new Date(Date.UTC(year, month - 1, day))
     const dateStr = dateObj.toISOString().split('T')[0]
     
@@ -109,7 +109,8 @@ export default function CartellinoPanel() {
     setDetailData({
       type: primaryShift?.type || "",
       overtimeHours: primaryShift?.overtimeHours || 0,
-      note: primaryShift?.serviceDetails || ""
+      note: primaryShift?.serviceDetails || "",
+      clocks: clocks ? [...clocks] : []
     })
     setDetailModalOpen(true)
   }
@@ -119,20 +120,31 @@ export default function CartellinoPanel() {
     setSavingDetail(true)
     
     try {
-      const res = await fetch("/api/admin/shifts/monthly", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-           updates: [{ 
-              userId: selectedCell.userId, 
-              date: selectedCell.dateStr, 
-              type: detailData.type,
-              overtimeHours: detailData.overtimeHours,
-              serviceDetails: detailData.note
-           }] 
+      const [resShifts, resClocks] = await Promise.all([
+        fetch("/api/admin/shifts/monthly", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+             updates: [{ 
+                userId: selectedCell.userId, 
+                date: selectedCell.dateStr, 
+                type: detailData.type,
+                overtimeHours: detailData.overtimeHours,
+                serviceDetails: detailData.note
+             }] 
+          })
+        }),
+        fetch("/api/admin/clock-records", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: selectedCell.userId,
+            date: selectedCell.dateStr,
+            clocks: detailData.clocks
+          })
         })
-      })
-      if (!res.ok) throw new Error("Errore API")
+      ])
+      if (!resShifts.ok || !resClocks.ok) throw new Error("Errore API")
       setDetailModalOpen(false)
       fetchCartellinoData() // Refresh data
     } catch (e) {
@@ -340,6 +352,7 @@ export default function CartellinoPanel() {
                                   c.type === 'IN' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : 'border-orange-500/30 text-orange-400 bg-orange-500/10'
                                 }`}>
                                   {c.type === 'IN' ? 'Entrata' : 'Uscita'} {format(new Date(c.timestamp), "HH:mm")}
+                                  {c.isManual && <Edit2 size={10} className="inline ml-1" title="Modificata Manualmente" />}
                                 </span>
                               ))}
                             </div>
@@ -381,7 +394,7 @@ export default function CartellinoPanel() {
                           <div className="flex flex-col gap-1">
                             {requests.map((r: any, i: number) => (
                               <span key={i} className="text-xs text-amber-400 bg-amber-400/10 px-2 py-1 rounded inline-block w-fit">
-                                {r.hours ? `${r.hours}h ` : ''}{r.code}
+                                {r.hours ? `${r.hours}h ` : ''}{getLabel(r.code) || r.code}
                               </span>
                             ))}
                             {primaryShift?.serviceDetails && (
@@ -397,7 +410,7 @@ export default function CartellinoPanel() {
                           <button 
                             className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors"
                             title="Modifica Dettagli Giornata"
-                            onClick={() => openDetailModal(day, primaryShift)}
+                            onClick={() => openDetailModal(day, primaryShift, clocks)}
                           >
                             <Edit2 size={16} />
                           </button>
@@ -550,6 +563,85 @@ export default function CartellinoPanel() {
                       className="w-full p-2.5 bg-white border border-slate-300 text-slate-900 rounded-lg outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 min-h-[80px] resize-none text-sm"
                     />
                   </div>
+                </div>
+
+                {/* Timbrature Manuali */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Timbrature Manuali</label>
+                    <button 
+                      onClick={() => setDetailData(prev => ({
+                        ...prev, 
+                        clocks: [...prev.clocks, { 
+                          id: "", 
+                          type: prev.clocks.filter(c => c.type === 'IN').length > prev.clocks.filter(c => c.type === 'OUT').length ? 'OUT' : 'IN', 
+                          timestamp: `${selectedCell.dateStr}T12:00:00.000Z`, 
+                          isManual: true 
+                        }]
+                      }))}
+                      className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded hover:bg-indigo-100 transition-colors"
+                    >
+                      + Aggiungi
+                    </button>
+                  </div>
+                  
+                  {detailData.clocks.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic">Nessuna timbratura registrata.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {detailData.clocks.map((c, i) => {
+                         const dateObj = new Date(c.timestamp)
+                         const hhmm = !isNaN(dateObj.getTime()) ? format(dateObj, "HH:mm") : "12:00"
+                         
+                         return (
+                           <div key={i} className="flex items-center gap-2">
+                             <select 
+                               value={c.type}
+                               onChange={(e) => {
+                                 const newClocks = [...detailData.clocks]
+                                 newClocks[i].type = e.target.value
+                                 newClocks[i].isManual = true
+                                 setDetailData(prev => ({ ...prev, clocks: newClocks }))
+                               }}
+                               className="p-2 bg-white border border-slate-300 rounded text-xs font-bold outline-none focus:border-indigo-500"
+                             >
+                               <option value="IN">Entrata</option>
+                               <option value="OUT">Uscita</option>
+                             </select>
+                             
+                             <input 
+                               type="time" 
+                               value={hhmm}
+                               onChange={(e) => {
+                                 const [h, m] = e.target.value.split(":")
+                                 if (!h || !m) return
+                                 const newDate = new Date(selectedCell.dateStr)
+                                 newDate.setHours(parseInt(h), parseInt(m), 0, 0)
+                                 
+                                 const newClocks = [...detailData.clocks]
+                                 newClocks[i].timestamp = newDate.toISOString()
+                                 newClocks[i].isManual = true
+                                 setDetailData(prev => ({ ...prev, clocks: newClocks }))
+                               }}
+                               className="flex-1 p-2 bg-white border border-slate-300 rounded text-xs font-bold outline-none focus:border-indigo-500"
+                             />
+                             
+                             <button 
+                               onClick={() => {
+                                 const newClocks = [...detailData.clocks]
+                                 newClocks.splice(i, 1)
+                                 setDetailData(prev => ({ ...prev, clocks: newClocks }))
+                               }}
+                               className="p-2 text-rose-500 hover:bg-rose-50 rounded transition-colors"
+                               title="Elimina timbratura"
+                             >
+                               <X size={16} />
+                             </button>
+                           </div>
+                         )
+                      })}
+                    </div>
+                  )}
                 </div>
 
               </div>

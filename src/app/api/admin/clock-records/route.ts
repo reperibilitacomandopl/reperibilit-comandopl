@@ -2,49 +2,80 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
-export async function GET(req: Request) {
+export async function PUT(req: Request) {
   const session = await auth()
-  if (session?.user?.role !== "ADMIN" && !session?.user?.canVerifyClockIns) 
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-  const { searchParams } = new URL(req.url)
-  const dateStr = searchParams.get("date") // format: YYYY-MM-DD
-  const limit = parseInt(searchParams.get("limit") || "200")
-  const targetUserId = searchParams.get("userId")
+  
+  if (session?.user?.role !== "ADMIN" && !session?.user?.canManageShifts) {
+    return NextResponse.json({ error: "Accesso Non Autorizzato" }, { status: 401 })
+  }
 
   try {
-    const tenantId = session.user.tenantId
+    const { userId, date, clocks } = await req.json()
+    // date is "YYYY-MM-DD"
+    // clocks: array of { id?, type: "IN"|"OUT", timestamp: string, isManual: boolean }
 
-    let dateFilter = {}
-    if (dateStr) {
-        const date = new Date(dateStr)
-        const start = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
-        const end = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59))
-        dateFilter = { timestamp: { gte: start, lte: end } }
-    } else if (!targetUserId) {
-        // If no user specified and no date, just show today globally
-        const now = new Date()
-        const start = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
-        const end = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59))
-        dateFilter = { timestamp: { gte: start, lte: end } }
+    if (!userId || !date) {
+      return NextResponse.json({ error: "Parametri mancanti" }, { status: 400 })
     }
 
-    const records = await prisma.clockRecord.findMany({
-      where: { 
-        tenantId: tenantId || null,
-        ...(targetUserId ? { userId: targetUserId } : {}),
-        ...dateFilter
-      },
-      orderBy: { timestamp: "desc" },
-      take: limit,
-      include: {
-        user: { select: { name: true, matricola: true, role: true } }
+    const tenantId = session.user.tenantId
+    const targetDate = new Date(date)
+    const nextDate = new Date(targetDate)
+    nextDate.setDate(nextDate.getDate() + 1)
+
+    // Eseguiamo in transazione
+    await prisma.$transaction(async (tx) => {
+      // 1. Troviamo tutte le timbrature esistenti per quell'utente in quella data
+      const existing = await tx.clockRecord.findMany({
+        where: {
+          userId,
+          tenantId,
+          timestamp: { gte: targetDate, lt: nextDate }
+        }
+      })
+
+      const existingIds = existing.map(c => c.id)
+      const newIds = clocks.filter((c: any) => c.id).map((c: any) => c.id)
+
+      // 2. Cancelliamo quelle che non sono più nell'array
+      const idsToDelete = existingIds.filter(id => !newIds.includes(id))
+      if (idsToDelete.length > 0) {
+        await tx.clockRecord.deleteMany({
+          where: { id: { in: idsToDelete } }
+        })
+      }
+
+      // 3. Aggiorniamo o creiamo le nuove
+      for (const clock of clocks) {
+        if (clock.id && existingIds.includes(clock.id)) {
+          // Update
+          await tx.clockRecord.update({
+            where: { id: clock.id },
+            data: {
+              type: clock.type,
+              timestamp: new Date(clock.timestamp),
+              isManual: clock.isManual
+            }
+          })
+        } else {
+          // Create
+          await tx.clockRecord.create({
+            data: {
+              userId,
+              tenantId,
+              type: clock.type,
+              timestamp: new Date(clock.timestamp),
+              isManual: true, // Se è creata da admin, è sempre manuale
+              isVerified: true
+            }
+          })
+        }
       }
     })
 
-    return NextResponse.json({ records })
+    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[ADMIN CLOCK RECORDS GET]", error)
-    return NextResponse.json({ error: "Internal Error" }, { status: 500 })
+    console.error("[CLOCK_RECORDS_PUT_ERROR]", error)
+    return NextResponse.json({ error: "Errore salvataggio timbrature" }, { status: 500 })
   }
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { CheckCircle2, XCircle, Clock, CalendarDays, Inbox } from "lucide-react"
 import toast from "react-hot-toast"
 import AbsenceCalendar from "@/components/admin/AbsenceCalendar"
+import { getLabel } from "@/utils/agenda-codes"
 
 export default function GestioneRichiestePage() {
   const router = useRouter()
@@ -100,7 +101,7 @@ export default function GestioneRichiestePage() {
                       </div>
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-xs font-bold px-2 py-1 bg-amber-100 text-amber-800 rounded-md border border-amber-200 uppercase tracking-wide">
-                          {req.code}
+                          {getLabel(req.code) || req.code}
                         </span>
                         <span className="text-sm font-semibold text-slate-600">
                           {new Date(req.date).toLocaleDateString('it-IT')} 
