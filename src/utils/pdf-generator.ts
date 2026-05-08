@@ -659,7 +659,7 @@ async function drawODSPageContent({
   doc.line(20, 38, pageWidth - 20, 38);
 
   // 2. Preparazione Dati
-  const isWorkingShift = (type: string) => /^[MPN]\d/.test((type || "").toUpperCase().replace(/[()]/g, "").trim());
+  const isWorkingShift = (type: string) => /^[MPN]($|\d)/.test((type || "").toUpperCase().replace(/[()]/g, "").trim());
   const currentShifts = shifts.filter(s => isWorkingShift(s.type));
   
   const renderTable = (titolo: string, listaTurni: ODSShift[], startY: number) => {

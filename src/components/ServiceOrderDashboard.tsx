@@ -209,7 +209,7 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
           type: "ODS",
           metadata: {
             date: currentDate.toISOString().split('T')[0],
-            agentsCount: shifts.filter(s => /^[MPN]\d/.test(s.type)).length,
+            agentsCount: shifts.filter(s => /^[MPN]($|\d)/.test(s.type)).length,
             tenantName
           }
         })
@@ -285,7 +285,7 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
   }
 
   // --- LOGICA RAGGRUPPAMENTI ---
-  const isWorking = (type: string) => /^[MPN]\d/.test((type || "").toUpperCase().replace(/[()]/g, "").trim())
+  const isWorking = (type: string) => /^[MPN]($|\d)/.test((type || "").toUpperCase().replace(/[()]/g, "").trim())
   const presentShifts = shifts.filter(s => isWorking(s.type))
   const mattinieri = presentShifts.filter(s => /^M/i.test((s.type||"").replace(/[()]/g,"")))
   const pomeridiani = presentShifts.filter(s => /^P/i.test((s.type||"").replace(/[()]/g,"")))

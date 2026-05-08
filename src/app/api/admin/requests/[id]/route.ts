@@ -46,8 +46,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
       // 2. Se approvata, creiamo la voce nell'agenda, absence e SINCRONIZZIAMO con la tabella Shift
       if (status === "APPROVED") {
-        const start = new Date(agentRequest.date)
-        const end = agentRequest.endDate ? new Date(agentRequest.endDate) : start
+        const start = new Date(agentRequest.date); start.setUTCHours(0,0,0,0);
+        const end = agentRequest.endDate ? new Date(agentRequest.endDate) : start; if (agentRequest.endDate) end.setUTCHours(0,0,0,0);
         // Codici assenza: numerici ministeriali + shortCode legacy
         const ABSENCE_CODES = [
           "0015", "0016", "0010",           // Ferie e Festività
