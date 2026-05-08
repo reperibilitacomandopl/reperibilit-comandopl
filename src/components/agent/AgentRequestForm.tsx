@@ -38,13 +38,26 @@ export default function AgentRequestForm({ balances, onClose }: AgentRequestForm
       })
   }, [month, year])
 
-  // Sticky Logic for L.104
+  // Sticky Logic for L.104 and Hourly codes
   useEffect(() => {
+    let itemUnit = "DAYS"
+    for (const cat of AGENDA_CATEGORIES) {
+      const found = cat.items.find(i => i.code === reqCode || i.shortCode === reqCode)
+      if (found) {
+        itemUnit = (found as any).unit || "DAYS"
+        break
+      }
+    }
+
     if (PERMESSI_104_CODES.includes(reqCode) && entitlements) {
       const isH = reqCode.endsWith('H')
       if (entitlements.l104Mode === "DAYS") setIsHourlyRequest(false)
       else if (entitlements.l104Mode === "HOURS") setIsHourlyRequest(true)
       else setIsHourlyRequest(isH)
+    } else if (itemUnit === "HOURS") {
+      setIsHourlyRequest(true)
+    } else {
+      setIsHourlyRequest(false)
     }
   }, [reqCode, entitlements])
 
