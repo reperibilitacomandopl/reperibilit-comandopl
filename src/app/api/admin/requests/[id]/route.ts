@@ -121,65 +121,63 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
              ? (agentRequest.startTime && agentRequest.endTime ? `${agentRequest.startTime}-${agentRequest.endTime} ${label}` : `Approvato: ${label} (${agentRequest.hours}h)`)
              : `Approvato: ${label}`;
 
+          const startDate = new Date(targetDate)
+          const endDate = new Date(targetDate)
+          endDate.setUTCHours(23, 59, 59, 999)
+
+          const existingShift = await tx.shift.findFirst({
+            where: {
+              userId: agentRequest.userId,
+              tenantId: agentRequest.tenantId || "",
+              date: { gte: startDate, lte: endDate }
+            }
+          });
+
           // If partial, don't overwrite type, just append to serviceDetails
           if (isPartial) {
-            const existingShift = await tx.shift.findUnique({
-              where: {
-                userId_date_tenantId: {
-                  userId: agentRequest.userId,
-                  date: targetDate,
-                  tenantId: agentRequest.tenantId || ""
-                }
-              }
-            });
-            
             const newDetails = existingShift?.serviceDetails 
                ? `${existingShift.serviceDetails} + ${detailStr}`
                : detailStr;
 
-            await tx.shift.upsert({
-              where: {
-                userId_date_tenantId: {
+            if (existingShift) {
+              await tx.shift.update({
+                where: { id: existingShift.id },
+                data: { serviceDetails: newDetails }
+              });
+            } else {
+              await tx.shift.create({
+                data: {
+                  tenantId: agentRequest.tenantId,
                   userId: agentRequest.userId,
                   date: targetDate,
-                  tenantId: agentRequest.tenantId || ""
+                  type: "M", // fallback
+                  serviceDetails: newDetails
                 }
-              },
-              update: {
-                serviceDetails: newDetails
-              },
-              create: {
-                tenantId: agentRequest.tenantId,
-                userId: agentRequest.userId,
-                date: targetDate,
-                type: "M", // fallback
-                serviceDetails: newDetails
-              }
-            });
+              });
+            }
           } else {
             // Full day absence: overwrite type
-            await tx.shift.upsert({
-              where: {
-                userId_date_tenantId: {
+            if (existingShift) {
+              await tx.shift.update({
+                where: { id: existingShift.id },
+                data: { 
+                  type: getShortCode(agentRequest.code),
+                  repType: null, // Rimuoviamo eventuale reperibilità
+                  serviceDetails: detailStr 
+                }
+              });
+            } else {
+              await tx.shift.create({
+                data: {
+                  tenantId: agentRequest.tenantId,
                   userId: agentRequest.userId,
                   date: targetDate,
-                  tenantId: agentRequest.tenantId || ""
+                  type: getShortCode(agentRequest.code),
+                  repType: null,
+                  serviceDetails: detailStr
                 }
-              },
-              update: {
-                type: getShortCode(agentRequest.code),
-                repType: null, // Rimuoviamo eventuale reperibilità se c'è un'assenza/richiesta approvata full day
-                serviceDetails: detailStr
-              },
-              create: {
-                tenantId: agentRequest.tenantId,
-                userId: agentRequest.userId,
-                date: targetDate,
-                type: getShortCode(agentRequest.code),
-                repType: null,
-                serviceDetails: detailStr
-              }
-            });
+              });
+            }
           }
         }
       }
