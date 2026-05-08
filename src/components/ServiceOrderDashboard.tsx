@@ -223,6 +223,9 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
           icon: '🔏'
         })
 
+        // Scarica automaticamente il PDF
+        await downloadPDF();
+
         // 3. Pubblica annuncio automatico in Bacheca
         try {
           const dateLabel = currentDate.toLocaleDateString('it-IT', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
