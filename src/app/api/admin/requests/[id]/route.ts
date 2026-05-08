@@ -58,6 +58,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           "CONG_PAT", "CONG_PAR",
           "0032", "0054", "0003", "0035",    // Salute
           "0014", "0004", "0005", "0002",    // Permessi
+          "0009", "0067", "0008", "0081",    // Recuperi
           "BR"                                // Blocco Rep
         ]
         const isAbsence = ABSENCE_CODES.includes(agentRequest.code) || ABSENCE_CODES.includes(agentRequest.code.toUpperCase())
@@ -67,7 +68,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         let current = new Date(start)
         while (current <= end) {
           dates.push(new Date(current))
-          current.setDate(current.getDate() + 1)
+          current.setUTCDate(current.getUTCDate() + 1)
         }
 
         for (const targetDate of dates) {

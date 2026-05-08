@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react"
 import { Loader2, Printer, X, GraduationCap, ShieldCheck, Layers } from "lucide-react"
 import toast from "react-hot-toast"
+import { isAssenzaProtetta } from "@/utils/shift-logic"
 import { generateODSPDF, generateWeeklyODSPDF } from "@/utils/pdf-generator"
 import WeatherWidget from "@/components/WeatherWidget"
 import QuickServiceManager from "@/components/QuickServiceManager"
@@ -285,9 +286,14 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
   }
 
   // --- LOGICA RAGGRUPPAMENTI ---
-  const isWorking = (type: string) => /^[MPN]($|\d)/.test((type || "").toUpperCase().replace(/[()]/g, "").trim())
-  const presentShifts = shifts.filter(s => isWorking(s.type))
-  const mattinieri = presentShifts.filter(s => /^M/i.test((s.type||"").replace(/[()]/g,"")))
+  const isWorking = (type: string, details?: string) => {
+    const t = (type || "").toUpperCase().replace(/[()]/g, "").trim()
+    if (/^[MPN]($|\d)/.test(t)) return true
+    if (details && details.trim().length > 0 && !isAssenzaProtetta(t)) return true
+    return false
+  }
+  const presentShifts = shifts.filter(s => isWorking(s.type, s.serviceDetails || ""))
+  const mattinieri = presentShifts.filter(s => !/^P/i.test((s.type||"").replace(/[()]/g,"")) && !/^N/i.test((s.type||"").replace(/[()]/g,"")))
   const pomeridiani = presentShifts.filter(s => /^P/i.test((s.type||"").replace(/[()]/g,"")))
   const notturni = presentShifts.filter(s => /^N/i.test((s.type||"").replace(/[()]/g,"")))
 

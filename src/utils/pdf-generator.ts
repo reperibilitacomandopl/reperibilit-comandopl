@@ -1,3 +1,4 @@
+import { isAssenzaProtetta } from "./shift-logic"
 import jsPDF from "jspdf"
 import "jspdf-autotable"
 
@@ -659,8 +660,13 @@ async function drawODSPageContent({
   doc.line(20, 38, pageWidth - 20, 38);
 
   // 2. Preparazione Dati
-  const isWorkingShift = (type: string) => /^[MPN]($|\d)/.test((type || "").toUpperCase().replace(/[()]/g, "").trim());
-  const currentShifts = shifts.filter(s => isWorkingShift(s.type));
+  const isWorkingShift = (type: string, details?: string) => {
+    const t = (type || "").toUpperCase().replace(/[()]/g, "").trim();
+    if (/^[MPN]($|\d)/.test(t)) return true;
+    if (details && details.trim().length > 0 && !isAssenzaProtetta(t)) return true;
+    return false;
+  };
+  const currentShifts = shifts.filter(s => isWorkingShift(s.type, s.serviceDetails || ""));
   
   const renderTable = (titolo: string, listaTurni: ODSShift[], startY: number) => {
     if (listaTurni.length === 0) return startY;
@@ -763,7 +769,7 @@ async function drawODSPageContent({
     return (doc as any).lastAutoTable.finalY + 5;
   };
 
-  const mattinieri = currentShifts.filter(s => /^M/i.test((s.type||"").replace(/[()]/g,"")));
+  const mattinieri = currentShifts.filter(s => !/^P/i.test((s.type||"").replace(/[()]/g,"")) && !/^N/i.test((s.type||"").replace(/[()]/g,"")));
   const pomeridiani = currentShifts.filter(s => /^P/i.test((s.type||"").replace(/[()]/g,"")));
   const notturni = currentShifts.filter(s => /^N/i.test((s.type||"").replace(/[()]/g,"")));
 

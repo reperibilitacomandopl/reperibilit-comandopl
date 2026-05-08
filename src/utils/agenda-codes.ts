@@ -110,7 +110,7 @@ export const AGENDA_CATEGORIES: AgendaCategory[] = RAW_AGENDA_CATEGORIES.map(cat
   items: cat.items.map(item => ({
     ...item,
     shortCode: (item as any).shortCode || item.code,
-    unit: (item as any).unit || (item.code.startsWith('2') || item.code === "0009" || item.code === "104_1H" || item.code === "104_2H" || item.code === "0150" ? "HOURS" : "DAYS")
+    unit: (item as any).unit || (item.code.startsWith('2') || ["0009", "0067", "0008", "0081", "0032", "0003", "104_1H", "104_2H", "0150"].includes(item.code) ? "HOURS" : "DAYS")
   }))
 })) as AgendaCategory[]
 
