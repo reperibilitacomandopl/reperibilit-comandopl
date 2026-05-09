@@ -439,6 +439,7 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
         </td>
         <td className="p-0 align-top">
            <input 
+             key={`input-${s.id}-${s.serviceDetails || 'empty'}`}
              type="text" 
              defaultValue={s.serviceDetails || ""}
              disabled={isCertified}
