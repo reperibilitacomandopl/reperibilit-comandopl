@@ -98,7 +98,7 @@ export async function POST(req: Request) {
             vehicleId: patrol.vehicleId,
             patrolGroupId: groupId,
             timeRange: getTimeRangeFromShiftType(s.type) || s.timeRange,
-            serviceDetails: s.user.servizio || patrol.name || null
+            serviceDetails: s.serviceDetails || s.user.servizio || patrol.name || null
           })
           processedShiftIds.add(s.id)
         }
@@ -121,7 +121,7 @@ export async function POST(req: Request) {
           serviceTypeId: s.user.defaultServiceTypeId || getDefaultType(s.user.defaultServiceCategoryId),
           timeRange: getTimeRangeFromShiftType(s.type) || s.timeRange,
           patrolGroupId: null,
-          serviceDetails: s.user.servizio || null
+          serviceDetails: s.serviceDetails || s.user.servizio || null
         })
         processedShiftIds.add(s.id)
       }
@@ -163,7 +163,7 @@ export async function POST(req: Request) {
               serviceTypeId: member.user.defaultServiceTypeId || getDefaultType(member.user.defaultServiceCategoryId || commonCatId),
               patrolGroupId: groupId,
               timeRange: getTimeRangeFromShiftType(member.type) || member.timeRange,
-              serviceDetails: member.user.servizio || "Pattuglia"
+              serviceDetails: member.serviceDetails || member.user.servizio || "Pattuglia"
             })
             processedShiftIds.add(member.id)
           }
@@ -185,7 +185,7 @@ export async function POST(req: Request) {
           serviceTypeId: s.user.defaultServiceTypeId || getDefaultType(catId),
           timeRange: getTimeRangeFromShiftType(s.type) || s.timeRange,
           patrolGroupId: null,
-          serviceDetails: s.user.servizio || null
+          serviceDetails: s.serviceDetails || s.user.servizio || null
         })
         processedShiftIds.add(s.id)
       }
