@@ -61,6 +61,31 @@ export default function AgentRequestForm({ balances, onClose }: AgentRequestForm
     }
   }, [reqCode, entitlements])
 
+  useEffect(() => {
+    if (isHourlyRequest && reqStartTime && reqEndTime) {
+      const [startH, startM] = reqStartTime.split(':').map(Number);
+      const [endH, endM] = reqEndTime.split(':').map(Number);
+      
+      let start = startH + startM / 60;
+      let end = endH + endM / 60;
+      
+      if (end < start) end += 24; // Gestione scavalco mezzanotte
+      
+      const diff = end - start;
+      if (diff > 0) setReqHours(Number(diff.toFixed(2)));
+    }
+  }, [reqStartTime, reqEndTime, isHourlyRequest]);
+
+  const calcDays = () => {
+    if (!reqDate) return 0;
+    const start = new Date(reqDate);
+    const end = reqEndDate ? new Date(reqEndDate) : new Date(reqDate);
+    if (end < start) return 0;
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  }
+  const totalDays = calcDays();
+
   const handleSubmit = async () => {
     if (!reqDate || !reqCode) {
       toast.error("Compila la data e la causale")
@@ -139,7 +164,14 @@ export default function AgentRequestForm({ balances, onClose }: AgentRequestForm
               <input type="date" value={reqDate} onChange={e => setReqDate(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 transition-all outline-none" />
             </div>
             <div>
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Data Fine <span className="text-slate-300 normal-case">(opzionale, se periodo)</span></label>
+              <div className="flex justify-between items-end mb-2">
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Data Fine <span className="text-slate-300 normal-case">(opzionale, se periodo)</span></label>
+                {!isHourlyRequest && totalDays > 0 && (
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 uppercase tracking-widest border border-amber-200">
+                    Totale: {totalDays} {totalDays === 1 ? 'Giorno' : 'Giorni'}
+                  </span>
+                )}
+              </div>
               <input type="date" value={reqEndDate} onChange={e => setReqEndDate(e.target.value)} min={reqDate} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 transition-all outline-none" />
             </div>
             <div>

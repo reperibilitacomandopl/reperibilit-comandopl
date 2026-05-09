@@ -33,7 +33,7 @@ export default function GestioneRichiestePage() {
 
   const handleAction = async (id: string, status: "APPROVED" | "REJECTED") => {
     try {
-      const res = await fetch(`/api/admin/absence-requests/${id}`, {
+      const res = await fetch(`/api/admin/requests/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status })
@@ -106,6 +106,20 @@ export default function GestioneRichiestePage() {
                         <span className="text-sm font-semibold text-slate-600">
                           {new Date(req.date).toLocaleDateString('it-IT')} 
                           {req.endDate && ` al ${new Date(req.endDate).toLocaleDateString('it-IT')}`}
+                        </span>
+                        
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 uppercase tracking-widest border border-blue-100">
+                          {(() => {
+                             if (req.hours != null || req.startTime != null) {
+                               if (req.startTime && req.endTime) return `${req.hours}h (${req.startTime} - ${req.endTime})`
+                               return `${req.hours}h`
+                             }
+                             const start = new Date(req.date)
+                             const end = req.endDate ? new Date(req.endDate) : new Date(req.date)
+                             const diff = Math.abs(end.getTime() - start.getTime())
+                             const days = Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1
+                             return days === 1 ? '1 Giorno' : `${days} Giorni`
+                          })()}
                         </span>
                       </div>
                       {req.notes && (

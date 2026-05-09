@@ -471,7 +471,7 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
                              <p className="text-sm font-black text-white">{detailData.user?.name}</p>
                              <p className="text-[10px] text-slate-500">Operatore Richiedente</p>
                           </div>
-                          <div className="flex-1 p-4 bg-white/5 rounded-2xl border border-white/5">
+                          <div className="flex-1 p-4 bg-white/5 rounded-2xl border border-white/5 relative overflow-hidden">
                              <Calendar className="text-indigo-400 mb-2" width={16} height={16} />
                              <p className="text-sm font-black text-white">
                                 {new Date(detailData.date).toLocaleDateString('it-IT')} 
@@ -480,7 +480,23 @@ export default function NotificationHub({ userRole }: NotificationHubProps) {
                                    : ''}
                              </p>
                              <p className="text-[10px] text-slate-500">Motivo: {getLabel(detailData.code)}</p>
-                          </div>
+                             
+                             <div className="mt-3 inline-block">
+                               <span className="px-2 py-1 rounded bg-indigo-500/20 text-indigo-300 text-[10px] font-black uppercase tracking-widest border border-indigo-500/20">
+                                 Totale: {(() => {
+                                    if (detailData.hours != null || detailData.startTime != null) {
+                                      if (detailData.startTime && detailData.endTime) return `${detailData.hours}h (${detailData.startTime} - ${detailData.endTime})`
+                                      return `${detailData.hours}h`
+                                    }
+                                    const start = new Date(detailData.date)
+                                    const end = detailData.endDate ? new Date(detailData.endDate) : new Date(detailData.date)
+                                    const diff = Math.abs(end.getTime() - start.getTime())
+                                    const days = Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1
+                                    return days === 1 ? '1 Giorno' : `${days} Giorni`
+                                 })()}
+                               </span>
+                             </div>
+                           </div>
                        </div>
                        
                        {/* Mostra Data Elaborazione e Stato (se non è in attesa) */}

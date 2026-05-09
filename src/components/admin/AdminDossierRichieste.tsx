@@ -71,10 +71,25 @@ export function AdminDossierRichieste({ userId, currentYear }: { userId: string,
                         {statusLabel}
                      </p>
                   </div>
-                  <div>
-                     <p className="font-bold text-slate-900 font-black text-sm mb-1">Data: {new Date(req.date || req.createdAt).toLocaleDateString('it-IT')}</p>
-                     <p className="text-sm font-medium text-slate-500 italic">"{req.reason || 'Senza nota'}"</p>
-                  </div>
+                     <div className="flex items-center gap-3 mb-1">
+                       <p className="font-bold text-slate-900 font-black text-sm">Data: {new Date(req.date || req.createdAt).toLocaleDateString('it-IT')}</p>
+                       {!isSwap && (
+                         <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 uppercase tracking-widest border border-indigo-100">
+                           {(() => {
+                              if (req.hours != null || req.startTime != null) {
+                                if (req.startTime && req.endTime) return `${req.hours}h (${req.startTime} - ${req.endTime})`
+                                return `${req.hours}h`
+                              }
+                              const start = new Date(req.date || req.createdAt)
+                              const end = req.endDate ? new Date(req.endDate) : start
+                              const diff = Math.abs(end.getTime() - start.getTime())
+                              const days = Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1
+                              return days === 1 ? '1 Giorno' : `${days} Giorni`
+                           })()}
+                         </span>
+                       )}
+                     </div>
+                     <p className="text-sm font-medium text-slate-500 italic">"{req.reason || req.notes || 'Senza nota'}"</p>
                </div>
             )
           })}
