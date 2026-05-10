@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { logAudit } from "@/lib/audit"
+import { encrypt } from "@/lib/crypto"
 
 // GET: Retrieve current settings + all agents with massimale + PEC config
 export async function GET() {
@@ -193,7 +194,7 @@ export async function PUT(req: Request) {
         fromAddr: from || "",
       }
       if (pass && pass !== "••••••••") {
-        dataToUpdate.pass = pass
+        dataToUpdate.pass = encrypt(pass)
       }
       await prisma.pecSettings.upsert({
         where: { tenantId: tenantId || "" },

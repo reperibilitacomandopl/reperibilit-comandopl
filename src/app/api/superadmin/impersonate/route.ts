@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { cookies } from "next/headers"
+import { logAudit, AUDIT_ACTIONS } from "@/lib/audit"
 
 // GET/POST: Switch impersonation
 export async function POST(req: Request) {
@@ -21,9 +22,30 @@ export async function POST(req: Request) {
     
     const cookieStore = await cookies()
     if (tenantId) {
-      cookieStore.set("superadmin_impersonate", tenantId, { path: "/", secure: true, maxAge: 86400 })
+      cookieStore.set("superadmin_impersonate", tenantId, { 
+        path: "/", 
+        secure: true, 
+        httpOnly: true, 
+        sameSite: "strict",
+        maxAge: 86400 
+      })
+      
+      await logAudit({
+        adminId: session!.user.id!,
+        adminName: session!.user.name!,
+        action: AUDIT_ACTIONS.IMPERSONATE,
+        targetId: tenantId,
+        details: `Iniziata impersonificazione del comando ID: ${tenantId}`
+      })
     } else {
       cookieStore.delete("superadmin_impersonate")
+      
+      await logAudit({
+        adminId: session!.user.id!,
+        adminName: session!.user.name!,
+        action: AUDIT_ACTIONS.IMPERSONATE_STOP,
+        details: `Terminata impersonificazione`
+      })
     }
 
     return NextResponse.json({ success: true })

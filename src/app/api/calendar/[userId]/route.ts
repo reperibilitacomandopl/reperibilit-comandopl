@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { verifyCalendarToken } from "@/lib/calendar-token"
 
 // Helper: format a date + hour as ICS local time string (YYYYMMDDTHHMMSS)
 function toIcsLocal(year: number, month: number, day: number, hour: number, min = 0) {
@@ -15,6 +16,14 @@ function toIcsLocal(year: number, month: number, day: number, hour: number, min 
 export async function GET(req: Request, { params }: { params: Promise<{ userId: string }> }) {
   try {
     const { userId } = await params
+    
+    // Protezione C4: Verifica token HMAC per prevenire accesso non autorizzato
+    const { searchParams } = new URL(req.url)
+    const token = searchParams.get("token")
+    
+    if (!token || !verifyCalendarToken(userId, token)) {
+      return new NextResponse("Accesso Negato: Token non valido o mancante", { status: 403 })
+    }
     
     const user = await prisma.user.findUnique({
       where: { id: userId },

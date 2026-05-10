@@ -4,6 +4,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { logAudit } from "@/lib/audit"
+import { userCreateSchema, userUpdateSchema } from "@/lib/validations/admin"
 
 const rankMap = [
   { rank: "DIRIGENTE GENERALE", level: 1 },
@@ -83,6 +84,16 @@ export async function PUT(req: Request) {
   }
 
   try {
+    const json = await req.json()
+    const validation = userUpdateSchema.safeParse(json)
+    
+    if (!validation.success) {
+      return NextResponse.json({ 
+        error: "Dati non validi", 
+        details: validation.error.flatten().fieldErrors 
+      }, { status: 400 })
+    }
+
     const { 
       userId, email, phone, name, matricola, squadra, servizio, 
       massimale, action, newPassword, defaultServiceCategoryId, 
@@ -92,7 +103,7 @@ export async function PUT(req: Request) {
       hasL104, l104Assistiti, hasStudyLeave, hasParentalLeave, hasChildSicknessLeave,
       canConfigureSystem, canManageShifts, canManageUsers, canVerifyClockIns, 
       twoFactorEnabled, isActive 
-    } = await req.json()
+    } = validation.data as any
     
     if (!userId) return NextResponse.json({ error: "Missing userId" }, { status: 400 })
     const tenantId = session.user.tenantId
@@ -214,14 +225,23 @@ export async function POST(req: Request) {
   }
 
   try {
+    const json = await req.json()
+    const validation = userCreateSchema.safeParse(json)
+
+    if (!validation.success) {
+      return NextResponse.json({ 
+        error: "Dati non validi", 
+        details: validation.error.flatten().fieldErrors 
+      }, { status: 400 })
+    }
+
     const { 
       matricola, name, password, isUfficiale, squadra, massimale,
       qualifica, dataAssunzione, scadenzaPatente, scadenzaPortoArmi,
       dataDiNascita, tipoContratto, defaultPartnerIds, fixedServiceDays,
       hasL104, l104Assistiti, hasStudyLeave, hasParentalLeave, hasChildSicknessLeave,
       canConfigureSystem, canManageShifts, canManageUsers, canVerifyClockIns
-    } = await req.json()
-    if (!matricola || !name || !password) return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    } = validation.data
 
     const tenantId = session.user.tenantId
     if (tenantId) {

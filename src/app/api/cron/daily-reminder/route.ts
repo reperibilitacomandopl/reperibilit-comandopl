@@ -7,9 +7,11 @@ import { sendTelegramMessage } from "@/lib/telegram"
  * Da eseguire ogni mattina (es. ore 08:00)
  */
 export async function GET(req: Request) {
-  // Protezione base tramite header Vercel Cron (opzionale se configurato)
-  // const authHeader = req.headers.get('authorization');
-  // if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) return ...
+  // Protezione CRON: Solo invocazioni autorizzate con CRON_SECRET
+  const authHeader = req.headers.get("authorization")
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
 
   try {
     const now = new Date()

@@ -9,9 +9,9 @@ import { sendPushNotification } from "@/lib/push-notifications"
 const DAYS_BEFORE_ALERT = 30
 
 export async function GET(req: Request) {
-  // Verifica CRON secret (opzionale per sicurezza)
+  // Protezione CRON: Solo invocazioni autorizzate con CRON_SECRET
   const authHeader = req.headers.get("authorization")
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && process.env.CRON_SECRET) {
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

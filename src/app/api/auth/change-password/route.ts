@@ -9,7 +9,14 @@ export async function POST(req: Request) {
     if (!session || !session.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const { newPassword } = await req.json()
-    if (!newPassword || newPassword.length < 6) return NextResponse.json({ error: "Password troppo corta" }, { status: 400 })
+    
+    // Validazione AgID-compliant
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/
+    if (!newPassword || !passwordRegex.test(newPassword)) {
+      return NextResponse.json({ 
+        error: "La password deve contenere almeno 8 caratteri, una maiuscola, una minuscola, un numero e un carattere speciale" 
+      }, { status: 400 })
+    }
 
     const hashed = await bcrypt.hash(newPassword, 10)
     

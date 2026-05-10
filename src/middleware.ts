@@ -152,6 +152,7 @@ function addSecurityHeaders(response: NextResponse, isPublic: boolean = false): 
   response.headers.set("X-Frame-Options", "DENY")
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(self)")
+  response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
 
   if (!isPublic) {
     response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")

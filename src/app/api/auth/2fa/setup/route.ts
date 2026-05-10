@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import { OTP } from "otplib"
+import { encrypt, decrypt } from "@/lib/crypto"
 import QRCode from "qrcode"
 
 const otp = new OTP({ strategy: 'totp' });
@@ -22,12 +23,13 @@ export async function GET() {
     }
 
     // Generate secret if not exists
-    let secret = user.twoFactorSecret
+    let secret = user.twoFactorSecret ? decrypt(user.twoFactorSecret) : null
+    
     if (!secret) {
       secret = otp.generateSecret()
       await prisma.user.update({
         where: { id: user.id },
-        data: { twoFactorSecret: secret }
+        data: { twoFactorSecret: encrypt(secret) }
       })
     }
 
@@ -40,7 +42,6 @@ export async function GET() {
     const qrCodeUrl = await QRCode.toDataURL(otpauth)
 
     return NextResponse.json({ 
-      secret, 
       qrCodeUrl,
       enabled: user.twoFactorEnabled 
     })

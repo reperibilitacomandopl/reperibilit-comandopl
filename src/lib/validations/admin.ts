@@ -34,7 +34,12 @@ export const radioUpdateSchema = radioSchema.extend({
 export const userCreateSchema = z.object({
   matricola: z.string().min(1, "La matricola è un campo obbligatorio."),
   name: z.string().min(2, "Il nome e cognome deve contenere almeno 2 caratteri."),
-  password: z.string().min(6, "Regola di sicurezza: La password iniziale deve essere di almeno 6 caratteri."),
+  password: z.string()
+    .min(8, "La password deve contenere almeno 8 caratteri.")
+    .regex(/[A-Z]/, "La password deve contenere almeno una lettera maiuscola.")
+    .regex(/[a-z]/, "La password deve contenere almeno una lettera minuscola.")
+    .regex(/[0-9]/, "La password deve contenere almeno un numero.")
+    .regex(/[^A-Za-z0-9]/, "La password deve contenere almeno un carattere speciale (!@#$%^&*...)."),
   isUfficiale: z.boolean().default(false),
   squadra: z.string().optional().nullable(),
   massimale: z.union([z.string(), z.number()]).optional(),
@@ -43,6 +48,17 @@ export const userCreateSchema = z.object({
   scadenzaPatente: z.string().optional().nullable(),
   scadenzaPortoArmi: z.string().optional().nullable(),
 });
+
+export const userUpdateSchema = userCreateSchema.extend({
+  password: z.string()
+    .min(8, "La password deve contenere almeno 8 caratteri.")
+    .regex(/[A-Z]/, "La password deve contenere almeno una lettera maiuscola.")
+    .regex(/[a-z]/, "La password deve contenere almeno una lettera minuscola.")
+    .regex(/[0-9]/, "La password deve contenere almeno un numero.")
+    .regex(/[^A-Za-z0-9]/, "La password deve contenere almeno un carattere speciale (!@#$%^&*...).")
+    .optional()
+    .or(z.literal("")),
+}).partial();
 
 // --- VALIDAZIONI ARMERIA (WEAPONS & ARMORS) ---
 export const weaponSchema = z.object({

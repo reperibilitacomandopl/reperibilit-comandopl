@@ -188,6 +188,42 @@ export default async function CompliancePage({ params }: { params: Promise<{ ten
           </tbody>
         </table>
       </div>
+
+      {/* Sezione Documentale M6 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="bg-gradient-to-br from-indigo-600/20 to-blue-600/20 border border-indigo-500/20 rounded-[2.5rem] p-8 space-y-4">
+          <div className="w-12 h-12 bg-indigo-500 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <Shield className="text-white" size={24} />
+          </div>
+          <h2 className="text-2xl font-black text-white tracking-tight">Compliance Legale PA</h2>
+          <p className="text-sm text-slate-400 leading-relaxed">
+            In quanto Pubblica Amministrazione, il Comando è tenuto a nominare un <strong>DPO (Data Protection Officer)</strong> e mantenere un <strong>Registro dei Trattamenti</strong> aggiornato (Art. 30 GDPR).
+          </p>
+          <div className="flex flex-wrap gap-3 pt-4">
+            <a href="#" className="px-5 py-3 bg-white text-slate-900 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-50 transition-all">
+              Template Nomina DPO
+            </a>
+            <a href="#" className="px-5 py-3 bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-500/30 transition-all">
+              Registro Trattamenti (Modello)
+            </a>
+          </div>
+        </div>
+
+        <div className="bg-slate-900/50 border border-white/5 rounded-[2.5rem] p-8 space-y-4">
+          <div className="w-12 h-12 bg-amber-500/20 rounded-2xl flex items-center justify-center">
+            <AlertTriangle className="text-amber-400" size={24} />
+          </div>
+          <h2 className="text-2xl font-black text-white tracking-tight">DPIA Obbligatoria</h2>
+          <p className="text-sm text-slate-400 leading-relaxed">
+            Il trattamento di dati GPS e dati sanitari (L104) richiede una <strong>Valutazione d'Impatto (DPIA)</strong> ai sensi dell'Art. 35 del GDPR.
+          </p>
+          <div className="pt-4">
+            <a href="#" className="inline-flex items-center gap-2 text-xs font-black text-amber-400 uppercase tracking-widest hover:text-amber-300 transition-all">
+              Scarica Linee Guida DPIA Polizia Locale →
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

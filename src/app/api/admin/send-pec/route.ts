@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import nodemailer from "nodemailer"
+import { decrypt } from "@/lib/crypto"
+import { generateCalendarToken } from "@/lib/calendar-token"
 
 export async function POST(req: Request) {
   const session = await auth()
@@ -60,7 +62,7 @@ export async function POST(req: Request) {
       secure: Number(pecSettings.port) === 465,
       auth: {
         user: pecSettings.user,
-        pass: pecSettings.pass,
+        pass: decrypt(pecSettings.pass),
       },
     })
 
@@ -148,8 +150,9 @@ export async function POST(req: Request) {
       }
       personalSummaryHtml += `</div>`
 
-      const webCalLink = `webcal://${host}/api/calendar/${agent.id}`
-      const icsLink = `${baseUrl}/api/calendar/${agent.id}`
+      const token = generateCalendarToken(agent.id)
+      const webCalLink = `webcal://${host}/api/calendar/${agent.id}?token=${token}`
+      const icsLink = `${baseUrl}/api/calendar/${agent.id}?token=${token}`
       
       const agentHtml = htmlBodyBase + personalSummaryHtml + `
         <div style="margin-top: 30px; padding: 15px; border-radius: 8px; background-color: #f0fdf4; border: 1px solid #bbf7d0;">

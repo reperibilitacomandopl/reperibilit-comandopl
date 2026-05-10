@@ -22,6 +22,10 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    - name: Security Audit
+      run: npm audit --audit-level=high
+      continue-on-error: true # Non bloccare la build se ci sono vulnerabilità, ma segnalale nei log
+
     - name: Prisma Generate
       run: npx prisma generate
 

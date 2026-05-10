@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import { OTP } from "otplib"
+import { decrypt } from "@/lib/crypto"
 
 const otp = new OTP({ strategy: 'totp' });
 
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
 
     const result = await otp.verify({
       token,
-      secret: user.twoFactorSecret
+      secret: decrypt(user.twoFactorSecret)
     })
 
     if (!result.valid) {

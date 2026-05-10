@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { rateLimit } from "@/lib/rate-limit"
+import { logAudit, AUDIT_ACTIONS } from "@/lib/audit"
 import { cookies } from "next/headers"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -51,10 +52,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         })
 
         if (!user) {
+          await logAudit({
+            tenantId: tenant.id,
+            adminId: "SYSTEM",
+            adminName: credentials.matricola as string,
+            action: AUDIT_ACTIONS.LOGIN_FAILED,
+            details: `Tentativo di accesso fallito: matricola non trovata`
+          })
           return null
         }
         const isValid = await bcrypt.compare(credentials.password as string, user.password)
         if (!isValid) {
+          await logAudit({
+            tenantId: tenant.id,
+            adminId: user.id,
+            adminName: user.name,
+            action: AUDIT_ACTIONS.LOGIN_FAILED,
+            details: `Tentativo di accesso fallito: password errata`
+          })
           return null
         }
 
@@ -200,7 +215,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return session
     }
   },
-  session: { strategy: "jwt" },
+  events: {
+    async signIn({ user }) {
+      if (user?.id) {
+        await logAudit({
+          tenantId: (user as any).tenantId || null,
+          adminId: user.id,
+          adminName: user.name || undefined,
+          action: AUDIT_ACTIONS.LOGIN,
+          details: `Accesso effettuato con successo`
+        })
+      }
+    }
+  },
+  session: { 
+    strategy: "jwt",
+    maxAge: 8 * 60 * 60, // 8 ore (durata media di un turno lavorativo)
+  },
   pages: {
     signIn: '/login',
   }

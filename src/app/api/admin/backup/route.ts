@@ -30,7 +30,25 @@ export async function GET(req: Request) {
       radios,
       globalSettings
     ] = await Promise.all([
-      prisma.user.findMany({ where: { tenantId } }),
+      prisma.user.findMany({ 
+        where: { tenantId },
+        select: {
+          id: true,
+          matricola: true,
+          name: true,
+          email: true,
+          phone: true,
+          role: true,
+          isUfficiale: true,
+          qualifica: true,
+          gradoLivello: true,
+          squadra: true,
+          servizio: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true
+        }
+      }),
       prisma.shift.findMany({ where: { tenantId } }),
       prisma.clockRecord.findMany({ where: { tenantId } }),
       prisma.agentRequest.findMany({ where: { tenantId } }),
