@@ -48,6 +48,7 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
   const [loadingDutyTeam, setLoadingDutyTeam] = useState(false)
   const [swapRequests, setSwapRequests] = useState<SwapRequest[]>([])
   const [agendaEntries, setAgendaEntries] = useState<AgendaItem[]>([])
+  const [requests, setRequests] = useState<any[]>([])
   const [myOds, setMyOds] = useState<OdsData | null>(null)
   const [isClockedIn, setIsClockedIn] = useState<'IN' | 'OUT' | null>(null)
   const [lastClockTime, setLastClockTime] = useState<string | null>(null)
@@ -100,11 +101,14 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
 
   const fetchAgenda = useCallback(async () => {
     try {
-      const res = await fetch(`/api/agenda?month=${currentMonth}&year=${currentYear}`)
+      // Usiamo l'endpoint cartellino che ora restituisce sia agenda che richieste
+      const res = await fetch(`/api/admin/cartellino?userId=${currentUser.id}&month=${currentMonth}&year=${currentYear}`)
       if (res.ok) {
         const data = await res.json()
-        setAgendaEntries(data)
-        cacheDataset(`agenda-${currentMonth}-${currentYear}`, data)
+        setAgendaEntries(data.agenda || [])
+        setRequests(data.requests || [])
+        if (data.balances) setBalances(data.balances)
+        cacheDataset(`agenda-${currentMonth}-${currentYear}`, data.agenda)
       }
     } catch { 
       const cached = await getCachedDataset(`agenda-${currentMonth}-${currentYear}`)
@@ -112,7 +116,7 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
         setAgendaEntries(cached)
       }
     }
-  }, [currentMonth, currentYear])
+  }, [currentMonth, currentYear, currentUser.id])
 
   const fetchClockRecords = useCallback(async () => {
     try {
@@ -484,6 +488,7 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
     telegramCode,
     telegramLoading,
     myShifts,
+    requests,
     handleClockAction,
     handleRespondSwap,
     handleSaveAgenda,

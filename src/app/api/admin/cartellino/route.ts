@@ -6,14 +6,17 @@ import { isHoliday } from "@/utils/holidays"
 export async function GET(req: Request) {
   const session = await auth()
   
-  if (session?.user?.role !== "ADMIN" && (!session?.user?.canManageShifts && !session?.user?.canManageUsers)) {
+  const { searchParams } = new URL(req.url)
+  const userId = searchParams.get("userId")
+
+  const isSelf = userId === session?.user?.id
+  const isAdmin = session?.user?.role === "ADMIN" || session?.user?.canManageShifts || session?.user?.canManageUsers
+
+  if (!isAdmin && !isSelf) {
     return NextResponse.json({ error: "Accesso Non Autorizzato" }, { status: 401 })
   }
-
-  const { searchParams } = new URL(req.url)
   const month = parseInt(searchParams.get("month") || new Date().getMonth() + 1 + "")
   const year = parseInt(searchParams.get("year") || new Date().getFullYear() + "")
-  const userId = searchParams.get("userId")
   const tenantId = session.user.tenantId
   const tf = tenantId ? { tenantId } : {}
 

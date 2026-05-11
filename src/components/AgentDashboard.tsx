@@ -33,6 +33,7 @@ import PersonalClockHistory from "./agent/PersonalClockHistory"
 import ClockHistoryModal from "./agent/ClockHistoryModal"
 import AgentCalendarView from "./agent/AgentCalendarView"
 import AgentYearlyCard from "./agent/AgentYearlyCard"
+import CartellinoSummaryView from "@/components/shared/CartellinoSummaryView"
 import { useGpsTracking } from "@/hooks/useGpsTracking"
 
 import { isAssenza } from "@/utils/shift-logic"
@@ -117,7 +118,7 @@ export default function AgentDashboard({
   const [showChat, setShowChat] = useState(false)
   const [showSectionChat, setShowSectionChat] = useState(false)
   const [isMobileView, setIsMobileView] = useState(false)
-  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'yearly'>('calendar')
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'yearly' | 'summary'>('calendar')
   const [selectedShiftForSwap, setSelectedShiftForSwap] = useState<DashboardShift | null>(null)
   const [agendaDate, setAgendaDate] = useState('')
   const [showClockHistory, setShowClockHistory] = useState(false)
@@ -347,6 +348,12 @@ export default function AgentDashboard({
               >
                 Annuale
               </button>
+              <button 
+                onClick={() => setViewMode('summary')}
+                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'summary' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                Riepilogo
+              </button>
            </div>
         </div>
 
@@ -370,6 +377,14 @@ export default function AgentDashboard({
           />
         ) : viewMode === 'yearly' ? (
           <AgentYearlyCard />
+        ) : viewMode === 'summary' ? (
+          <div className="bg-white rounded-[2rem] p-8 border border-slate-200 shadow-xl">
+             <CartellinoSummaryView 
+               requests={admin.requests}
+               balances={admin.balances}
+               mode="USER"
+             />
+          </div>
         ) : (
           <AgentShiftsList 
             isPublished={isPublished}

@@ -3,8 +3,10 @@
 import { useState, useEffect, useMemo } from "react"
 import { format, getDaysInMonth } from "date-fns"
 import { it } from "date-fns/locale"
-import { Calendar as CalendarIcon, Clock, Edit2, AlertCircle, CheckCircle2, RefreshCcw, Download, User, Info, X } from "lucide-react"
+import { Calendar as CalendarIcon, Clock, Edit2, AlertCircle, CheckCircle2, RefreshCcw, Download, User, Info, X, LayoutDashboard, ListTodo } from "lucide-react"
 import { AGENDA_CATEGORIES, getLabel } from "@/utils/agenda-codes"
+import CartellinoSummaryView from "@/components/shared/CartellinoSummaryView"
+import { toast } from "react-hot-toast"
 
 const CAT_THEME: Record<string, { border: string; bg: string; text: string; btnBg: string; btnText: string; btnHover: string }> = {
   amber:  { border: "border-yellow-300", bg: "bg-yellow-50",  text: "text-yellow-800", btnBg: "bg-yellow-500",  btnText: "text-white", btnHover: "hover:bg-yellow-600" },
@@ -23,6 +25,7 @@ export default function CartellinoPanel() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [rotationGroups, setRotationGroups] = useState<any[]>([])
+  const [activeTab, setActiveTab] = useState<'REGISTRO' | 'RIEPILOGO'>('REGISTRO')
   
   const allAvailableShiftCodes = useMemo(() => {
     const baseCodes = ["M7", "M8", "P12", "P14", "P15", "P16", "R", "RR", "REP", "REP_I"];
@@ -154,6 +157,21 @@ export default function CartellinoPanel() {
     }
   }
 
+  const handleRequestAction = async (requestId: string, action: 'APPROVE' | 'REJECT') => {
+    try {
+      const res = await fetch(`/api/requests/${requestId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: action === 'APPROVE' ? 'ACCEPTED' : 'REJECTED' })
+      })
+      if (!res.ok) throw new Error("Errore API")
+      toast.success(action === 'APPROVE' ? "Richiesta Approvata" : "Richiesta Rifiutata")
+      fetchCartellinoData() // Refresh per aggiornare tabella e riepilogo
+    } catch (e) {
+      toast.error("Impossibile processare la richiesta")
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header and Controls */}
@@ -203,11 +221,37 @@ export default function CartellinoPanel() {
         </div>
       </div>
 
+      {/* TABS NAVIGATION */}
+      <div className="flex p-1 bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 w-fit">
+        <button 
+          onClick={() => setActiveTab('REGISTRO')}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'REGISTRO' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-slate-200'}`}
+        >
+          <LayoutDashboard size={16} />
+          Registro Presenze
+        </button>
+        <button 
+          onClick={() => setActiveTab('RIEPILOGO')}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'RIEPILOGO' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-slate-200'}`}
+        >
+          <ListTodo size={16} />
+          Richieste & Saldi
+        </button>
+      </div>
+
       {loading ? (
         <div className="flex items-center justify-center p-20">
           <RefreshCcw className="animate-spin text-blue-500" size={32} />
         </div>
-      ) : !data ? null : (
+      ) : !data ? null : activeTab === 'RIEPILOGO' ? (
+        <CartellinoSummaryView 
+          requests={data.requests}
+          balances={data.balances}
+          mode="ADMIN"
+          onAction={handleRequestAction}
+          isLoading={loading}
+        />
+      ) : (
         <>
           {/* Dashboard Saldi */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
