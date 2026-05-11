@@ -70,7 +70,7 @@ export default function CartellinoSummaryView({
 
   // Sezione Saldi Principali (Ferie, 104, Studio)
   const mainCodes = ["FERIE", "0015", "0016", "STUDIO", "104", "0010"]
-  const mainBalances = balances?.details.filter(d => 
+  const mainBalances = balances?.details?.filter((d: any) => 
     mainCodes.some(code => d.code.includes(code) || d.label.toUpperCase().includes(code))
   ) || []
 
@@ -98,7 +98,7 @@ export default function CartellinoSummaryView({
           </div>
         ) : (
           <div className="space-y-3">
-            {requests.map((req) => (
+            {requests.map((req: any) => (
               <div 
                 key={req.id}
                 className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all group animate-in fade-in slide-in-from-bottom-2 duration-300"
@@ -174,7 +174,7 @@ export default function CartellinoSummaryView({
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {mainBalances.length > 0 ? mainBalances.map((det) => {
+            {mainBalances.length > 0 ? mainBalances.map((det: any) => {
               const pct = Math.min(100, (det.used / Math.max(1, det.initialValue)) * 100)
               const isWarning = pct > 90
               
