@@ -2,7 +2,37 @@
   "permissions": {
     "allow": [
       "Read(//c/Users/casad/.gemini/antigravity/scratch/**)",
-      "Bash(cp -r \"reperibilit-comandopl\" \"reperibilit-copia-dev\")"
+      "Bash(cp -r \"reperibilit-comandopl\" \"reperibilit-copia-dev\")",
+      "Bash(npx tsc *)",
+      "Bash(cp *)",
+      "Bash(rm *)",
+      "Bash(npm install *)",
+      "Bash(where docker *)",
+      "Bash(docker *)",
+      "Bash(C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe *)",
+      "Bash(break)",
+      "Bash(npx prisma *)",
+      "Bash(npx tsx *)",
+      "Bash(curl -s -X POST \"http://localhost:3000/api/auth/callback/credentials\" -H \"Content-Type: application/x-www-form-urlencoded\" -d \"matricola=ADMIN001&password=password123\" -D -)",
+      "Bash(curl -s \"http://localhost:3000/api/auth/csrf\")",
+      "Bash(psql *)",
+      "Bash(tasklist)",
+      "Bash(taskkill /F /IM \"Docker Desktop.exe\")",
+      "Bash(start \"\" \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\")",
+      "PowerShell(Stop-Process *)",
+      "Bash(wsl --shutdown)",
+      "Bash(wsl *)",
+      "Bash(npm run *)",
+      "PowerShell(Restart-Service *)",
+      "PowerShell(Start-Service *)",
+      "Bash(taskkill *)",
+      "Bash(curl -s \"http://localhost:3000/login\" -o /dev/null -D -)",
+      "Bash(curl *)",
+      "Bash(kill -9 1462 1476)",
+      "PowerShell(Get-Service *)",
+      "Read(//c/Program Files/Docker/Docker/**)",
+      "Read(//c/Program Files/Docker/Docker/resources/bin/**)",
+      "PowerShell(Start-Process \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\" -WindowStyle Hidden; Write-Output \"Docker Desktop avviato\")"
     ]
   }
 }
