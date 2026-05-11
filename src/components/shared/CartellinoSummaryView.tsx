@@ -224,14 +224,14 @@ export default function CartellinoSummaryView({
                   <div className="flex items-center gap-6">
                     <div>
                       <p className="text-2xl font-black">
-                        {balances.details.find(d => d.code === 'RR')?.used || 0}
+                        {balances.details.find((d: any) => d.code === 'RR')?.used || 0}
                       </p>
                       <p className="text-[8px] font-black uppercase text-indigo-300">Recuperi Effettuati</p>
                     </div>
                     <div className="w-px h-10 bg-white/10"></div>
                     <div>
                       <p className="text-2xl font-black">
-                        {balances.details.find(d => d.code === '0009')?.used || 0}
+                        {balances.details.find((d: any) => d.code === '0009')?.used || 0}
                       </p>
                       <p className="text-[8px] font-black uppercase text-indigo-300">Permessi Totali</p>
                     </div>
