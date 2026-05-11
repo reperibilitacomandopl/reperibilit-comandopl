@@ -381,7 +381,7 @@ export default function AgentDashboard({
           <div className="bg-white rounded-[2rem] p-8 border border-slate-200 shadow-xl">
              <CartellinoSummaryView 
                requests={admin.requests}
-               balances={admin.balances}
+               balances={admin.balances || null}
                mode="USER"
              />
           </div>

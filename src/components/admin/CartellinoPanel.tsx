@@ -246,7 +246,7 @@ export default function CartellinoPanel() {
       ) : !data ? null : activeTab === 'RIEPILOGO' ? (
         <CartellinoSummaryView 
           requests={data.requests}
-          balances={data.balances}
+          balances={data.balances || null}
           mode="ADMIN"
           onAction={handleRequestAction}
           isLoading={loading}
