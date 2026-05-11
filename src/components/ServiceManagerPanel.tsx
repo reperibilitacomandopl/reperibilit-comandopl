@@ -178,6 +178,10 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
     setCurrentDate(next)
   }, [currentDate])
 
+  const gotoDate = (date: Date) => {
+    setCurrentDate(date)
+  }
+
   // Keyboard shortcuts: ← → per navigare i giorni
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -659,6 +663,7 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
       <ServiceManagerToolbar 
         currentDate={currentDate}
         changeDate={changeDate}
+        gotoDate={gotoDate}
         goToToday={goToToday}
         isToday={isToday}
         loading={loading}

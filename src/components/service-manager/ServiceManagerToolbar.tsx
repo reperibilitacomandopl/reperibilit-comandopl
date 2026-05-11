@@ -9,6 +9,7 @@ import {
 interface ServiceManagerToolbarProps {
   currentDate: Date
   changeDate: (days: number) => void
+  gotoDate: (date: Date) => void
   goToToday: () => void
   isToday: () => boolean
   loading: boolean
@@ -32,6 +33,7 @@ interface ServiceManagerToolbarProps {
 export default function ServiceManagerToolbar({
   currentDate,
   changeDate,
+  gotoDate,
   goToToday,
   isToday,
   loading,
@@ -81,21 +83,61 @@ export default function ServiceManagerToolbar({
 
       <div className="flex flex-wrap items-center gap-2 sm:gap-4">
         {/* DATE NAV */}
-        <div className="flex items-center bg-slate-800 rounded-xl p-1 border border-slate-700 shadow-inner">
-          <button onClick={() => changeDate(-1)} className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-white" title="Giorno Precedente (o tasto ←)">
-            <ChevronLeft width={20} height={20} />
-          </button>
-          <div className="px-4 flex flex-col items-center min-w-[140px]">
+        <div className="flex items-center bg-slate-800 rounded-xl p-1 border border-slate-700 shadow-inner group">
+          <div className="flex items-center border-r border-slate-700/50 pr-1">
+            <button 
+              onClick={() => changeDate(-7)} 
+              className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors text-slate-500 hover:text-white" 
+              title="Settimana Precedente (-7 gg)"
+            >
+              <ChevronLeft width={16} height={16} className="-mr-2" />
+              <ChevronLeft width={16} height={16} />
+            </button>
+            <button 
+              onClick={() => changeDate(-1)} 
+              className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-white" 
+              title="Giorno Precedente (o tasto ←)"
+            >
+              <ChevronLeft width={20} height={20} />
+            </button>
+          </div>
+
+          <div className="relative px-4 flex flex-col items-center min-w-[160px] group/date cursor-pointer hover:bg-slate-700/50 rounded-lg transition-all">
             <span className="text-[10px] font-black text-blue-400 uppercase tracking-tighter">
               {currentDate.toLocaleDateString('it-IT', { weekday: 'long' })}
             </span>
-            <span className="text-sm font-black text-white tabular-nums">
+            <span className="text-sm font-black text-white tabular-nums flex items-center gap-2">
               {currentDate.toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' })}
+              <CalendarIcon size={14} className="text-slate-500 group-hover/date:text-blue-400 transition-colors" />
             </span>
+            {/* Hidden native date picker to leverage browser default picker */}
+            <input 
+              type="date" 
+              className="absolute inset-0 opacity-0 cursor-pointer w-full"
+              value={currentDate.toISOString().split('T')[0]}
+              onChange={(e) => {
+                if (e.target.value) gotoDate(new Date(e.target.value))
+              }}
+            />
           </div>
-          <button onClick={() => changeDate(1)} className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-white" title="Giorno Successivo (o tasto →)">
-            <ChevronRight width={20} height={20} />
-          </button>
+
+          <div className="flex items-center border-l border-slate-700/50 pl-1">
+            <button 
+              onClick={() => changeDate(1)} 
+              className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-white" 
+              title="Giorno Successivo (o tasto →)"
+            >
+              <ChevronRight width={20} height={20} />
+            </button>
+            <button 
+              onClick={() => changeDate(7)} 
+              className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors text-slate-500 hover:text-white" 
+              title="Settimana Successiva (+7 gg)"
+            >
+              <ChevronRight width={16} height={16} />
+              <ChevronRight width={16} height={16} className="-ml-2" />
+            </button>
+          </div>
         </div>
 
         {/* ACTIONS */}
