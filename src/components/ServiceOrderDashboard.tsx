@@ -1,9 +1,9 @@
 "use client"
 
 import React, { useState, useEffect, useCallback } from "react"
-import { Loader2, Printer, X, GraduationCap, ShieldCheck, Layers } from "lucide-react"
+import { Loader2, Printer, X, GraduationCap, ShieldCheck, Layers, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
 import toast from "react-hot-toast"
-import { isAssenzaProtetta } from "@/utils/shift-logic"
+import { isAssenzaProtetta, isAssenza } from "@/utils/shift-logic"
 import { generateODSPDF, generateWeeklyODSPDF } from "@/utils/pdf-generator"
 import WeatherWidget from "@/components/WeatherWidget"
 import QuickServiceManager from "@/components/QuickServiceManager"
@@ -292,13 +292,23 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
   const isWorking = (type: string, details?: string) => {
     const t = (type || "").toUpperCase().replace(/[()]/g, "").trim()
     if (/^[MPN]($|\d)/.test(t)) return true
-    if (details && details.trim().length > 0 && !isAssenzaProtetta(t)) return true
+    // Se ha dettagli ma NON è un codice di assenza nota, lo consideriamo "al lavoro" (es. servizi speciali)
+    if (details && details.trim().length > 0 && !isAssenza(t)) return true
     return false
   }
+
+  const assenze = shifts.filter(s => isAssenza(s.type))
   const presentShifts = shifts.filter(s => isWorking(s.type, s.serviceDetails || ""))
+  
   const mattinieri = presentShifts.filter(s => !/^P/i.test((s.type||"").replace(/[()]/g,"")) && !/^N/i.test((s.type||"").replace(/[()]/g,"")))
   const pomeridiani = presentShifts.filter(s => /^P/i.test((s.type||"").replace(/[()]/g,"")))
   const notturni = presentShifts.filter(s => /^N/i.test((s.type||"").replace(/[()]/g,"")))
+
+  const changeWeek = (direction: number) => {
+    const next = new Date(currentDate)
+    next.setDate(next.getDate() + (direction * 7))
+    setCurrentDate(next)
+  }
 
   const renderFasciaOrizzontale = (titolo: string, listaTurni: DashboardShift[]) => {
     if (listaTurni.length === 0) return null
@@ -521,23 +531,41 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
       </div>
 
       {/* TABS SETTIMANALI (Come da Screenshot) */}
-      <div className="bg-slate-50 border-b border-slate-200 flex overflow-x-auto shrink-0 px-2 pt-2">
-         {weekDates.map((wd, index) => {
-            const isSelected = wd.getDate() === currentDate.getDate()
-            const lblDay = wd.toLocaleDateString("it-IT", { weekday: "long" }).charAt(0).toUpperCase() + wd.toLocaleDateString("it-IT", { weekday: "long" }).slice(1)
-            const dateStr = wd.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
-            return (
-              <button 
-                key={index} 
-                onClick={() => setCurrentDate(wd)}
-                className={`px-6 py-2.5 text-xs font-bold whitespace-nowrap transition-all border-x border-t rounded-t-lg -mb-[1px] relative
-                  ${isSelected ? 'bg-white border-slate-200 text-indigo-700 z-10 font-black' : 'bg-slate-100 border-transparent text-slate-400 hover:bg-slate-200'}
-                `}
-              >
-                {lblDay} {dateStr}
-              </button>
-            )
-         })}
+      <div className="bg-slate-50 border-b border-slate-200 flex items-center shrink-0 px-2 pt-2">
+         <button 
+           onClick={() => changeWeek(-1)}
+           className="p-2 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-indigo-600 transition-all mr-1"
+           title="Settimana Precedente"
+         >
+           <ChevronsLeft size={20} />
+         </button>
+         
+         <div className="flex overflow-x-auto no-scrollbar gap-1 flex-1">
+           {weekDates.map((wd, index) => {
+              const isSelected = wd.getDate() === currentDate.getDate() && wd.getMonth() === currentDate.getMonth()
+              const lblDay = wd.toLocaleDateString("it-IT", { weekday: "long" }).charAt(0).toUpperCase() + wd.toLocaleDateString("it-IT", { weekday: "long" }).slice(1)
+              const dateStr = wd.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
+              return (
+                <button 
+                  key={index} 
+                  onClick={() => setCurrentDate(wd)}
+                  className={`px-6 py-2.5 text-xs font-bold whitespace-nowrap transition-all border-x border-t rounded-t-lg -mb-[1px] relative
+                    ${isSelected ? 'bg-white border-slate-200 text-indigo-700 z-10 font-black shadow-[0_-4px_10px_rgba(0,0,0,0.03)]' : 'bg-slate-100 border-transparent text-slate-400 hover:bg-slate-200'}
+                  `}
+                >
+                  {lblDay} {dateStr}
+                </button>
+              )
+           })}
+         </div>
+
+         <button 
+           onClick={() => changeWeek(1)}
+           className="p-2 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-indigo-600 transition-all ml-1"
+           title="Settimana Successiva"
+         >
+           <ChevronsRight size={20} />
+         </button>
       </div>
 
       {/* Corpo Griglia */}
@@ -554,6 +582,48 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
                {renderFasciaOrizzontale("MATTINA", mattinieri)}
                {renderFasciaOrizzontale("POMERIGGIO", pomeridiani)}
                {renderFasciaOrizzontale("NOTTE", notturni)}
+
+               {/* Sezione Assenze e Permessi */}
+               {assenze.length > 0 && (
+                 <div className="mb-6 shadow-sm rounded-xl overflow-hidden border border-rose-200">
+                    <div className="bg-rose-50 border-b border-rose-100 text-center py-2">
+                       <h2 className="font-black tracking-[0.2em] uppercase text-xs text-rose-800">Assenze, Permessi e Congedi</h2>
+                    </div>
+                    <table className="w-full text-xs text-left border-collapse bg-white">
+                      <thead className="bg-rose-50/30 border-b border-rose-100">
+                        <tr className="text-rose-900/60 font-bold">
+                          <th className="p-2 border-r border-rose-100 w-1/4">QUALIFICA E COGNOME NOME</th>
+                          <th className="p-2 border-r border-rose-100 w-28 text-center">CODICE</th>
+                          <th className="p-2 border-r border-rose-100 w-1/4">TIPO ASSENZA</th>
+                          <th className="p-2">NOTE / DETTAGLI</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {assenze.map(s => {
+                          const u = users.find(user => user.id === s.userId)
+                          if (!u) return null
+                          return (
+                            <tr key={s.id} className="border-b border-rose-50 hover:bg-rose-50/20 transition-colors">
+                              <td className="p-2 border-r border-rose-100">
+                                <span className="text-[10px] text-rose-400 mr-2">{u.qualifica || (u.isUfficiale ? "Uff.le" : "Agente")}</span>
+                                <span className="font-bold text-slate-800">{u.name}</span>
+                              </td>
+                              <td className="p-2 border-r border-rose-100 text-center font-black text-rose-600">
+                                {s.type}
+                              </td>
+                              <td className="p-2 border-r border-rose-100 font-medium text-slate-600 italic">
+                                {s.serviceDetails ? s.serviceDetails.split(":")[1]?.trim() || s.serviceDetails : "Assenza autorizzata"}
+                              </td>
+                              <td className="p-2 text-slate-400 text-[10px]">
+                                {s.serviceDetails || "Nessun dettaglio aggiuntivo"}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                 </div>
+               )}
                
                {mattinieri.length === 0 && pomeridiani.length === 0 && notturni.length === 0 && (
                   <div className="p-12 text-center text-slate-400 font-medium italic bg-slate-50 rounded-2xl border border-slate-100 mt-4">Nessun turno assegnato per questa giornata.</div>

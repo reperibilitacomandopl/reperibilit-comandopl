@@ -2,7 +2,7 @@
 
 import React from "react"
 import { 
-  Calendar as CalendarIcon, ChevronLeft, ChevronRight, 
+  Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, 
   RotateCcw, Sparkles, Wand2, GraduationCap, Copy, ClipboardPaste 
 } from "lucide-react"
 
@@ -90,8 +90,7 @@ export default function ServiceManagerToolbar({
               className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors text-slate-500 hover:text-white" 
               title="Settimana Precedente (-7 gg)"
             >
-              <ChevronLeft width={16} height={16} className="-mr-2" />
-              <ChevronLeft width={16} height={16} />
+              <ChevronsLeft width={20} height={20} />
             </button>
             <button 
               onClick={() => changeDate(-1)} 
@@ -134,8 +133,7 @@ export default function ServiceManagerToolbar({
               className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors text-slate-500 hover:text-white" 
               title="Settimana Successiva (+7 gg)"
             >
-              <ChevronRight width={16} height={16} />
-              <ChevronRight width={16} height={16} className="-ml-2" />
+              <ChevronsRight width={20} height={20} />
             </button>
           </div>
         </div>
