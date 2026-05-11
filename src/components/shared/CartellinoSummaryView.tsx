@@ -35,8 +35,8 @@ interface BalanceDetail {
 interface CartellinoSummaryViewProps {
   requests: Request[]
   balances: {
-    details: BalanceDetail[]
-  } | null
+    details?: any[]
+  } | any | null
   mode: 'ADMIN' | 'USER'
   onAction?: (requestId: string, action: 'APPROVE' | 'REJECT') => Promise<void>
   isLoading?: boolean
