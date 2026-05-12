@@ -130,6 +130,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           privacyConsent: user.privacyConsent,
           twoFactorEnabled: user.twoFactorEnabled,
           twoFactorVerified: false,
+          trustedIps: user.trustedIps || [],
           privacyAcceptedAt: user.privacyAcceptedAt,
           gpsAcceptedAt: user.gpsAcceptedAt,
           squadra: user.squadra,
@@ -168,6 +169,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.privacyConsent = (user as any).privacyConsent as boolean | undefined
         token.twoFactorEnabled = (user as any).twoFactorEnabled as boolean | undefined
         token.twoFactorVerified = false
+        token.trustedIps = (user as any).trustedIps as string[] | undefined
         token.privacyAcceptedAt = (user as any).privacyAcceptedAt as Date | null | undefined
         token.gpsAcceptedAt = (user as any).gpsAcceptedAt as Date | null | undefined
         token.squadra = (user as any).squadra as string | undefined
@@ -206,6 +208,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.privacyConsent = token.privacyConsent as boolean
         session.user.twoFactorEnabled = token.twoFactorEnabled as boolean
         session.user.twoFactorVerified = token.twoFactorVerified as boolean
+        session.user.trustedIps = (token.trustedIps as string[]) || []
         session.user.privacyAcceptedAt = token.privacyAcceptedAt as Date | null
         session.user.gpsAcceptedAt = token.gpsAcceptedAt as Date | null
         session.user.squadra = token.squadra as string | undefined

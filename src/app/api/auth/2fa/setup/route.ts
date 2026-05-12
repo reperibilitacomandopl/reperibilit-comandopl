@@ -79,9 +79,15 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Codice non valido" }, { status: 400 })
       }
 
+      const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1"
+      const updatedIps = Array.from(new Set([...(user.trustedIps || []), ip]))
+
       await prisma.user.update({
         where: { id: user.id },
-        data: { twoFactorEnabled: true }
+        data: { 
+          twoFactorEnabled: true,
+          trustedIps: updatedIps
+        }
       })
 
       return NextResponse.json({ success: true, enabled: true })

@@ -99,8 +99,12 @@ export default auth((req) => {
   const u = session.user
 
   // 3. MFA SEIZURE & ENFORCEMENT (⚠ Critico)
+  const currentIp = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1"
+  const isIpTrusted = (u as any).trustedIps?.includes(currentIp)
+
   // Se l'MFA è attivo ma non verificato, blocca tutto tranne la pagina di verifica
-  if (u.twoFactorEnabled && !u.twoFactorVerified && pathname !== "/verify-2fa") {
+  // SALTA il controllo se l'IP è già trusted
+  if (u.twoFactorEnabled && !u.twoFactorVerified && !isIpTrusted && pathname !== "/verify-2fa") {
     if (pathname.startsWith("/api/")) {
       return addSecurityHeaders(NextResponse.json({ error: "MFA_REQUIRED", message: "Verifica 2FA richiesta" }, { status: 403 }), false, requestId)
     }
@@ -108,8 +112,9 @@ export default auth((req) => {
   }
 
   // ENFORCEMENT: Se l'utente è un ADMIN ma non ha l'MFA attiva, forza il setup (Punto 2.4 Checklist)
+  // SALTA se l'IP è già trusted (anche se improbabile qui, per coerenza)
   const securityPath = `/${u.tenantSlug}/admin/sicurezza`
-  if (u.role === "ADMIN" && !u.twoFactorEnabled && pathname !== securityPath && !pathname.startsWith("/api/")) {
+  if (u.role === "ADMIN" && !u.twoFactorEnabled && !isIpTrusted && pathname !== securityPath && !pathname.startsWith("/api/")) {
     return addSecurityHeaders(NextResponse.redirect(new URL(securityPath + "?forceMFA=true", req.url)), false, requestId)
   }
 

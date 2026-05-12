@@ -110,6 +110,7 @@ model User {
   privacyConsent           Boolean            @default(false)
   twoFactorEnabled         Boolean            @default(false)
   twoFactorSecret          String?
+  trustedIps               String[]           @default([])
   telegramOptIn            Boolean            @default(true)
   absences                 Absence[]
   agendaEntries            AgendaEntry[]      @relation("agendaEntries")

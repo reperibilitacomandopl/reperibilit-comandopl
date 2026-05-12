@@ -32,6 +32,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Codice non valido" }, { status: 400 })
     }
 
+    // Aggiungi l'IP attuale ai trusted IPs (Punto 2.4 - Trusted IPs)
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1"
+    const updatedIps = Array.from(new Set([...(user.trustedIps || []), ip]))
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { trustedIps: updatedIps }
+    })
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("[2FA VERIFY ERROR]", error)
