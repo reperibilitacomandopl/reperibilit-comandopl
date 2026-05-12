@@ -6,7 +6,7 @@ const globalForPrisma = globalThis as unknown as {
 
 const isEdge = process.env.NEXT_RUNTIME === 'edge'
 
-const SOFT_DELETE_MODELS = ['User', 'Absence', 'Shift', 'AgentRequest', 'CertifiedDocument', 'AuditLog', 'ClockRecord', 'AgentBalance', 'Announcement'];
+const SOFT_DELETE_MODELS = ['User', 'Absence', 'Shift', 'AgentRequest', 'CertifiedDocument', 'AuditLog', 'ClockRecord', 'AgentBalance', 'Announcement', 'Notification', 'EmergencyAlert'];
 
 const getExtendedClient = () => {
   const basePrisma = new PrismaClient()
