@@ -34,28 +34,64 @@ const getExtendedClient = () => {
     query: {
       $allModels: {
         async findMany({ model, args, query }) {
-          if (SOFT_DELETE_MODELS.includes(model)) {
-            (args as any).where = { ...(args.where as any), deletedAt: null }
+          try {
+            if (SOFT_DELETE_MODELS.includes(model)) {
+              (args as any).where = { ...(args.where as any), deletedAt: null }
+            }
+            return await query(args)
+          } catch (e: any) {
+            if (e.message?.includes('Unknown argument `deletedAt`')) {
+              const { deletedAt, ...restWhere } = (args.where as any) || {}
+              args.where = restWhere
+              return query(args)
+            }
+            throw e
           }
-          return query(args)
         },
         async findFirst({ model, args, query }) {
-          if (SOFT_DELETE_MODELS.includes(model)) {
-            (args as any).where = { ...(args.where as any), deletedAt: null }
+          try {
+            if (SOFT_DELETE_MODELS.includes(model)) {
+              (args as any).where = { ...(args.where as any), deletedAt: null }
+            }
+            return await query(args)
+          } catch (e: any) {
+            if (e.message?.includes('Unknown argument `deletedAt`')) {
+              const { deletedAt, ...restWhere } = (args.where as any) || {}
+              args.where = restWhere
+              return query(args)
+            }
+            throw e
           }
-          return query(args)
         },
         async findUnique({ model, args, query }) {
-          if (SOFT_DELETE_MODELS.includes(model)) {
-            (args as any).where = { ...(args.where as any), deletedAt: null }
+          try {
+            if (SOFT_DELETE_MODELS.includes(model)) {
+              (args as any).where = { ...(args.where as any), deletedAt: null }
+            }
+            return await query(args)
+          } catch (e: any) {
+            if (e.message?.includes('Unknown argument `deletedAt`')) {
+              const { deletedAt, ...restWhere } = (args.where as any) || {}
+              args.where = restWhere
+              return query(args)
+            }
+            throw e
           }
-          return query(args)
         },
         async count({ model, args, query }) {
-          if (SOFT_DELETE_MODELS.includes(model)) {
-            (args as any).where = { ...(args.where as any), deletedAt: null }
+          try {
+            if (SOFT_DELETE_MODELS.includes(model)) {
+              (args as any).where = { ...(args.where as any), deletedAt: null }
+            }
+            return await query(args)
+          } catch (e: any) {
+            if (e.message?.includes('Unknown argument `deletedAt`')) {
+              const { deletedAt, ...restWhere } = (args.where as any) || {}
+              args.where = restWhere
+              return query(args)
+            }
+            throw e
           }
-          return query(args)
         },
         async delete({ model, args, query }) {
           if (SOFT_DELETE_MODELS.includes(model)) {
