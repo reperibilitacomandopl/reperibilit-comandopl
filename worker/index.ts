@@ -68,7 +68,7 @@ self.addEventListener('push', (event: PushEvent) => {
     );
 
     // Notifica con azioni rapide
-    const notificationOptions: NotificationOptions = {
+    const notificationOptions: any = {
       body: data.body,
       icon: '/icon-192.png',
       badge: '/badge-icon.png',
