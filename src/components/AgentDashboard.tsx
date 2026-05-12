@@ -79,10 +79,12 @@ export default function AgentDashboard({
   
   const admin = useAgentData({ currentUser, currentYear, currentMonth, shifts, tenant });
 
-  // GPS REAL-TIME TRACKING (SOLO IN SERVIZIO)
+  // GPS REAL-TIME TRACKING (GEOFENCING SMART)
   const coords = useGpsTracking({ 
     isClockedIn: admin.isClockedIn || 'OUT', 
-    intervalMs: 300000 // Aggiorna posizione ogni 5 minuti
+    intervalMs: 300000,
+    tenant: tenant,
+    myShifts: admin.myShifts
   });
 
   // PWA Shortcuts & URL Actions
