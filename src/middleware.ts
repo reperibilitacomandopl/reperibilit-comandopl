@@ -108,8 +108,9 @@ export default auth((req) => {
   }
 
   // ENFORCEMENT: Se l'utente è un ADMIN ma non ha l'MFA attiva, forza il setup (Punto 2.4 Checklist)
-  if (u.role === "ADMIN" && !u.twoFactorEnabled && pathname !== "/admin/sicurezza" && !pathname.startsWith("/api/")) {
-    return NextResponse.redirect(new URL(`/${u.tenantSlug}/admin/sicurezza?forceMFA=true`, req.url))
+  const securityPath = `/${u.tenantSlug}/admin/sicurezza`
+  if (u.role === "ADMIN" && !u.twoFactorEnabled && pathname !== securityPath && !pathname.startsWith("/api/")) {
+    return addSecurityHeaders(NextResponse.redirect(new URL(securityPath + "?forceMFA=true", req.url)), false, requestId)
   }
 
   // 4. ISOLAMENTO MULTI-TENANT (⚠ Critico)
