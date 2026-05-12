@@ -42,7 +42,8 @@ export async function GET() {
     const qrCodeUrl = await QRCode.toDataURL(otpauth)
 
     return NextResponse.json({ 
-      qrCodeUrl,
+      qrCode: qrCodeUrl,
+      secret: secret,
       enabled: user.twoFactorEnabled 
     })
   } catch (error) {
