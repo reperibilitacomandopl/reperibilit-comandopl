@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   try {
-    const { id } = params
+    const { id } = await params
     const body = await req.json()
     const { status, code, hours, notes } = body
 
@@ -20,9 +20,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         ...(notes !== undefined && { notes })
       }
     })
-
-    // Se la richiesta viene rifiutata e c'era un'entry in agenda, magari va rimossa
-    // Ma solitamente l'agenda viene gestita separatamente o sincronizzata
     
     return NextResponse.json({ success: true, request })
   } catch (error) {
@@ -30,14 +27,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   try {
-    const { id } = params
+    const { id } = await params
     
-    // Recuperiamo info per eventuale audit
     const existing = await prisma.agentRequest.findUnique({ where: { id } })
     if (!existing) return NextResponse.json({ error: "Richiesta non trovata" }, { status: 404 })
 
