@@ -67,48 +67,22 @@ self.addEventListener('push', (event: PushEvent) => {
       })
     );
 
-// VERSION: 1.0.3 - Final Force update
-const SW_VERSION = '1.0.3';
+// VERSION: 1.0.5 - Simplest format for iOS
+const SW_VERSION = '1.0.5';
 
-    // Notifica con azioni rapide
-    const notificationOptions: any = {
+    // Notifica ultra-semplice per massima compatibilità iOS
+    const options: any = {
       body: data.body,
       icon: '/icon-192.png',
-      badge: '/badge-icon.png',
-      tag: isSos ? 'sos-alarm' : 'default-alert',
-      renotify: isSos,
-      requireInteraction: isSos,
-      silent: false,
-      vibrate: isSos ? sosVibration : defaultVibration,
-      data: {
-        url: data.url || '/',
-        type: data.type || (data.title?.includes('timbratura') ? 'CLOCK_REMINDER' : 'INFO')
-      },
-      actions: []
+      data: { url: data.url || '/' },
+      actions: [
+        { action: 'CLOCK_OUT', title: '⏹ Timbra Uscita' },
+        { action: 'open', title: 'Apri App' }
+      ]
     };
 
-    // Aggiungi azioni in modo più permissivo
-    if (isSos) {
-      notificationOptions.actions.push({ action: 'open', title: '🚨 RISPONDI ORA' });
-    } else {
-      // Per tutte le notifiche di promemoria o che contengono parole chiave
-      const isReminder = data.type === 'CLOCK_REMINDER' || 
-                         data.title?.toLowerCase().includes('timbratura') || 
-                         data.title?.toLowerCase().includes('dimenticato') ||
-                         data.title?.toLowerCase().includes('turno');
-
-      if (isReminder) {
-        const isOut = data.title?.toLowerCase().includes('uscita') || data.body?.toLowerCase().includes('uscita');
-        notificationOptions.actions.push({ 
-          action: isOut ? 'CLOCK_OUT' : 'CLOCK_IN', 
-          title: isOut ? '⏹ Timbra Uscita' : '▶️ Timbra Entrata' 
-        });
-      }
-      notificationOptions.actions.push({ action: 'open', title: 'Apri App' });
-    }
-
     event.waitUntil(
-      self.registration.showNotification(data.title, notificationOptions)
+      self.registration.showNotification(data.title || 'Promemoria', options)
     );
   } catch (e) {
     console.error('[PWA-PUSH] Errore parsing push:', e);
