@@ -251,6 +251,9 @@ export default function CartellinoPanel() {
           onAction={handleRequestAction}
           isLoading={loading}
           userId={selectedUserId}
+          month={month}
+          year={year}
+          onMonthChange={(m, y) => { setMonth(m); setYear(y); }}
         />
       ) : (
         <>
