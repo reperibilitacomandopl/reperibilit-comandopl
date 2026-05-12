@@ -146,6 +146,16 @@ export default function CartellinoPanel() {
       toast.error("Seleziona una causale")
       return
     }
+    
+    // Trova l'item corretto per determinare se servono ore
+    const item = AGENDA_CATEGORIES.flatMap(c => c.items).find(i => i.code === newReq.code || i.shortCode === newReq.code)
+    const isHourly = item?.unit === 'HOURS'
+    
+    if (isHourly && !newReq.hours) {
+      toast.error("Inserisci il numero di ore")
+      return
+    }
+
     setAddingReq(true)
     try {
       const res = await fetch("/api/requests", {
@@ -154,10 +164,10 @@ export default function CartellinoPanel() {
         body: JSON.stringify({
           userId: selectedCell.userId,
           date: selectedCell.dateStr,
-          code: newReq.code,
+          code: newReq.code, // Usiamo il codice univoco (es. 0112)
           hours: newReq.hours || null,
           notes: newReq.notes,
-          status: "ACCEPTED" // Inserito da admin = approvato
+          status: "ACCEPTED"
         })
       })
       if (!res.ok) throw new Error("Errore API")
@@ -477,28 +487,36 @@ export default function CartellinoPanel() {
                 </div>
 
                 {/* Griglia Categorie */}
-                <div className="space-y-3 pt-2">
+                <div className="space-y-4 pt-2">
                   {AGENDA_CATEGORIES.map(cat => {
                     const theme = CAT_THEME[cat.color] || CAT_THEME.indigo
                     return (
-                      <div key={cat.group} className="space-y-1.5">
+                      <div key={cat.group} className="space-y-2">
                         <div className="flex items-center gap-1.5 opacity-60">
                           <span className="text-xs">{cat.emoji}</span>
-                          <span className={`text-[9px] font-bold ${theme.text} uppercase tracking-wider`}>{cat.group}</span>
+                          <span className={`text-[9px] font-black ${theme.text} uppercase tracking-wider`}>{cat.group}</span>
                         </div>
-                        <div className="grid grid-cols-3 gap-1.5">
+                        <div className="grid grid-cols-2 gap-2">
                           {cat.items.map(item => (
                             <button 
-                              key={item.shortCode}
-                              onClick={() => setNewReq(p => ({ ...p, code: item.shortCode }))}
-                              className={`text-[9px] font-bold py-1.5 px-2 rounded-lg border transition-all text-left truncate ${
-                                newReq.code === item.shortCode 
+                              key={item.code} 
+                              onClick={() => setNewReq(p => ({ 
+                                ...p, 
+                                code: item.code, 
+                                hours: item.unit === 'HOURS' ? p.hours : "" 
+                              }))}
+                              className={`flex flex-col gap-0.5 p-2 rounded-xl border transition-all text-left ${
+                                newReq.code === item.code 
                                 ? `${theme.btnBg} ${theme.btnText} border-transparent shadow-md ring-2 ring-indigo-500 ring-offset-1`
-                                : `bg-white text-slate-600 border-slate-200 hover:border-slate-300`
+                                : `bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50`
                               }`}
-                              title={item.label}
                             >
-                              {item.shortCode}
+                              <span className={`text-[10px] font-black uppercase ${newReq.code === item.code ? 'text-white' : 'text-slate-900'}`}>
+                                {item.shortCode}
+                              </span>
+                              <span className={`text-[9px] font-bold leading-tight line-clamp-1 ${newReq.code === item.code ? 'text-white/80' : 'text-slate-500'}`}>
+                                {item.label}
+                              </span>
                             </button>
                           ))}
                         </div>
