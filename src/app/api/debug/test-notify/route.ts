@@ -15,14 +15,15 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Utente non trovato" }, { status: 404 })
     }
 
-    // Simulazione notifica con pulsanti rapidi
+    // Notifica esplicita per iPhone con azioni
     await sendPushNotification(user.id, {
-      title: "⚠️ Dimenticato timbratura uscita?",
-      body: `Il tuo turno è terminato. Usa il tasto qui sotto per timbrare l'uscita senza aprire l'app.`,
-      url: "/"
+      title: "🏁 Promemoria Timbratura Uscita",
+      body: `Il tuo turno è terminato. Tieni premuto per timbrare l'uscita ora.`,
+      url: "/",
+      type: "CLOCK_REMINDER" // Tipo esplicito per il Service Worker
     })
 
-    return NextResponse.json({ success: true, message: `Notifica con azioni inviata a ${user.name}` })
+    return NextResponse.json({ success: true, message: `Notifica v1.0.3 inviata a ${user.name}` })
   } catch (error) {
     console.error(error)
     return NextResponse.json({ error: "Errore" }, { status: 500 })
