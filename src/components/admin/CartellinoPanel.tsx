@@ -396,6 +396,7 @@ export default function CartellinoPanel() {
                         </td>
 
                         <td className="px-4 py-3">
+                          {clocks.length > 0 ? (
                             <button 
                               onClick={() => openDetailModal(day, primaryShift, clocks)}
                               className="flex flex-wrap gap-1 hover:opacity-80 transition-opacity"
