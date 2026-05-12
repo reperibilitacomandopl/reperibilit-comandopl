@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 
-export default function QuickClockPage() {
+function QuickClockContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const type = searchParams.get('type') || 'OUT'
@@ -91,5 +91,17 @@ export default function QuickClockPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function QuickClockPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-slate-900 text-white font-bold text-3xl">
+        <Loader2 className="animate-spin text-blue-500" /> Caricamento...
+      </div>
+    }>
+      <QuickClockContent />
+    </Suspense>
   )
 }
