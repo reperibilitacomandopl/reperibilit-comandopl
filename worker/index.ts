@@ -67,23 +67,40 @@ self.addEventListener('push', (event: PushEvent) => {
       })
     );
 
+    // Notifica con azioni rapide
+    const notificationOptions: NotificationOptions = {
+      body: data.body,
+      icon: '/icon-192.png',
+      badge: '/badge-icon.png',
+      tag: isSos ? 'sos-alarm' : 'default-alert',
+      renotify: isSos,
+      requireInteraction: isSos,
+      silent: false,
+      vibrate: isSos ? sosVibration : defaultVibration,
+      data: {
+        url: data.url || '/',
+        type: data.type // Passiamo il tipo per logica condizionale
+      },
+      actions: []
+    };
+
+    // Aggiungi azioni in base al contesto
+    if (isSos) {
+      notificationOptions.actions?.push({ action: 'open', title: '🚨 RISPONDI ORA' });
+    } else if (data.title?.includes('dimenticato') || data.title?.includes('turno')) {
+      // Se è un promemoria di timbratura, aggiungi pulsante rapido
+      const isOut = data.title.toLowerCase().includes('uscita') || data.body.toLowerCase().includes('uscita');
+      notificationOptions.actions?.push({ 
+        action: isOut ? 'CLOCK_OUT' : 'CLOCK_IN', 
+        title: isOut ? '⏹ Timbra Uscita ORA' : '▶️ Timbra Entrata ORA' 
+      });
+      notificationOptions.actions?.push({ action: 'open', title: 'Apri App' });
+    } else {
+      notificationOptions.actions?.push({ action: 'open', title: 'Vedi Dettagli' });
+    }
+
     event.waitUntil(
-      self.registration.showNotification(data.title, {
-        body: data.body,
-        icon: '/icon-192.png',
-        badge: '/badge-icon.png',
-        tag: isSos ? 'sos-alarm' : 'default-alert',
-        renotify: isSos,
-        requireInteraction: isSos,
-        silent: false, // Forza l'overload sonoro del sistema operativo
-        vibrate: isSos ? sosVibration : defaultVibration,
-        data: {
-          url: data.url || '/'
-        },
-        actions: [
-          { action: 'open', title: isSos ? '🚨 RISPONDI ORA' : 'Vedi Dettagli' }
-        ]
-      } as NotificationOptions)
+      self.registration.showNotification(data.title, notificationOptions)
     );
   } catch (e) {
     console.error('[PWA-PUSH] Errore parsing push:', e);
@@ -91,20 +108,56 @@ self.addEventListener('push', (event: PushEvent) => {
 });
 
 self.addEventListener('notificationclick', (event: NotificationEvent) => {
-  event.notification.close();
+  const action = event.action;
+  const notification = event.notification;
+  notification.close();
   
-  const urlToOpen = event.notification.data?.url || '/';
+  if (action === 'CLOCK_IN' || action === 'CLOCK_OUT') {
+    const type = action === 'CLOCK_IN' ? 'IN' : 'OUT';
+    
+    event.waitUntil(
+      // Eseguiamo la timbratura in background
+      fetch('/api/admin/clock-in', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          type, 
+          lat: null, 
+          lng: null, 
+          accuracy: null, 
+          isManual: true // Segnaliamo che è da notifica
+        })
+      }).then(async (res) => {
+        if (res.ok) {
+          // Mostra una notifica di conferma del successo
+          return self.registration.showNotification(
+            type === 'IN' ? '✅ Entrata Confermata' : '🏁 Uscita Confermata',
+            {
+              body: `Timbratura ${type} eseguita correttamente in background.`,
+              icon: '/icon-192.png',
+              tag: 'clock-confirm'
+            }
+          );
+        } else {
+          // Se fallisce (es. sessione scaduta), apri l'app
+          return self.clients.openWindow(notification.data?.url || '/');
+        }
+      }).catch(() => {
+        return self.clients.openWindow(notification.data?.url || '/');
+      })
+    );
+    return;
+  }
 
+  const urlToOpen = notification.data?.url || '/';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
-      // Se c'è già una finestra aperta, facciamo focus
       for (let i = 0; i < windowClients.length; i++) {
         const client = windowClients[i];
         if (client.url === urlToOpen && 'focus' in client) {
           return client.focus();
         }
       }
-      // Altrimenti ne apriamo una nuova
       if (self.clients.openWindow) {
         return self.clients.openWindow(urlToOpen);
       }
