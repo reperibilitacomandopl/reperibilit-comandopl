@@ -645,7 +645,7 @@ export default function CartellinoPanel() {
                 </div>
 
                 {/* Giustificativi Attivi */}
-                {detailData.dayRequests.length > 0 && (
+                {detailData.dayRequests && detailData.dayRequests.length > 0 && (
                   <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
                     <label className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block mb-3">Richieste / Giustificativi Attivi</label>
                     <div className="space-y-2">
