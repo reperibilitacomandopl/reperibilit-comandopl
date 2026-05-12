@@ -22,7 +22,7 @@ if (vapidPublic && vapidPrivate) {
  * Invia una notifica push a un utente specifico.
  * Cerca tutte le sottoscrizioni attive associate all'ID utente.
  */
-export async function sendPushNotification(userId: string, payload: { title: string, body: string, url?: string }) {
+export async function sendPushNotification(userId: string, payload: { title: string, body: string, url?: string, type?: string }) {
   try {
     const subscriptions = await prisma.pushSubscription.findMany({
       where: { userId }
