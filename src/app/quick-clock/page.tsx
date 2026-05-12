@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { CheckCircleIcon, XCircleIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
+import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 
 export default function QuickClockPage() {
   const router = useRouter()
@@ -52,7 +52,7 @@ export default function QuickClockPage() {
       <div className="bg-slate-800 p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full text-center border border-slate-700">
         {status === 'loading' && (
           <>
-            <ArrowPathIcon className="h-16 w-16 text-blue-500 animate-spin mb-4" />
+            <Loader2 className="h-16 w-16 text-blue-500 animate-spin mb-4" />
             <h1 className="text-2xl font-bold mb-2">Timbratura Rapida</h1>
             <p className="text-slate-400">{message}</p>
           </>
@@ -61,7 +61,7 @@ export default function QuickClockPage() {
         {status === 'success' && (
           <>
             <div className="bg-green-500/20 p-4 rounded-full mb-4">
-              <CheckCircleIcon className="h-16 w-16 text-green-500" />
+              <CheckCircle2 className="h-16 w-16 text-green-500" />
             </div>
             <h1 className="text-2xl font-bold mb-2 text-green-400">Confermato!</h1>
             <p className="text-slate-300 mb-6">{message}</p>
@@ -77,7 +77,7 @@ export default function QuickClockPage() {
         {status === 'error' && (
           <>
             <div className="bg-red-500/20 p-4 rounded-full mb-4">
-              <XCircleIcon className="h-16 w-16 text-red-500" />
+              <XCircle className="h-16 w-16 text-red-500" />
             </div>
             <h1 className="text-2xl font-bold mb-2 text-red-400">Attenzione</h1>
             <p className="text-slate-300 mb-6">{message}</p>
