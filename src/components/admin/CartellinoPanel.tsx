@@ -55,6 +55,10 @@ export default function CartellinoPanel() {
   const [selectedCell, setSelectedCell] = useState<{userId: string, dateStr: string, day: number} | null>(null)
   const [detailData, setDetailData] = useState<{type: string, overtimeHours: number, note: string, clocks: any[], dayRequests: any[]}>({type: "", overtimeHours: 0, note: "", clocks: [], dayRequests: []})
   const [savingDetail, setSavingDetail] = useState(false)
+  
+  // Stato per inserimento nuovo giustificativo
+  const [newReq, setNewReq] = useState({ code: "", hours: "", notes: "" })
+  const [addingReq, setAddingReq] = useState(false)
 
   useEffect(() => {
     fetchAgents()
@@ -134,6 +138,45 @@ export default function CartellinoPanel() {
       fetchCartellinoData()
     } catch (e) {
       toast.error("Impossibile eliminare la richiesta")
+    }
+  }
+
+  const handleAddRequest = async () => {
+    if (!newReq.code || !selectedCell) {
+      toast.error("Seleziona una causale")
+      return
+    }
+    setAddingReq(true)
+    try {
+      const res = await fetch("/api/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: selectedCell.userId,
+          date: selectedCell.dateStr,
+          code: newReq.code,
+          hours: newReq.hours || null,
+          notes: newReq.notes,
+          status: "ACCEPTED" // Inserito da admin = approvato
+        })
+      })
+      if (!res.ok) throw new Error("Errore API")
+      toast.success("Giustificativo aggiunto")
+      
+      // Reset e refresh
+      setNewReq({ code: "", hours: "", notes: "" })
+      fetchCartellinoData()
+      
+      // Aggiorna anche la modale locale recuperando i dati freschi
+      const updatedJson = await (await fetch(`/api/admin/cartellino?userId=${selectedCell.userId}&month=${month}&year=${year}`)).json()
+      const dateStr = selectedCell.dateStr
+      const dayReqs = updatedJson.requests.filter((r: any) => new Date(r.date).toISOString().split('T')[0] === dateStr)
+      setDetailData(prev => ({ ...prev, dayRequests: dayReqs }))
+      
+    } catch (e) {
+      toast.error("Errore durante l'inserimento")
+    } finally {
+      setAddingReq(false)
     }
   }
 
@@ -380,16 +423,90 @@ export default function CartellinoPanel() {
                 <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 space-y-3">
                   <p className="text-[10px] font-black text-amber-600 uppercase">Giustificativi Attivi</p>
                   {detailData.dayRequests.map((r: any) => (
-                    <div key={r.id} className="flex items-center justify-between bg-white p-2.5 rounded-lg border border-amber-100">
+                    <div key={r.id} className="flex items-center justify-between bg-white p-2.5 rounded-lg border border-amber-100 shadow-sm">
                       <div className="flex flex-col">
                         <span className="text-xs font-bold">{r.hours ? `${r.hours}h ` : ''}{getLabel(r.code) || r.code}</span>
                         {r.notes && <span className="text-[10px] text-slate-500">{r.notes}</span>}
                       </div>
-                      <button onClick={() => handleDeleteRequest(r.id)} className="text-rose-500 hover:bg-rose-50 p-1 rounded"><X size={16} /></button>
+                      <button onClick={() => handleDeleteRequest(r.id)} className="text-rose-500 hover:bg-rose-50 p-1.5 rounded-lg transition-colors"><X size={16} /></button>
                     </div>
                   ))}
                 </div>
               )}
+
+              {/* Sezione Aggiunta Nuovo Giustificativo */}
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Aggiungi Nuovo Giustificativo</p>
+                  {newReq.code && (
+                    <span className="text-[10px] font-bold bg-indigo-600 text-white px-2 py-0.5 rounded animate-pulse">
+                      SELEZIONATO: {newReq.code}
+                    </span>
+                  )}
+                </div>
+
+                {/* Form per ore e note */}
+                <div className="flex gap-2">
+                  <div className="w-24">
+                    <label className="text-[9px] font-bold text-slate-400 block mb-1">ORE</label>
+                    <input 
+                      type="number" step="0.5" placeholder="H"
+                      value={newReq.hours}
+                      onChange={e => setNewReq(p => ({ ...p, hours: e.target.value }))}
+                      className="w-full p-2 text-xs font-bold border rounded-lg outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-[9px] font-bold text-slate-400 block mb-1">NOTE AGGIUNTIVE</label>
+                    <input 
+                      type="text" placeholder="Note facoltative..."
+                      value={newReq.notes}
+                      onChange={e => setNewReq(p => ({ ...p, notes: e.target.value }))}
+                      className="w-full p-2 text-xs border rounded-lg outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <button 
+                      onClick={handleAddRequest}
+                      disabled={addingReq || !newReq.code}
+                      className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 h-[34px] flex items-center justify-center min-w-[60px]"
+                    >
+                      {addingReq ? <RefreshCcw size={14} className="animate-spin" /> : "AGGIUNGI"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Griglia Categorie */}
+                <div className="space-y-3 pt-2">
+                  {AGENDA_CATEGORIES.map(cat => {
+                    const theme = CAT_THEME[cat.color] || CAT_THEME.indigo
+                    return (
+                      <div key={cat.group} className="space-y-1.5">
+                        <div className="flex items-center gap-1.5 opacity-60">
+                          <span className="text-xs">{cat.emoji}</span>
+                          <span className={`text-[9px] font-bold ${theme.text} uppercase tracking-wider`}>{cat.group}</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {cat.items.map(item => (
+                            <button 
+                              key={item.shortCode}
+                              onClick={() => setNewReq(p => ({ ...p, code: item.shortCode }))}
+                              className={`text-[9px] font-bold py-1.5 px-2 rounded-lg border transition-all text-left truncate ${
+                                newReq.code === item.shortCode 
+                                ? `${theme.btnBg} ${theme.btnText} border-transparent shadow-md ring-2 ring-indigo-500 ring-offset-1`
+                                : `bg-white text-slate-600 border-slate-200 hover:border-slate-300`
+                              }`}
+                              title={item.label}
+                            >
+                              {item.shortCode}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
