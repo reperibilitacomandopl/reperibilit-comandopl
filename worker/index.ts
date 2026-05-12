@@ -67,6 +67,9 @@ self.addEventListener('push', (event: PushEvent) => {
       })
     );
 
+// VERSION: 1.0.3 - Final Force update
+const SW_VERSION = '1.0.3';
+
     // Notifica con azioni rapide
     const notificationOptions: any = {
       body: data.body,
@@ -79,24 +82,29 @@ self.addEventListener('push', (event: PushEvent) => {
       vibrate: isSos ? sosVibration : defaultVibration,
       data: {
         url: data.url || '/',
-        type: data.type // Passiamo il tipo per logica condizionale
+        type: data.type || (data.title?.includes('timbratura') ? 'CLOCK_REMINDER' : 'INFO')
       },
       actions: []
     };
 
-    // Aggiungi azioni in base al contesto
+    // Aggiungi azioni in modo più permissivo
     if (isSos) {
-      notificationOptions.actions?.push({ action: 'open', title: '🚨 RISPONDI ORA' });
-    } else if (data.title?.includes('dimenticato') || data.title?.includes('turno')) {
-      // Se è un promemoria di timbratura, aggiungi pulsante rapido
-      const isOut = data.title.toLowerCase().includes('uscita') || data.body.toLowerCase().includes('uscita');
-      notificationOptions.actions?.push({ 
-        action: isOut ? 'CLOCK_OUT' : 'CLOCK_IN', 
-        title: isOut ? '⏹ Timbra Uscita ORA' : '▶️ Timbra Entrata ORA' 
-      });
-      notificationOptions.actions?.push({ action: 'open', title: 'Apri App' });
+      notificationOptions.actions.push({ action: 'open', title: '🚨 RISPONDI ORA' });
     } else {
-      notificationOptions.actions?.push({ action: 'open', title: 'Vedi Dettagli' });
+      // Per tutte le notifiche di promemoria o che contengono parole chiave
+      const isReminder = data.type === 'CLOCK_REMINDER' || 
+                         data.title?.toLowerCase().includes('timbratura') || 
+                         data.title?.toLowerCase().includes('dimenticato') ||
+                         data.title?.toLowerCase().includes('turno');
+
+      if (isReminder) {
+        const isOut = data.title?.toLowerCase().includes('uscita') || data.body?.toLowerCase().includes('uscita');
+        notificationOptions.actions.push({ 
+          action: isOut ? 'CLOCK_OUT' : 'CLOCK_IN', 
+          title: isOut ? '⏹ Timbra Uscita' : '▶️ Timbra Entrata' 
+        });
+      }
+      notificationOptions.actions.push({ action: 'open', title: 'Apri App' });
     }
 
     event.waitUntil(
