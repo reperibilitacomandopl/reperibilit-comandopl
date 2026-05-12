@@ -21,7 +21,6 @@ const PUBLIC_ROUTES = new Set([
 const PUBLIC_PREFIXES = [
   "/api/auth",
   "/api/cron",
-  "/api/debug",
   "/api/telegram/webhook",
   "/api/test-db",
   "/api/calendar",
