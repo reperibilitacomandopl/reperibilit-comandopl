@@ -21,6 +21,7 @@ declare module "next-auth" {
     privacyConsent: boolean
     twoFactorEnabled: boolean
     twoFactorVerified: boolean
+    trustedIps: string[]
     privacyAcceptedAt: Date | null
     gpsAcceptedAt: Date | null
     squadra?: string | null
@@ -53,6 +54,7 @@ declare module "next-auth/jwt" {
     privacyConsent: boolean
     twoFactorEnabled: boolean
     twoFactorVerified: boolean
+    trustedIps: string[]
     privacyAcceptedAt: Date | null
     gpsAcceptedAt: Date | null
     squadra?: string | null
