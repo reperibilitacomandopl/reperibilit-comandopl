@@ -53,7 +53,7 @@ export default function CartellinoPanel() {
   // --- STATO MODALE ---
   const [detailModalOpen, setDetailModalOpen] = useState(false)
   const [selectedCell, setSelectedCell] = useState<{userId: string, dateStr: string, day: number} | null>(null)
-  const [detailData, setDetailData] = useState<{type: string, overtimeHours: number, note: string, clocks: any[]}>({type: "", overtimeHours: 0, note: "", clocks: []})
+  const [detailData, setDetailData] = useState<{type: string, overtimeHours: number, note: string, clocks: any[], dayRequests: any[]}>({type: "", overtimeHours: 0, note: "", clocks: [], dayRequests: []})
   const [savingDetail, setSavingDetail] = useState(false)
 
   useEffect(() => {
@@ -104,7 +104,7 @@ export default function CartellinoPanel() {
   const daysInMonth = getDaysInMonth(new Date(year, month - 1))
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
 
-  const openDetailModal = (day: number, primaryShift: any, clocks: any[]) => {
+  const openDetailModal = (day: number, primaryShift: any, clocks: any[], dayRequests?: any[]) => {
     const dateObj = new Date(Date.UTC(year, month - 1, day))
     const dateStr = dateObj.toISOString().split('T')[0]
     
@@ -113,9 +113,29 @@ export default function CartellinoPanel() {
       type: primaryShift?.type || "",
       overtimeHours: primaryShift?.overtimeHours || 0,
       note: primaryShift?.serviceDetails || "",
-      clocks: clocks ? [...clocks] : []
+      clocks: clocks ? [...clocks] : [],
+      dayRequests: dayRequests ? [...dayRequests] : []
     })
     setDetailModalOpen(true)
+  }
+
+  const handleDeleteRequest = async (requestId: string) => {
+    if (!confirm("Eliminare definitivamente questa richiesta?")) return
+    try {
+      const res = await fetch(`/api/requests/${requestId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error("Errore API")
+      toast.success("Richiesta eliminata")
+      
+      // Aggiorna lo stato locale della modale
+      setDetailData(prev => ({
+        ...prev,
+        dayRequests: prev.dayRequests.filter((r: any) => r.id !== requestId)
+      }))
+      
+      fetchCartellinoData() // Refresh globale
+    } catch (e) {
+      toast.error("Impossibile eliminare la richiesta")
+    }
   }
 
   const saveDetailModal = async () => {
@@ -383,7 +403,7 @@ export default function CartellinoPanel() {
                               </span>
                               {!isAbsence && primaryShift.timeRange && (
                                 <button 
-                                  onClick={() => openDetailModal(day, primaryShift, clocks)}
+                                  onClick={() => openDetailModal(day, primaryShift, clocks, requests)}
                                   className="text-slate-400 text-xs flex items-center gap-1 hover:text-white transition-colors"
                                 >
                                   <Clock size={12} /> {primaryShift.timeRange}
@@ -398,7 +418,7 @@ export default function CartellinoPanel() {
                         <td className="px-4 py-3">
                           {clocks.length > 0 ? (
                             <button 
-                              onClick={() => openDetailModal(day, primaryShift, clocks)}
+                              onClick={() => openDetailModal(day, primaryShift, clocks, requests)}
                               className="flex flex-wrap gap-1 hover:opacity-80 transition-opacity"
                             >
                               {clocks.map((c: any, i: number) => (
@@ -449,7 +469,7 @@ export default function CartellinoPanel() {
                             {requests.map((r: any, i: number) => (
                               <button 
                                 key={i} 
-                                onClick={() => openDetailModal(day, primaryShift, clocks)}
+                                onClick={() => openDetailModal(day, primaryShift, clocks, requests)}
                                 className="text-xs text-amber-400 bg-amber-400/10 px-2 py-1 rounded inline-block w-fit hover:bg-amber-400/20 transition-colors cursor-pointer text-left border border-amber-400/20"
                               >
                                 {r.hours ? `${r.hours}h ` : ''}{getLabel(r.code) || r.code}
@@ -468,7 +488,7 @@ export default function CartellinoPanel() {
                           <button 
                             className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors"
                             title="Modifica Dettagli Giornata"
-                            onClick={() => openDetailModal(day, primaryShift, clocks)}
+                            onClick={() => openDetailModal(day, primaryShift, clocks, requests)}
                           >
                             <Edit2 size={16} />
                           </button>
@@ -621,7 +641,34 @@ export default function CartellinoPanel() {
                       className="w-full p-2.5 bg-white border border-slate-300 text-slate-900 rounded-lg outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 min-h-[80px] resize-none text-sm"
                     />
                   </div>
+                  </div>
                 </div>
+
+                {/* Giustificativi Attivi */}
+                {detailData.dayRequests.length > 0 && (
+                  <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
+                    <label className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block mb-3">Richieste / Giustificativi Attivi</label>
+                    <div className="space-y-2">
+                      {detailData.dayRequests.map((r: any) => (
+                        <div key={r.id} className="flex items-center justify-between bg-white p-2.5 rounded-lg border border-amber-100 shadow-sm">
+                          <div className="flex flex-col">
+                            <span className="text-xs font-bold text-slate-800">
+                              {r.hours ? `${r.hours}h ` : ''}{getLabel(r.code) || r.code}
+                            </span>
+                            {r.notes && <span className="text-[10px] text-slate-500 italic truncate max-w-[200px]">{r.notes}</span>}
+                          </div>
+                          <button 
+                            onClick={() => handleDeleteRequest(r.id)}
+                            className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                            title="Elimina questa richiesta"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Timbrature Manuali */}
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
