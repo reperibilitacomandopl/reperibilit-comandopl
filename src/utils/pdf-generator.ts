@@ -81,6 +81,26 @@ async function generateHash(content: string | ArrayBuffer): Promise<string> {
 }
 
 /**
+ * Applica un watermark diagonale "COPIA NON UFFICIALE"
+ */
+function applyWatermark(doc: jsPDFWithAutoTable, text: string = "COPIA NON UFFICIALE") {
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(60);
+    doc.setTextColor(240, 240, 240); // Grigio chiarissimo quasi invisibile
+    doc.setFont("helvetica", "bold");
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    doc.text(text, pageW / 2, pageH / 2, { 
+      align: "center", 
+      angle: 45,
+      renderingMode: 'fill'
+    });
+  }
+}
+
+/**
  * Carica un'immagine da URL e la converte in Base64 per jsPDF
  * Gestisce CORS e formati diversi
  */
@@ -114,7 +134,8 @@ export async function generatePlanningPDF({
   dayInfo,
   tenantName = "Comando Polizia Locale",
   logoUrl,
-  isPublished = true
+  isPublished = true,
+  showWatermark = false
 }: {
   monthName: string,
   month: number,
@@ -124,7 +145,8 @@ export async function generatePlanningPDF({
   dayInfo: DayInfo[],
   tenantName?: string,
   logoUrl?: string | null,
-  isPublished?: boolean
+  isPublished?: boolean,
+  showWatermark?: boolean
 }) {
   try {
     console.log("[PDF] Avvio generazione professionale...");
@@ -364,6 +386,10 @@ export async function generatePlanningPDF({
       console.warn("[PDF] QR Code non generato:", qrErr);
     }
 
+    if (showWatermark) {
+      applyWatermark(doc);
+    }
+
     // 7. Download
     doc.save(`Pianificazione_${monthName}_${year}.pdf`);
     return documentHash;
@@ -384,7 +410,8 @@ export async function generateReperibilitaPDF({
   shifts,
   dayInfo,
   tenantName = "Comando Polizia Locale",
-  logoUrl
+  logoUrl,
+  showWatermark = false
 }: {
   monthName: string,
   month: number,
@@ -393,7 +420,8 @@ export async function generateReperibilitaPDF({
   shifts: Shift[],
   dayInfo: DayInfo[],
   tenantName?: string,
-  logoUrl?: string | null
+  logoUrl?: string | null,
+  showWatermark?: boolean
 }) {
   try {
     console.log("[PDF] Generazione Prospetto Solo Reperibilità...");
@@ -573,6 +601,10 @@ export async function generateReperibilitaPDF({
     doc.text(`Identificativo Prospetto: ${documentHash}`, 14, 202);
     doc.text(`Generato da Sentinel Security Suite il ${new Date().toLocaleString('it-IT')}`, 14, 205);
     doc.text(`v2.0 Professional Edition`, 283, 205, { align: "right" });
+
+    if (showWatermark) {
+      applyWatermark(doc);
+    }
 
     doc.save(`Prospetto_REP_${monthName.replace(/\s+/g, '_')}_${year}.pdf`);
     return documentHash;
@@ -837,14 +869,16 @@ export async function generateODSPDF({
   shifts,
   tenantName = "Comando Polizia Locale",
   logoUrl,
-  generalNotes
+  generalNotes,
+  showWatermark = false
 }: {
   date: Date,
   users: ODSUser[],
   shifts: ODSShift[],
   tenantName?: string,
   logoUrl?: string | null,
-  generalNotes?: string
+  generalNotes?: string,
+  showWatermark?: boolean
 }) {
   try {
     const { default: jsPDFLib } = await import("jspdf");
@@ -875,6 +909,10 @@ export async function generateODSPDF({
     doc.text(`SENTINEL SECURITY SUITE - FIRMA ELETTRONICA CERTIFICATA IL ${new Date().toLocaleString('it-IT')}`, 14, pageHeight - 9);
     doc.text("SCANSIONA IL QR CODE PER VERIFICARE L'AUTENTICITÀ", pageWidth - 16, pageHeight - 18, { align: "right" });
 
+    if (showWatermark) {
+      applyWatermark(doc);
+    }
+
     doc.save(`ODS_${date.toISOString().split('T')[0]}.pdf`);
     return documentHash;
   } catch (err) {
@@ -889,11 +927,13 @@ export async function generateODSPDF({
 export async function generateWeeklyODSPDF({
   days,
   tenantName = "Comando Polizia Locale",
-  logoUrl
+  logoUrl,
+  showWatermark = false
 }: {
   days: { date: Date, users: ODSUser[], shifts: ODSShift[] }[],
   tenantName?: string,
-  logoUrl?: string | null
+  logoUrl?: string | null,
+  showWatermark?: boolean
 }) {
   try {
     const { default: jsPDFLib } = await import("jspdf");
@@ -940,6 +980,10 @@ export async function generateWeeklyODSPDF({
       doc.text(`PACCHETTO SETTIMANALE SHA-256: ${documentHash}`, 14, pageHeight - 12);
       doc.text(`SENTINEL SECURITY SUITE - BATCH CERTIFICATO IL ${new Date().toLocaleString('it-IT')}`, 14, pageHeight - 9);
       doc.text(`Pagina ${i} di ${pageCount}`, pageWidth - 16, pageHeight - 12, { align: "right" });
+    }
+
+    if (showWatermark) {
+      applyWatermark(doc);
     }
 
     const firstDate = days[0].date.toISOString().split('T')[0];

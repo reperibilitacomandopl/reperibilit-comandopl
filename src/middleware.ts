@@ -1,6 +1,7 @@
 import { auth } from "@/auth"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { rateLimit } from "@/lib/rate-limit"
 
 // ============================================================================
 // MIDDLEWARE DI SICUREZZA CENTRALIZZATO
@@ -56,12 +57,26 @@ function isSuperAdminRoute(pathname: string): boolean {
 
 export default auth((req) => {
   const { pathname } = req.nextUrl
+  const { method } = req
   const session = req.auth
   const isPublic = isPublicRoute(pathname)
 
+  // --- GENERAZIONE REQUEST ID (Punto 6.5 Checklist) ---
+  const requestId = crypto.randomUUID()
+  req.headers.set("x-request-id", requestId)
+
+  // --- RATE LIMITING GLOBALE (⚠ Critico) ---
+  // Protezione contro DoS applicativo su operazioni di scrittura
+  if (method !== "GET" && method !== "HEAD") {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1"
+    if (!rateLimit(`global-write-${ip}`, 60, 60000)) {
+      return addSecurityHeaders(NextResponse.json({ error: "Too Many Requests", message: "Limite operativo superato. Riprova tra un minuto." }, { status: 429 }), false, requestId)
+    }
+  }
+
   // 1. Route pubbliche: lascia passare
   if (isPublic) {
-    return addSecurityHeaders(NextResponse.next(), true)
+    return addSecurityHeaders(NextResponse.next(), true, requestId)
   }
 
   // 2. Utenti non autenticati: redirect al login
@@ -71,7 +86,9 @@ export default auth((req) => {
         NextResponse.json(
           { error: "Non autenticato. Effettua il login." },
           { status: 401 }
-        )
+        ),
+        false,
+        requestId
       )
     }
     const loginUrl = new URL("/login", req.url)
@@ -79,19 +96,53 @@ export default auth((req) => {
     return NextResponse.redirect(loginUrl)
   }
 
-  // 3. Route SuperAdmin
-  if (isSuperAdminRoute(pathname)) {
-    if (!session.user.isSuperAdmin) {
+  const u = session.user
+
+  // 3. MFA SEIZURE & ENFORCEMENT (⚠ Critico)
+  // Se l'MFA è attivo ma non verificato, blocca tutto tranne la pagina di verifica
+  if (u.twoFactorEnabled && !u.twoFactorVerified && pathname !== "/verify-2fa") {
+    if (pathname.startsWith("/api/")) {
+      return addSecurityHeaders(NextResponse.json({ error: "MFA_REQUIRED", message: "Verifica 2FA richiesta" }, { status: 403 }), false, requestId)
+    }
+    return NextResponse.redirect(new URL("/verify-2fa", req.url))
+  }
+
+  // ENFORCEMENT: Se l'utente è un ADMIN ma non ha l'MFA attiva, forza il setup (Punto 2.4 Checklist)
+  if (u.role === "ADMIN" && !u.twoFactorEnabled && pathname !== "/admin/sicurezza" && !pathname.startsWith("/api/")) {
+    return NextResponse.redirect(new URL(`/${u.tenantSlug}/admin/sicurezza?forceMFA=true`, req.url))
+  }
+
+  // 4. ISOLAMENTO MULTI-TENANT (⚠ Critico)
+  // Verifica che lo slug nell'URL corrisponda al tenant dell'utente (o che sia un SuperAdmin autorizzato)
+  const pathParts = pathname.split("/")
+  const urlSlug = pathParts[1] // es: /altamura/admin -> 'altamura'
+
+  const reservedPrefixes = ["api", "superadmin", "verify-2fa", "login", "_next", "favicon", "sw"]
+  if (urlSlug && !reservedPrefixes.includes(urlSlug) && !PUBLIC_ROUTES.has("/" + urlSlug)) {
+    // Se l'utente non è SuperAdmin e sta cercando di accedere a uno slug diverso dal suo
+    if (!u.isSuperAdmin && u.tenantSlug !== urlSlug) {
+      console.warn(`[SECURITY] Tentativo di accesso cross-tenant rilevato: User ${u.id} (${u.tenantSlug}) -> ${urlSlug}`)
+      
       if (pathname.startsWith("/api/")) {
-        return addSecurityHeaders(NextResponse.json({ error: "Forbidden" }, { status: 403 }))
+        return addSecurityHeaders(NextResponse.json({ error: "Forbidden: Tenant Isolation Violation" }, { status: 403 }), false, requestId)
+      }
+      // Per le rotte UI, riportalo al suo pannello
+      return NextResponse.redirect(new URL(`/${u.tenantSlug}/admin/pannello`, req.url))
+    }
+  }
+
+  // 5. Route SuperAdmin
+  if (isSuperAdminRoute(pathname)) {
+    if (!u.isSuperAdmin) {
+      if (pathname.startsWith("/api/")) {
+        return addSecurityHeaders(NextResponse.json({ error: "Forbidden" }, { status: 403 }), false, requestId)
       }
       return NextResponse.redirect(new URL("/login", req.url))
     }
   }
 
-  // 4. Route Admin
+  // 6. Route Admin
   if (isAdminRoute(pathname)) {
-    const u = session.user
     const hasAdminAccess =
       u.role === "ADMIN" ||
       u.isSuperAdmin ||
@@ -102,12 +153,12 @@ export default auth((req) => {
 
     if (!hasAdminAccess) {
       if (pathname.startsWith("/api/")) {
-        return addSecurityHeaders(NextResponse.json({ error: "Forbidden" }, { status: 403 }))
+        return addSecurityHeaders(NextResponse.json({ error: "Forbidden" }, { status: 403 }), false, requestId)
       }
       return NextResponse.redirect(new URL("/login", req.url))
     }
 
-    // Protezione granulare
+    // Protezione granulare per ruoli admin limitati
     if (!u.isSuperAdmin && u.role !== "ADMIN") {
       const isShiftRoute = pathname.includes("/ods") || pathname.includes("/stampa-ods") || pathname.includes("/auto-compila") || pathname.includes("/bacheca-scambi") || pathname.includes("/sala-operativa")
       const isUserRoute = pathname.includes("/risorse") || pathname.includes("/richieste") || pathname.includes("/formazione")
@@ -121,19 +172,18 @@ export default auth((req) => {
       if (isSystemRoute && !u.canConfigureSystem) allowed = false
 
       if (!allowed) {
-        const tenantSlug = pathname.split("/")[1]
-        return NextResponse.redirect(new URL(`/${tenantSlug}/admin/pannello`, req.url))
+        return NextResponse.redirect(new URL(`/${u.tenantSlug}/admin/pannello`, req.url))
       }
     }
   }
 
-  return addSecurityHeaders(NextResponse.next())
+  return addSecurityHeaders(NextResponse.next(), false, requestId)
 })
 
 /**
  * Aggiunge header di sicurezza a tutte le risposte.
  */
-function addSecurityHeaders(response: NextResponse, isPublic: boolean = false): NextResponse {
+function addSecurityHeaders(response: NextResponse, isPublic: boolean = false, requestId?: string): NextResponse {
   // Content Security Policy
   const cspHeader = `
     default-src 'self';
@@ -153,6 +203,10 @@ function addSecurityHeaders(response: NextResponse, isPublic: boolean = false): 
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(self)")
   response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+  
+  if (requestId) {
+    response.headers.set("x-request-id", requestId)
+  }
 
   if (!isPublic) {
     response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")

@@ -6,36 +6,75 @@ const globalForPrisma = globalThis as unknown as {
 
 const isEdge = process.env.NEXT_RUNTIME === 'edge'
 
+const SOFT_DELETE_MODELS = ['User', 'Absence', 'Shift', 'AgentRequest', 'CertifiedDocument', 'AuditLog', 'ClockRecord', 'AgentBalance', 'Announcement'];
+
 const getExtendedClient = () => {
   const basePrisma = new PrismaClient()
   return basePrisma.$extends({
     model: {
       $allModels: {
         async findManyForTenant<T>(this: T, tenantId: string, args: any = {}) {
-          return (this as any).findMany({
-            ...args,
-            where: {
-              ...args.where,
-              tenantId: tenantId
-            }
-          })
+          const modelName = (this as any).name;
+          const where: any = { ...args.where, tenantId };
+          if (SOFT_DELETE_MODELS.includes(modelName)) {
+            where.deletedAt = null;
+          }
+          return (this as any).findMany({ ...args, where });
         },
         async countForTenant<T>(this: T, tenantId: string, args: any = {}) {
-          return (this as any).count({
-            ...args,
-            where: {
-              ...args.where,
-              tenantId: tenantId
-            }
-          })
+          const modelName = (this as any).name;
+          const where: any = { ...args.where, tenantId };
+          if (SOFT_DELETE_MODELS.includes(modelName)) {
+            where.deletedAt = null;
+          }
+          return (this as any).count({ ...args, where });
         }
       }
     },
     query: {
       $allModels: {
-        async $allOperations({ model, operation, args, query }) {
+        async findMany({ model, args, query }) {
+          if (SOFT_DELETE_MODELS.includes(model)) {
+            (args as any).where = { ...(args.where as any), deletedAt: null }
+          }
           return query(args)
         },
+        async findFirst({ model, args, query }) {
+          if (SOFT_DELETE_MODELS.includes(model)) {
+            (args as any).where = { ...(args.where as any), deletedAt: null }
+          }
+          return query(args)
+        },
+        async findUnique({ model, args, query }) {
+          if (SOFT_DELETE_MODELS.includes(model)) {
+            (args as any).where = { ...(args.where as any), deletedAt: null }
+          }
+          return query(args)
+        },
+        async count({ model, args, query }) {
+          if (SOFT_DELETE_MODELS.includes(model)) {
+            (args as any).where = { ...(args.where as any), deletedAt: null }
+          }
+          return query(args)
+        },
+        async delete({ model, args, query }) {
+          if (SOFT_DELETE_MODELS.includes(model)) {
+            return (query as any).update({
+              ...args,
+              data: { deletedAt: new Date() }
+            })
+          }
+          return query(args)
+        },
+        async deleteMany({ model, args, query }) {
+          if (SOFT_DELETE_MODELS.includes(model)) {
+            return (query as any).updateMany({
+              ...args,
+              data: { deletedAt: new Date() }
+            })
+          }
+          return query(args)
+        }
       },
     },
   })

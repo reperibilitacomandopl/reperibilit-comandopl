@@ -30,7 +30,8 @@ export async function logAudit({
   targetName,
   details,
   ipAddress,
-  userAgent
+  userAgent,
+  requestId
 }: {
   tenantId?: string | null
   adminId: string
@@ -41,13 +42,15 @@ export async function logAudit({
   details: string
   ipAddress?: string
   userAgent?: string
+  requestId?: string
 }) {
   try {
     let finalIp = ipAddress;
     let finalUserAgent = userAgent;
+    let finalRequestId = requestId;
 
     // Se non passati, proviamo a recuperarli dal contesto della richiesta Next.js
-    if (!finalIp || !finalUserAgent) {
+    if (!finalIp || !finalUserAgent || !finalRequestId) {
       try {
         const headersList = await headers()
         if (!finalIp) {
@@ -57,6 +60,9 @@ export async function logAudit({
         }
         if (!finalUserAgent) {
            finalUserAgent = headersList.get("user-agent") || "unknown";
+        }
+        if (!finalRequestId) {
+           finalRequestId = headersList.get("x-request-id") || undefined;
         }
       } catch (e) {
         // Ignora: siamo probabilmente fuori da un contesto di Request (es. Cron Job)
@@ -73,7 +79,8 @@ export async function logAudit({
         targetName,
         details,
         ipAddress: finalIp,
-        userAgent: finalUserAgent
+        userAgent: finalUserAgent,
+        requestId: finalRequestId
       }
     })
   } catch (error) {

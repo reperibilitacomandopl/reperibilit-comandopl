@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { sendTelegramMessage } from "@/lib/telegram"
+import { rateLimit } from "@/lib/rate-limit"
 
 export async function POST(req: Request) {
   const session = await auth()
@@ -12,6 +13,13 @@ export async function POST(req: Request) {
 
   try {
     const { hash, type, metadata } = await req.json()
+
+    // --- RATE LIMITING SPECIFICO (Punto 4.5 Checklist) ---
+    // Limita la certificazione a 10/ora per utente per prevenire DoS applicativo
+    const limitKey = `certify-pdf-${session.user.id}`
+    if (!rateLimit(limitKey, 10, 60 * 60 * 1000)) {
+      return NextResponse.json({ error: "Limite orario di certificazione superato (max 10/ora). Riprova più tardi." }, { status: 429 })
+    }
 
     if (!hash || !type) {
       return NextResponse.json({ error: "Missing hash or type" }, { status: 400 })

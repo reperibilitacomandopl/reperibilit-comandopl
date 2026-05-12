@@ -135,6 +135,9 @@ model User {
   weapons                  Weapon[]           @relation("WeaponAssegnatario")
   patrolTemplates          PatrolTemplate[]   @relation("PatrolMembers")
   sentMessages             ChatMessage[]      @relation("SentMessages")
+  deletedAt                DateTime?
+  failedLoginAttempts      Int                @default(0)
+  lockoutUntil             DateTime?
 
   @@unique([tenantId, matricola])
 }
@@ -147,6 +150,7 @@ model Absence {
   code      String
   source    String   @default("MANUAL")
   createdAt DateTime @default(now())
+  deletedAt DateTime?
   tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -170,6 +174,7 @@ model Shift {
   durationHours      Float              @default(6)
   overtimeHours      Float              @default(0)
   createdAt          DateTime           @default(now())
+  deletedAt          DateTime?
   radioId            String?
   armorId            String?
   weaponId           String?
@@ -395,9 +400,13 @@ model AuditLog {
   targetName String?
   details    String
   createdAt  DateTime @default(now())
+  deletedAt  DateTime?
   ipAddress  String?
   userAgent  String?
+  requestId  String?
   tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
 }
 
 model EmergencyAlert {
@@ -460,6 +469,7 @@ model AgentRequest {
   reviewedBy String?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
   tenant     Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user       User      @relation("AgentRequests", fields: [userId], references: [id], onDelete: Cascade)
 
@@ -472,6 +482,7 @@ model AgentBalance {
   userId   String
   year     Int
   tenant   Tenant?         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deletedAt DateTime?
   user     User            @relation("AgentBalances", fields: [userId], references: [id], onDelete: Cascade)
   details  BalanceDetail[]
 
@@ -500,6 +511,7 @@ model Notification {
   link       String?
   isRead     Boolean  @default(false)
   createdAt  DateTime @default(now())
+  deletedAt  DateTime?
   metadata   String?
   isArchived Boolean  @default(false)
   tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -523,6 +535,7 @@ model ClockRecord {
   tenantId   String?
   userId     String
   timestamp  DateTime @default(now())
+  deletedAt  DateTime?
   type       String
   lat        Float?
   lng        Float?
@@ -567,6 +580,7 @@ model CertifiedDocument {
   issuerId   String
   issuerName String
   issuedAt   DateTime @default(now())
+  deletedAt  DateTime?
   metadata   String?
   tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -585,6 +599,7 @@ model Announcement {
   isPinned     Boolean            @default(false)
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
+  deletedAt    DateTime?
   attachments  String[]           @default([])
   category     String             @default("AVVISO")
   author       User               @relation(fields: [authorId], references: [id], onDelete: Cascade)

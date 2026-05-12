@@ -61,16 +61,48 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           })
           return null
         }
+
+        // --- ACCOUNT LOCKOUT CHECK ---
+        if (user.lockoutUntil && user.lockoutUntil > new Date()) {
+          const diff = Math.ceil((user.lockoutUntil.getTime() - Date.now()) / 60000)
+          throw new Error(`Account temporaneamente bloccato per troppi tentativi falliti. Riprova tra ${diff} minuti.`)
+        }
+
         const isValid = await bcrypt.compare(credentials.password as string, user.password)
+        
         if (!isValid) {
+          // Incrementa tentativi falliti
+          const newAttempts = (user.failedLoginAttempts || 0) + 1
+          const lockoutUntil = newAttempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null
+          
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { 
+              failedLoginAttempts: newAttempts,
+              lockoutUntil: lockoutUntil
+            }
+          })
+
           await logAudit({
             tenantId: tenant.id,
             adminId: user.id,
             adminName: user.name,
             action: AUDIT_ACTIONS.LOGIN_FAILED,
-            details: `Tentativo di accesso fallito: password errata`
+            details: `Tentativo di accesso fallito: password errata. Tentativi: ${newAttempts}/5`
           })
+          
+          if (newAttempts >= 5) {
+            throw new Error("Account bloccato per 15 minuti causa eccessivi tentativi falliti.")
+          }
           return null
+        }
+
+        // Login riuscito: resetta contatori
+        if (user.failedLoginAttempts > 0 || user.lockoutUntil) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { failedLoginAttempts: 0, lockoutUntil: null }
+          })
         }
 
         const tenantName = tenant.name
