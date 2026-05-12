@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react"
 import { Shield, Smartphone, Lock, CheckCircle2, AlertCircle, Copy, QrCode } from "lucide-react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
+import { useSession } from "next-auth/react"
 
 export default function SecurityPage() {
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { update } = useSession()
   const forceMFA = searchParams.get("forceMFA") === "true"
   
   const [loading, setLoading] = useState(true)
@@ -53,6 +55,9 @@ export default function SecurityPage() {
       })
 
       if (res.ok) {
+        // Aggiorna la sessione per rinfrescare il token JWT con twoFactorEnabled: true
+        await update({ twoFactorEnabled: true })
+        
         setSuccess(true)
         setTimeout(() => {
           router.push(`/${params.tenantSlug}/admin/pannello`)

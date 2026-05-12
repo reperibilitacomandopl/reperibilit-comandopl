@@ -175,6 +175,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
 
       if (trigger === "update") {
+        if (session?.twoFactorEnabled !== undefined) token.twoFactorEnabled = session.twoFactorEnabled
         if (session?.twoFactorVerified) token.twoFactorVerified = true
         if (session?.privacyAcceptedAt) token.privacyAcceptedAt = session.privacyAcceptedAt
         if (session?.gpsAcceptedAt) token.gpsAcceptedAt = session.gpsAcceptedAt
