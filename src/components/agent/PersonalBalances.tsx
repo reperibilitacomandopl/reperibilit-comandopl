@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { WalletCards, Clock, CheckCircle2, TrendingUp, AlertTriangle, ShieldCheck, GraduationCap } from "lucide-react"
+import { getLabel } from "@/utils/agenda-codes"
 
 // Helper sicuro per evitare NaN
 const safeNum = (val: any): number => {
@@ -100,7 +101,7 @@ export default function PersonalBalances() {
         </div>
       </div>
 
-      <div className="p-3 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 relative z-10">
+      <div className="p-3 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 relative z-10 max-h-[70vh] overflow-y-auto custom-scrollbar">
         
         {/* Ferie Correnti */}
         <div className="bg-gradient-to-br from-slate-900 to-[#0f172a] rounded-2xl sm:rounded-[1.5rem] p-4 sm:p-6 shadow-2xl relative overflow-hidden text-white">
@@ -181,7 +182,7 @@ export default function PersonalBalances() {
           <div className="flex flex-wrap gap-1.5 sm:gap-2">
              {(data.usage?.agendaSums || []).map((sum: any) => (
                 <div key={sum.code} className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider bg-white rounded-lg px-2 py-1 shadow-sm border border-slate-100">
-                  {sum.code}: {safeNum(sum._count?._all)}
+                  {getLabel(sum.code) || sum.code}: {safeNum(sum._count?._all)}
                 </div>
              ))}
              {(data.usage?.agendaSums || []).length === 0 && (

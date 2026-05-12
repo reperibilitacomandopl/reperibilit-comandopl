@@ -171,7 +171,7 @@ export default function CartellinoSummaryView({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className={`grid grid-cols-1 lg:grid-cols-2 gap-5 max-h-[65vh] overflow-y-auto pr-1 ${mode === 'ADMIN' ? 'custom-scrollbar-dark' : 'custom-scrollbar'}`}>
       
         {/* COLONNA SINISTRA: RICHIESTE */}
         <div className="space-y-3">
