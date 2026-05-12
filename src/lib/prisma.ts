@@ -96,7 +96,7 @@ const getExtendedClient = () => {
         async delete({ model, args, query }) {
           try {
             if (SOFT_DELETE_MODELS.includes(model)) {
-              return await (query as any).update({
+              return await (basePrisma as any)[model].update({
                 ...args,
                 data: { deletedAt: new Date() }
               })
@@ -104,16 +104,13 @@ const getExtendedClient = () => {
             return await query(args)
           } catch (e: any) {
             console.error(`[PRISMA_DELETE_ERROR] Model: ${model}`, e)
-            if (e.message?.includes('Unknown argument `deletedAt`')) {
-              return await query(args) // Esegui delete reale se soft delete fallisce per mancanza campo
-            }
-            throw e
+            return await query(args) // Fallback a delete reale
           }
         },
         async deleteMany({ model, args, query }) {
           try {
             if (SOFT_DELETE_MODELS.includes(model)) {
-              return await (query as any).updateMany({
+              return await (basePrisma as any)[model].updateMany({
                 ...args,
                 data: { deletedAt: new Date() }
               })
@@ -121,10 +118,7 @@ const getExtendedClient = () => {
             return await query(args)
           } catch (e: any) {
             console.error(`[PRISMA_DELETEMANY_ERROR] Model: ${model}`, e)
-            if (e.message?.includes('Unknown argument `deletedAt`')) {
-              return await query(args) // Esegui delete reale
-            }
-            throw e
+            return await query(args) // Fallback a delete reale
           }
         }
       },
