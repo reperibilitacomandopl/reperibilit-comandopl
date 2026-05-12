@@ -420,6 +420,7 @@ model EmergencyAlert {
   lat        Float?
   lng        Float?
   recipients AlertRecipient[]
+  deletedAt  DateTime?
   admin      User             @relation("AdminAlerts", fields: [adminId], references: [id])
   tenant     Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
