@@ -103,6 +103,18 @@ export async function POST(req: Request) {
       }
     })
 
+    // 3. Invia Notifica Push di conferma (anche se in background)
+    try {
+      const { sendPushNotification } = await import("@/lib/push-notifications")
+      await sendPushNotification(userId, {
+        title: type === 'IN' ? "✅ Entrata Registrata" : "🏁 Uscita Registrata",
+        body: `Operazione delle ${new Date().toLocaleTimeString('it-IT')} completata con successo presso ${tenant?.name || 'Comando'}.`,
+        url: `/${session.user.tenantSlug}/admin/timbrature`
+      })
+    } catch (pushError) {
+      console.error("[CLOCK-IN-PUSH] Errore invio notifica:", pushError)
+    }
+
     return NextResponse.json({ record })
   } catch (error) {
     console.error("[CLOCK_POST]", error)

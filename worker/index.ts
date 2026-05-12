@@ -15,7 +15,7 @@ const bgSyncPlugin = new BackgroundSyncPlugin('sentinel-sync-queue', {
 // Registriamo le rotte critiche per il Background Sync
 const syncRoutes = [
   '/api/admin/alert-emergency',
-  '/api/agent/clock-in',
+  '/api/admin/clock-in',
   '/api/agent/ods-update'
 ];
 
