@@ -1,6 +1,6 @@
 "use client"
 import React, { useState } from "react"
-import { CalendarDays, X, ChevronDown, Send } from "lucide-react"
+import { CalendarDays, X, ChevronDown, Send, AlertCircle, Upload } from "lucide-react"
 import { AGENDA_CATEGORIES } from "@/utils/agenda-codes"
 import { PERMESSI_104_CODES, CONGEDO_CODES } from "@/utils/agenda-codes"
 import { toast } from "react-hot-toast"
@@ -12,13 +12,15 @@ import { BalanceData } from "@/types/dashboard"
 interface AgentRequestFormProps {
   balances: BalanceData | null
   onClose: () => void
+  initialCode?: string
+  initialNotes?: string
 }
 
-export default function AgentRequestForm({ balances, onClose }: AgentRequestFormProps) {
-  const [reqDate, setReqDate] = useState("")
+export default function AgentRequestForm({ balances, onClose, initialCode = "", initialNotes = "" }: AgentRequestFormProps) {
+  const [reqDate, setReqDate] = useState(new Date().toISOString().split('T')[0])
   const [reqEndDate, setReqEndDate] = useState("")
-  const [reqCode, setReqCode] = useState("")
-  const [reqNotes, setReqNotes] = useState("")
+  const [reqCode, setReqCode] = useState(initialCode)
+  const [reqNotes, setReqNotes] = useState(initialNotes)
   const [reqLoading, setReqLoading] = useState(false)
   const [isHourlyRequest, setIsHourlyRequest] = useState(false)
   const [reqStartTime, setReqStartTime] = useState("")
@@ -245,6 +247,24 @@ export default function AgentRequestForm({ balances, onClose }: AgentRequestForm
               <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Note / Messaggio</label>
               <textarea value={reqNotes} onChange={e => setReqNotes(e.target.value)} rows={2} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 transition-all outline-none resize-none" placeholder="Motivo o riferimenti..."></textarea>
             </div>
+
+            {reqCode === "TIMB_MANC" && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex gap-3 items-center">
+                <AlertCircle size={20} className="text-amber-600 shrink-0" />
+                <p className="text-[10px] font-bold text-amber-800 leading-tight">
+                  Specifica nelle note l&apos;orario corretto e il tipo di timbratura (Entrata/Uscita).
+                </p>
+              </div>
+            )}
+
+            {reqCode === "ALLEGATO" && (
+              <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl flex gap-3 items-center">
+                <Upload size={20} className="text-indigo-600 shrink-0" />
+                <p className="text-[10px] font-bold text-indigo-800 leading-tight">
+                  L&apos;upload diretto è in manutenzione. Specifica nelle note il documento e invialo via mail al comando.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="mt-8">

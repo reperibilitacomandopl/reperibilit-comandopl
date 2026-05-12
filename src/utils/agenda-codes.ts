@@ -103,6 +103,14 @@ const RAW_AGENDA_CATEGORIES = [
       { code: "0062", shortCode: "SERV_FUORI", label: "Servizio Fuori Sede" },
     ]
   },
+  {
+    group: "Supporto e Correzioni", emoji: "🔧", color: "slate",
+    items: [
+      { code: "TIMB_MANC", shortCode: "T_MANC", label: "Mancata Timbratura / Errore" },
+      { code: "ALLEGATO", shortCode: "ALL", label: "Invio Documentazione / Allegato" },
+      { code: "SEGNALA", shortCode: "SEGN", label: "Segnalazione Generica" },
+    ]
+  },
 ]
 
 export const AGENDA_CATEGORIES: AgendaCategory[] = RAW_AGENDA_CATEGORIES.map(cat => ({

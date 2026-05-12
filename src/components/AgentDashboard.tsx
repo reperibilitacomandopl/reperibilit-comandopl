@@ -34,6 +34,7 @@ import ClockHistoryModal from "./agent/ClockHistoryModal"
 import AgentCalendarView from "./agent/AgentCalendarView"
 import AgentYearlyCard from "./agent/AgentYearlyCard"
 import CartellinoSummaryView from "@/components/shared/CartellinoSummaryView"
+import AgentTimecardView from "./agent/AgentTimecardView"
 import { useGpsTracking } from "@/hooks/useGpsTracking"
 
 import { isAssenza } from "@/utils/shift-logic"
@@ -118,12 +119,14 @@ export default function AgentDashboard({
   const [showChat, setShowChat] = useState(false)
   const [showSectionChat, setShowSectionChat] = useState(false)
   const [isMobileView, setIsMobileView] = useState(false)
-  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'yearly' | 'summary'>('calendar')
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'yearly' | 'timecard'>('calendar')
   const [selectedShiftForSwap, setSelectedShiftForSwap] = useState<DashboardShift | null>(null)
   const [agendaDate, setAgendaDate] = useState('')
   const [showClockHistory, setShowClockHistory] = useState(false)
   const [activeShiftIndex, setActiveShiftIndex] = useState(0)
   const [chatPatrolGroupId, setChatPatrolGroupId] = useState<string | null>(null)
+  const [requestFormInitialCode, setRequestFormInitialCode] = useState("")
+  const [requestFormInitialNotes, setRequestFormInitialNotes] = useState("")
 
   // Date Helpers
   const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
@@ -315,15 +318,8 @@ export default function AgentDashboard({
       </div>
       
       <OfficerDutyPanel />
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        <PersonalBalances />
-        <PersonalClockHistory 
-          onViewHistory={() => setShowClockHistory(true)} 
-          records={admin.clockRecords}
-          loading={admin.clockLoading}
-        />
-      </div>
+      
+      {/* Redundant sections removed from home to be moved into Timecard view */}
 
       {/* NEXT SHIFT PROACTIVE WIDGET REMOVED BECAUSE INTEGRATED IN CAROUSEL */}
 
@@ -349,10 +345,10 @@ export default function AgentDashboard({
                 Annuale
               </button>
               <button 
-                onClick={() => setViewMode('summary')}
-                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'summary' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                onClick={() => setViewMode('timecard')}
+                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'timecard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
               >
-                Riepilogo
+                Cartellino
               </button>
            </div>
         </div>
@@ -377,14 +373,25 @@ export default function AgentDashboard({
           />
         ) : viewMode === 'yearly' ? (
           <AgentYearlyCard />
-        ) : viewMode === 'summary' ? (
-          <div className="bg-white rounded-[2rem] p-8 border border-slate-200 shadow-xl">
-             <CartellinoSummaryView 
-               requests={admin.requests}
-               balances={admin.balances || null}
-               mode="USER"
-             />
-          </div>
+        ) : viewMode === 'timecard' ? (
+          <AgentTimecardView 
+            admin={admin}
+            onShowRequest={() => {
+              setRequestFormInitialCode("")
+              setRequestFormInitialNotes("")
+              setShowAbsenceModal(true)
+            }}
+            onShowMancataTimb={() => {
+              setRequestFormInitialCode("TIMB_MANC")
+              setRequestFormInitialNotes("Segnalazione mancata timbratura del ...")
+              setShowAbsenceModal(true)
+            }}
+            onShowUpload={() => {
+              setRequestFormInitialCode("ALLEGATO")
+              setRequestFormInitialNotes("Invio allegato relativo a ...")
+              setShowAbsenceModal(true)
+            }}
+          />
         ) : (
           <AgentShiftsList 
             isPublished={isPublished}
@@ -414,171 +421,7 @@ export default function AgentDashboard({
         )}
       </div>
 
-      {/* BALANCES SECTION */}
-      <div className="space-y-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-4">
-              <div className="p-2.5 bg-blue-600 rounded-2xl shadow-xl shadow-blue-200">
-                 <BookOpen className="text-white" size={24} />
-              </div> 
-              Il Mio Bilancio
-            </h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <button 
-                onClick={async () => {
-                  try {
-                    const res = await fetch("/api/user/gdpr/export");
-                    if (!res.ok) throw new Error("Errore durante l'esportazione");
-                    const blob = await res.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = `gdpr_export_${currentUser.matricola}_${new Date().toISOString().split('T')[0]}.zip`;
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-                  } catch (e) {
-                    alert("Impossibile scaricare i dati. Riprova più tardi.");
-                  }
-                }}
-                className="flex items-center gap-2 bg-indigo-50 text-indigo-700 border border-indigo-100 hover:bg-indigo-100 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-sm hover:scale-105 transition-all"
-              >
-                <Shield size={14} />
-                Dati GDPR
-              </button>
-              <button 
-                onClick={async () => {
-                  const { default: jsPDF } = await import('jspdf')
-                  const { default: autoTable } = await import('jspdf-autotable')
-                  
-                  const doc = new jsPDF()
-                  const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
-                  const monthYear = `${monthNames[currentMonth - 1]} ${currentYear}`
-                  
-                  if (logoUrl) {
-                    try { doc.addImage(logoUrl, 'PNG', 165, 12, 25, 25) } catch {}
-                  }
-                  
-                  doc.setFontSize(20)
-                  doc.setTextColor(30, 41, 59)
-                  doc.text('Resoconto Mensile Attività', 14, 22)
-                  
-                  doc.setFontSize(10)
-                  doc.setTextColor(100, 116, 139)
-                  doc.text(`Polizia Locale · ${tenantSlug || 'Comando'}`, 14, 30)
-                  doc.text(`Generato il: ${new Date().toLocaleDateString('it-IT')} alle ${new Date().toLocaleTimeString('it-IT')}`, 14, 35)
-                  
-                  doc.setFontSize(12)
-                  doc.setTextColor(30, 41, 59)
-                  doc.text(`Agente: ${currentUser.name}`, 14, 50)
-                  doc.text(`Matricola: ${currentUser.matricola}`, 14, 57)
-                  doc.text(`Periodo: ${monthYear}`, 14, 64)
-                  
-                  const straCodes = ['2000','2050','2001','2002','2003','2020','2021','2022','2023','2026','10001','10002','10003']
-                  const ferieCodes = ['0015','0016','0010']
-                  const recCodes = ['0009','0067','0008','0081','0036','0037']
-                  
-                  const straHours = admin.agendaEntries.filter((e: any) => straCodes.includes(e.code)).reduce((sum: number, e: any) => sum + (e.hours || 0), 0)
-                  const ferieDays = new Set(admin.agendaEntries.filter((e: any) => ferieCodes.includes(e.code)).map((e: any) => new Date(e.date).getUTCDate())).size
-                  const recHours = admin.agendaEntries.filter((e: any) => recCodes.includes(e.code)).reduce((sum: number, e: any) => sum + (e.hours || 0), 0)
-
-                  // @ts-ignore
-                  autoTable(doc, {
-                    startY: 75,
-                    head: [['Categoria', 'Valore', 'Unità']],
-                    body: [
-                      ['Straordinario', straHours, 'ore'],
-                      ['Ferie / Festività', ferieDays, 'giorni'],
-                      ['Recupero Ore', recHours, 'ore'],
-                      ['Reperibilità', repCount, 'turni'],
-                    ],
-                    theme: 'striped',
-                    headStyles: { fillColor: [79, 70, 229] },
-                  })
-
-                  doc.setFontSize(14)
-                  // @ts-ignore
-                  const tableStartY = (doc as any).lastAutoTable.finalY + 15;
-                  doc.text('Dettaglio Agenda Personale', 14, tableStartY)
-                  
-                  const tableData = admin.agendaEntries.map((e: any) => [
-                    new Date(e.date).toLocaleDateString('it-IT'),
-                    getLabel(e.code),
-                    e.hours ? `${e.hours}h` : '-',
-                    e.note || '-'
-                  ])
-
-                  // @ts-ignore
-                  autoTable(doc, {
-                    startY: tableStartY + 5,
-                    head: [['Data', 'Descrizione', 'Ore', 'Note']],
-                    body: tableData,
-                    theme: 'grid',
-                    headStyles: { fillColor: [51, 65, 85] },
-                    columnStyles: {
-                      0: { cellWidth: 25 },
-                      2: { cellWidth: 15 },
-                    }
-                  })
-
-                  doc.save(`Resoconto_${currentUser.matricola}_${currentMonth}_${currentYear}.pdf`)
-                }}
-                className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl hover:scale-105 transition-all"
-              >
-                <FileDown size={14} />
-                Esporta PDF
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-12">
-            {AGENDA_CATEGORIES.map((cat) => {
-              const catDetails = (admin.balances?.details || []).filter((d: any) => 
-                cat.items.some((i) => i.code === d.code) && d.initialValue > 0
-              );
-              if (catDetails.length === 0) return null;
-              const colors = CAT_COLORS[cat.color] || CAT_COLORS.blue;
-
-              return (
-                <div key={cat.group} className="space-y-6">
-                  <div className="flex items-center gap-4">
-                     <div className={`p-3 rounded-2xl ${colors.bg} ${colors.text} border ${colors.border}`}>
-                        <span className="text-2xl">{cat.emoji}</span>
-                     </div>
-                     <h3 className={`text-base font-black uppercase tracking-wider ${colors.text}`}>{cat.group}</h3>
-                     <div className="h-px flex-1 bg-slate-200"></div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {catDetails.map((d: any) => {
-                      const pct = Math.min(100, (d.used / d.initialValue) * 100);
-                      return (
-                        <div key={d.code} className="bg-white rounded-[2rem] border border-slate-200 p-6 shadow-sm hover:shadow-xl transition-all">
-                          <div className="flex justify-between items-start mb-4">
-                            <h4 className="font-extrabold text-slate-800 text-sm h-10 line-clamp-2">{d.label}</h4>
-                            <span className={`px-2 py-0.5 ${colors.bg} ${colors.text} text-[8px] font-black rounded-md border ${colors.border}`}>
-                               {d.unit === "HOURS" ? "H" : "G"}
-                            </span>
-                          </div>
-                          <div className="mt-auto">
-                            <div className="flex justify-between items-end mb-1">
-                              <span className="text-[10px] font-black text-slate-300 uppercase">{d.used} / {d.initialValue}</span>
-                              <span className="text-lg font-black text-slate-800">{d.residue}</span>
-                            </div>
-                            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                              <div className={`h-full ${paramsToColor(cat.color)}`} style={{ width: `${pct}%` }}></div>
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-      </div>
+      {/* OLD BALANCES SECTION REMOVED FOR CLEANLINESS - NOW IN TIMECARD VIEW */}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <AgentSwapBoard 
@@ -670,6 +513,15 @@ export default function AgentDashboard({
         <ClockHistoryModal 
           onClose={() => setShowClockHistory(false)}
           records={admin.clockRecords}
+        />
+      )}
+
+      {showAbsenceModal && (
+        <AgentRequestForm 
+          balances={admin.balances} 
+          onClose={() => setShowAbsenceModal(false)}
+          initialCode={requestFormInitialCode}
+          initialNotes={requestFormInitialNotes}
         />
       )}
     </div>
