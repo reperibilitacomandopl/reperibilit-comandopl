@@ -140,23 +140,23 @@ export default function AgentRequestForm({ balances, onClose, initialCode = "", 
           </p>
         </div>
 
-        <div className="p-6 sm:p-8 bg-slate-50">
+        <div className="p-6 sm:p-8 bg-slate-50 overflow-y-auto max-h-[70vh] custom-scrollbar">
           {balances && (
             <div className="mb-6 grid grid-cols-3 gap-2">
               <div className="bg-white rounded-xl p-3 border border-slate-200 text-center shadow-sm">
                 <p className="text-[9px] font-black uppercase text-amber-500 tracking-wider">Ferie</p>
-                <p className="text-xl font-black text-slate-800">{balances.ferieResidue}</p>
-                <p className="text-[8px] text-slate-400 font-bold uppercase">di {balances.ferieTotali}</p>
+                <p className="text-xl font-black text-slate-800">{(balances.ferieResidue ?? 0)}</p>
+                <p className="text-[8px] text-slate-400 font-bold uppercase">di {(balances.ferieTotali ?? 0)}</p>
               </div>
               <div className="bg-white rounded-xl p-3 border border-slate-200 text-center shadow-sm">
                 <p className="text-[9px] font-black uppercase text-blue-500 tracking-wider">L. 104</p>
-                <p className="text-xl font-black text-slate-800">{balances.permessi104Residui}</p>
-                <p className="text-[8px] text-slate-400 font-bold uppercase">di {balances.permessi104Totali}</p>
+                <p className="text-xl font-black text-slate-800">{(balances.permessi104Residui ?? 0)}</p>
+                <p className="text-[8px] text-slate-400 font-bold uppercase">di {(balances.permessi104Totali ?? 0)}</p>
               </div>
               <div className="bg-white rounded-xl p-3 border border-slate-200 text-center shadow-sm">
                 <p className="text-[9px] font-black uppercase text-teal-500 tracking-wider">Festività</p>
-                <p className="text-xl font-black text-slate-800">{balances.festivitaResidue}</p>
-                <p className="text-[8px] text-slate-400 font-bold uppercase">di {balances.festivitaTotali}</p>
+                <p className="text-xl font-black text-slate-800">{(balances.festivitaResidue ?? 0)}</p>
+                <p className="text-[8px] text-slate-400 font-bold uppercase">di {(balances.festivitaTotali ?? 0)}</p>
               </div>
             </div>
           )}

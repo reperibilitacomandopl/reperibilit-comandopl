@@ -304,15 +304,15 @@ export default function CartellinoPanel() {
           <div className="bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden shadow-2xl">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm text-slate-300">
-                <thead className="bg-slate-800 text-slate-400 uppercase text-xs">
+                <thead className="bg-slate-800 text-slate-400 uppercase text-[10px] tracking-wider sticky top-0 z-10 shadow-md">
                   <tr>
-                    <th className="px-4 py-4 font-semibold w-24">Data</th>
-                    <th className="px-4 py-4 font-semibold">Turno (Pianificato)</th>
-                    <th className="px-4 py-4 font-semibold">Timbrature</th>
-                    <th className="px-4 py-4 font-semibold">Straordinario</th>
-                    <th className="px-4 py-4 font-semibold">Delta Timbr.</th>
-                    <th className="px-4 py-4 font-semibold">Assenze / Note</th>
-                    <th className="px-4 py-4 font-semibold w-16 text-center">Azioni</th>
+                    <th className="px-4 py-4 font-black w-24 bg-slate-800">Data</th>
+                    <th className="px-4 py-4 font-black bg-slate-800">Turno</th>
+                    <th className="px-4 py-4 font-black bg-slate-800">Timbrature</th>
+                    <th className="px-4 py-4 font-black bg-slate-800">Straord.</th>
+                    <th className="px-4 py-4 font-black bg-slate-800">Delta</th>
+                    <th className="px-4 py-4 font-black bg-slate-800">Assenze / Note</th>
+                    <th className="px-4 py-4 font-black w-16 text-center bg-slate-800">Azioni</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50">
@@ -382,9 +382,12 @@ export default function CartellinoPanel() {
                                 {primaryShift.type}
                               </span>
                               {!isAbsence && primaryShift.timeRange && (
-                                <span className="text-slate-400 text-xs flex items-center gap-1">
+                                <button 
+                                  onClick={() => openDetailModal(day, primaryShift, clocks)}
+                                  className="text-slate-400 text-xs flex items-center gap-1 hover:text-white transition-colors"
+                                >
                                   <Clock size={12} /> {primaryShift.timeRange}
-                                </span>
+                                </button>
                               )}
                             </div>
                           ) : (
@@ -393,8 +396,10 @@ export default function CartellinoPanel() {
                         </td>
 
                         <td className="px-4 py-3">
-                          {clocks.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
+                            <button 
+                              onClick={() => openDetailModal(day, primaryShift, clocks)}
+                              className="flex flex-wrap gap-1 hover:opacity-80 transition-opacity"
+                            >
                               {clocks.map((c: any, i: number) => (
                                 <span key={i} className={`text-xs px-2 py-0.5 rounded border ${
                                   c.type === 'IN' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : 'border-orange-500/30 text-orange-400 bg-orange-500/10'
@@ -403,7 +408,7 @@ export default function CartellinoPanel() {
                                   {c.isManual && <span title="Modificata Manualmente"><Edit2 size={10} className="inline ml-1" /></span>}
                                 </span>
                               ))}
-                            </div>
+                            </button>
                           ) : (
                             <span className="text-slate-600">-</span>
                           )}
@@ -441,9 +446,13 @@ export default function CartellinoPanel() {
                         <td className="px-4 py-3">
                           <div className="flex flex-col gap-1">
                             {requests.map((r: any, i: number) => (
-                              <span key={i} className="text-xs text-amber-400 bg-amber-400/10 px-2 py-1 rounded inline-block w-fit">
+                              <button 
+                                key={i} 
+                                onClick={() => openDetailModal(day, primaryShift, clocks)}
+                                className="text-xs text-amber-400 bg-amber-400/10 px-2 py-1 rounded inline-block w-fit hover:bg-amber-400/20 transition-colors cursor-pointer text-left border border-amber-400/20"
+                              >
                                 {r.hours ? `${r.hours}h ` : ''}{getLabel(r.code) || r.code}
-                              </span>
+                              </button>
                             ))}
                             {primaryShift?.serviceDetails && (
                               <span className="text-xs text-slate-400 flex items-center gap-1">
