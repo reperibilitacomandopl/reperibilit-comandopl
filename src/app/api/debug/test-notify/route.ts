@@ -15,15 +15,15 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Utente non trovato" }, { status: 404 })
     }
 
-    // Notifica esplicita per iPhone con azioni
+    // Titolo ultra-semplice per testare iOS
     await sendPushNotification(user.id, {
-      title: "🏁 Promemoria Timbratura Uscita",
-      body: `Il tuo turno è terminato. Tieni premuto per timbrare l'uscita ora.`,
+      title: "TIMBRATURA", 
+      body: `TEST PULSANTI v1.0.4 - Tieni premuto qui`,
       url: "/",
-      type: "CLOCK_REMINDER" // Tipo esplicito per il Service Worker
+      type: "CLOCK_REMINDER"
     })
 
-    return NextResponse.json({ success: true, message: `Notifica v1.0.3 inviata a ${user.name}` })
+    return NextResponse.json({ success: true, message: `Notifica v1.0.4 inviata a ${user.name}` })
   } catch (error) {
     console.error(error)
     return NextResponse.json({ error: "Errore" }, { status: 500 })
