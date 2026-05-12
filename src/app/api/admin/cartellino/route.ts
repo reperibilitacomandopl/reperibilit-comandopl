@@ -71,7 +71,7 @@ export async function GET(req: Request) {
 
     const usedFerie = yearShifts.filter((s: any) => {
       const t = (s.type || "").toUpperCase()
-      return t === "FERIE" || t === "FERIE_" || t === "FERIE_AP" || t === "(F)" || t === "F"
+      return t === "FERIE" || t === "FERIE_" || t === "FERIE_AP" || t === "(F)" || t === "F" || t === "0015" || t === "0016"
     }).length
 
     const usedMalattia = yearShifts.filter((s: any) => {

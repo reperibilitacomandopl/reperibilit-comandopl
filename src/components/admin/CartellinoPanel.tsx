@@ -222,17 +222,17 @@ export default function CartellinoPanel() {
       </div>
 
       {/* TABS NAVIGATION */}
-      <div className="flex p-1 bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 w-fit">
+      <div className="flex p-1 bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 w-full sm:w-fit">
         <button 
           onClick={() => setActiveTab('REGISTRO')}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'REGISTRO' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-slate-200'}`}
+          className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all ${activeTab === 'REGISTRO' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-slate-200'}`}
         >
           <LayoutDashboard size={16} />
-          Registro Presenze
+          <span className="hidden sm:inline">Registro</span> Presenze
         </button>
         <button 
           onClick={() => setActiveTab('RIEPILOGO')}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'RIEPILOGO' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-slate-200'}`}
+          className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider sm:tracking-widest transition-all ${activeTab === 'RIEPILOGO' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-slate-200'}`}
         >
           <ListTodo size={16} />
           Richieste & Saldi
@@ -245,11 +245,12 @@ export default function CartellinoPanel() {
         </div>
       ) : !data ? null : activeTab === 'RIEPILOGO' ? (
         <CartellinoSummaryView 
-          requests={data.requests}
+          requests={data.requests || []}
           balances={data.balances || null}
           mode="ADMIN"
           onAction={handleRequestAction}
           isLoading={loading}
+          userId={selectedUserId}
         />
       ) : (
         <>
@@ -261,7 +262,7 @@ export default function CartellinoPanel() {
               </div>
               <h3 className="text-slate-400 text-sm font-medium mb-1">Ferie Residue ({year})</h3>
               <p className="text-3xl font-bold text-white">
-                {Math.max(0, (data.balances?.details?.find((d: any) => d.code === "FERIE")?.initialValue || 0) - (data.yearlyStats?.usedFerie || 0))} <span className="text-lg font-normal text-slate-500">gg</span>
+                {Math.max(0, (data.balances?.details?.find((d: any) => d.code === "FERIE" || d.code === "0015")?.initialValue || 0) - (data.yearlyStats?.usedFerie || 0))} <span className="text-lg font-normal text-slate-500">gg</span>
               </p>
             </div>
             
