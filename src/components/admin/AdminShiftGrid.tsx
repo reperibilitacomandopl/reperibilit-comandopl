@@ -37,9 +37,14 @@ const CELL_COLORS: Record<string, { bg: string; badge: string }> = {
   // Blocco
   "BR": { bg: "bg-gray-200", badge: "bg-gray-800 text-white" },
   // Congedi
-  "CONG_P":   { bg: "bg-pink-100", badge: "bg-pink-500 text-white" },
   "CONG_PAT": { bg: "bg-pink-100", badge: "bg-pink-500 text-white" },
-  "CONG_PAR": { bg: "bg-pink-100", badge: "bg-pink-500 text-white" },
+  "CONG_P1":  { bg: "bg-pink-100", badge: "bg-pink-500 text-white" },
+  "CONG_P2":  { bg: "bg-pink-100", badge: "bg-pink-500 text-white" },
+  "CONG80_1": { bg: "bg-pink-100", badge: "bg-pink-500 text-white" },
+  "CONG80_2": { bg: "bg-pink-100", badge: "bg-pink-500 text-white" },
+  "CONG30_1": { bg: "bg-pink-100", badge: "bg-pink-500 text-white" },
+  "CONG30_2": { bg: "bg-pink-100", badge: "bg-pink-500 text-white" },
+  "CONG_P":   { bg: "bg-pink-100", badge: "bg-pink-500 text-white" },
   "CONGEDO":  { bg: "bg-pink-100", badge: "bg-pink-500 text-white" },
   // Permessi
   "104":      { bg: "bg-sky-100",    badge: "bg-sky-600 text-white" },
@@ -56,6 +61,8 @@ const CELL_COLORS: Record<string, { bg: string; badge: string }> = {
   "MALATTIA":   { bg: "bg-red-100",  badge: "bg-red-600 text-white" },
   "MAL":        { bg: "bg-red-100",  badge: "bg-red-600 text-white" },
   "M":          { bg: "bg-red-100",  badge: "bg-red-600 text-white" },
+  "MAL_FI1":    { bg: "bg-red-100",  badge: "bg-red-500 text-white" },
+  "MAL_FI2":    { bg: "bg-red-100",  badge: "bg-red-500 text-white" },
   "MAL_FI":     { bg: "bg-red-100",  badge: "bg-red-500 text-white" },
   "MAL_FIGLIO": { bg: "bg-red-100",  badge: "bg-red-500 text-white" },
   "VISITA":     { bg: "bg-red-50",   badge: "bg-red-500 text-white" },

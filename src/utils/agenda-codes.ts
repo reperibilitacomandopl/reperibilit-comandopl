@@ -26,13 +26,13 @@ const RAW_AGENDA_CATEGORIES = [
   {
     group: "Congedi", emoji: "👶", color: "rose",
     items: [
-      { code: "0112", shortCode: "CONG_P", label: "Congedo di Paternità" },
-      { code: "0111", shortCode: "CONG_P", label: "Congedo Parentale 100% Figlio 1" },
-      { code: "0110", shortCode: "CONG_P", label: "Congedo Parentale 100% Figlio 2" },
-      { code: "0098", shortCode: "CONG_P", label: "Congedo Parentale 80% Figlio 1" },
-      { code: "0095", shortCode: "CONG_P", label: "Congedo Parentale 80% Figlio 2" },
-      { code: "0097", shortCode: "CONG_P", label: "Congedo Parentale 30% Figlio 1" },
-      { code: "0096", shortCode: "CONG_P", label: "Congedo Parentale 30% Figlio 2" },
+      { code: "0112", shortCode: "CONG_PAT", label: "Congedo di Paternità" },
+      { code: "0111", shortCode: "CONG_P1", label: "Congedo Parentale 100% Figlio 1" },
+      { code: "0110", shortCode: "CONG_P2", label: "Congedo Parentale 100% Figlio 2" },
+      { code: "0098", shortCode: "CONG80_1", label: "Congedo Parentale 80% Figlio 1" },
+      { code: "0095", shortCode: "CONG80_2", label: "Congedo Parentale 80% Figlio 2" },
+      { code: "0097", shortCode: "CONG30_1", label: "Congedo Parentale 30% Figlio 1" },
+      { code: "0096", shortCode: "CONG30_2", label: "Congedo Parentale 30% Figlio 2" },
     ]
   },
   {
@@ -52,8 +52,8 @@ const RAW_AGENDA_CATEGORIES = [
     group: "Malattia e Salute", emoji: "🏥", color: "red",
     items: [
       { code: "MALATTIA", shortCode: "MALATT", label: "Malattia Standard" },
-      { code: "0018", shortCode: "MAL_FI", label: "Malattia Figlio 0-3 Anni Figlio 1" },
-      { code: "0019", shortCode: "MAL_FI", label: "Malattia Figlio 0-3 Anni Figlio 2" },
+      { code: "0018", shortCode: "MAL_FI1", label: "Malattia Figlio 0-3 Anni Figlio 1" },
+      { code: "0019", shortCode: "MAL_FI2", label: "Malattia Figlio 0-3 Anni Figlio 2" },
       { code: "0032", shortCode: "VISITA", label: "Visite Terapie Prestazioni o Esami Diagnostici" },
       { code: "0054", shortCode: "CONTR_PRE", label: "Controlli Prenatali" },
       { code: "0003", shortCode: "ALLATT", label: "Allattamento" },
