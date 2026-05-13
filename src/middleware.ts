@@ -26,6 +26,7 @@ const PUBLIC_PREFIXES = [
   "/api/test-db",
   "/api/calendar",
   "/api/demo-request",
+  "/api/health",
 ]
 
 function isPublicRoute(pathname: string): boolean {
