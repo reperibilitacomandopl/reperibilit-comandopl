@@ -164,7 +164,8 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
                 { id: "SEZIONE", icon: Briefcase, label: "Sezione" },
                 { id: "SERVIZIO", icon: Shield, label: "Servizio & Pattuglia" },
                 { id: "DIRITTI", icon: ShieldCheck, label: "Diritti" },
-                { id: "PERMESSI", icon: Shield, label: "Permessi" }
+                { id: "PERMESSI", icon: Shield, label: "Permessi" },
+                { id: "DOCUMENTI", icon: FileEdit, label: "Documenti" }
               ].map(tab => (
                  <button 
                    key={tab.id}
@@ -513,6 +514,60 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
                          </button>
                    </div>
                 </div>
+              </div>
+            )}
+
+            {/* SCHEDA 7: DOCUMENTI ALLEGATI */}
+            {editTab === "DOCUMENTI" && (
+              <div className="space-y-6 animate-in fade-in duration-300">
+                 <div className="bg-slate-900 p-6 rounded-[2.5rem] text-white space-y-4">
+                    <div className="flex items-center gap-4">
+                       <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-blue-400">
+                          <FileEdit width={24} height={24} />
+                       </div>
+                       <div>
+                          <h4 className="text-lg font-black uppercase tracking-tight">Archivio Digitale</h4>
+                          <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Documentazione ufficiale dell&apos;agente</p>
+                       </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 gap-3">
+                       {/* Placeholder Upload Area */}
+                       <div className="border-2 border-dashed border-white/10 rounded-[2rem] p-8 flex flex-col items-center justify-center gap-3 hover:bg-white/5 transition-all cursor-pointer group">
+                          <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center text-white/20 group-hover:text-blue-400 group-hover:scale-110 transition-all">
+                             <Plus width={24} height={24} />
+                          </div>
+                          <div className="text-center">
+                             <p className="text-xs font-black uppercase tracking-widest">Trascina qui i file</p>
+                             <p className="text-[9px] text-white/30 font-bold uppercase mt-1">PDF, JPG o PNG (Max 10MB)</p>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="space-y-4">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 pb-2">📂 Elenco Documenti Caricati</h4>
+                    
+                    {/* Placeholder per la lista documenti */}
+                    <div className="bg-white border border-slate-100 rounded-3xl p-6 flex flex-col items-center justify-center text-center space-y-2 opacity-60">
+                       <div className="p-3 bg-slate-50 rounded-2xl text-slate-300">
+                          <ShieldCheck width={32} height={32} />
+                       </div>
+                       <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Nessun documento caricato</p>
+                       <p className="text-[10px] text-slate-300 font-bold">Carica la patente o il porto d&apos;armi per iniziare.</p>
+                    </div>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-blue-50 p-5 rounded-3xl border border-blue-100 flex flex-col gap-2">
+                       <p className="text-[10px] font-black text-blue-600 uppercase">Scadenza Patente</p>
+                       <p className="text-sm font-black text-blue-900">{tempScadenzaPatente ? new Date(tempScadenzaPatente).toLocaleDateString() : "Non impostata"}</p>
+                    </div>
+                    <div className="bg-indigo-50 p-5 rounded-3xl border border-indigo-100 flex flex-col gap-2">
+                       <p className="text-[10px] font-black text-indigo-600 uppercase">Scadenza Porto Armi</p>
+                       <p className="text-sm font-black text-indigo-900">{tempScadenzaPortoArmi ? new Date(tempScadenzaPortoArmi).toLocaleDateString() : "Non impostata"}</p>
+                    </div>
+                 </div>
               </div>
             )}
          </div>

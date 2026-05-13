@@ -3,17 +3,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
-// Utility per ricavare gli orari dai codici (M7, P14, ecc.)
-function getTimeRangeFromShiftType(type: string): string | null {
-  const t = type.toUpperCase()
-  if (t === "M7") return "07:00-13:00"
-  if (t === "M7,30" || t === "M7.30") return "07:30-13:30"
-  if (t === "M8") return "08:00-14:00"
-  if (t === "P14") return "14:00-20:00"
-  if (t === "P15") return "15:00-21:00"
-  if (t === "P16") return "16:00-22:00"
-  return null
-}
+import { inferTimeRangeFromMacro } from "@/utils/sync-shift"
 
 function classifyShift(type: string): "M" | "P" | "N" | "OFF" {
   const t = type.toUpperCase().replace(/[()]/g, "").replace(/\s/g, "").trim()
@@ -97,7 +87,7 @@ export async function POST(req: Request) {
             serviceTypeId: patrol.serviceTypeId || getDefaultType(patrol.serviceCategoryId),
             vehicleId: patrol.vehicleId,
             patrolGroupId: groupId,
-            timeRange: getTimeRangeFromShiftType(s.type) || s.timeRange,
+            timeRange: inferTimeRangeFromMacro(s.type) || s.timeRange,
             serviceDetails: s.serviceDetails || s.user.servizio || patrol.name || null
           })
           processedShiftIds.add(s.id)
@@ -119,7 +109,7 @@ export async function POST(req: Request) {
           id: s.id,
           serviceCategoryId: s.user.defaultServiceCategoryId,
           serviceTypeId: s.user.defaultServiceTypeId || getDefaultType(s.user.defaultServiceCategoryId),
-          timeRange: getTimeRangeFromShiftType(s.type) || s.timeRange,
+          timeRange: inferTimeRangeFromMacro(s.type) || s.timeRange,
           patrolGroupId: null,
           serviceDetails: s.serviceDetails || s.user.servizio || null
         })
@@ -162,7 +152,7 @@ export async function POST(req: Request) {
               serviceCategoryId: member.user.defaultServiceCategoryId || commonCatId,
               serviceTypeId: member.user.defaultServiceTypeId || getDefaultType(member.user.defaultServiceCategoryId || commonCatId),
               patrolGroupId: groupId,
-              timeRange: getTimeRangeFromShiftType(member.type) || member.timeRange,
+              timeRange: inferTimeRangeFromMacro(member.type) || member.timeRange,
               serviceDetails: member.serviceDetails || member.user.servizio || "Pattuglia"
             })
             processedShiftIds.add(member.id)
@@ -183,7 +173,7 @@ export async function POST(req: Request) {
           id: s.id,
           serviceCategoryId: catId,
           serviceTypeId: s.user.defaultServiceTypeId || getDefaultType(catId),
-          timeRange: getTimeRangeFromShiftType(s.type) || s.timeRange,
+          timeRange: inferTimeRangeFromMacro(s.type) || s.timeRange,
           patrolGroupId: null,
           serviceDetails: s.serviceDetails || s.user.servizio || null
         })
