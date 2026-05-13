@@ -9,17 +9,16 @@ import { cookies } from "next/headers"
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     // === PREDISPOSIZIONE SPID/CIE (OIDC) ===
-    // Quando avrai i metadati AgID, dovrai compilare questi campi.
-    {
+    ...(process.env.SPID_ISSUER ? [{
       id: "spid",
       name: "SPID",
-      type: "oidc",
+      type: "oidc" as const,
       issuer: process.env.SPID_ISSUER,
       clientId: process.env.SPID_CLIENT_ID,
       clientSecret: process.env.SPID_CLIENT_SECRET,
       authorization: { params: { scope: "openid profile email" } },
       wellKnown: process.env.SPID_WELL_KNOWN,
-    },
+    }] : []),
     CredentialsProvider({
       name: "Credentials",
       credentials: {
