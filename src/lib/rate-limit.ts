@@ -33,7 +33,8 @@ export const createRateLimiter = (limit: number, window: string) => {
 // Limiter predefiniti (Lazy)
 export const getGlobalLimiter = () => createRateLimiter(60, "1 m")
 export const getAuthLimiter = () => createRateLimiter(5, "10 m")
-export const getWriteLimiter = () => createRateLimiter(100, "1 m") // Alzato a 100 per importazioni massive
+export const getWriteLimiter = () => createRateLimiter(100, "1 m") // Alzato a 100 per operazioni standard
+export const getBulkLimiter = () => createRateLimiter(5000, "1 m") // Per importazioni da 1000-2000 turni
 
 /**
  * Helper legacy per mantenere compatibilità durante la transizione (opzionale)
