@@ -8,27 +8,29 @@ export function inferTimeRangeFromMacro(macroCode: string): string | null {
   if (!macroCode || isAssenza(macroCode) || !isLavoro(macroCode)) return null;
   
   const c = macroCode.toUpperCase().trim();
-  // Estrae lettere iniziali (es. M, P) e il resto (es. 7, 7,30, 14)
-  const match = c.match(/^([A-Z]+)(\d+)?(,\d+)?$/);
-  if (!match) return null; // Codice anomalo
+  // Estrae lettere iniziali (es. M, P) e il resto (es. 7, 7,30, 730, 1430)
+  const match = c.match(/^([A-Z]+)([\d,.]+)$/);
+  if (!match) return null;
 
-  const prefix = match[1]; // M o P
-  const hourStr = match[2];
-  const minStr = match[3];
+  const prefix = match[1]; 
+  const rawValue = match[2].replace(',', '.'); // Normalizza virgola in punto
 
   let startHour = 0;
   let startMin = 0;
 
-  if (hourStr) {
-    startHour = parseInt(hourStr, 10);
-    if (minStr) {
-      startMin = parseInt(minStr.replace(',', ''), 10);
-    }
+  if (rawValue.includes('.')) {
+    const parts = rawValue.split('.');
+    startHour = parseInt(parts[0], 10);
+    startMin = parseInt(parts[1], 10) || 0;
+  } else if (rawValue.length >= 3) {
+    // Gestione formato compatto (es. 730 -> 7:30, 1430 -> 14:30)
+    const minPart = rawValue.slice(-2);
+    const hourPart = rawValue.slice(0, -2);
+    startHour = parseInt(hourPart, 10);
+    startMin = parseInt(minPart, 10);
   } else {
-    // Default fallback storici
-    if (prefix === "M") startHour = 7;
-    else if (prefix === "P") startHour = 14;
-    else return null;
+    startHour = parseInt(rawValue, 10);
+    startMin = 0;
   }
 
   // Turno standard di 6 ore
