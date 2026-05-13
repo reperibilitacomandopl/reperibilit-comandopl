@@ -1,7 +1,7 @@
 import { auth } from "@/auth"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { globalLimiter } from "@/lib/rate-limit"
+import { getGlobalLimiter } from "@/lib/rate-limit"
 
 // ============================================================================
 // MIDDLEWARE DI SICUREZZA CENTRALIZZATO
@@ -73,9 +73,12 @@ export default auth(async (req) => {
     
     // Usiamo il limiter globale (60 req/min)
     // NOTA: In produzione usiamo Redis, in dev possiamo bypassare se necessario
-    const { success } = await globalLimiter.limit(`global-write-${ip}`)
-    if (!success) {
-      return addSecurityHeaders(NextResponse.json({ error: "Too Many Requests", message: "Limite operativo superato. Riprova tra un minuto." }, { status: 429 }), false, requestId)
+    const limiter = getGlobalLimiter()
+    if (limiter) {
+      const { success } = await limiter.limit(`global-write-${ip}`)
+      if (!success) {
+        return addSecurityHeaders(NextResponse.json({ error: "Too Many Requests", message: "Limite operativo superato. Riprova tra un minuto." }, { status: 429 }), false, requestId)
+      }
     }
   }
 
