@@ -161,14 +161,16 @@ export async function POST(req: Request) {
               }
             },
             update: {
-              repType: "rep_i"
+              repType: "rep_i",
+              deletedAt: null
             },
             create: {
               userId: op.userId,
               date: op.date,
               tenantId: tenantId,
               type: (op.type && !op.type.toUpperCase().includes("REP")) ? op.type : "RP",
-              repType: "rep_i"
+              repType: "rep_i",
+              deletedAt: null
             }
           })
           processedCount++

@@ -119,7 +119,8 @@ export async function PUT(req: Request) {
         serviceCategoryId: normalized.serviceCategoryId,
         serviceTypeId: normalized.serviceTypeId,
         vehicleId: normalized.vehicleId,
-        repType: normalized.repType
+        repType: normalized.repType,
+        deletedAt: null // Ripristina se era stato cancellato logicamente
       },
       create: {
         tenantId: tenantId || null,
@@ -130,7 +131,8 @@ export async function PUT(req: Request) {
         serviceCategoryId: normalized.serviceCategoryId,
         serviceTypeId: normalized.serviceTypeId,
         vehicleId: normalized.vehicleId,
-        repType: normalized.repType
+        repType: normalized.repType,
+        deletedAt: null
       }
     })
 
