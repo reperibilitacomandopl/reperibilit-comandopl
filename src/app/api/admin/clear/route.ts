@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { logAudit } from "@/lib/audit"
-import { rateLimit } from "@/lib/rate-limit"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { z } from "zod"
 
 const ClearSchema = z.object({
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   }
 
   // Rate Limiting: max 5 richieste al minuto
-  if (!rateLimit(`clear-${tenantId}`, 5, 60000)) {
+  if (!(await checkRateLimit(`clear-${tenantId}`, 5, 60000))) {
     return NextResponse.json({ error: "Troppe richieste (Rate Limit). Riprova tra poco." }, { status: 429 })
   }
 

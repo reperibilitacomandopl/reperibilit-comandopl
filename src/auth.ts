@@ -2,20 +2,24 @@ import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
-import { rateLimit } from "@/lib/rate-limit"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { logAudit, AUDIT_ACTIONS } from "@/lib/audit"
 import { cookies } from "next/headers"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
-    // TODO: Integrazione SPID/CIE via OIDC o SAML2 (richiede metadati AgID)
-    // {
-    //   id: "spid",
-    //   name: "SPID",
-    //   type: "oauth",
-    //   version: "2.0",
-    //   // ... configurazione well-known OIDC
-    // },
+    // === PREDISPOSIZIONE SPID/CIE (OIDC) ===
+    // Quando avrai i metadati AgID, dovrai compilare questi campi.
+    {
+      id: "spid",
+      name: "SPID",
+      type: "oidc",
+      issuer: process.env.SPID_ISSUER,
+      clientId: process.env.SPID_CLIENT_ID,
+      clientSecret: process.env.SPID_CLIENT_SECRET,
+      authorization: { params: { scope: "openid profile email" } },
+      wellKnown: process.env.SPID_WELL_KNOWN,
+    },
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -29,7 +33,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         const limitKey = `login-${credentials.tenantSlug}-${credentials.matricola}`
-        if (!rateLimit(limitKey, 5, 60000)) {
+        if (!(await checkRateLimit(limitKey, 5, 60000))) {
           throw new Error("Troppi tentativi di accesso. Riprova tra un minuto.")
         }
 

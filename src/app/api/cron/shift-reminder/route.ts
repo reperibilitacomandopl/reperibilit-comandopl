@@ -110,15 +110,18 @@ export async function GET(req: Request) {
           // Push Notification
           await sendPushNotification(userId, {
             title: "⏰ Il tuo turno inizia tra poco!",
-            body: `Il servizio inizia alle ${timeStr}. Ricordati di timbrare l'entrata quando arrivi in sede.`,
-            url: "/"
+            body: `Il servizio inizia alle ${timeStr}. Tocca qui per timbrare l'entrata istantaneamente.`,
+            url: "/quick-clock?type=IN"
           })
 
           // Telegram
           if (shift.user?.telegramChatId && shift.user?.telegramOptIn) {
+            const baseUrl = process.env.NEXTAUTH_URL || "https://caserma.it"
+            const quickLink = `${baseUrl}/quick-clock?type=IN`
+            
             await sendTelegramMessage(
               shift.user.telegramChatId,
-              `⏰ <b>PROMEMORIA TURNO</b>\n\nCiao ${shift.user.name.split(' ')[0]}, il tuo servizio inizia alle <b>${timeStr}</b>.\n\nRicordati di timbrare l'entrata! 👮‍♂️`
+              `⏰ <b>PROMEMORIA TURNO</b>\n\nCiao ${shift.user.name.split(' ')[0]}, il tuo servizio inizia alle <b>${timeStr}</b>.\n\n👉 <a href="${quickLink}">CLICCA QUI PER TIMBRARE L'ENTRATA</a> 👮‍♂️`
             )
           }
 

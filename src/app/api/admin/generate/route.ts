@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { rateLimit } from "@/lib/rate-limit"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { z } from "zod"
 import { generateMonthShifts } from "@/utils/generation-engine"
 import { resolveTheoreticalShift } from "@/utils/theoretical-shift"
@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Tenant isolato richiesto" }, { status: 400 })
   }
 
-  if (!rateLimit(`generate-${tenantId}`, 5, 60000)) {
+  if (!(await checkRateLimit(`generate-${tenantId}`, 5, 60000))) {
     return NextResponse.json({ error: "Troppe richieste (Rate Limit). Riprova tra poco." }, { status: 429 })
   }
 

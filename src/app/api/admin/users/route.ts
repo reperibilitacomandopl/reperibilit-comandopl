@@ -332,10 +332,18 @@ export async function DELETE(req: Request) {
     if (!targetUser) return NextResponse.json({ error: "Utente non trovato o non appartenente al tuo comando" }, { status: 404 })
 
     const timestamp = Date.now()
+    const pseudonym = `Agente_${userId.substring(0, 4)}`
+
+    // Pseudonimizzazione GDPR: Diritto all'oblio mantenendo integrità referenziale
     await prisma.user.update({ 
       where: { id: userId },
       data: { 
         isActive: false,
+        name: `EX-AGENTE (${pseudonym})`,
+        email: null,
+        phone: null,
+        dataDiNascita: null,
+        noteInterne: "Utente rimosso per diritto all'oblio (GDPR)",
         matricola: `${targetUser.matricola}_ARCHIVED_${timestamp}`
       }
     })
@@ -347,7 +355,7 @@ export async function DELETE(req: Request) {
       action: "DELETE_USER",
       targetId: userId,
       targetName: targetUser?.name,
-      details: `Eliminato agente: ${targetUser?.name} (Matr. ${targetUser?.matricola})`
+      details: `Eliminato e anonimizzato agente: ${targetUser?.name} (ID: ${userId})`
     })
 
     return NextResponse.json({ success: true })

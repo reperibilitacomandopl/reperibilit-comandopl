@@ -4,6 +4,8 @@ import { NextResponse } from "next/server"
 import { OTP } from "otplib"
 import { encrypt, decrypt } from "@/lib/crypto"
 import QRCode from "qrcode"
+import crypto from "crypto"
+import bcrypt from "bcryptjs"
 
 const otp = new OTP({ strategy: 'totp' });
 
@@ -82,15 +84,24 @@ export async function POST(req: Request) {
       const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1"
       const updatedIps = Array.from(new Set([...(user.trustedIps || []), ip]))
 
+      // 4. Genera Codici di Backup (Punto 2.3 - Backup Codes)
+      const backupCodes = Array.from({ length: 8 }, () => crypto.randomBytes(4).toString('hex').toUpperCase())
+      const hashedBackupCodes = await Promise.all(backupCodes.map(code => bcrypt.hash(code, 10)))
+
       await prisma.user.update({
         where: { id: user.id },
         data: { 
           twoFactorEnabled: true,
-          trustedIps: updatedIps
+          trustedIps: updatedIps,
+          twoFactorBackupCodes: hashedBackupCodes
         }
       })
 
-      return NextResponse.json({ success: true, enabled: true })
+      return NextResponse.json({ 
+        success: true, 
+        enabled: true,
+        backupCodes // Restituiti SOLO ora all'utente
+      })
     }
 
     if (action === "disable") {

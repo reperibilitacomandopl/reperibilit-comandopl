@@ -1,7 +1,7 @@
 import { auth } from "@/auth"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { rateLimit } from "@/lib/rate-limit"
+import { globalLimiter } from "@/lib/rate-limit"
 
 // ============================================================================
 // MIDDLEWARE DI SICUREZZA CENTRALIZZATO
@@ -56,7 +56,7 @@ function isSuperAdminRoute(pathname: string): boolean {
   return pathname.includes("/superadmin") || pathname.includes("/api/superadmin")
 }
 
-export default auth((req) => {
+export default auth(async (req) => {
   const { pathname } = req.nextUrl
   const { method } = req
   const session = req.auth
@@ -68,9 +68,13 @@ export default auth((req) => {
 
   // --- RATE LIMITING GLOBALE (⚠ Critico) ---
   // Protezione contro DoS applicativo su operazioni di scrittura
-  if (method !== "GET" && method !== "HEAD") {
+  if (method !== "GET" && method !== "HEAD" && process.env.NODE_ENV === "production") {
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1"
-    if (!rateLimit(`global-write-${ip}`, 60, 60000)) {
+    
+    // Usiamo il limiter globale (60 req/min)
+    // NOTA: In produzione usiamo Redis, in dev possiamo bypassare se necessario
+    const { success } = await globalLimiter.limit(`global-write-${ip}`)
+    if (!success) {
       return addSecurityHeaders(NextResponse.json({ error: "Too Many Requests", message: "Limite operativo superato. Riprova tra un minuto." }, { status: 429 }), false, requestId)
     }
   }
@@ -202,6 +206,8 @@ function addSecurityHeaders(response: NextResponse, isPublic: boolean = false, r
     media-src 'self' https://assets.mixkit.co;
     frame-ancestors 'none';
     form-action 'self';
+    base-uri 'self';
+    object-src 'none';
   `.replace(/\s{2,}/g, ' ').trim()
 
   response.headers.set("Content-Security-Policy", cspHeader)

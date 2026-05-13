@@ -84,6 +84,12 @@ export async function logAudit({
       }
     })
   } catch (error) {
-    console.error("[AUDIT_LOG_ERROR]", error)
+    // Se l'errore deriva dal recupero degli headers, lo ignoriamo
+    // Ma se deriva dalla scrittura su DB (Prisma), lo rilanciamo per bloccare l'azione
+    if (error instanceof Error && error.message.includes("headers")) {
+      return; 
+    }
+    console.error("[AUDIT_LOG_CRITICAL_ERROR]", error)
+    throw error // Rende il log BLOCCANTE
   }
 }
