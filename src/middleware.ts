@@ -1,7 +1,7 @@
 import { auth } from "@/auth"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { getGlobalLimiter } from "@/lib/rate-limit"
+import { getGlobalLimiter, getBulkLimiter } from "@/lib/rate-limit"
 
 // ============================================================================
 // MIDDLEWARE DI SICUREZZA CENTRALIZZATO
