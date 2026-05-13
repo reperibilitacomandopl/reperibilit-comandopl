@@ -52,6 +52,7 @@ model Tenant {
   trainingRecords    TrainingRecord[]
   users              User[]
   userDocuments      UserDocument[]
+  vehicles           Vehicle[]
   weapons            Weapon[]
   chatMessages       ChatMessage[]
 }
