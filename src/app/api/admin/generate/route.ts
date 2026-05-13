@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Tenant isolato richiesto" }, { status: 400 })
   }
 
-  if (!(await checkRateLimit(`generate-${tenantId}`, 5, 60000))) {
+  if (!(await checkRateLimit(`generate-${tenantId}`, 20, 60000))) {
     return NextResponse.json({ error: "Troppe richieste (Rate Limit). Riprova tra poco." }, { status: 429 })
   }
 

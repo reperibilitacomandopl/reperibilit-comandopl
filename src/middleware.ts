@@ -71,9 +71,12 @@ export default auth(async (req) => {
   if (method !== "GET" && method !== "HEAD" && process.env.NODE_ENV === "production") {
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1"
     
-    // Usiamo il limiter globale (60 req/min) o bulk per import
-    const isImport = req.nextUrl.pathname.includes("/import")
-    const limiter = isImport ? getBulkLimiter() : getGlobalLimiter()
+    // Usiamo il limiter globale (60 req/min) o bulk per operazioni massive
+    const isBulk = req.nextUrl.pathname.includes("/import") || 
+                   req.nextUrl.pathname.includes("/generate") || 
+                   req.nextUrl.pathname.includes("/certify")
+    
+    const limiter = isBulk ? getBulkLimiter() : getGlobalLimiter()
     
     if (limiter) {
       const { success } = await limiter.limit(`global-write-${ip}`)
