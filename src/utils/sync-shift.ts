@@ -118,7 +118,10 @@ export function normalizeShiftData(input: ShiftSyncInput): ShiftSyncOutput {
   // LEGGE 2 & 3: RETROATTIVITA E NORMALIZZAZIONE
   // Caso A: Se mi passi un timeRange (es. dal drag&drop operativo) ma il macroType discorda,
   // vince il timeRange! Devo aggiustare il macroType.
-  if (timeRange && macroType !== 'RIPOSO' && macroType !== '') {
+  if (timeRange && (macroType === 'RIPOSO' || macroType === '')) {
+     const computedMacro = inferMacroFromTimeRange(timeRange, "M");
+     macroType = computedMacro;
+  } else if (timeRange && macroType !== 'RIPOSO' && macroType !== '') {
      const computedMacro = inferMacroFromTimeRange(timeRange, isPomeriggio(macroType) ? "P" : "M");
      macroType = computedMacro;
   } 

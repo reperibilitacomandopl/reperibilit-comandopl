@@ -175,11 +175,19 @@ export async function POST(req: Request) {
         }
       } else {
         // Import Base: Reset totale nel periodo per questo comando
-        await tx.shift.deleteMany({
-          where: { userId: { in: affectedUserIds }, date: { gte: minDate, lte: maxDate }, tenantId }
-        })
+        // NOTA: Usiamo una query raw per assicurarci di fare un HARD DELETE 
+        // ed evitare blocchi dovuti al Soft Delete di Prisma su record esistenti.
+        for (const userId of affectedUserIds) {
+          await tx.$executeRaw`DELETE FROM "Shift" WHERE "userId" = ${userId} AND "date" >= ${minDate} AND "date" <= ${maxDate} AND "tenantId" = ${tenantId}`
+        }
+
         const res = await tx.shift.createMany({
-          data: resolvedOps.map(op => ({ userId: op.userId, date: op.date, tenantId, type: op.type })),
+          data: resolvedOps.map(op => ({ 
+            userId: op.userId, 
+            date: op.date, 
+            tenantId, 
+            type: op.type || "RP" 
+          })),
           skipDuplicates: true
         })
         processedCount = res.count
