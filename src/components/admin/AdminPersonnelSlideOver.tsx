@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect } from "react"
-import { Users, Clock, Briefcase, Shield, X, FileEdit, Save, Trash2, Star, ShieldCheck } from "lucide-react"
+import { Users, Clock, Briefcase, Shield, X, FileEdit, Save, Trash2, Star, ShieldCheck, Plus } from "lucide-react"
 
 interface AdminPersonnelSlideOverProps {
   editingAgent: any
@@ -21,7 +21,7 @@ const RANKS = [
 ];
 
 export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave, onDelete, rotationGroups, categories, activeAgentsForPartners }: AdminPersonnelSlideOverProps) {
-  const [editTab, setEditTab] = useState<"HR" | "TURNO" | "SEZIONE" | "SERVIZIO" | "DIRITTI" | "PERMESSI">("HR")
+  const [editTab, setEditTab] = useState<"HR" | "TURNO" | "SEZIONE" | "SERVIZIO" | "DIRITTI" | "PERMESSI" | "DOCUMENTI">("HR")
   const [tempName, setTempName] = useState("")
   const [tempMatricola, setTempMatricola] = useState("")
   const [tempSquadra, setTempSquadra] = useState("")
