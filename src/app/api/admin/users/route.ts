@@ -102,7 +102,7 @@ export async function PUT(req: Request) {
       dataDiNascita, tipoContratto, defaultPartnerIds, fixedServiceDays,
       hasL104, l104Assistiti, hasStudyLeave, hasParentalLeave, hasChildSicknessLeave,
       canConfigureSystem, canManageShifts, canManageUsers, canVerifyClockIns, 
-      twoFactorEnabled, isActive 
+      isUfficiale, twoFactorEnabled, isActive 
     } = validation.data as any
     
     if (!userId) return NextResponse.json({ error: "Missing userId" }, { status: 400 })
