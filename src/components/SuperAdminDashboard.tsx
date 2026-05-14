@@ -16,6 +16,8 @@ type TenantData = {
   planType: string
   trialEndsAt: string | null
   isActive: boolean
+  serviceStartDate: string | null
+  serviceEndDate: string | null
   createdAt: string
   _count: { users: number; shifts: number; vehicles: number }
 }
@@ -47,6 +49,8 @@ export default function SuperAdminDashboard({ tenants, currentUser }: { tenants:
   const [formAdminName, setFormAdminName] = useState("")
   const [formAdminMatricola, setFormAdminMatricola] = useState("")
   const [formAdminPassword, setFormAdminPassword] = useState("")
+  const [formStartDate, setFormStartDate] = useState("")
+  const [formEndDate, setFormEndDate] = useState("")
 
   const totalUsers = tenants.reduce((a, t) => a + t._count.users, 0)
   const totalShifts = tenants.reduce((a, t) => a + t._count.shifts, 0)
@@ -60,6 +64,8 @@ export default function SuperAdminDashboard({ tenants, currentUser }: { tenants:
     setFormPiva(t.partitaIva || "")
     setFormPlan(t.planType)
     setFormMaxAgents(t.maxAgents)
+    setFormStartDate(t.serviceStartDate ? t.serviceStartDate.split('T')[0] : "")
+    setFormEndDate(t.serviceEndDate ? t.serviceEndDate.split('T')[0] : "")
   }
 
   const handleUpdateTenant = async () => {
@@ -75,7 +81,9 @@ export default function SuperAdminDashboard({ tenants, currentUser }: { tenants:
           planType: formPlan,
           maxAgents: formMaxAgents,
           address: formAddress,
-          partitaIva: formPiva
+          partitaIva: formPiva,
+          serviceStartDate: formStartDate || null,
+          serviceEndDate: formEndDate || null
         })
       })
       if (!res.ok) throw new Error("Errore")
@@ -146,7 +154,9 @@ export default function SuperAdminDashboard({ tenants, currentUser }: { tenants:
           maxAgents: formMaxAgents,
           adminName: formAdminName,
           adminMatricola: formAdminMatricola,
-          adminPassword: formAdminPassword
+          adminPassword: formAdminPassword,
+          serviceStartDate: formStartDate || null,
+          serviceEndDate: formEndDate || null
         })
       })
       const data = await res.json()
@@ -155,6 +165,7 @@ export default function SuperAdminDashboard({ tenants, currentUser }: { tenants:
       setShowNewTenant(false)
       setFormName(""); setFormSlug(""); setFormAddress(""); setFormPiva("")
       setFormAdminName(""); setFormAdminMatricola(""); setFormAdminPassword("")
+      setFormStartDate(""); setFormEndDate("")
       window.location.reload()
     } catch (err: unknown) {
       if (err instanceof Error) toast.error(err.message)
@@ -403,6 +414,42 @@ export default function SuperAdminDashboard({ tenants, currentUser }: { tenants:
             </div>
           )}
         </div>
+        
+        {/* Allerta Scadenze */}
+        {(() => {
+          const expiringTenants = tenants.filter(t => {
+            if (!t.serviceEndDate) return false
+            const daysLeft = Math.ceil((new Date(t.serviceEndDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+            return daysLeft > 0 && daysLeft <= 30
+          })
+          
+          if (expiringTenants.length === 0) return null
+          
+          return (
+            <div className="mt-8 bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6">
+               <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-amber-500 rounded-lg text-white"><Calendar size={20} /></div>
+                  <h3 className="text-lg font-black uppercase text-amber-500">Contratti in Scadenza (Prossimi 30gg)</h3>
+               </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {expiringTenants.map(t => {
+                    const daysLeft = Math.ceil((new Date(t.serviceEndDate!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+                    return (
+                      <div key={t.id} className="bg-white/5 border border-white/10 p-4 rounded-xl flex justify-between items-center">
+                        <div>
+                           <p className="font-bold text-sm">{t.name}</p>
+                           <p className="text-[10px] text-slate-400 font-bold uppercase">Scadenza: {new Date(t.serviceEndDate!).toLocaleDateString('it-IT')}</p>
+                        </div>
+                        <div className="text-right">
+                           <span className="text-[10px] font-black px-2 py-1 bg-amber-500 text-white rounded-md">{daysLeft} GIORNI</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+               </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* Modal Nuovo Tenant */}
@@ -465,6 +512,19 @@ export default function SuperAdminDashboard({ tenants, currentUser }: { tenants:
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Max Agenti</label>
                   <input type="number" value={formMaxAgents} onChange={e => setFormMaxAgents(parseInt(e.target.value) || 50)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm font-bold text-white focus:border-indigo-500 outline-none" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Inizio Gestione</label>
+                  <input type="date" value={formStartDate} onChange={e => setFormStartDate(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm font-bold text-white focus:border-indigo-500 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Fine Gestione</label>
+                  <input type="date" value={formEndDate} onChange={e => setFormEndDate(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm font-bold text-white focus:border-indigo-500 outline-none" />
                 </div>
               </div>

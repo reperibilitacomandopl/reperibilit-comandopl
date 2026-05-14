@@ -30,7 +30,11 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { name, slug, address, partitaIva, planType, maxAgents, adminName, adminMatricola, adminPassword, logoUrl, primaryColor } = await req.json()
+    const { 
+      name, slug, address, partitaIva, planType, maxAgents, 
+      adminName, adminMatricola, adminPassword, logoUrl, primaryColor,
+      serviceStartDate, serviceEndDate
+    } = await req.json()
 
     if (!name || !slug || !adminName || !adminMatricola || !adminPassword) {
       return NextResponse.json({ error: "Campi obbligatori mancanti" }, { status: 400 })
@@ -61,6 +65,8 @@ export async function POST(req: Request) {
           maxAgents: maxAgents || 50,
           logoUrl: logoUrl || null,
           primaryColor: primaryColor || "#4f46e5",
+          serviceStartDate: serviceStartDate ? new Date(serviceStartDate) : null,
+          serviceEndDate: serviceEndDate ? new Date(serviceEndDate) : null,
           isActive: true,
           trialEndsAt: planType === "TRIAL" ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) : null
         }
@@ -137,7 +143,10 @@ export async function PATCH(req: Request) {
   }
 
   try {
-    const { tenantId, name, planType, maxAgents, address, partitaIva, logoUrl, primaryColor } = await req.json()
+    const { 
+      tenantId, name, planType, maxAgents, address, partitaIva, 
+      logoUrl, primaryColor, serviceStartDate, serviceEndDate 
+    } = await req.json()
 
     if (!tenantId) {
       return NextResponse.json({ error: "ID Tenant mancante" }, { status: 400 })
@@ -153,6 +162,8 @@ export async function PATCH(req: Request) {
         partitaIva,
         logoUrl,
         primaryColor,
+        serviceStartDate: serviceStartDate ? new Date(serviceStartDate) : undefined,
+        serviceEndDate: serviceEndDate ? new Date(serviceEndDate) : undefined,
         trialEndsAt: planType === "TRIAL" ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) : undefined
       }
     })

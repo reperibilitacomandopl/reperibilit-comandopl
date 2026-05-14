@@ -47,13 +47,49 @@ export async function GET(req: Request) {
 
     console.log(`[CRON] Sospesi ${expiredTenants.length} tenant per fine periodo di prova:`, expiredTenants.map((t: any) => t.name).join(", "))
 
-    // (Opzionale) Potremmo creare una notifica per il superadmin o mandare una mail
+    // 4. (NOVITÀ) Controllo scadenze contratto imminenti (es. 30 giorni)
+    const expiringSoon = await prisma.tenant.findMany({
+      where: {
+        isActive: true,
+        serviceEndDate: {
+          gte: now,
+          lte: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+        }
+      },
+      select: { id: true, name: true, serviceEndDate: true }
+    })
+
+    if (expiringSoon.length > 0) {
+      // Trova tutti i SuperAdmin per notificarli
+      const superAdmins = await prisma.user.findMany({
+        where: { isSuperAdmin: true, isActive: true },
+        select: { id: true }
+      })
+
+      for (const tenant of expiringSoon) {
+        const daysLeft = Math.ceil((new Date(tenant.serviceEndDate!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        
+        for (const admin of superAdmins) {
+          // Crea notifica se non esiste già una recente (opzionale, qui la creiamo sempre nel check giornaliero)
+          await prisma.notification.create({
+            data: {
+              userId: admin.id,
+              title: "⚠️ SCADENZA CONTRATTO IMMINENTE",
+              message: `Il contratto per il comando "${tenant.name}" scadrà tra ${daysLeft} giorni (${new Date(tenant.serviceEndDate!).toLocaleDateString('it-IT')}).`,
+              type: "ALERT",
+              metadata: JSON.stringify({ tenantId: tenant.id, type: "CONTRACT_EXPIRY" })
+            }
+          })
+        }
+      }
+      console.log(`[CRON] Generate notifiche per ${expiringSoon.length} contratti in scadenza.`)
+    }
 
     return NextResponse.json({ 
       success: true, 
-      message: "Trial Check Completed", 
+      message: "Tenant Check Completed", 
       suspendedCount: expiredTenants.length,
-      suspendedTenants: expiredTenants
+      expiringSoonCount: expiringSoon.length
     })
   } catch (error) {
     console.error("[CRON] Errore Tenant Check:", error)

@@ -17,6 +17,8 @@ model Tenant {
   maxAgents          Int                 @default(100)
   planType           String              @default("TRIAL")
   trialEndsAt        DateTime?
+  serviceStartDate   DateTime?
+  serviceEndDate     DateTime?
   isActive           Boolean             @default(true)
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
