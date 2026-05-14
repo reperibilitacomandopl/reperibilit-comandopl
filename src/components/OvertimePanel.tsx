@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Plus, Trash2, Clock, CalendarDays, Key, Info, ChevronLeft, ChevronRight, Loader2, AlertTriangle, User } from "lucide-react"
+import { Plus, Trash2, Clock, CalendarDays, Key, Info, ChevronLeft, ChevronRight, Loader2, AlertTriangle, User, CheckCircle2 } from "lucide-react"
 import toast from "react-hot-toast"
 
 interface OvertimeEntry {
