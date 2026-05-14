@@ -22,13 +22,8 @@ export async function GET(req: Request) {
     })
 
     // 2. Fetch AgentBalance with all details
-    const balance = await prisma.agentBalance.findUnique({
-      where: {
-        userId_year: {
-          userId: userId,
-          year: year
-        }
-      },
+    const balance = await prisma.agentBalance.findFirst({
+      where: { userId, year },
       include: { details: true }
     })
 
