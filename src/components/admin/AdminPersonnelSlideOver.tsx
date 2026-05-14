@@ -41,6 +41,7 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
   const [tempDefaultCategoryId, setTempDefaultCategoryId] = useState("")
   const [tempDefaultTypeId, setTempDefaultTypeId] = useState("")
   const [tempIsUfficiale, setTempIsUfficiale] = useState(false)
+  const [tempIsSuperAdmin, setTempIsSuperAdmin] = useState(false)
   const [tempHasL104, setTempHasL104] = useState(false)
   const [tempL104Assistiti, setTempL104Assistiti] = useState(1)
   const [tempHasStudyLeave, setTempHasStudyLeave] = useState(false)
@@ -79,6 +80,7 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
       setTempDefaultCategoryId(editingAgent.defaultServiceCategoryId || "")
       setTempDefaultTypeId(editingAgent.defaultServiceTypeId || "")
       setTempIsUfficiale(editingAgent.isUfficiale || false)
+      setTempIsSuperAdmin(editingAgent.isSuperAdmin || false)
       setTempHasL104(editingAgent.hasL104 || false)
       setTempL104Assistiti(editingAgent.l104Assistiti || 1)
       setTempHasStudyLeave(editingAgent.hasStudyLeave || false)
@@ -121,6 +123,7 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
       defaultServiceCategoryId: tempDefaultCategoryId || null,
       defaultServiceTypeId: tempDefaultTypeId || null,
       isUfficiale: tempIsUfficiale,
+      isSuperAdmin: tempIsSuperAdmin,
       hasL104: tempHasL104,
       l104Assistiti: tempL104Assistiti,
       hasStudyLeave: tempHasStudyLeave,
@@ -210,6 +213,16 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
                          >
                             <Star width={16} height={16} className={tempIsUfficiale ? 'fill-white' : ''} />
                             <span className="text-[10px] font-black uppercase">{tempIsUfficiale ? 'Ufficiale' : 'Agente'}</span>
+                         </button>
+                      </div>
+                      <div className="space-y-1">
+                         <label className="text-[10px] font-black text-slate-500 uppercase">SuperAdmin</label>
+                         <button 
+                            onClick={() => setTempIsSuperAdmin(!tempIsSuperAdmin)}
+                            className={`w-full h-[42px] rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${tempIsSuperAdmin ? 'bg-rose-600 border-rose-700 text-white shadow-md' : 'bg-white border-slate-200 text-slate-400'}`}
+                         >
+                            <Shield width={16} height={16} className={tempIsSuperAdmin ? 'fill-white' : ''} />
+                            <span className="text-[10px] font-black uppercase">{tempIsSuperAdmin ? 'Super' : 'No'}</span>
                          </button>
                       </div>
                    </div>

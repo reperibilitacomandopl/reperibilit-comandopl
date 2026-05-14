@@ -102,7 +102,7 @@ export async function PUT(req: Request) {
       dataDiNascita, tipoContratto, defaultPartnerIds, fixedServiceDays,
       hasL104, l104Assistiti, hasStudyLeave, hasParentalLeave, hasChildSicknessLeave,
       canConfigureSystem, canManageShifts, canManageUsers, canVerifyClockIns, 
-      isUfficiale, twoFactorEnabled, isActive 
+      isUfficiale, isSuperAdmin, twoFactorEnabled, isActive 
     } = validation.data as any
     
     if (!userId) return NextResponse.json({ error: "Missing userId" }, { status: 400 })
@@ -144,6 +144,7 @@ export async function PUT(req: Request) {
       canManageUsers: canManageUsers === undefined ? undefined : canManageUsers,
       canVerifyClockIns: canVerifyClockIns === undefined ? undefined : canVerifyClockIns,
       isUfficiale: isUfficiale === undefined ? undefined : isUfficiale,
+      isSuperAdmin: isSuperAdmin === undefined ? undefined : isSuperAdmin,
       twoFactorEnabled: twoFactorEnabled === undefined ? undefined : twoFactorEnabled,
       isActive: isActive === undefined ? undefined : isActive
     }

@@ -41,6 +41,7 @@ export const userCreateSchema = z.object({
     .regex(/[0-9]/, "La password deve contenere almeno un numero.")
     .regex(/[^A-Za-z0-9]/, "La password deve contenere almeno un carattere speciale (!@#$%^&*...)."),
   isUfficiale: z.boolean().default(false),
+  isSuperAdmin: z.boolean().default(false),
   squadra: z.string().optional().nullable(),
   massimale: z.union([z.string(), z.number()]).optional(),
   qualifica: z.string().optional().nullable(),
