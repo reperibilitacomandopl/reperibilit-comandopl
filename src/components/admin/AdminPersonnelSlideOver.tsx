@@ -216,18 +216,6 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
                             <span className="text-[10px] font-black uppercase">{tempIsUfficiale ? 'Ufficiale' : 'Agente'}</span>
                          </button>
                       </div>
-                      {currentUser?.isSuperAdmin && (
-                         <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-500 uppercase">SuperAdmin</label>
-                            <button 
-                               onClick={() => setTempIsSuperAdmin(!tempIsSuperAdmin)}
-                               className={`w-full h-[42px] rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${tempIsSuperAdmin ? 'bg-rose-600 border-rose-700 text-white shadow-md' : 'bg-white border-slate-200 text-slate-400'}`}
-                            >
-                               <Shield width={16} height={16} className={tempIsSuperAdmin ? 'fill-white' : ''} />
-                               <span className="text-[10px] font-black uppercase">{tempIsSuperAdmin ? 'Super' : 'No'}</span>
-                            </button>
-                         </div>
-                       )}
                    </div>
 
                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -515,6 +503,23 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
                             <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all ${tempCanVerifyClockIns ? 'translate-x-6' : ''}`} />
                          </button>
                       </div>
+
+                      {currentUser?.isSuperAdmin && (
+                         <div className="flex items-center justify-between p-4 bg-rose-50 rounded-xl border border-rose-200 shadow-sm">
+                            <div>
+                               <p className="text-xs font-black text-rose-800 uppercase tracking-widest flex items-center gap-2">
+                                  <Shield width={12} height={12} /> Super Amministratore
+                               </p>
+                               <p className="text-[10px] text-rose-400 font-bold leading-tight mt-1">Accesso illimitato a tutti i tenant e impostazioni globali.</p>
+                            </div>
+                            <button 
+                              onClick={() => setTempIsSuperAdmin(!tempIsSuperAdmin)}
+                              className={`w-12 h-6 shrink-0 rounded-full transition-all relative ${tempIsSuperAdmin ? 'bg-rose-600 shadow-inner' : 'bg-slate-200'}`}
+                            >
+                               <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all ${tempIsSuperAdmin ? 'translate-x-6' : ''}`} />
+                            </button>
+                         </div>
+                       )}
                    </div>
                 </div>
 
