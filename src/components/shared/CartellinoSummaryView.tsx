@@ -75,7 +75,7 @@ export default function CartellinoSummaryView({
   
   const getStatusColor = (status: string) => {
     switch (status?.toUpperCase()) {
-      case 'APPROVED': case 'ACCEPTED': return 'bg-emerald-100 text-emerald-700 border-emerald-200'
+      case 'APPROVED': case 'ACCEPTED': return 'bg-emerald-600 text-white border-emerald-700 shadow-sm'
       case 'REJECTED': return 'bg-rose-100 text-rose-700 border-rose-200'
       case 'PENDING': return 'bg-amber-100 text-amber-700 border-amber-200'
       default: return 'bg-slate-100 text-slate-700 border-slate-200'
@@ -84,9 +84,9 @@ export default function CartellinoSummaryView({
 
   const getStatusLabel = (status: string) => {
     switch (status?.toUpperCase()) {
-      case 'APPROVED': case 'ACCEPTED': return 'Approvata'
-      case 'REJECTED': return 'Rifiutata'
-      case 'PENDING': return 'In Attesa'
+      case 'APPROVED': case 'ACCEPTED': return 'APPROVATO'
+      case 'REJECTED': return 'RIFIUTATO'
+      case 'PENDING': return 'DA APPROVARE'
       default: return status || '—'
     }
   }

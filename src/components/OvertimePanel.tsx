@@ -20,9 +20,11 @@ export default function OvertimePanel() {
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [loading, setLoading] = useState(true)
   const [entries, setEntries] = useState<OvertimeEntry[]>([])
+  const [pendingRequests, setPendingRequests] = useState<any[]>([])
   const [agents, setAgents] = useState<{id: string, name: string}[]>([])
   const [showAddForm, setShowAddForm] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isProcessingRequest, setIsProcessingRequest] = useState<string | null>(null)
 
   const [formConfig, setFormConfig] = useState({
     userId: "",
@@ -50,7 +52,11 @@ export default function OvertimePanel() {
         fetch("/api/admin/users")
       ])
       
-      if (entriesRes.ok) setEntries(await entriesRes.json())
+      if (entriesRes.ok) {
+        const data = await entriesRes.json()
+        setEntries(data.entries || [])
+        setPendingRequests(data.pendingRequests || [])
+      }
       if (agentsRes.ok) {
         const data = await agentsRes.json()
         setAgents(data.users || [])
@@ -109,6 +115,29 @@ export default function OvertimePanel() {
       }
     } catch {
       toast.error("Errore eliminazione")
+    }
+  }
+
+  const handleRequestAction = async (requestId: string, status: "APPROVED" | "REJECTED") => {
+    setIsProcessingRequest(requestId)
+    try {
+      const res = await fetch(`/api/admin/requests/${requestId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status })
+      })
+
+      if (res.ok) {
+        toast.success(status === "APPROVED" ? "Straordinario Approvato!" : "Richiesta Rifiutata")
+        loadData()
+      } else {
+        const error = await res.json()
+        toast.error(error.error || "Errore durante l'operazione")
+      }
+    } catch (err) {
+      toast.error("Errore di rete")
+    } finally {
+      setIsProcessingRequest(null)
     }
   }
 
@@ -217,12 +246,75 @@ export default function OvertimePanel() {
             )}
          </div>
 
-         {/* List */}
-         <div className="lg:col-span-2 bg-white border border-slate-200 rounded-[2rem] shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-               <h3 className="font-bold text-slate-800 flex items-center gap-2"><CalendarDays className="w-4 h-4 text-slate-400" /> Registro Mensile</h3>
-               <span className="text-xs bg-slate-200 text-slate-600 font-bold px-3 py-1 rounded-full">{entries.length} voci registrate</span>
-            </div>
+          <div className="lg:col-span-2 space-y-6">
+            {/* Inbox Richieste Pendenti (Solo se presenti) */}
+            {pendingRequests.length > 0 && (
+              <div className="bg-white border-2 border-indigo-100 rounded-[2rem] shadow-lg shadow-indigo-100/50 overflow-hidden animate-in fade-in slide-in-from-top-4">
+                <div className="p-5 border-b border-indigo-50 flex justify-between items-center bg-indigo-50/50">
+                   <h3 className="font-black text-indigo-900 flex items-center gap-2">
+                     <span className="relative flex h-2 w-2">
+                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                       <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-600"></span>
+                     </span>
+                     Richieste da Smartphone
+                   </h3>
+                   <span className="text-[10px] bg-indigo-600 text-white font-black px-3 py-1 rounded-full uppercase tracking-widest">
+                     {pendingRequests.length} Da Approvare
+                   </span>
+                </div>
+                <div className="divide-y divide-indigo-50">
+                   {pendingRequests.map(req => (
+                     <div key={req.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white hover:bg-indigo-50/20 transition-all">
+                        <div className="flex gap-4 items-center">
+                           <div className="w-12 h-12 rounded-xl bg-blue-100 text-blue-700 flex flex-col items-center justify-center shrink-0 border border-blue-200">
+                             <User size={20} />
+                           </div>
+                           <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-black text-slate-800 text-sm">{req.user?.name}</h4>
+                                <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold border border-slate-200">Matr. {req.user?.matricola}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                                <span className="text-indigo-600 font-black">{req.hours}h</span>
+                                <span className="text-slate-300">•</span>
+                                <span>{new Date(req.date).toLocaleDateString('it-IT')}</span>
+                                {req.notes && (
+                                  <>
+                                    <span className="text-slate-300">•</span>
+                                    <span className="italic text-slate-400 font-medium">"{req.notes}"</span>
+                                  </>
+                                )}
+                              </div>
+                           </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                           <button 
+                             disabled={isProcessingRequest === req.id}
+                             onClick={() => handleRequestAction(req.id, "REJECTED")}
+                             className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-xl font-black text-[10px] uppercase tracking-wider transition-all border border-red-100"
+                           >
+                             Rifiuta
+                           </button>
+                           <button 
+                             disabled={isProcessingRequest === req.id}
+                             onClick={() => handleRequestAction(req.id, "APPROVED")}
+                             className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-[10px] uppercase tracking-wider transition-all shadow-md shadow-emerald-200 flex items-center gap-2"
+                           >
+                             {isProcessingRequest === req.id ? <Loader2 size={12} className="animate-spin" /> : "Approva"}
+                           </button>
+                        </div>
+                     </div>
+                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* List */}
+            <div className="bg-white border border-slate-200 rounded-[2rem] shadow-sm overflow-hidden">
+               <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                  <h3 className="font-bold text-slate-800 flex items-center gap-2"><CalendarDays className="w-4 h-4 text-slate-400" /> Registro Mensile</h3>
+                  <span className="text-xs bg-slate-200 text-slate-600 font-bold px-3 py-1 rounded-full">{entries.length} voci registrate</span>
+               </div>
             
             {loading ? (
                <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-slate-300" /></div>
@@ -252,7 +344,13 @@ export default function OvertimePanel() {
                            </div>
                         </div>
                         <div className="flex items-center gap-4">
-                           <div className="text-xl font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-xl shadow-inner border border-amber-100">{e.hours}h</div>
+                           <div className="flex flex-col items-end">
+                              <div className="text-xl font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-xl shadow-inner border border-amber-100 flex items-center gap-2">
+                                 {e.hours}h
+                                 {(e.note?.includes("Approvato") || e.code === "STR_EXTRA") && <CheckCircle2 size={16} className="text-emerald-500" />}
+                              </div>
+                              {e.note?.includes("Approvato") && <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest mt-1">Certificato</span>}
+                           </div>
                            <button onClick={() => handleDelete(e.id, e.user.name)} className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100" title="Elimina">
                               <Trash2 className="w-5 h-5" />
                            </button>

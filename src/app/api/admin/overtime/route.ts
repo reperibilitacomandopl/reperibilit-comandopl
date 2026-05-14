@@ -35,7 +35,20 @@ export async function GET(request: Request) {
       orderBy: { date: "desc" }
     })
 
-    return NextResponse.json(entries)
+    // Estrae le richieste pendenti di straordinario (STR_EXTRA)
+    const pendingRequests = await prisma.agentRequest.findMany({
+      where: {
+        tenantId,
+        status: "PENDING",
+        code: "STR_EXTRA"
+      },
+      include: {
+        user: { select: { name: true, matricola: true, isUfficiale: true } }
+      },
+      orderBy: { createdAt: "asc" }
+    })
+
+    return NextResponse.json({ entries, pendingRequests })
   } catch (error) {
     console.error("GET Overtime error:", error)
     return NextResponse.json({ error: "Errore caricamento straordinari" }, { status: 500 })
