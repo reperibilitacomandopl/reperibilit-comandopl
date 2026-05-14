@@ -20,13 +20,13 @@ export async function GET() {
     // 2. Verifica accesso: Admin, Ufficiale o reperibile oggi
     const isAdmin = session.user.role === "ADMIN" || session.user.isSuperAdmin === true || session.user.canManageShifts === true;
     
-    // Controlla se l'utente è un ufficiale (anche non in reperibilità oggi)
-    const userRecord = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { isUfficiale: true }
+    // Controlla se l'utente ha un turno OGGI (di qualsiasi tipo: servizio o reperibilità)
+    const myShiftToday = await prisma.shift.findFirst({
+      where: { userId: session.user.id, date: today }
     })
 
-    const isOfficer = userRecord?.isUfficiale === true
+    const isOnDutyToday = !!myShiftToday;
+    const isOfficer = session.user.isUfficiale === true;
 
     // 3. Recupera tutti i reperibili di oggi per lo stesso tenant
     const dutyTeamShifts = await prisma.shift.findMany({
@@ -51,32 +51,36 @@ export async function GET() {
       }
     })
 
-    const hasOfficersOnCall = dutyTeamShifts.some(s => s.user.isUfficiale)
-    let isHighestRankingOnCall = false;
-
-    if (!isOfficer && !isAdmin) {
-      // Se c'è un ufficiale in turno, gli agenti normali non hanno accesso
-      if (hasOfficersOnCall) {
-        return NextResponse.json({ error: "Accesso negato. Funzione disponibile solo per l'Ufficiale di servizio." }, { status: 403 })
-      }
-      
-      // Nessun ufficiale oggi. L'agente è in reperibilità oggi?
-      const isOnCallToday = dutyTeamShifts.some(s => s.user.id === session.user.id)
-      if (!isOnCallToday) {
-         return NextResponse.json({ error: "Accesso negato." }, { status: 403 })
+    if (!isAdmin) {
+      // Se non è admin, deve essere in servizio oggi per vedere i reperibili
+      if (!isOnDutyToday) {
+        return NextResponse.json({ error: "Accesso negato. Funzione visibile solo durante il servizio." }, { status: 403 })
       }
 
-      // Ordiniamo per trovare il più alto in grado (gradoLivello minore)
-      if (dutyTeamShifts.length > 0) {
-        const sorted = [...dutyTeamShifts].sort((a,b) => (a.user.gradoLivello ?? 99) - (b.user.gradoLivello ?? 99))
-        const highestUserId = sorted[0].user.id
-        if (session.user.id === highestUserId) {
-           isHighestRankingOnCall = true
+      // Se è in servizio ed è un ufficiale, ha accesso completo
+      if (isOfficer) {
+        // OK
+      } else {
+        // È un agente semplice. Ha accesso solo se non ci sono ufficiali reperibili 
+        // E se lui è il più alto in grado tra i reperibili
+        const hasOfficersOnCall = dutyTeamShifts.some(s => s.user.isUfficiale)
+        
+        if (hasOfficersOnCall) {
+          return NextResponse.json({ error: "Accesso riservato all'Ufficiale di servizio." }, { status: 403 })
         }
-      }
 
-      if (!isHighestRankingOnCall) {
-         return NextResponse.json({ error: "Accesso negato." }, { status: 403 })
+        // Nessun ufficiale oggi tra i reperibili. L'utente è il più alto tra i presenti?
+        if (dutyTeamShifts.length > 0) {
+          const sorted = [...dutyTeamShifts].sort((a,b) => (a.user.gradoLivello ?? 99) - (b.user.gradoLivello ?? 99))
+          const highestUserId = sorted[0].user.id
+          if (session.user.id !== highestUserId) {
+             return NextResponse.json({ error: "Accesso negato." }, { status: 403 })
+          }
+        } else {
+           // Nessuno in reperibilità, e l'utente è un agente semplice in servizio normale.
+           // Probabilmente non deve vedere il pannello "Reperibili" se è vuoto.
+           return NextResponse.json({ error: "Nessun reperibile oggi." }, { status: 403 })
+        }
       }
     }
 
