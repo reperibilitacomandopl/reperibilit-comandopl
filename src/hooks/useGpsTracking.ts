@@ -106,7 +106,7 @@ export function useGpsTracking({ isClockedIn, intervalMs = 300000, tenant, myShi
                          actions: [
                            { action: 'CLOCK_IN', title: '▶️ Timbra Entrata' }
                          ]
-                       });
+                       } as any);
                      });
                    }
                    lastReminder.current = now
@@ -126,7 +126,7 @@ export function useGpsTracking({ isClockedIn, intervalMs = 300000, tenant, myShi
                          actions: [
                            { action: 'CLOCK_OUT', title: '⏹ Timbra Uscita' }
                          ]
-                       });
+                       } as any);
                      });
                    }
                    lastReminder.current = now
