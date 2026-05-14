@@ -14,6 +14,7 @@ interface AdminStateContextType {
   settings?: any
   rotationGroups: any[]
   categories: any[]
+  currentUser?: any
   fetchAgentBalances: (userId: string) => Promise<any>
 }
 

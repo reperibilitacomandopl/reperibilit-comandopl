@@ -76,6 +76,7 @@ export default function AdminDashboard({
     settings,
     rotationGroups,
     categories,
+    currentUser,
     fetchAgentBalances: admin.fetchAgentBalances
   }
 

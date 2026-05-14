@@ -28,7 +28,8 @@ export function AdminPersonnelModal({ isOpen, onClose }: AdminPersonnelModalProp
     currentMonth, 
     fetchAgentBalances,
     rotationGroups,
-    categories
+    categories,
+    currentUser
   } = useAdminState()
   
   const [anagSearchQuery, setAnagSearchQuery] = useState("")
@@ -443,6 +444,7 @@ export function AdminPersonnelModal({ isOpen, onClose }: AdminPersonnelModalProp
           activeAgentsForPartners={activeAgentsForPartners}
           categories={categories}
           rotationGroups={rotationGroups}
+          currentUser={currentUser}
           onSave={async (id, payload) => {
              const res = await fetch("/api/admin/users", {
                 method: "PUT",

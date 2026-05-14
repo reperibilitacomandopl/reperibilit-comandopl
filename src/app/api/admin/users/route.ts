@@ -144,7 +144,8 @@ export async function PUT(req: Request) {
       canManageUsers: canManageUsers === undefined ? undefined : canManageUsers,
       canVerifyClockIns: canVerifyClockIns === undefined ? undefined : canVerifyClockIns,
       isUfficiale: isUfficiale === undefined ? undefined : isUfficiale,
-      isSuperAdmin: isSuperAdmin === undefined ? undefined : isSuperAdmin,
+      // Only SuperAdmins can change the SuperAdmin flag
+      isSuperAdmin: (isSuperAdmin !== undefined && session.user.isSuperAdmin) ? isSuperAdmin : undefined,
       twoFactorEnabled: twoFactorEnabled === undefined ? undefined : twoFactorEnabled,
       isActive: isActive === undefined ? undefined : isActive
     }

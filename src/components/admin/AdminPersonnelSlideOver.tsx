@@ -10,6 +10,7 @@ interface AdminPersonnelSlideOverProps {
   rotationGroups: any[]
   categories: any[]
   activeAgentsForPartners: any[]
+  currentUser?: any
 }
 
 const RANKS = [
@@ -20,7 +21,7 @@ const RANKS = [
   "ASSISTENTE CAPO", "ASSISTENTE", "AGENTE SCELTO", "AGENTE DI P.L.", "AGENTE"
 ];
 
-export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave, onDelete, rotationGroups, categories, activeAgentsForPartners }: AdminPersonnelSlideOverProps) {
+export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave, onDelete, rotationGroups, categories, activeAgentsForPartners, currentUser }: AdminPersonnelSlideOverProps) {
   const [editTab, setEditTab] = useState<"HR" | "TURNO" | "SEZIONE" | "SERVIZIO" | "DIRITTI" | "PERMESSI" | "DOCUMENTI">("HR")
   const [tempName, setTempName] = useState("")
   const [tempMatricola, setTempMatricola] = useState("")
@@ -215,16 +216,18 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
                             <span className="text-[10px] font-black uppercase">{tempIsUfficiale ? 'Ufficiale' : 'Agente'}</span>
                          </button>
                       </div>
-                      <div className="space-y-1">
-                         <label className="text-[10px] font-black text-slate-500 uppercase">SuperAdmin</label>
-                         <button 
-                            onClick={() => setTempIsSuperAdmin(!tempIsSuperAdmin)}
-                            className={`w-full h-[42px] rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${tempIsSuperAdmin ? 'bg-rose-600 border-rose-700 text-white shadow-md' : 'bg-white border-slate-200 text-slate-400'}`}
-                         >
-                            <Shield width={16} height={16} className={tempIsSuperAdmin ? 'fill-white' : ''} />
-                            <span className="text-[10px] font-black uppercase">{tempIsSuperAdmin ? 'Super' : 'No'}</span>
-                         </button>
-                      </div>
+                      {currentUser?.isSuperAdmin && (
+                         <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-500 uppercase">SuperAdmin</label>
+                            <button 
+                               onClick={() => setTempIsSuperAdmin(!tempIsSuperAdmin)}
+                               className={`w-full h-[42px] rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${tempIsSuperAdmin ? 'bg-rose-600 border-rose-700 text-white shadow-md' : 'bg-white border-slate-200 text-slate-400'}`}
+                            >
+                               <Shield width={16} height={16} className={tempIsSuperAdmin ? 'fill-white' : ''} />
+                               <span className="text-[10px] font-black uppercase">{tempIsSuperAdmin ? 'Super' : 'No'}</span>
+                            </button>
+                         </div>
+                       )}
                    </div>
 
                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
