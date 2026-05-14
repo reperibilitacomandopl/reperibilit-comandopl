@@ -143,6 +143,7 @@ export async function PUT(req: Request) {
       canManageShifts: canManageShifts === undefined ? undefined : canManageShifts,
       canManageUsers: canManageUsers === undefined ? undefined : canManageUsers,
       canVerifyClockIns: canVerifyClockIns === undefined ? undefined : canVerifyClockIns,
+      isUfficiale: isUfficiale === undefined ? undefined : isUfficiale,
       twoFactorEnabled: twoFactorEnabled === undefined ? undefined : twoFactorEnabled,
       isActive: isActive === undefined ? undefined : isActive
     }

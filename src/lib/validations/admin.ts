@@ -45,11 +45,35 @@ export const userCreateSchema = z.object({
   massimale: z.union([z.string(), z.number()]).optional(),
   qualifica: z.string().optional().nullable(),
   dataAssunzione: z.string().optional().nullable(),
+  dataDiNascita: z.string().optional().nullable(),
   scadenzaPatente: z.string().optional().nullable(),
   scadenzaPortoArmi: z.string().optional().nullable(),
+  tipoContratto: z.string().optional().nullable(),
+  email: z.string().email("Formato email non valido.").optional().nullable().or(z.literal("")),
+  phone: z.string().optional().nullable(),
+  noteInterne: z.string().optional().nullable(),
+  defaultServiceCategoryId: z.string().optional().nullable(),
+  defaultServiceTypeId: z.string().optional().nullable(),
+  rotationGroupId: z.string().optional().nullable(),
+  defaultPartnerIds: z.array(z.string()).optional(),
+  fixedServiceDays: z.array(z.string()).optional(),
+  hasL104: z.boolean().optional(),
+  l104Assistiti: z.union([z.string(), z.number()]).optional(),
+  hasStudyLeave: z.boolean().optional(),
+  hasParentalLeave: z.boolean().optional(),
+  hasChildSicknessLeave: z.boolean().optional(),
+  canConfigureSystem: z.boolean().optional(),
+  canManageShifts: z.boolean().optional(),
+  canManageUsers: z.boolean().optional(),
+  canVerifyClockIns: z.boolean().optional(),
+  twoFactorEnabled: z.boolean().optional(),
+  isActive: z.boolean().optional(),
 });
 
 export const userUpdateSchema = userCreateSchema.extend({
+  userId: z.string().optional(),
+  action: z.string().optional(),
+  newPassword: z.string().optional(),
   password: z.string()
     .min(8, "La password deve contenere almeno 8 caratteri.")
     .regex(/[A-Z]/, "La password deve contenere almeno una lettera maiuscola.")
