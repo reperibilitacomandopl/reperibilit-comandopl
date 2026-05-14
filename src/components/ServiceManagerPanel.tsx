@@ -46,6 +46,8 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
   const [weapons, setWeapons] = useState<{ id: string; name: string }[]>([])
   const [armors, setArmors] = useState<{ id: string; name: string }[]>([])
   const [schools, setSchools] = useState<{ id: string; name: string; schedules: { dayOfWeek: number; entranceTime?: string; exitTime?: string; afternoonExitTime?: string }[] }[]>([])
+  const [dailyNote, setDailyNote] = useState<string>("")
+  const [isSavingNote, setIsSavingNote] = useState(false)
 
   // Collapsible state
   const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>({})
@@ -140,6 +142,33 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
     loadData(true)
   }
 
+  const saveDailyNote = async (content: string) => {
+    setIsSavingNote(true)
+    const y = currentDate.getFullYear()
+    const m = String(currentDate.getMonth() + 1).padStart(2, "0")
+    const d = String(currentDate.getDate()).padStart(2, "0")
+    
+    try {
+      const res = await fetch("/api/admin/ods/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: `${y}-${m}-${d}`,
+          content
+        })
+      })
+      if (res.ok) {
+        setDailyNote(content)
+        toast.success("Note salvate!")
+      } else {
+        toast.error("Errore salvataggio note")
+      }
+    } catch {
+      toast.error("Errore di rete")
+    }
+    setIsSavingNote(false)
+  }
+
   const loadData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     const y = currentDate.getFullYear()
@@ -165,6 +194,11 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
         const schoolsRes = await fetch("/api/admin/schools")
         const schoolsData = await schoolsRes.json()
         setSchools(schoolsData)
+
+        // Caricamento Note ODS
+        const noteRes = await fetch(`/api/admin/ods/notes?date=${y}-${m}-${d}`)
+        const noteData = await noteRes.json()
+        setDailyNote(noteData.note?.content || "")
       }
     } catch { toast.error("Errore caricamento dati operativi") }
     if (!silent) setLoading(false)
@@ -682,6 +716,9 @@ export default function ServiceManagerPanel({ onClose, tenantSlug }: { onClose?:
         assignedCount={assignedCount}
         totalAvailable={totalAvailable}
         completionPercentage={completionPercentage}
+        dailyNote={dailyNote}
+        saveDailyNote={saveDailyNote}
+        isSavingNote={isSavingNote}
       />
 
       {loading ? (

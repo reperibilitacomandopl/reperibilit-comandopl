@@ -59,9 +59,34 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
       if (data.shifts) setShifts(data.shifts)
       if (dataCats.categories) setCategories(dataCats.categories)
       setIsCertified(!!data.isCertified)
+
+      // Caricamento Note ODS
+      const noteRes = await fetch(`/api/admin/ods/notes?date=${y}-${m}-${d}`)
+      const noteData = await noteRes.json()
+      setGeneralNotes(noteData.note?.content || "")
+      
     } catch { toast.error("Errore caricamento dati OdS") }
     setLoading(false)
   }, [currentDate])
+
+  const saveGeneralNotes = async (content: string) => {
+    const y = currentDate.getFullYear()
+    const m = String(currentDate.getMonth() + 1).padStart(2, "0")
+    const d = String(currentDate.getDate()).padStart(2, "0")
+    
+    try {
+      await fetch("/api/admin/ods/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: `${y}-${m}-${d}`,
+          content
+        })
+      })
+    } catch (e) {
+      console.error("Errore salvataggio note:", e)
+    }
+  }
 
   useEffect(() => { 
     const t = setTimeout(() => loadData(), 0);
@@ -166,12 +191,20 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
         const y = date.getFullYear()
         const m = String(date.getMonth() + 1).padStart(2, "0")
         const d = String(date.getDate()).padStart(2, "0")
-        const res = await fetch(`/api/admin/shifts/daily?date=${y}-${m}-${d}`)
+        
+        const [res, resNote] = await Promise.all([
+          fetch(`/api/admin/shifts/daily?date=${y}-${m}-${d}`),
+          fetch(`/api/admin/ods/notes?date=${y}-${m}-${d}`)
+        ])
+        
         const data = await res.json()
+        const noteData = await resNote.json()
+        
         return {
           date: date,
           users: data.users || [],
-          shifts: data.shifts || []
+          shifts: data.shifts || [],
+          generalNotes: noteData.note?.content
         }
       }))
 
@@ -639,7 +672,7 @@ export default function ServiceOrderDashboard({ onClose, tenantName, logoUrl }: 
                  <div className="p-4 bg-yellow-50/30">
                    <textarea 
                      value={generalNotes}
-                     onChange={(e) => setGeneralNotes(e.target.value)}
+                     onChange={(e) => setGeneralNotes(e.target.value)} onBlur={(e) => saveGeneralNotes(e.target.value)}
                      className="w-full min-h-[80px] bg-transparent resize-y outline-none text-xs text-slate-700 font-medium placeholder:text-slate-400"
                      placeholder="Inserisci qui eventuali disposizioni valide per tutti i turni (es. Attivare Pilomat, Obbligo Defibrillatore, ecc...)"
                    />

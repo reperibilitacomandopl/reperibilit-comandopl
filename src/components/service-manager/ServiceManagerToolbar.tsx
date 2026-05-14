@@ -28,6 +28,9 @@ interface ServiceManagerToolbarProps {
   assignedCount: number
   totalAvailable: number
   completionPercentage: number
+  dailyNote?: string
+  saveDailyNote?: (content: string) => Promise<void>
+  isSavingNote?: boolean
 }
 
 export default function ServiceManagerToolbar({
@@ -51,8 +54,18 @@ export default function ServiceManagerToolbar({
   tenantSlug,
   assignedCount,
   totalAvailable,
-  completionPercentage
+  completionPercentage,
+  dailyNote = "",
+  saveDailyNote,
+  isSavingNote = false
 }: ServiceManagerToolbarProps) {
+  const [showNoteEditor, setShowNoteEditor] = React.useState(false)
+  const [tempNote, setTempNote] = React.useState(dailyNote)
+
+  React.useEffect(() => {
+    setTempNote(dailyNote)
+  }, [dailyNote])
+
   return (
     <div className="bg-[#0f172a] text-slate-200 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between shrink-0 border-b border-slate-800 z-20 shadow-2xl">
       <div className="flex items-center gap-4 mb-3 sm:mb-0">
@@ -213,6 +226,46 @@ export default function ServiceManagerToolbar({
           >
             <RotateCcw width={14} height={14} /> Reset
           </button>
+
+          {/* NOTE COMANDANTE */}
+          <div className="relative">
+            <button 
+              onClick={() => setShowNoteEditor(!showNoteEditor)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-lg border ${dailyNote ? 'bg-amber-100 text-amber-900 border-amber-200' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
+              title="Aggiungi note generali per l'Ordine di Servizio di oggi"
+            >
+              <CalendarIcon width={14} height={14} className={dailyNote ? 'text-amber-600' : 'text-slate-400'} />
+              Note {dailyNote && <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />}
+            </button>
+
+            {showNoteEditor && (
+              <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 z-50 animate-in fade-in zoom-in duration-200">
+                <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
+                  <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Note del Comandante</h4>
+                  <button onClick={() => setShowNoteEditor(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+                </div>
+                <textarea
+                  className="w-full h-32 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-blue-500 outline-none resize-none font-medium"
+                  placeholder="Inserisci disposizioni particolari per oggi..."
+                  value={tempNote}
+                  onChange={(e) => setTempNote(e.target.value)}
+                />
+                <div className="mt-3 flex items-center justify-between">
+                   <p className="text-[9px] text-slate-400 font-bold uppercase italic">Verranno stampate nell&apos;ODS</p>
+                   <button 
+                     onClick={() => {
+                        saveDailyNote?.(tempNote)
+                        setShowNoteEditor(false)
+                     }}
+                     disabled={isSavingNote}
+                     className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-50"
+                   >
+                     {isSavingNote ? "Salvataggio..." : "Salva"}
+                   </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           {patrolSelectionSize >= 2 && (
             <button 
