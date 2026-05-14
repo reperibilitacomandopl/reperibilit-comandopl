@@ -173,7 +173,7 @@ export default function PrivacyConsentModal() {
                   </div>
                   <div>
                     <h4 className="text-sm font-black text-slate-800 uppercase">Finalità del Servizio</h4>
-                    <p className="text-xs text-slate-500 font-medium leading-relaxed mt-1">La posizione GPS viene acquisita esclusivamente nel momento della timbratura (Entrata/Uscita) e per la funzione SOS.</p>
+                    <p className="text-xs text-slate-500 font-medium leading-relaxed mt-1">La posizione GPS viene trasmessa alla Centrale a partire da 15 minuti prima dell'inizio del turno e per la funzione SOS.</p>
                   </div>
                 </div>
                 <div className="flex gap-4">
@@ -182,7 +182,7 @@ export default function PrivacyConsentModal() {
                   </div>
                   <div>
                     <h4 className="text-sm font-black text-slate-800 uppercase">Nessun Pedinamento</h4>
-                    <p className="text-xs text-slate-500 font-medium leading-relaxed mt-1">Il sistema non traccia la tua posizione in background quando non sei in servizio o l'app è chiusa.</p>
+                    <p className="text-xs text-slate-500 font-medium leading-relaxed mt-1">Il sistema interrompe istantaneamente il tracciamento non appena si clicca su "Timbra Uscita". La Centrale non può vederti fuori servizio.</p>
                   </div>
                 </div>
               </div>

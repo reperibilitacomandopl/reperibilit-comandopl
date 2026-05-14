@@ -22,7 +22,10 @@ interface PayrollData {
   oreDiurne: number
   oreNotturne: number
   buoniPasto: number
-  straordinario: number
+  straordinarioDiurnoFeriale: number
+  straordinarioDiurnoFestivo: number
+  straordinarioNotturnoFeriale: number
+  straordinarioNotturnoFestivo: number
 }
 
 // Colonne fisse calcolate (sempre visibili)
@@ -30,9 +33,12 @@ const FIXED_COLUMNS = [
   { key: "oreDiurne", label: "Ore Diurne", icon: Sun, color: "amber" },
   { key: "oreNotturne", label: "Ore Notturne", icon: Moon, color: "indigo" },
   { key: "buoniPasto", label: "Buoni Pasto", icon: Coffee, color: "emerald" },
-  { key: "straordinario", label: "Straordinario (h)", icon: Clock, color: "orange" },
-  { key: "repFeriale", label: "REP Feriale (h)", icon: Shield, color: "blue" },
-  { key: "repFestiva", label: "REP Festiva (h)", icon: Shield, color: "rose" },
+  { key: "straordinarioDiurnoFeriale", label: "Straord. Diurno", icon: Clock, color: "orange" },
+  { key: "straordinarioDiurnoFestivo", label: "Straord. Festivo", icon: Clock, color: "orange" },
+  { key: "straordinarioNotturnoFeriale", label: "Straord. Nott.", icon: Clock, color: "orange" },
+  { key: "straordinarioNotturnoFestivo", label: "Straord. Nott. Fest.", icon: Clock, color: "orange" },
+  { key: "repFeriale", label: "REP Feriale", icon: Shield, color: "blue" },
+  { key: "repFestiva", label: "REP Festiva", icon: Shield, color: "rose" },
 ]
 
 export default function ExportPaghePanel() {
@@ -98,7 +104,10 @@ export default function ExportPaghePanel() {
         "Ore Diurne": d.oreDiurne,
         "Ore Notturne": d.oreNotturne,
         "Buoni Pasto": d.buoniPasto,
-        "Straordinario (h)": d.straordinario,
+        "Straord. Diurno": d.straordinarioDiurnoFeriale,
+        "Straord. Festivo": d.straordinarioDiurnoFestivo,
+        "Straord. Nott.": d.straordinarioNotturnoFeriale,
+        "Straord. Nott. Fest.": d.straordinarioNotturnoFestivo,
         "REP Feriale (h)": d.repFeriale,
         "REP Festiva (h)": d.repFestiva,
       }
@@ -124,14 +133,16 @@ export default function ExportPaghePanel() {
   const exportCSV = () => {
     const header = [
       "MATRICOLA", "NOMINATIVO", "QUALIFICA",
-      "ORE DIURNE", "ORE NOTTURNE", "BUONI PASTO", "STRAORDINARIO",
+      "ORE DIURNE", "ORE NOTTURNE", "BUONI PASTO", 
+      "STR. DIURNO", "STR. FESTIVO", "STR. NOTTURNO", "STR. NOTTURNO FESTIVO",
       "REP FERIALE (h)", "REP FESTIVA (h)",
       ...allCodici.map(([code, label]) => `${code} - ${label}`)
     ]
 
     const rows = data.map(d => [
       d.matricola, d.nome, d.qualifica,
-      d.oreDiurne.toString(), d.oreNotturne.toString(), d.buoniPasto.toString(), d.straordinario.toString(),
+      d.oreDiurne.toString(), d.oreNotturne.toString(), d.buoniPasto.toString(),
+      d.straordinarioDiurnoFeriale.toString(), d.straordinarioDiurnoFestivo.toString(), d.straordinarioNotturnoFeriale.toString(), d.straordinarioNotturnoFestivo.toString(),
       d.repFeriale.toString(), d.repFestiva.toString(),
       ...allCodici.map(([code]) => (d.codici[code]?.value || 0).toString())
     ])
@@ -153,7 +164,10 @@ export default function ExportPaghePanel() {
     oreDiurne: Math.round(data.reduce((s, d) => s + d.oreDiurne, 0) * 100) / 100,
     oreNotturne: Math.round(data.reduce((s, d) => s + d.oreNotturne, 0) * 100) / 100,
     buoniPasto: data.reduce((s, d) => s + d.buoniPasto, 0),
-    straordinario: Math.round(data.reduce((s, d) => s + d.straordinario, 0) * 100) / 100,
+    straordinarioDiurnoFeriale: Math.round(data.reduce((s, d) => s + d.straordinarioDiurnoFeriale, 0) * 100) / 100,
+    straordinarioDiurnoFestivo: Math.round(data.reduce((s, d) => s + d.straordinarioDiurnoFestivo, 0) * 100) / 100,
+    straordinarioNotturnoFeriale: Math.round(data.reduce((s, d) => s + d.straordinarioNotturnoFeriale, 0) * 100) / 100,
+    straordinarioNotturnoFestivo: Math.round(data.reduce((s, d) => s + d.straordinarioNotturnoFestivo, 0) * 100) / 100,
     repFeriale: Math.round(data.reduce((s, d) => s + d.repFeriale, 0) * 100) / 100,
     repFestiva: Math.round(data.reduce((s, d) => s + d.repFestiva, 0) * 100) / 100,
   }
@@ -163,7 +177,10 @@ export default function ExportPaghePanel() {
     oreDiurne: Math.round(prevData.reduce((s, d) => s + d.oreDiurne, 0) * 100) / 100,
     oreNotturne: Math.round(prevData.reduce((s, d) => s + d.oreNotturne, 0) * 100) / 100,
     buoniPasto: prevData.reduce((s, d) => s + d.buoniPasto, 0),
-    straordinario: Math.round(prevData.reduce((s, d) => s + d.straordinario, 0) * 100) / 100,
+    straordinarioDiurnoFeriale: Math.round(prevData.reduce((s, d) => s + d.straordinarioDiurnoFeriale, 0) * 100) / 100,
+    straordinarioDiurnoFestivo: Math.round(prevData.reduce((s, d) => s + d.straordinarioDiurnoFestivo, 0) * 100) / 100,
+    straordinarioNotturnoFeriale: Math.round(prevData.reduce((s, d) => s + d.straordinarioNotturnoFeriale, 0) * 100) / 100,
+    straordinarioNotturnoFestivo: Math.round(prevData.reduce((s, d) => s + d.straordinarioNotturnoFestivo, 0) * 100) / 100,
     repFeriale: Math.round(prevData.reduce((s, d) => s + d.repFeriale, 0) * 100) / 100,
     repFestiva: Math.round(prevData.reduce((s, d) => s + d.repFestiva, 0) * 100) / 100,
   }
@@ -250,7 +267,8 @@ export default function ExportPaghePanel() {
       {!loading && data.length > 0 && (() => {
         const anomalies: { agent: string; issue: string; severity: 'warning' | 'error' }[] = []
         data.forEach(d => {
-          if (d.straordinario > 40) anomalies.push({ agent: d.nome, issue: `Straordinario eccessivo: ${d.straordinario}h (max consigliato: 40h)`, severity: 'error' })
+          const totStr = d.straordinarioDiurnoFeriale + d.straordinarioDiurnoFestivo + d.straordinarioNotturnoFeriale + d.straordinarioNotturnoFestivo;
+          if (totStr > 40) anomalies.push({ agent: d.nome, issue: `Straordinario eccessivo: ${totStr}h (max consigliato: 40h)`, severity: 'error' })
           if (d.buoniPasto > 26) anomalies.push({ agent: d.nome, issue: `Buoni pasto anomali: ${d.buoniPasto} (max giorni lavorativi: ~22)`, severity: 'warning' })
           if (d.oreDiurne === 0 && d.oreNotturne === 0 && d.repFeriale === 0 && d.repFestiva === 0) {
             anomalies.push({ agent: d.nome, issue: 'Nessuna ora registrata nel mese', severity: 'warning' })

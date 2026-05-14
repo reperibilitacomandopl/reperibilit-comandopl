@@ -57,7 +57,7 @@ export async function GET(request: Request) {
     const firstDay = new Date(Date.UTC(year, month - 1, 1))
     const lastDay = new Date(Date.UTC(year, month, 0, 23, 59, 59))
 
-    const [agents, shifts, agendaEntries, clockRecords, globalSettings] = await Promise.all([
+    const [agents, shifts, agendaEntries, agentRequests, clockRecords, globalSettings] = await Promise.all([
       prisma.user.findMany({
         where: { role: "AGENTE", ...tf },
         select: { id: true, name: true, matricola: true, qualifica: true },
@@ -70,6 +70,10 @@ export async function GET(request: Request) {
       prisma.agendaEntry.findMany({
         where: { ...tf, date: { gte: firstDay, lte: lastDay } },
         select: { userId: true, code: true, hours: true, date: true }
+      }),
+      prisma.agentRequest.findMany({
+        where: { ...tf, date: { gte: firstDay, lte: lastDay }, status: 'APPROVED', code: 'STR_EXTRA' },
+        select: { userId: true, hours: true, date: true }
       }),
       prisma.clockRecord.findMany({
         where: { ...tf, timestamp: { gte: firstDay, lte: lastDay } },
@@ -89,12 +93,12 @@ export async function GET(request: Request) {
     const payrollData = agents.map((agent: any) => {
       const aShifts = shifts.filter((s: any) => s.userId === agent.id)
       const aAgenda = agendaEntries.filter((a: any) => a.userId === agent.id)
+      const aStrExtra = agentRequests.filter((r: any) => r.userId === agent.id)
       const aClocks = clockRecords.filter((c: any) => c.userId === agent.id)
 
       // 1. ASSENZE & CODICI (dalla pianificazione + agenda)
       const codiciMap: Record<string, { label: string, value: number, unit: string }> = {}
 
-      // Conteggio da Shift (ferie, malattie pianificate)
       aShifts.forEach((s: any) => {
         const t = (s.type || "").toUpperCase().trim()
         if (t === "FERIE" || t === "F") {
@@ -120,7 +124,6 @@ export async function GET(request: Request) {
         }
       })
 
-      // Conteggio da Agenda (tutti i codici con descrizione)
       aAgenda.forEach((a: any) => {
         const label = getLabel(a.code)
         if (!codiciMap[a.code]) codiciMap[a.code] = { label, value: 0, unit: a.hours ? "h" : "gg" }
@@ -144,7 +147,6 @@ export async function GET(request: Request) {
       })
 
       // 3. TIMBRATURE → Ore Lavorate e Buoni Pasto
-      // Raggruppa clock per giorno
       const clocksByDay: Record<string, { type: string, ts: Date }[]> = {}
       aClocks.forEach((c: any) => {
         const d = new Date(c.timestamp)
@@ -156,19 +158,51 @@ export async function GET(request: Request) {
       let oreDiurne = 0
       let oreNotturne = 0
       let buoniPasto = 0
+      
+      let straordinarioDiurnoFeriale = 0
+      let straordinarioDiurnoFestivo = 0
+      let straordinarioNotturnoFeriale = 0
+      let straordinarioNotturnoFestivo = 0
 
-      Object.values(clocksByDay).forEach(records => {
+      // Mappa Turni Pianificati e Straordinari Approvati per giorno
+      const plannedAuthByDay: Record<string, { nominalH: number, authOvertime: number, isFestivo: boolean }> = {}
+      aShifts.forEach((s: any) => {
+        const d = new Date(s.date)
+        const dayKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+        let nominalH = 6
+        if (s.durationHours) nominalH = s.durationHours
+        else if (s.timeRange) {
+           const match = s.timeRange.split("-")
+           if (match.length === 2) {
+              const [h1, m1] = match[0].split(":").map(Number)
+              const [h2, m2] = match[1].split(":").map(Number)
+              let diff = (h2 + (m2||0)/60) - (h1 + (m1||0)/60)
+              if (diff < 0) diff += 24
+              nominalH = diff
+           }
+        }
+        if (!plannedAuthByDay[dayKey]) plannedAuthByDay[dayKey] = { nominalH: 0, authOvertime: 0, isFestivo: isHoliday(d) }
+        plannedAuthByDay[dayKey].nominalH += nominalH
+        plannedAuthByDay[dayKey].authOvertime += (s.overtimeHours || 0)
+      })
+      aStrExtra.forEach((req: any) => {
+        const d = new Date(req.date)
+        const dayKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+        if (!plannedAuthByDay[dayKey]) plannedAuthByDay[dayKey] = { nominalH: 0, authOvertime: 0, isFestivo: isHoliday(d) }
+        plannedAuthByDay[dayKey].authOvertime += (req.hours || 0)
+      })
+
+      Object.entries(clocksByDay).forEach(([dayKey, records]) => {
         records.sort((a, b) => a.ts.getTime() - b.ts.getTime())
         
         // Accoppia IN/OUT
         const pairs: { inTime: Date, outTime: Date }[] = []
         for (let i = 0; i < records.length; i++) {
           if (records[i].type === "IN" || records[i].type === "INGRESSO") {
-            // Trova il prossimo OUT
             for (let j = i + 1; j < records.length; j++) {
               if (records[j].type === "OUT" || records[j].type === "USCITA") {
                 pairs.push({ inTime: records[i].ts, outTime: records[j].ts })
-                i = j // skip ahead
+                i = j 
                 break
               }
             }
@@ -177,44 +211,71 @@ export async function GET(request: Request) {
 
         if (pairs.length === 0) return
 
-        // Calcolo ore totali del giorno
         let totalHoursDay = 0
+        let nightHoursDay = 0
+
         pairs.forEach(p => {
           const h = hoursDiff(p.inTime, p.outTime)
           const night = nightHoursBetween(p.inTime, p.outTime)
-          oreNotturne += night
-          oreDiurne += (h - night)
+          nightHoursDay += night
           totalHoursDay += h
         })
+        
+        oreNotturne += nightHoursDay
+        oreDiurne += (totalHoursDay - nightHoursDay)
 
         // ─── BUONI PASTO ───
+        // INCROCIO: Viene dato il buono se la somma ore reali rispetta le regole minime
         if (pairs.length === 1) {
-          // Caso A: Turno continuato
-          if (totalHoursDay >= bpContinuato) {
-            buoniPasto++
-          }
+          if (totalHoursDay >= bpContinuato) buoniPasto++
         } else if (pairs.length >= 2) {
-          // Caso B: Turno spezzato
           const turno1Hours = hoursDiff(pairs[0].inTime, pairs[0].outTime)
           const pausa = hoursDiff(pairs[0].outTime, pairs[1].inTime)
           const turno2Hours = hoursDiff(pairs[1].inTime, pairs[1].outTime)
-
           if (turno1Hours >= bpMinT1 && pausa <= bpMaxPausa && turno2Hours >= bpMinT2) {
             buoniPasto++
           } else if (totalHoursDay >= bpContinuato) {
-            // Fallback: se le coppie non matchano lo schema, ma il totale supera il continuato
             buoniPasto++
           }
+        }
+
+        // ─── STRAORDINARI ───
+        // Straordinario riconosciuto = Min(Auth Overtime, Actual Overtime)
+        const plannedInfo = plannedAuthByDay[dayKey]
+        if (plannedInfo && plannedInfo.authOvertime > 0) {
+           const actualOvertime = Math.max(0, totalHoursDay - plannedInfo.nominalH)
+           const payableOvertime = Math.min(actualOvertime, plannedInfo.authOvertime)
+           
+           if (payableOvertime > 0) {
+              // Ripartizione Diurno/Notturno in base alla % di notturno nel turno extra
+              // Per semplicità, se ha fatto notturno nel giorno, lo proporzioniamo o lo attribuiamo come priorità al notturno se l'OUT è di notte.
+              // Approccio rigoroso: se l'ultimo OUT è > 22:00, l'extra è primariamente notturno.
+              const lastOutTime = pairs[pairs.length - 1].outTime.getHours()
+              let extraNott = 0
+              if (lastOutTime >= 22 || lastOutTime < 6) {
+                 // Ha staccato di notte. Diamo priorità allo straordinario notturno (fino al cap delle ore notturne totali fatte)
+                 extraNott = Math.min(payableOvertime, nightHoursDay)
+              }
+              const extraDiur = payableOvertime - extraNott
+              
+              if (plannedInfo.isFestivo) {
+                 straordinarioNotturnoFestivo += extraNott
+                 straordinarioDiurnoFestivo += extraDiur
+              } else {
+                 straordinarioNotturnoFeriale += extraNott
+                 straordinarioDiurnoFeriale += extraDiur
+              }
+           }
         }
       })
 
       // Arrotonda a centesimi
       oreDiurne = Math.round(oreDiurne * 100) / 100
       oreNotturne = Math.round(oreNotturne * 100) / 100
-
-      // 4. STRAORDINARIO (dalla pianificazione)
-      let strOrdinario = 0
-      aShifts.forEach((s: any) => { strOrdinario += (s.overtimeHours || 0) })
+      straordinarioDiurnoFeriale = Math.round(straordinarioDiurnoFeriale * 100) / 100
+      straordinarioDiurnoFestivo = Math.round(straordinarioDiurnoFestivo * 100) / 100
+      straordinarioNotturnoFeriale = Math.round(straordinarioNotturnoFeriale * 100) / 100
+      straordinarioNotturnoFestivo = Math.round(straordinarioNotturnoFestivo * 100) / 100
 
       return {
         id: agent.id,
@@ -227,7 +288,10 @@ export async function GET(request: Request) {
         oreDiurne,
         oreNotturne,
         buoniPasto,
-        straordinario: Math.round(strOrdinario * 100) / 100,
+        straordinarioDiurnoFeriale,
+        straordinarioDiurnoFestivo,
+        straordinarioNotturnoFeriale,
+        straordinarioNotturnoFestivo
       }
     })
 

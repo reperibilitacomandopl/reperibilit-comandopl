@@ -37,8 +37,29 @@ export function useGpsTracking({ isClockedIn, intervalMs = 300000, tenant, myShi
           const now = Date.now()
           setCoords({ lat: latitude, lng: longitude })
 
-          // 1. INVIO POSIZIONE AL SERVER (Solo se timbrato IN)
-          if (isClockedIn === 'IN' && now - lastUpdate.current > intervalMs) {
+          // 1. INVIO POSIZIONE AL SERVER (Solo se timbrato IN o 15 min prima del turno)
+          let isTrackingAllowed = isClockedIn === 'IN'
+          
+          if (isClockedIn === 'OUT' && myShifts) {
+            const today = new Date().toISOString().split('T')[0]
+            const todayShift = myShifts.find(s => s.date.startsWith(today))
+            if (todayShift && todayShift.timeRange) {
+              const shiftTime = todayShift.timeRange.split('-')[0]?.trim()
+              if (shiftTime) {
+                const [h, m] = shiftTime.split(':').map(Number)
+                const shiftStart = new Date()
+                shiftStart.setHours(h, m, 0, 0)
+                
+                const diffMins = (shiftStart.getTime() - now) / 60000
+                // Traccia se mancano meno di 15 minuti all'inizio del turno
+                if (diffMins <= 15 && diffMins > 0) {
+                  isTrackingAllowed = true
+                }
+              }
+            }
+          }
+
+          if (isTrackingAllowed && now - lastUpdate.current > intervalMs) {
             try {
               await fetch("/api/agent/location", {
                 method: "POST",
@@ -76,11 +97,18 @@ export function useGpsTracking({ isClockedIn, intervalMs = 300000, tenant, myShi
               if (isClockedIn === 'OUT' && distance <= threshold) {
                 const diff = (shiftStart.getTime() - now) / 60000
                 if (diff < 30 && diff > -60) { // Entro 30 min prima o 60 min dopo l'inizio
-                   new Notification("📍 Sei arrivato al Comando", {
-                     body: `Il tuo turno inizia alle ${shiftTime}. Ricordati di timbrare l'entrata!`,
-                     icon: "/icon-192.png",
-                     tag: "clock-reminder"
-                   })
+                   if ('serviceWorker' in navigator) {
+                     navigator.serviceWorker.ready.then(registration => {
+                       registration.showNotification("📍 Sei arrivato al Comando", {
+                         body: `Il tuo turno inizia alle ${shiftTime}. Clicca qui sotto per timbrare l'entrata!`,
+                         icon: "/icon-192.png",
+                         tag: "clock-reminder",
+                         actions: [
+                           { action: 'CLOCK_IN', title: '▶️ Timbra Entrata' }
+                         ]
+                       });
+                     });
+                   }
                    lastReminder.current = now
                 }
               }
@@ -89,11 +117,18 @@ export function useGpsTracking({ isClockedIn, intervalMs = 300000, tenant, myShi
               if (isClockedIn === 'IN' && distance > threshold + 100) {
                 const diffEnd = (now - shiftEnd.getTime()) / 60000
                 if (diffEnd > -15) { // Da 15 min prima della fine in poi
-                   new Notification("🏃 Ti stai allontanando?", {
-                     body: `Il tuo turno è terminato alle ${shiftEndTime}. Ricordati di timbrare l'uscita!`,
-                     icon: "/icon-192.png",
-                     tag: "clock-reminder"
-                   })
+                   if ('serviceWorker' in navigator) {
+                     navigator.serviceWorker.ready.then(registration => {
+                       registration.showNotification("🏃 Ti stai allontanando?", {
+                         body: `Il tuo turno è terminato alle ${shiftEndTime}. Clicca qui sotto per timbrare l'uscita!`,
+                         icon: "/icon-192.png",
+                         tag: "clock-reminder",
+                         actions: [
+                           { action: 'CLOCK_OUT', title: '⏹ Timbra Uscita' }
+                         ]
+                       });
+                     });
+                   }
                    lastReminder.current = now
                 }
               }

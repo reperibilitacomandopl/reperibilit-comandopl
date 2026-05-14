@@ -76,6 +76,7 @@ const RAW_AGENDA_CATEGORIES = [
   {
     group: "Straordinario", emoji: "⏰", color: "orange",
     items: [
+      { code: "STR_EXTRA", shortCode: "STR_EXT", label: "Richiesta Autorizzazione Straordinario Imprevisto (Prolungamento)" },
       { code: "2000", shortCode: "STR", label: "Straordinario - Pagamento" },
       { code: "2050", shortCode: "STR_AO", label: "Straordinario A.O." },
       { code: "2001", shortCode: "STR_NOT", label: "Straordinario Notturno" },

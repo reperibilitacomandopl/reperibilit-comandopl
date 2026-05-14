@@ -60,20 +60,15 @@ self.addEventListener('push', (event: PushEvent) => {
     const defaultVibration = [200, 100, 200];
     const isSos = data.title?.includes('SOS') || data.title?.includes('EMERGENZA') || data.type === 'ALERT';
 
-    // Propaga via messaggio ai tab aperti per forzare lo sblocco sonoro Web Audio
-    event.waitUntil(
-      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
-        clients.forEach(c => c.postMessage({ type: 'PLAY_ALARM', isSos }));
-      })
-    );
+    // VERSION: 1.0.6 - iOS Robustness Update
+    const SW_VERSION = '1.0.6';
 
-// VERSION: 1.0.5 - Simplest format for iOS
-const SW_VERSION = '1.0.5';
-
-    // Notifica ultra-semplice per massima compatibilità iOS
     const options: any = {
       body: data.body,
       icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      vibrate: isSos ? sosVibration : defaultVibration,
+      requireInteraction: isSos,
       data: { url: data.url || '/' },
       actions: [
         { action: 'CLOCK_OUT', title: '⏹ Timbra Uscita' },
@@ -81,8 +76,15 @@ const SW_VERSION = '1.0.5';
       ]
     };
 
+    // Su iOS il Service Worker può morire improvvisamente. Uniamo le promesse per assicurarci
+    // che sia la propagazione locale (Audio) sia la notifica visibile vengano elaborate
     event.waitUntil(
-      self.registration.showNotification(data.title || 'Promemoria', options)
+      Promise.all([
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+          clients.forEach(c => c.postMessage({ type: 'PLAY_ALARM', isSos }));
+        }),
+        self.registration.showNotification(data.title || 'Promemoria', options)
+      ])
     );
   } catch (e) {
     console.error('[PWA-PUSH] Errore parsing push:', e);
@@ -97,36 +99,41 @@ self.addEventListener('notificationclick', (event: NotificationEvent) => {
   if (action === 'CLOCK_IN' || action === 'CLOCK_OUT') {
     const type = action === 'CLOCK_IN' ? 'IN' : 'OUT';
     
-    event.waitUntil(
-      // Eseguiamo la timbratura in background
-      fetch('/api/admin/clock-in', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          type, 
-          lat: null, 
-          lng: null, 
-          accuracy: null, 
-          isManual: true // Segnaliamo che è da notifica
-        })
-      }).then(async (res) => {
-        if (res.ok) {
-          // Mostra una notifica di conferma del successo
-          return self.registration.showNotification(
-            type === 'IN' ? '✅ Entrata Confermata' : '🏁 Uscita Confermata',
-            {
-              body: `Timbratura ${type} eseguita correttamente in background.`,
-              icon: '/icon-192.png',
-              tag: 'clock-confirm'
-            }
-          );
-        } else {
-          // Se fallisce (es. sessione scaduta), apri l'app
-          return self.clients.openWindow(notification.data?.url || '/');
-        }
-      }).catch(() => {
-        return self.clients.openWindow(notification.data?.url || '/');
+    // Creiamo un timeout di 4 secondi per la fetch: se iOS sospende la rete in background, falliamo in fretta per aprire la finestra
+    const fetchPromise = fetch('/api/admin/clock-in', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        type, 
+        lat: null, 
+        lng: null, 
+        accuracy: null, 
+        isManual: true // Segnaliamo che è da notifica
       })
+    });
+    
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout background fetch')), 4000));
+
+    event.waitUntil(
+      Promise.race([fetchPromise, timeoutPromise])
+        .then(async (res: any) => {
+          if (res.ok) {
+            return self.registration.showNotification(
+              type === 'IN' ? '✅ Entrata Confermata' : '🏁 Uscita Confermata',
+              {
+                body: `Timbratura ${type} eseguita correttamente in background.`,
+                icon: '/icon-192.png',
+                tag: 'clock-confirm'
+              }
+            );
+          } else {
+            return self.clients.openWindow(notification.data?.url || '/');
+          }
+        })
+        .catch(() => {
+          // In caso di errore (timeout iOS o assenza di rete), apriamo forzatamente l'app
+          return self.clients.openWindow(notification.data?.url || '/');
+        })
     );
     return;
   }

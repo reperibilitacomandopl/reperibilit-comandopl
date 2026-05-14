@@ -19,13 +19,15 @@ interface AgentTimecardViewProps {
   onShowRequest: () => void
   onShowMancataTimb: () => void
   onShowUpload: () => void
+  onShowStraordinario: () => void
 }
 
 export default function AgentTimecardView({ 
   admin, 
   onShowRequest, 
   onShowMancataTimb, 
-  onShowUpload 
+  onShowUpload,
+  onShowStraordinario
 }: AgentTimecardViewProps) {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -79,15 +81,18 @@ export default function AgentTimecardView({
               </div>
             </button>
 
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 p-5 rounded-2xl flex items-center gap-4 text-left hidden lg:flex">
-              <div className="p-3 bg-emerald-500 rounded-xl shadow-lg">
-                <Info size={20} className="text-white" />
+            <button 
+              onClick={onShowStraordinario}
+              className="bg-white/10 backdrop-blur-md border border-white/20 p-5 rounded-2xl flex items-center gap-4 hover:bg-white/20 transition-all text-left lg:flex"
+            >
+              <div className="p-3 bg-rose-500 rounded-xl shadow-lg">
+                <Clock size={20} className="text-white" />
               </div>
               <div>
-                <p className="text-xs font-black uppercase tracking-widest text-emerald-200">Supporto</p>
-                <p className="font-bold text-sm">Contatta l&apos;Ufficio</p>
+                <p className="text-xs font-black uppercase tracking-widest text-rose-200">Straordinario</p>
+                <p className="font-bold text-sm">Richiedi Autorizzazione</p>
               </div>
-            </div>
+            </button>
           </div>
         </div>
       </div>

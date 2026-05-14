@@ -45,7 +45,15 @@ export async function sendPushNotification(userId: string, payload: { title: str
 
         return await webpush.sendNotification(
           pushSubscription,
-          JSON.stringify(payload)
+          JSON.stringify(payload),
+          {
+            headers: {
+              'Urgency': payload.type === 'ALERT' || payload.title?.includes('SOS') || payload.title?.includes('EMERGENZA') ? 'high' : 'normal',
+              'apns-priority': '10',
+              'apns-push-type': 'alert'
+            },
+            TTL: 86400 // 24 ore
+          }
         )
       } catch (error) {
         const err = error as { statusCode?: number };

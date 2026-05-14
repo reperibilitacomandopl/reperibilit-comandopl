@@ -393,6 +393,11 @@ export default function AgentDashboard({
               setRequestFormInitialNotes("Invio allegato relativo a ...")
               setShowAbsenceModal(true)
             }}
+            onShowStraordinario={() => {
+              setRequestFormInitialCode("STR_EXTRA")
+              setRequestFormInitialNotes("Richiesta autorizzazione per straordinario imprevisto causa: ...\nOre richieste: ")
+              setShowAbsenceModal(true)
+            }}
           />
         ) : (
           <AgentShiftsList 
