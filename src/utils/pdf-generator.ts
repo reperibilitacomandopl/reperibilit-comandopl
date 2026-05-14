@@ -32,6 +32,7 @@ interface ODSShift {
   serviceDetails?: string;
   patrolGroupId?: string | null;
   serviceType?: { name: string } | null;
+  serviceCategory?: { name: string } | null;
   vehicle?: { name: string } | null;
 }
 
@@ -699,131 +700,231 @@ async function drawODSPageContent({
     return false;
   };
   const currentShifts = shifts.filter(s => isWorkingShift(s.type, s.serviceDetails || ""));
-  
+
+  // ═══════════════════════════════════════════════════════════════
+  // TABELLA ODS - LAYOUT ISTITUZIONALE
+  // Colonne dinamiche: SCUOLA visibile solo se ci sono assegnazioni
+  // ═══════════════════════════════════════════════════════════════
+
+  // Controlla se è domenica
+  const isSunday = date.getDay() === 0;
+
+  // Funzione per estrarre TUTTE le info scuola dalle disposizioni
+  const extractSchoolInfo = (details: string): string => {
+    if (!details) return "";
+    const d = details.trim();
+
+    // Pattern auto-scuole: "07:45-08:30 ENTRATA / 13:00-14:00 USCITA NomeScuola"
+    // oppure: "16:00-16:30 USCITA NomeScuola"
+    // oppure con +: "Vigilanza + 07:45-08:30 ENTRATA / 13:00-14:00 USCITA Sc. Golgota"
+    const autoPattern = d.match(/(\d{2}:\d{2}[-–]\d{2}:\d{2}\s+(?:ENTRATA|USCITA)\s*(?:\/\s*\d{2}:\d{2}[-–]\d{2}:\d{2}\s+(?:ENTRATA|USCITA))?\s+.+)/i);
+    if (autoPattern) return autoPattern[1].trim();
+
+    // Pattern manuale: "Sc. Golgota 07:30-08:15" o "08:00-08:30 Sc. Golgota"
+    const manualPattern = d.match(/(?:Sc\.?\s*[A-Za-zÀ-ú\s.'-]+\s*\d{2}:\d{2}[-–]\d{2}:\d{2}|\d{2}:\d{2}[-–]\d{2}:\d{2}\s*Sc\.?\s*[A-Za-zÀ-ú\s.'-]+)/i);
+    if (manualPattern) return manualPattern[0].trim();
+
+    // Keyword match: contiene ENTRATA, USCITA, SCUOLA
+    if (/(?:ENTRATA|USCITA|SCUOLA)/i.test(d)) {
+      // Prendi tutta la parte dopo il + se presente
+      const parts = d.split(/\s*\+\s*/);
+      const schoolPart = parts.find(p => /(?:ENTRATA|USCITA|SCUOLA)/i.test(p));
+      if (schoolPart) return schoolPart.trim();
+    }
+
+    // Pattern generico "sc." o "scuola" seguito da un nome
+    const scGeneric = d.match(/(?:scuola|sc\.?)\s+[A-Za-zÀ-ú\s.'-]+/i);
+    if (scGeneric) return scGeneric[0].trim();
+
+    return "";
+  };
+
+  // Pre-calcola se esistono scuole in TUTTI i turni operativi
+  const hasAnySchool = !isSunday && currentShifts.some(s => {
+    const info = extractSchoolInfo(s.serviceDetails || "");
+    return info.length > 0;
+  });
+
   const renderTable = (titolo: string, listaTurni: ODSShift[], startY: number) => {
     if (listaTurni.length === 0) return startY;
 
-    const sortedShifts = [...listaTurni].sort((a, b) => {
-      // 1. Ordina per macro-turno (M, P, N)
-      const tA = a.type.charAt(0).toUpperCase();
-      const tB = b.type.charAt(0).toUpperCase();
-      if (tA !== tB) return tA.localeCompare(tB);
+    // Separiamo Ufficiali e Agenti
+    const ufficiali = listaTurni.filter(s => users.find(u => u.id === s.userId)?.isUfficiale);
+    const agenti = listaTurni.filter(s => !users.find(u => u.id === s.userId)?.isUfficiale);
 
-      // 2. Mantieni vicini i membri della stessa pattuglia
+    // Raggruppiamo Agenti per categoria di servizio
+    const gruppiAgenti: Record<string, ODSShift[]> = {};
+    agenti.forEach(s => {
+      const catName = s.serviceCategory ? s.serviceCategory.name : "ALTRI SERVIZI";
+      if (!gruppiAgenti[catName]) gruppiAgenti[catName] = [];
+      gruppiAgenti[catName].push(s);
+    });
+
+    type ODSBodyRow = any[] & { isPatrol?: boolean; isCategoryHeader?: boolean };
+    const body: ODSBodyRow[] = [];
+
+    // Ordinamento: pattuglia, poi nome
+    const sortShifts = (list: ODSShift[]) => [...list].sort((a, b) => {
       const gA = a.patrolGroupId || "";
       const gB = b.patrolGroupId || "";
       if (gA !== gB) {
-        if (gA === "") return 1; 
+        if (gA === "") return 1;
         if (gB === "") return -1;
         return gA.localeCompare(gB);
       }
-
-      // 3. Ordine alfabetico per nome utente
-      const nameA = users.find(u => u.id === a.userId)?.name || "";
-      const nameB = users.find(u => u.id === b.userId)?.name || "";
-      return nameA.localeCompare(nameB);
+      return (users.find(u => u.id === a.userId)?.name || "").localeCompare(users.find(u => u.id === b.userId)?.name || "");
     });
 
-    type ODSBodyRow = jsPDFCellConfig[] & { isPatrol?: boolean };
-    
-    const body: ODSBodyRow[] = sortedShifts.map(s => {
+    // Costruttore riga
+    const buildRow = (s: ODSShift): ODSBodyRow | null => {
       const u = users.find(u => u.id === s.userId);
       if (!u) return null;
-      
-      const qualifica = u.qualifica || (u.isUfficiale ? "Uff.le" : "Agente");
-      const orarioPrincipale = s.timeRange || (s.type.startsWith("M") ? "08:00-14:00" : s.type.startsWith("P") ? "14:00-20:00" : "22:00-04:00");
-      let disposizioni = s.serviceDetails || "";
 
-      // Cleanup redundant prefixes in PDF just in case
+      const qualifica = u.qualifica || (u.isUfficiale ? "Uff.le" : "Agente");
+      const orario = s.timeRange || (s.type.startsWith("M") ? "08:00-14:00" : s.type.startsWith("P") ? "14:00-20:00" : "22:00-04:00");
       const servizio = s.serviceType ? s.serviceType.name : (u.servizio || "Vigilanza");
-      if (disposizioni.toLowerCase().startsWith(`${servizio.toLowerCase()} + `)) {
-        disposizioni = disposizioni.substring(servizio.length + 3);
-      } else if (disposizioni.toLowerCase() === servizio.toLowerCase()) {
-        disposizioni = "";
+      const details = s.serviceDetails || "";
+      const veicolo = s.vehicle ? s.vehicle.name : "";
+      const scuola = extractSchoolInfo(details);
+
+      // Rimuovi info scuola dalle note per non duplicare
+      let note = details;
+      if (scuola) {
+        note = note.replace(scuola, "").trim();
+        // Pulisci separatori residui (+ , / - all'inizio o fine)
+        note = note.replace(/^\s*[+\-–\/|:,]\s*/, "").replace(/\s*[+\-–\/|:,]\s*$/, "").trim();
       }
 
-      const schoolTimeMatch = disposizioni.match(/(\d{2}:\d{2})(-(\d{2}:\d{2}))?/);
-      
-      let orarioStampa = orarioPrincipale;
-      if (schoolTimeMatch) orarioStampa = `${schoolTimeMatch[0]}\n(${orarioPrincipale})`;
+      // Zona: estrai e aggiungi sotto il servizio
+      let servizioZona = servizio;
+      const zonaMatch = note.match(/(?:zona|settore|area)\s+[A-Za-zÀ-ú\s.'-]+/i);
+      if (zonaMatch) {
+        servizioZona += `\n${zonaMatch[0].trim()}`;
+        note = note.replace(zonaMatch[0], "").trim();
+        note = note.replace(/^\s*[+\-–\/|:,]\s*/, "").replace(/\s*[+\-–\/|:,]\s*$/, "").trim();
+      }
 
-      const veicolo = s.vehicle ? `\n(${s.vehicle.name})` : "";
-      
-      const rowData: jsPDFCellConfig[] = [
-        { content: `${qualifica}\n${u.name}`, styles: { fontStyle: 'bold' } },
-        { content: orarioStampa, styles: { halign: 'center', fontSize: 8, fontStyle: 'bold' } },
-        { content: `${servizio}${veicolo}`, styles: { fontStyle: schoolTimeMatch ? 'bold' : 'normal' } },
-        { content: disposizioni, styles: { fontSize: 8 } }
+      // Costruiamo la riga (con o senza colonna scuola)
+      const rowData: any[] = [
+        { content: `${qualifica}\n${u.name}`, styles: { fontStyle: 'bold', fontSize: 7.5 } },
+        { content: orario, styles: { halign: 'center', fontSize: 7, fontStyle: 'bold' } },
+        { content: servizioZona, styles: { fontSize: 7 } },
       ];
-      
+
+      if (hasAnySchool) {
+        rowData.push({ content: scuola, styles: { fontSize: 6.5, fontStyle: scuola ? 'bold' : 'normal' } });
+      } else {
+        // Se non c'è colonna scuola, metti la scuola nelle note (caso limite)
+        if (scuola) note = note ? `${scuola} | ${note}` : scuola;
+      }
+
+      rowData.push({ content: veicolo, styles: { fontSize: 6.5 } });
+      rowData.push({ content: note, styles: { fontSize: 6.5 } });
+      rowData.push({ content: "", styles: { fontSize: 6 } }); // Colonna FIRMA (vuota per firma manuale)
+
       const extendedRow = rowData as ODSBodyRow;
       extendedRow.isPatrol = !!s.patrolGroupId;
       return extendedRow;
-    }).filter((row): row is ODSBodyRow => row !== null);
-
-    const themeColors = {
-      "MATTINA": [14, 165, 233] as [number, number, number],
-      "POMERIGGIO": [245, 158, 11] as [number, number, number],
-      "NOTTE": [99, 102, 241] as [number, number, number],
     };
-    const headerColor = themeColors[titolo as keyof typeof themeColors] || navelBlue;
 
+    // Header di sezione/categoria
+    const numCols = hasAnySchool ? 7 : 6;
+    const addCategoryHeader = (label: string) => {
+      const headerRow = [
+        { content: label.toUpperCase(), colSpan: numCols, styles: { halign: 'center', fillColor: [235, 228, 246], textColor: [67, 20, 110], fontStyle: 'bold', fontSize: 7.5, cellPadding: 1.5 } }
+      ] as ODSBodyRow;
+      headerRow.isCategoryHeader = true;
+      body.push(headerRow);
+    };
+
+    // Ufficiali
+    if (ufficiali.length > 0) {
+      addCategoryHeader("UFFICIALI");
+      sortShifts(ufficiali).forEach(s => { const row = buildRow(s); if (row) body.push(row); });
+    }
+
+    // Categorie agenti
+    Object.keys(gruppiAgenti).sort().forEach(catName => {
+      addCategoryHeader(catName);
+      sortShifts(gruppiAgenti[catName]).forEach(s => { const row = buildRow(s); if (row) body.push(row); });
+    });
+
+    // Colori header turno (scuri, istituzionali)
+    const themeColors: Record<string, [number, number, number]> = {
+      "MATTINA": [15, 82, 140],
+      "POMERIGGIO": [160, 90, 10],
+      "NOTTE": [55, 48, 120],
+    };
+    const headerColor = themeColors[titolo] || navelBlue;
+
+    // Intestazioni colonne (dinamiche)
+    const titleRow = [
+      { content: `- ${titolo} -`, colSpan: numCols, styles: { halign: 'center', fillColor: headerColor, textColor: 255, fontSize: 9, fontStyle: 'bold', cellPadding: 2 } }
+    ];
+
+    const headRow: any[] = [
+      { content: "QUALIFICA / NOME", styles: { halign: 'left' } },
+      { content: "ORARIO", styles: { halign: 'center' } },
+      { content: "SERVIZIO / ZONA", styles: { halign: 'left' } },
+    ];
+    if (hasAnySchool) headRow.push({ content: "SCUOLA", styles: { halign: 'center' } });
+    headRow.push({ content: "VEICOLO", styles: { halign: 'center' } });
+    headRow.push({ content: "NOTE", styles: { halign: 'left' } });
+    headRow.push({ content: "FIRMA", styles: { halign: 'center' } });
+
+    // Column widths (dinamiche) - margini ridotti a 6mm per lato = 198mm utili
+    const colStyles: Record<number, any> = hasAnySchool
+      ? { 0: { cellWidth: 35 }, 1: { cellWidth: 18 }, 2: { cellWidth: 30 }, 3: { cellWidth: 26 }, 4: { cellWidth: 20 }, 5: { cellWidth: 'auto' }, 6: { cellWidth: 35 } }
+      : { 0: { cellWidth: 36 }, 1: { cellWidth: 20 }, 2: { cellWidth: 34 }, 3: { cellWidth: 22 }, 4: { cellWidth: 'auto' }, 5: { cellWidth: 36 } };
+
+    // Rendering
     autoTable(doc, {
       startY: startY,
-      head: [[titolo, '', '', '']],
+      showHead: 'everyPage',
+      head: [titleRow, headRow],
       body: body,
       theme: 'grid',
-      headStyles: { fillColor: headerColor, textColor: 255, fontSize: 10, halign: 'center', fontStyle: 'bold' },
-      bodyStyles: { fontSize: 9, cellPadding: 3, textColor: 40 },
-      alternateRowStyles: { fillColor: [245, 247, 250] },
-      columnStyles: {
-        0: { cellWidth: 45 },
-        1: { cellWidth: 28 },
-        2: { cellWidth: 45 },
-        3: { cellWidth: 'auto' }
-      },
+      headStyles: { fillColor: headerColor, textColor: 255, fontSize: 7, halign: 'center', fontStyle: 'bold', cellPadding: 2 },
+      bodyStyles: { fontSize: 7, cellPadding: 2, textColor: 30, lineColor: [200, 200, 200], lineWidth: 0.2 },
+      alternateRowStyles: { fillColor: [250, 250, 252] },
+      columnStyles: colStyles,
+      margin: { left: 6, right: 6, top: 46 },
       didParseCell: (data: any) => {
         const row = body[data.row.index];
-        // Sostituisci header con intestazioni colonne sulla prima riga
-        if (data.section === 'head' && data.row.index === 0) {
-           data.cell.styles.fillColor = headerColor;
-           if (data.column.index === 0) data.cell.text = ["QUALIFICA / NOME"];
-           if (data.column.index === 1) data.cell.text = ["ORARIO"];
-           if (data.column.index === 2) data.cell.text = ["SERVIZIO / MEZZO"];
-           if (data.column.index === 3) data.cell.text = [`${titolo} - DISPOSIZIONI`];
-        }
-        if (row && row.isPatrol && data.section === 'body') {
-          data.cell.styles.fillColor = [240, 247, 255]; 
+        if (row && row.isCategoryHeader && data.section === 'body') {
+          data.cell.styles.fillColor = [235, 228, 246];
+          data.cell.styles.textColor = [67, 20, 110];
+        } else if (row && row.isPatrol && data.section === 'body') {
+          data.cell.styles.fillColor = [232, 242, 255];
         }
       }
     });
 
-    return (doc as any).lastAutoTable.finalY + 5;
+    return (doc as any).lastAutoTable.finalY + 8;
   };
 
+
+  // ── Filtraggio turni per macro-periodo ──
   const mattinieri = currentShifts.filter(s => !/^P/i.test((s.type||"").replace(/[()]/g,"")) && !/^N/i.test((s.type||"").replace(/[()]/g,"")));
   const pomeridiani = currentShifts.filter(s => /^P/i.test((s.type||"").replace(/[()]/g,"")));
   const notturni = currentShifts.filter(s => /^N/i.test((s.type||"").replace(/[()]/g,"")));
 
-  let nextY = 42;
+  let nextY = 46;
   nextY = renderTable("MATTINA", mattinieri, nextY);
   nextY = renderTable("POMERIGGIO", pomeridiani, nextY);
   nextY = renderTable("NOTTE", notturni, nextY);
 
-  if (generalNotes) {
-    doc.setFontSize(10);
-    doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
-    doc.setFont("helvetica", "bold");
-    doc.text("Disposizioni e Note Generali del Comando", 14, nextY + 5);
-    
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(60, 60, 60);
-    
-    const splitNotes = doc.splitTextToSize(generalNotes, pageWidth - 28);
-    doc.text(splitNotes, 14, nextY + 10);
-    
-    nextY += 15 + (splitNotes.length * 4);
+  // ── Note Generali del Comando ──
+  if (generalNotes && generalNotes.trim().length > 0) {
+    autoTable(doc, {
+      startY: nextY + 2,
+      head: [["DISPOSIZIONI E NOTE GENERALI DEL COMANDO"]],
+      body: [[generalNotes]],
+      theme: 'grid',
+      headStyles: { fillColor: [250, 245, 225], textColor: [100, 60, 10], fontSize: 8, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 7.5, fillColor: [255, 255, 255], textColor: 30, cellPadding: 3 },
+    });
+    nextY = (doc as any).lastAutoTable.finalY + 5;
   }
 
 
@@ -930,7 +1031,7 @@ export async function generateWeeklyODSPDF({
   logoUrl,
   showWatermark = false
 }: {
-  days: { date: Date, users: ODSUser[], shifts: ODSShift[] }[],
+  days: { date: Date, users: ODSUser[], shifts: ODSShift[], generalNotes?: string }[],
   tenantName?: string,
   logoUrl?: string | null,
   showWatermark?: boolean
@@ -955,7 +1056,7 @@ export async function generateWeeklyODSPDF({
         shifts: days[i].shifts, 
         tenantName, 
         logoUrl, 
-        generalNotes: undefined,
+        generalNotes: days[i].generalNotes,
         autoTable,
         isBatch: true 
       });
