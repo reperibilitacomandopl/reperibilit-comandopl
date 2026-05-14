@@ -38,7 +38,7 @@ export async function GET() {
     })
 
     const results = await Promise.allSettled(
-      subscriptions.map(sub => 
+      subscriptions.map((sub: any) => 
         webpush.sendNotification(
           {
             endpoint: sub.endpoint,
