@@ -644,16 +644,20 @@ async function drawODSPageContent({
   const pageWidth = doc.internal.pageSize.width;
   const dateStr = date.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
 
-  // 1. Header Istituzionale
+  // 1. Caricamento asincrono del logo (se presente) per averlo pronto per le pagine successive
+  let preloadedImg: any = null;
   if (logoUrl) {
     try {
-      const img = await getBase64Image(logoUrl);
-      if (img) {
-        doc.addImage(img.data, img.format, (pageWidth / 2) - 50, 10, 18, 18);
-      } else {
-        const format = logoUrl.toLowerCase().endsWith(".png") ? "PNG" : "JPEG";
-        doc.addImage(logoUrl, format, (pageWidth / 2) - 50, 10, 18, 18);
-      }
+      preloadedImg = await getBase64Image(logoUrl);
+    } catch (e) {
+      console.warn("Impossibile pre-caricare il logo per il PDF:", e);
+    }
+  }
+
+  // Funzione riutilizzabile per disegnare l'intestazione Comando + Logo su qualsiasi pagina
+  const drawInstitutionalHeader = () => {
+    if (preloadedImg) {
+      doc.addImage(preloadedImg.data, preloadedImg.format, (pageWidth / 2) - 50, 10, 18, 18);
       doc.setFontSize(20);
       doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
       doc.setFont("helvetica", "bold");
@@ -661,7 +665,17 @@ async function drawODSPageContent({
         ? tenantName.toUpperCase() 
         : `POLIZIA LOCALE ${tenantName.toUpperCase()}`;
       doc.text(headerTitle, (pageWidth / 2) + 12, 20, { align: "center" });
-    } catch (e) {
+    } else if (logoUrl && !preloadedImg) {
+      const format = logoUrl.toLowerCase().endsWith(".png") ? "PNG" : "JPEG";
+      try { doc.addImage(logoUrl, format, (pageWidth / 2) - 50, 10, 18, 18); } catch(e){}
+      doc.setFontSize(20);
+      doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+      doc.setFont("helvetica", "bold");
+      const headerTitle = tenantName.toUpperCase().includes("POLIZIA LOCALE") 
+        ? tenantName.toUpperCase() 
+        : `POLIZIA LOCALE ${tenantName.toUpperCase()}`;
+      doc.text(headerTitle, (pageWidth / 2) + 12, 20, { align: "center" });
+    } else {
       doc.setFontSize(22);
       doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
       doc.setFont("helvetica", "bold");
@@ -670,27 +684,23 @@ async function drawODSPageContent({
         : `POLIZIA LOCALE ${tenantName.toUpperCase()}`;
       doc.text(headerTitle, pageWidth / 2, 20, { align: "center" });
     }
-  } else {
-    doc.setFontSize(22);
-    doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
-    doc.setFont("helvetica", "bold");
-    const headerTitle = tenantName.toUpperCase().includes("POLIZIA LOCALE") 
-      ? tenantName.toUpperCase() 
-      : `POLIZIA LOCALE ${tenantName.toUpperCase()}`;
-    doc.text(headerTitle, pageWidth / 2, 20, { align: "center" });
-  }
-  
-  doc.setFontSize(14);
-  doc.text("ORDINE DI SERVIZIO GIORNALIERO", pageWidth / 2, 28, { align: "center" });
-  
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(100, 116, 139);
-  doc.text(dateStr.toUpperCase(), pageWidth / 2, 34, { align: "center" });
+    
+    doc.setFontSize(14);
+    doc.text("ORDINE DI SERVIZIO GIORNALIERO", pageWidth / 2, 28, { align: "center" });
+    
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 116, 139);
+    doc.text(dateStr.toUpperCase(), pageWidth / 2, 34, { align: "center" });
 
-  doc.setDrawColor(navelBlue[0], navelBlue[1], navelBlue[2]);
-  doc.setLineWidth(0.5);
-  doc.line(20, 38, pageWidth - 20, 38);
+    doc.setDrawColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+    doc.setLineWidth(0.5);
+    doc.line(20, 38, pageWidth - 20, 38);
+  };
+
+  // Disegna l'intestazione sulla primissima pagina
+  drawInstitutionalHeader();
+  const drawnHeaderPages = new Set<number>([1]);
 
   // 2. Preparazione Dati
   const isWorkingShift = (type: string, details?: string) => {
@@ -889,6 +899,14 @@ async function drawODSPageContent({
       alternateRowStyles: { fillColor: [250, 250, 252] },
       columnStyles: colStyles,
       margin: { left: 6, right: 6, top: 46 },
+      didDrawPage: (data: any) => {
+        // Ripeti l'intestazione istituzionale se siamo su una nuova pagina
+        const pageNum = (doc as any).internal.getNumberOfPages();
+        if (!drawnHeaderPages.has(pageNum)) {
+          drawnHeaderPages.add(pageNum);
+          drawInstitutionalHeader();
+        }
+      },
       didParseCell: (data: any) => {
         const row = body[data.row.index];
         if (row && row.isCategoryHeader && data.section === 'body') {
