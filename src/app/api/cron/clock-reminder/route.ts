@@ -89,10 +89,14 @@ export async function GET(req: Request) {
           })
 
           if (!lastNotif) {
+            // Fetch tenant slug to build the correct URL
+            const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } })
+            const targetUrl = tenant ? `/${tenant.slug}` : "/"
+
             await sendPushNotification(userId, {
               title: "👮‍♂️ Fine Turno Rilevata",
               body: `Il tuo turno è terminato alle ${endTimeStr}. Ricordati di timbrare l'uscita!`,
-              url: "/agent/dashboard"
+              url: targetUrl
             })
 
             // Registriamo la notifica nel DB per il check sopra

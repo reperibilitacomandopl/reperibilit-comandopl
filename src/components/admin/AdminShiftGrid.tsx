@@ -178,6 +178,18 @@ export default function AdminShiftGrid({
     return result
   }, [agents, filterText, selectedSquad])
 
+  /* ─── FILTRAGGIO GIORNI PER DATE ─── */
+  const filteredDayInfo = useMemo(() => {
+    if (!dateFrom && !dateTo) return dayInfo
+    return dayInfo.filter(di => {
+      if (di.isNextMonth) return false
+      const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(di.day).padStart(2, '0')}`
+      if (dateFrom && dateStr < dateFrom) return false
+      if (dateTo && dateStr > dateTo) return false
+      return true
+    })
+  }, [dayInfo, dateFrom, dateTo, currentYear, currentMonth])
+
   const massimaliWarnings = useMemo(() => {
     if (!editingCell || !editingCell.isBulk || !editValue.toLowerCase().includes("rep")) return []
     
@@ -212,7 +224,7 @@ export default function AdminShiftGrid({
   const dayStats = useMemo(() => {
     const stats: Record<number, { total: number, officers: number, agents: any[] }> = {}
     
-    dayInfo.forEach(di => {
+    filteredDayInfo.forEach(di => {
       const dKey = di.isNextMonth ? 999 : di.day
       const targetY = currentYear
       const targetM = di.isNextMonth ? (currentMonth === 12 ? 1 : currentMonth + 1) : currentMonth
@@ -220,7 +232,6 @@ export default function AdminShiftGrid({
 
       const repsForDay = shifts.filter(s => {
         const d = new Date(s.date)
-        // Confronto robusto: deve matchare o in locale o in UTC per coprire ogni sfasamento di fuso orario
         const matchDate = (
           (d.getFullYear() === targetY && d.getMonth() + 1 === targetM && d.getDate() === targetD) ||
           (d.getUTCFullYear() === targetY && d.getUTCMonth() + 1 === targetM && d.getUTCDate() === targetD)
@@ -236,7 +247,7 @@ export default function AdminShiftGrid({
       stats[dKey] = { total: repsForDay.length, officers, agents: presentAgents }
     })
     return stats
-  }, [dayInfo, shifts, allAgents, currentYear, currentMonth])
+  }, [filteredDayInfo, shifts, allAgents, currentYear, currentMonth])
 
   /* ─── SORT ─── */
   const toggleSort = (field: string) => {
@@ -414,7 +425,7 @@ export default function AdminShiftGrid({
     return (
       <div className="pb-10">
         <PlanningMobileView
-          agents={agents} shifts={shifts} dayInfo={dayInfo}
+          agents={agents} shifts={shifts} dayInfo={filteredDayInfo}
           currentYear={currentYear} currentMonth={currentMonth}
           isAdmin={true} onEditCell={!readOnly ? openCellEditor : undefined}
         />
@@ -543,7 +554,7 @@ export default function AdminShiftGrid({
                 </div>
               </div>
             </th>
-            {dayInfo.map(di => (
+            {filteredDayInfo.map(di => (
               <th key={di.isNextMonth ? `h-next-${di.day}` : `h-${di.day}`}
                 className={`px-1 pt-3 pb-1 text-center font-black border-b border-slate-100 min-w-[42px] ${di.isNextMonth ? "bg-slate-100 text-slate-300 opacity-50" : (di.isWeekend || di.isHoliday || di.isVigilia ? "bg-rose-50 text-rose-600" : "bg-white text-slate-500")}`}>
                 {di.isNextMonth ? '1*' : di.day}<br />
@@ -563,7 +574,7 @@ export default function AdminShiftGrid({
                 <span>Copertura</span>
               </div>
             </td>
-            {dayInfo.map(di => {
+            {filteredDayInfo.map(di => {
               const dKey = di.isNextMonth ? 999 : di.day
               const stat = dayStats[dKey] || { total: 0, officers: 0, agents: [] }
               const hasNoOfficer = stat.officers < 1
@@ -611,7 +622,7 @@ export default function AdminShiftGrid({
             <td className="p-2.5 sticky left-0 z-[60] bg-slate-900 border-r-2 border-slate-700">
                Ufficiali
             </td>
-            {dayInfo.map(di => {
+            {filteredDayInfo.map(di => {
               const dKey = di.isNextMonth ? 999 : di.day
               const stat = dayStats[dKey] || { total: 0, officers: 0, agents: [] }
               return (
@@ -630,7 +641,7 @@ export default function AdminShiftGrid({
         {/* ─── BODY ─── */}
         <tbody>
           {filteredAgents.length === 0 ? (
-            <tr><td colSpan={dayInfo.length + 4} className="p-12 text-center text-slate-400 text-sm">NESSUN AGENTE TROVATO</td></tr>
+            <tr><td colSpan={filteredDayInfo.length + 4} className="p-12 text-center text-slate-400 text-sm">NESSUN AGENTE TROVATO</td></tr>
           ) : filteredAgents.map((agent, idx) => {
             const effectiveMassimale = agent.isUfficiale ? (settings?.massimaleUfficiale ?? 6) : (settings?.massimaleAgente ?? 5)
             let repFest = 0, repFer = 0, repTotal = 0
@@ -660,7 +671,7 @@ export default function AdminShiftGrid({
                 </td>
 
                 {/* Celle giornaliere */}
-                {dayInfo.map(di => {
+                {filteredDayInfo.map(di => {
                   const targetYearStr = currentYear;
                   const targetMonthStr = String(di.isNextMonth ? currentMonth : currentMonth - 1 + 1).padStart(2, '0');
                   const targetDayStr = String(di.day).padStart(2, '0');
@@ -737,7 +748,7 @@ export default function AdminShiftGrid({
                 <span>Copertura Totali</span>
               </div>
             </td>
-            {dayInfo.map(di => {
+            {filteredDayInfo.map(di => {
               const dKey = di.isNextMonth ? 999 : di.day
               const stat = dayStats[dKey] || { total: 0, officers: 0, agents: [] }
               const hasNoOfficer = stat.officers < 1
@@ -783,7 +794,7 @@ export default function AdminShiftGrid({
             <th className="p-2 text-left font-black text-slate-900 w-52 min-w-[200px] sticky left-0 z-[60] bg-slate-50 border-r-2 border-slate-200 uppercase tracking-tighter">
               <span className="text-[9px] text-slate-400">DATA</span>
             </th>
-            {dayInfo.map(di => (
+            {filteredDayInfo.map(di => (
               <th key={di.isNextMonth ? `f-next-${di.day}` : `f-${di.day}`}
                 className={`px-1 py-1.5 text-center font-black border-r border-slate-100 min-w-[42px] ${di.isNextMonth ? "bg-slate-100 text-slate-300 opacity-50" : (di.isWeekend ? "bg-rose-50 text-rose-600" : "bg-white text-slate-500")}`}>
                 {di.isNextMonth ? '1*' : di.day}<br />
