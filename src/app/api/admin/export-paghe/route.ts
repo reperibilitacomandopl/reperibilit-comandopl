@@ -51,11 +51,23 @@ export async function GET(request: Request) {
     const tenantId = session.user.tenantId
     const tf = tenantId ? { tenantId } : {}
     const { searchParams } = new URL(request.url)
-    const year = parseInt(searchParams.get("year") || new Date().getFullYear().toString())
-    const month = parseInt(searchParams.get("month") || (new Date().getMonth() + 1).toString())
-
-    const firstDay = new Date(Date.UTC(year, month - 1, 1))
-    const lastDay = new Date(Date.UTC(year, month, 0, 23, 59, 59))
+    
+    // Support sia formato vecchio (year/month) che nuovo (startDate/endDate)
+    let firstDay: Date
+    let lastDay: Date
+    
+    const startDateParam = searchParams.get("startDate")
+    const endDateParam = searchParams.get("endDate")
+    
+    if (startDateParam && endDateParam) {
+      firstDay = new Date(`${startDateParam}T00:00:00.000Z`)
+      lastDay = new Date(`${endDateParam}T23:59:59.999Z`)
+    } else {
+      const year = parseInt(searchParams.get("year") || new Date().getFullYear().toString())
+      const month = parseInt(searchParams.get("month") || (new Date().getMonth() + 1).toString())
+      firstDay = new Date(Date.UTC(year, month - 1, 1))
+      lastDay = new Date(Date.UTC(year, month, 0, 23, 59, 59))
+    }
 
     const [agents, shifts, agendaEntries, agentRequests, clockRecords, globalSettings] = await Promise.all([
       prisma.user.findMany({

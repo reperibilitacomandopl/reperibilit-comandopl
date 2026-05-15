@@ -42,50 +42,38 @@ const FIXED_COLUMNS = [
 ]
 
 export default function ExportPaghePanel() {
-  const [year, setYear] = useState(new Date().getFullYear())
-  const [month, setMonth] = useState(new Date().getMonth() + 1)
+  const today = new Date()
+  const firstDayStr = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0]
+  const lastDayStr = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0]
+
+  const [dateFrom, setDateFrom] = useState(firstDayStr)
+  const [dateTo, setDateTo] = useState(lastDayStr)
+  const [selectedAgentId, setSelectedAgentId] = useState("")
+  
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<PayrollData[]>([])
-  const [prevData, setPrevData] = useState<PayrollData[]>([])
 
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/export-paghe?year=${year}&month=${month}`)
+      const res = await fetch(`/api/admin/export-paghe?startDate=${dateFrom}&endDate=${dateTo}`)
       if (res.ok) setData(await res.json())
       else toast.error("Errore caricamento dati paghe")
     } catch {
       toast.error("Errore connessione server")
     }
     setLoading(false)
-  }, [year, month])
+  }, [dateFrom, dateTo])
 
-  // Load previous month data for comparison
-  const loadPrevMonth = useCallback(async () => {
-    let pm = month - 1, py = year
-    if (pm < 1) { pm = 12; py-- }
-    try {
-      const res = await fetch(`/api/admin/export-paghe?year=${py}&month=${pm}`)
-      if (res.ok) setPrevData(await res.json())
-      else setPrevData([])
-    } catch { setPrevData([]) }
-  }, [year, month])
+  useEffect(() => { loadData() }, [loadData])
 
-  useEffect(() => { loadData(); loadPrevMonth() }, [loadData, loadPrevMonth])
+  const filteredData = data.filter(d => selectedAgentId ? d.id === selectedAgentId : true)
 
-  const changeMonth = (delta: number) => {
-    let m = month + delta
-    let y = year
-    if (m > 12) { m = 1; y++ }
-    if (m < 1) { m = 12; y-- }
-    setMonth(m)
-    setYear(y)
-  }
 
   // Raccoglie tutti i codici assenza univoci dal dataset (per colonne dinamiche)
   const allCodici = (() => {
     const set = new Map<string, string>()
-    data.forEach(d => {
+    filteredData.forEach(d => {
       Object.entries(d.codici).forEach(([code, detail]) => {
         if (!set.has(code)) set.set(code, detail.label)
       })
@@ -96,7 +84,7 @@ export default function ExportPaghePanel() {
   const exportExcel = () => {
     const wb = XLSX.utils.book_new()
 
-    const formatted = data.map(d => {
+    const formatted = filteredData.map(d => {
       const row: any = {
         "Matricola": d.matricola,
         "Nominativo": d.nome,
@@ -125,8 +113,8 @@ export default function ExportPaghePanel() {
     const colWidths = Object.keys(formatted[0] || {}).map(k => ({ wch: Math.max(k.length + 2, 12) }))
     ws['!cols'] = colWidths
 
-    XLSX.utils.book_append_sheet(wb, ws, `Paghe ${String(month).padStart(2, '0')}-${year}`)
-    XLSX.writeFile(wb, `Export_Ragioneria_${year}_${String(month).padStart(2, '0')}.xlsx`)
+    XLSX.utils.book_append_sheet(wb, ws, `Export Paghe`)
+    XLSX.writeFile(wb, `Export_Ragioneria_${dateFrom}_al_${dateTo}.xlsx`)
     toast.success("Tracciato Ragioneria scaricato!")
   }
 
@@ -139,7 +127,7 @@ export default function ExportPaghePanel() {
       ...allCodici.map(([code, label]) => `${code} - ${label}`)
     ]
 
-    const rows = data.map(d => [
+    const rows = filteredData.map(d => [
       d.matricola, d.nome, d.qualifica,
       d.oreDiurne.toString(), d.oreNotturne.toString(), d.buoniPasto.toString(),
       d.straordinarioDiurnoFeriale.toString(), d.straordinarioDiurnoFestivo.toString(), d.straordinarioNotturnoFeriale.toString(), d.straordinarioNotturnoFestivo.toString(),
@@ -152,7 +140,7 @@ export default function ExportPaghePanel() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
-    link.download = `Export_Ragioneria_${year}_${String(month).padStart(2, '0')}.csv`
+    link.download = `Export_Ragioneria_${dateFrom}_al_${dateTo}.csv`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -161,28 +149,15 @@ export default function ExportPaghePanel() {
 
   // TOTALI Footer
   const totals = {
-    oreDiurne: Math.round(data.reduce((s, d) => s + d.oreDiurne, 0) * 100) / 100,
-    oreNotturne: Math.round(data.reduce((s, d) => s + d.oreNotturne, 0) * 100) / 100,
-    buoniPasto: data.reduce((s, d) => s + d.buoniPasto, 0),
-    straordinarioDiurnoFeriale: Math.round(data.reduce((s, d) => s + d.straordinarioDiurnoFeriale, 0) * 100) / 100,
-    straordinarioDiurnoFestivo: Math.round(data.reduce((s, d) => s + d.straordinarioDiurnoFestivo, 0) * 100) / 100,
-    straordinarioNotturnoFeriale: Math.round(data.reduce((s, d) => s + d.straordinarioNotturnoFeriale, 0) * 100) / 100,
-    straordinarioNotturnoFestivo: Math.round(data.reduce((s, d) => s + d.straordinarioNotturnoFestivo, 0) * 100) / 100,
-    repFeriale: Math.round(data.reduce((s, d) => s + d.repFeriale, 0) * 100) / 100,
-    repFestiva: Math.round(data.reduce((s, d) => s + d.repFestiva, 0) * 100) / 100,
-  }
-
-  // Previous month totals for comparison
-  const prevTotals = {
-    oreDiurne: Math.round(prevData.reduce((s, d) => s + d.oreDiurne, 0) * 100) / 100,
-    oreNotturne: Math.round(prevData.reduce((s, d) => s + d.oreNotturne, 0) * 100) / 100,
-    buoniPasto: prevData.reduce((s, d) => s + d.buoniPasto, 0),
-    straordinarioDiurnoFeriale: Math.round(prevData.reduce((s, d) => s + d.straordinarioDiurnoFeriale, 0) * 100) / 100,
-    straordinarioDiurnoFestivo: Math.round(prevData.reduce((s, d) => s + d.straordinarioDiurnoFestivo, 0) * 100) / 100,
-    straordinarioNotturnoFeriale: Math.round(prevData.reduce((s, d) => s + d.straordinarioNotturnoFeriale, 0) * 100) / 100,
-    straordinarioNotturnoFestivo: Math.round(prevData.reduce((s, d) => s + d.straordinarioNotturnoFestivo, 0) * 100) / 100,
-    repFeriale: Math.round(prevData.reduce((s, d) => s + d.repFeriale, 0) * 100) / 100,
-    repFestiva: Math.round(prevData.reduce((s, d) => s + d.repFestiva, 0) * 100) / 100,
+    oreDiurne: Math.round(filteredData.reduce((s, d) => s + d.oreDiurne, 0) * 100) / 100,
+    oreNotturne: Math.round(filteredData.reduce((s, d) => s + d.oreNotturne, 0) * 100) / 100,
+    buoniPasto: filteredData.reduce((s, d) => s + d.buoniPasto, 0),
+    straordinarioDiurnoFeriale: Math.round(filteredData.reduce((s, d) => s + d.straordinarioDiurnoFeriale, 0) * 100) / 100,
+    straordinarioDiurnoFestivo: Math.round(filteredData.reduce((s, d) => s + d.straordinarioDiurnoFestivo, 0) * 100) / 100,
+    straordinarioNotturnoFeriale: Math.round(filteredData.reduce((s, d) => s + d.straordinarioNotturnoFeriale, 0) * 100) / 100,
+    straordinarioNotturnoFestivo: Math.round(filteredData.reduce((s, d) => s + d.straordinarioNotturnoFestivo, 0) * 100) / 100,
+    repFeriale: Math.round(filteredData.reduce((s, d) => s + d.repFeriale, 0) * 100) / 100,
+    repFestiva: Math.round(filteredData.reduce((s, d) => s + d.repFestiva, 0) * 100) / 100,
   }
 
   return (
@@ -200,13 +175,37 @@ export default function ExportPaghePanel() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center bg-slate-100 border border-slate-200 rounded-xl p-1">
-            <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-white rounded-lg transition-colors"><ChevronLeft className="w-4 h-4" /></button>
-            <span className="px-4 font-bold text-sm text-slate-800 min-w-[150px] text-center">
-              {new Date(year, month - 1, 1).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }).toUpperCase()}
-            </span>
-            <button onClick={() => changeMonth(1)} className="p-2 hover:bg-white rounded-lg transition-colors"><ChevronRight className="w-4 h-4" /></button>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-2">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1">Da</span>
+            <input 
+              type="date" 
+              value={dateFrom} 
+              onChange={e => setDateFrom(e.target.value)}
+              className="text-sm font-bold bg-white border border-slate-200 rounded-lg px-2 py-1 outline-none text-slate-700"
+            />
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1">A</span>
+            <input 
+              type="date" 
+              value={dateTo} 
+              onChange={e => setDateTo(e.target.value)}
+              className="text-sm font-bold bg-white border border-slate-200 rounded-lg px-2 py-1 outline-none text-slate-700"
+            />
           </div>
+
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-2">
+            <select
+              value={selectedAgentId}
+              onChange={e => setSelectedAgentId(e.target.value)}
+              className="text-sm font-bold bg-white border border-slate-200 rounded-lg px-3 py-1 outline-none text-slate-700 min-w-[200px]"
+            >
+              <option value="">Tutti gli Operatori</option>
+              {data.map(d => (
+                <option key={d.id} value={d.id}>{d.nome} ({d.matricola})</option>
+              ))}
+            </select>
+          </div>
+
           <button 
             onClick={exportExcel}
             disabled={data.length === 0}
@@ -244,19 +243,6 @@ export default function ExportPaghePanel() {
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{col.label}</span>
                 </div>
                 <p className={`text-2xl font-black text-${col.color}-600`}>{val}</p>
-                {/* Delta vs previous month */}
-                {prevData.length > 0 && (() => {
-                  const prev = prevTotals[col.key as keyof typeof prevTotals]
-                  const delta = val - prev
-                  if (delta === 0) return <p className="text-[10px] text-slate-400 mt-1 font-bold">=  vs mese prec.</p>
-                  const pct = prev > 0 ? Math.round((delta / prev) * 100) : 0
-                  return (
-                    <p className={`text-[10px] mt-1 font-bold flex items-center gap-1 ${delta > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                      {delta > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                      {delta > 0 ? '+' : ''}{delta.toFixed(1)} ({pct > 0 ? '+' : ''}{pct}%)
-                    </p>
-                  )
-                })()}
               </div>
             )
           })}
@@ -264,9 +250,9 @@ export default function ExportPaghePanel() {
       )}
 
       {/* ANOMALY DETECTION */}
-      {!loading && data.length > 0 && (() => {
+      {!loading && filteredData.length > 0 && (() => {
         const anomalies: { agent: string; issue: string; severity: 'warning' | 'error' }[] = []
-        data.forEach(d => {
+        filteredData.forEach(d => {
           const totStr = d.straordinarioDiurnoFeriale + d.straordinarioDiurnoFestivo + d.straordinarioNotturnoFeriale + d.straordinarioNotturnoFestivo;
           if (totStr > 40) anomalies.push({ agent: d.nome, issue: `Straordinario eccessivo: ${totStr}h (max consigliato: 40h)`, severity: 'error' })
           if (d.buoniPasto > 26) anomalies.push({ agent: d.nome, issue: `Buoni pasto anomali: ${d.buoniPasto} (max giorni lavorativi: ~22)`, severity: 'warning' })
@@ -326,11 +312,11 @@ export default function ExportPaghePanel() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={100} className="p-10 text-center"><Loader2 className="w-8 h-8 animate-spin text-purple-600 mx-auto" /></td></tr>
-              ) : data.length === 0 ? (
-                <tr><td colSpan={100} className="p-10 text-center text-slate-400 font-bold uppercase tracking-widest">Nessun dato per il periodo selezionato</td></tr>
+              ) : filteredData.length === 0 ? (
+                <tr><td colSpan={100} className="p-10 text-center text-slate-400 font-bold uppercase tracking-widest">Nessun dato per i filtri selezionati</td></tr>
               ) : (
                 <>
-                  {data.map((row, i) => (
+                  {filteredData.map((row, i) => (
                     <tr key={row.id} className={`${i % 2 === 0 ? "bg-white" : "bg-slate-50/30"} hover:bg-purple-50/50 transition-colors`}>
                       <td className="p-3 text-xs font-mono text-slate-500 border-b border-slate-50 sticky left-0 bg-inherit z-10">{row.matricola}</td>
                       <td className="p-3 font-bold text-slate-800 border-b border-slate-50">{row.nome}</td>
@@ -368,7 +354,7 @@ export default function ExportPaghePanel() {
                       <td key={col.key} className="p-3 text-center">{totals[col.key as keyof typeof totals]}</td>
                     ))}
                     {allCodici.map(([code]) => {
-                      const total = data.reduce((s, d) => s + (d.codici[code]?.value || 0), 0)
+                      const total = filteredData.reduce((s, d) => s + (d.codici[code]?.value || 0), 0)
                       return <td key={code} className="p-3 text-center">{total > 0 ? total : "-"}</td>
                     })}
                   </tr>
