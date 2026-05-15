@@ -96,59 +96,31 @@ self.addEventListener('notificationclick', (event: NotificationEvent) => {
   const notification = event.notification;
   notification.close();
   
+  // URL base dalla notifica o default
+  const baseUrl = notification.data?.url || '/';
+  
+  // Se l'utente ha cliccato un'azione rapida, accodiamo il comando nell'URL
+  // Sarà l'applicazione (una volta aperta in primo piano) a processare la timbratura.
+  // Questo aggira i limiti di background fetch di iOS Safari che spesso uccide il processo.
+  let targetUrl = baseUrl;
   if (action === 'CLOCK_IN' || action === 'CLOCK_OUT') {
-    const type = action === 'CLOCK_IN' ? 'IN' : 'OUT';
-    
-    // Creiamo un timeout di 4 secondi per la fetch: se iOS sospende la rete in background, falliamo in fretta per aprire la finestra
-    const fetchPromise = fetch('/api/admin/clock-in', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        type, 
-        lat: null, 
-        lng: null, 
-        accuracy: null, 
-        isManual: true // Segnaliamo che è da notifica
-      })
-    });
-    
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout background fetch')), 4000));
-
-    event.waitUntil(
-      Promise.race([fetchPromise, timeoutPromise])
-        .then(async (res: any) => {
-          if (res.ok) {
-            return self.registration.showNotification(
-              type === 'IN' ? '✅ Entrata Confermata' : '🏁 Uscita Confermata',
-              {
-                body: `Timbratura ${type} eseguita correttamente in background.`,
-                icon: '/icon-192.png',
-                tag: 'clock-confirm'
-              }
-            );
-          } else {
-            return self.clients.openWindow(notification.data?.url || '/');
-          }
-        })
-        .catch(() => {
-          // In caso di errore (timeout iOS o assenza di rete), apriamo forzatamente l'app
-          return self.clients.openWindow(notification.data?.url || '/');
-        })
-    );
-    return;
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    targetUrl = `${baseUrl}${separator}action=${action}&fromPush=true`;
   }
 
-  const urlToOpen = notification.data?.url || '/';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      // Se c'è già una finestra aperta, portala in primo piano e naviga
       for (let i = 0; i < windowClients.length; i++) {
         const client = windowClients[i];
-        if (client.url === urlToOpen && 'focus' in client) {
+        if (client.url.includes(new URL(baseUrl, self.location.origin).origin) && 'focus' in client) {
+          client.navigate(targetUrl);
           return client.focus();
         }
       }
+      // Altrimenti apri una nuova finestra con l'URL e l'azione
       if (self.clients.openWindow) {
-        return self.clients.openWindow(urlToOpen);
+        return self.clients.openWindow(targetUrl);
       }
     })
   );
