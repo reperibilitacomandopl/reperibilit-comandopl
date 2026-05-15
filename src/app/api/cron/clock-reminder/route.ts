@@ -42,10 +42,11 @@ export async function GET(req: Request) {
         }
       })
 
-      if (!todayShift?.timeRange) continue
+      if (!todayShift || !todayShift.timeRange) continue
 
       try {
-        const parts = todayShift.timeRange.split(/[-–]/).map(p => p.trim())
+        const timeRange = todayShift.timeRange as string
+        const parts = timeRange.split(/[-–]/).map(p => p.trim())
         if (parts.length < 2) continue
 
         const endTimeStr = parts[1]
