@@ -21,6 +21,7 @@ export async function GET(req: Request) {
     ` as any[]
 
     const usersInService = activeRecords.filter(r => r.type === 'IN')
+    console.log(`[CRON-REMINDER] Utenti in servizio: ${usersInService.length}`)
 
     if (usersInService.length === 0) {
       return NextResponse.json({ success: true, message: "Nessun utente in servizio." })
@@ -42,7 +43,9 @@ export async function GET(req: Request) {
         }
       })
 
-      if (!todayShift || !todayShift.timeRange) continue
+      console.log(`[CRON-REMINDER] Utente ${userId}: Turno trovato: ${todayShift?.timeRange || 'NO'}`)
+
+      if (!todayShift?.timeRange) continue
 
       try {
         const timeRange = todayShift.timeRange as string
@@ -65,9 +68,10 @@ export async function GET(req: Request) {
         }
 
         const diffMins = (now.getTime() - plannedEnd.getTime()) / (60 * 1000)
+        console.log(`[CRON-REMINDER] Utente ${userId}: Fine prevista: ${endTimeStr}, Diff minuti: ${diffMins.toFixed(1)}`)
 
-        // 3. Se il turno è finito da più di 15 minuti, manda la notifica push
-        if (diffMins >= 15 && diffMins <= 60) { // Limitiamo a un'ora dopo per non essere troppo insistenti
+        // 3. Se il turno è finito da più di 5 minuti, manda la notifica push
+        if (diffMins >= 5 && diffMins <= 120) { 
           
           // Evitiamo di mandare troppe notifiche (es. una ogni 15 minuti)
           const lastNotif = await prisma.notification.findFirst({
