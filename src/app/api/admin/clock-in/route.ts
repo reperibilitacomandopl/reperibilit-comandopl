@@ -90,16 +90,72 @@ export async function POST(req: Request) {
       console.warn(`[CLOCK-IN] ATTENZIONE: Geofencing saltato - Coordinate sede mancanti o tipo non gestito.`)
     }
 
-    // 2. Create Record
+    // 2. Determine if it's a correction or overtime
+    let finalTimestamp = new Date()
+    const { overtimeReason, isCorrection, shiftId } = await req.json()
+
+    if (type === 'OUT' && shiftId) {
+      const shift = await prisma.shift.findUnique({
+        where: { id: shiftId },
+        select: { timeRange: true, date: true }
+      })
+
+      if (shift?.timeRange) {
+        const [, endTimeStr] = shift.timeRange.split(/[-–]/).map(p => p.trim())
+        const [eh, em] = endTimeStr.split(':').map(Number)
+        
+        const plannedEnd = new Date(shift.date)
+        plannedEnd.setHours(eh, em, 0, 0)
+        
+        // Handle night shifts
+        const startTimeStr = shift.timeRange.split(/[-–]/)[0].trim()
+        const [sh] = startTimeStr.split(':').map(Number)
+        if (eh < sh) plannedEnd.setDate(plannedEnd.getDate() + 1)
+
+        if (isCorrection) {
+          finalTimestamp = plannedEnd
+        } else if (overtimeReason) {
+          const diffMs = finalTimestamp.getTime() - plannedEnd.getTime()
+          const diffMins = Math.max(0, Math.floor(diffMs / (1000 * 60)))
+          
+          if (diffMins >= 15) {
+            // Arrotondamento ogni 15 minuti (es. 35 min -> 0.50h, 40 min -> 0.75h se usiamo round)
+            // Usiamo round per eccesso ai 15 min per premiare l'agente come da prassi
+            const roundedHours = Math.round(diffMins / 15) * 0.25
+
+            if (roundedHours > 0) {
+              const { isHoliday } = await import("@/utils/holidays")
+              const isFestivo = isHoliday(new Date())
+
+              await prisma.agentRequest.create({
+                data: {
+                  userId,
+                  tenantId,
+                  date: new Date(),
+                  code: "STR_EXTRA",
+                  hours: roundedHours,
+                  notes: `[AUTO-PROLUNGAMENTO] ${isFestivo ? '(FESTIVO) ' : ''}${overtimeReason}`,
+                  status: "PENDING"
+                }
+              })
+            }
+          }
+        }
+      }
+    }
+
+    // 3. Create Record
     const record = await prisma.clockRecord.create({
       data: {
         userId,
         tenantId,
+        timestamp: finalTimestamp,
         type, // "IN" o "OUT"
         lat,
         lng,
         accuracy,
-        isVerified: true
+        isVerified: true,
+        isManual: !!isCorrection
       }
     })
 

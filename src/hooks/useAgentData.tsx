@@ -302,6 +302,63 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
           toast("Segnale GPS impreciso, la timbratura potrebbe essere rifiutata.", { icon: "⚠️" })
         }
         
+        // 1. Detect Overtime/Correction for OUT
+        let overtimeReason = null
+        let isCorrection = false
+        let activeShiftId = null
+
+        if (type === 'OUT') {
+          const now = new Date()
+          const today = now.toISOString().split('T')[0]
+          const todayShift = myShifts.find(s => {
+            const sDate = s.date instanceof Date ? s.date.toISOString().split('T')[0] : s.date.split('T')[0]
+            return sDate === today && !isAssenza(s.type)
+          })
+
+          if (todayShift && todayShift.timeRange) {
+            activeShiftId = todayShift.id
+            try {
+              const [, endTimeStr] = todayShift.timeRange.split(/[-–]/).map(p => p.trim())
+              const [eh, em] = endTimeStr.split(':').map(Number)
+              const plannedEnd = new Date(now)
+              plannedEnd.setHours(eh, em, 0, 0)
+
+              // Handle night shift scavalco
+              const startTimeStr = todayShift.timeRange.split(/[-–]/)[0].trim()
+              const [sh] = startTimeStr.split(':').map(Number)
+              if (eh < sh) plannedEnd.setDate(plannedEnd.getDate() + 1)
+
+              const diffMins = Math.floor((now.getTime() - plannedEnd.getTime()) / (1000 * 60))
+
+              if (diffMins >= 15) {
+                const choice = window.confirm(
+                  `⚠️ FINE TURNO RILEVATA: ${endTimeStr}\n\nSei in ritardo di ${diffMins} minuti.\n\nVuoi richiedere lo STRAORDINARIO?\n(Clicca OK per SI, ANNULLA se hai solo dimenticato di timbrare)`
+                )
+                
+                if (choice) {
+                  const reason = window.prompt("Inserisci la motivazione dello straordinario (es: Intervento imprevisto):")
+                  if (reason) {
+                    overtimeReason = reason
+                  } else {
+                    toast.error("Motivazione obbligatoria per lo straordinario. Operazione annullata.", { id: toastId })
+                    setClockLoading(false)
+                    return
+                  }
+                } else {
+                  const confirmCorrection = window.confirm("Confermi di voler registrare l'uscita all'orario ufficiale di fine turno?")
+                  if (confirmCorrection) {
+                    isCorrection = true
+                  } else {
+                    toast.error("Operazione annullata.", { id: toastId })
+                    setClockLoading(false)
+                    return
+                  }
+                }
+              }
+            } catch (e) { console.error("Shift parse error", e) }
+          }
+        }
+
         try {
           const res = await fetch('/api/admin/clock-in', {
             method: 'POST',
@@ -310,7 +367,10 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
               type,
               lat: pos.coords.latitude,
               lng: pos.coords.longitude,
-              accuracy: pos.coords.accuracy
+              accuracy: pos.coords.accuracy,
+              overtimeReason,
+              isCorrection,
+              shiftId: activeShiftId
             })
           })
 
