@@ -45,7 +45,8 @@ export async function POST(req: Request) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   try {
-    const { type, lat, lng, accuracy } = await req.json()
+    const body = await req.json()
+    const { type, lat, lng, accuracy, overtimeReason, isCorrection, shiftId } = body
     let tenantId = session.user.tenantId
     const userId = session.user.id
 
@@ -92,7 +93,6 @@ export async function POST(req: Request) {
 
     // 2. Determine if it's a correction or overtime
     let finalTimestamp = new Date()
-    const { overtimeReason, isCorrection, shiftId } = await req.json()
 
     if (type === 'OUT' && shiftId) {
       const shift = await prisma.shift.findUnique({
