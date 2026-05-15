@@ -4,7 +4,10 @@ import { sendPushNotification } from "@/lib/push-notifications"
 
 export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization")
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && process.env.NODE_ENV === 'production') {
+  const host = req.headers.get("host")
+  const isLocal = host?.includes("localhost") || host?.includes("127.0.0.1")
+  
+  if (!isLocal && authHeader !== `Bearer ${process.env.CRON_SECRET}` && process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
