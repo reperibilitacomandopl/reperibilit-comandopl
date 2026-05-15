@@ -20,6 +20,7 @@ export async function GET(req: Request) {
     const activeRecords = await prisma.$queryRaw`
       SELECT DISTINCT ON ("userId") *
       FROM "ClockRecord"
+      WHERE "deletedAt" IS NULL
       ORDER BY "userId", "timestamp" DESC
     ` as any[]
 

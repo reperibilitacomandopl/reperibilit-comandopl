@@ -146,6 +146,8 @@ export default function AdminShiftGrid({
   const [isSavingBulk, setIsSavingBulk] = useState(false)
   const [filterText, setFilterText] = useState("")
   const [selectedSquad, setSelectedSquad] = useState("")
+  const [dateFrom, setDateFrom] = useState("")
+  const [dateTo, setDateTo] = useState("")
 
   // Disabilita drag di default quando si muove il mouse per evitare glitch
   React.useEffect(() => {
@@ -384,8 +386,10 @@ export default function AdminShiftGrid({
       const maxAgentIdx = Math.max(dragStart.agentIndex, agentIndex)
 
       for (let i = minAgentIdx; i <= maxAgentIdx; i++) {
-        for (let d = minDay; d <= maxDay; d++) {
-          newSelected.add(`${agents[i].id}|${d}`)
+        if (filteredAgents[i]) {
+          for (let d = minDay; d <= maxDay; d++) {
+            newSelected.add(`${filteredAgents[i].id}|${d}`)
+          }
         }
       }
       setSelectedCells(newSelected)
@@ -462,18 +466,15 @@ export default function AdminShiftGrid({
       </div>
 
       {/* ─── TOOLBAR FILTRI ─── */}
-      <div className="px-6 py-4 bg-white border-b border-slate-200 flex flex-wrap items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="px-6 py-4 bg-white border-b border-slate-200 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 max-w-xs">
           <input
             type="text"
-            placeholder="Cerca agente o qualifica..."
+            placeholder="🔍 Cerca agente..."
             value={filterText}
             onChange={(e) => setFilterText(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+            className="w-full pl-4 pr-8 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:border-indigo-500 focus:bg-white outline-none transition-all"
           />
-          <div className="absolute left-3 top-2.5 text-slate-400">
-             <ArrowUpDown size={16} />
-          </div>
           {filterText && (
             <button onClick={() => setFilterText("")} className="absolute right-3 top-2.5 text-slate-400 hover:text-rose-500">
               <X size={16} />
@@ -484,13 +485,37 @@ export default function AdminShiftGrid({
         <select
           value={selectedSquad}
           onChange={(e) => setSelectedSquad(e.target.value)}
-          className="px-4 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+          className="px-3 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:border-indigo-500 focus:bg-white outline-none transition-all"
         >
           <option value="">Tutte le squadre</option>
           {squads.map(s => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
+
+        <div className="h-6 w-px bg-slate-200" />
+
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Da</span>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="px-2 py-1.5 bg-slate-50 border-2 border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+          />
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">A</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="px-2 py-1.5 bg-slate-50 border-2 border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+          />
+          {(dateFrom || dateTo) && (
+            <button onClick={() => { setDateFrom(""); setDateTo(""); }} className="p-1 text-slate-400 hover:text-rose-500 transition-colors">
+              <X size={14} />
+            </button>
+          )}
+        </div>
 
         <div className="ml-auto flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
           <span>Mostrati: {filteredAgents.length} di {agents.length}</span>
