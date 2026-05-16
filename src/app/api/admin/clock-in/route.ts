@@ -46,7 +46,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json()
-    const { type, lat, lng, accuracy, overtimeReason, isCorrection, shiftId } = body
+    const { type, lat, lng, accuracy, overtimeReason, isCorrection, shiftId, actualEndTimeStr } = body
     let tenantId = session.user.tenantId
     const userId = session.user.id
 
@@ -93,6 +93,11 @@ export async function POST(req: Request) {
 
     // 2. Determine if it's a correction or overtime
     let finalTimestamp = new Date()
+
+    if (actualEndTimeStr && type === 'OUT') {
+      const [ah, am] = actualEndTimeStr.split(':').map(Number)
+      finalTimestamp.setHours(ah, am, 0, 0)
+    }
 
     if (type === 'OUT' && shiftId) {
       const shift = await prisma.shift.findUnique({

@@ -332,9 +332,16 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
 
               if (diffMins >= 15) {
                 const choice = window.confirm(
-                  `⚠️ FINE TURNO RILEVATA: ${endTimeStr}\n\nSei in ritardo di ${diffMins} minuti.\n\nVuoi richiedere lo STRAORDINARIO?\n(Clicca OK per SI, ANNULLA se hai solo dimenticato di timbrare)`
+                  `⚠️ FINE TURNO RILEVATA: ${endTimeStr}\n\nSei in ritardo rispetto al turno ufficiale.\n\nVuoi richiedere lo STRAORDINARIO?\n(Clicca OK per richiedere straordinario, ANNULLA per registrare solo l'uscita o una correzione)`
                 )
                 
+                let timeInput = window.prompt(`A che ora hai EFFETTIVAMENTE terminato? (Inserisci nel formato HH:MM)\n\nSe lasci vuoto o annulli, verrà registrato l'orario attuale: ${now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`)
+                let actualEndTimeStr = null;
+                
+                if (timeInput && /^\d{1,2}:\d{2}$/.test(timeInput.trim())) {
+                  actualEndTimeStr = timeInput.trim();
+                }
+
                 if (choice) {
                   const reason = window.prompt("Inserisci la motivazione dello straordinario (es: Intervento imprevisto):")
                   if (reason) {
@@ -345,15 +352,21 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
                     return
                   }
                 } else {
-                  const confirmCorrection = window.confirm("Confermi di voler registrare l'uscita all'orario ufficiale di fine turno?")
-                  if (confirmCorrection) {
-                    isCorrection = true
-                  } else {
-                    toast.error("Operazione annullata.", { id: toastId })
-                    setClockLoading(false)
-                    return
+                  if (!actualEndTimeStr) {
+                    const confirmCorrection = window.confirm(`Confermi di voler registrare l'uscita all'orario ufficiale di fine turno (${endTimeStr}) scartando i minuti extra?`)
+                    if (confirmCorrection) {
+                      isCorrection = true
+                    } else {
+                      toast.error("Operazione annullata.", { id: toastId })
+                      setClockLoading(false)
+                      return
+                    }
                   }
                 }
+                
+                // Attach the actual exit time to the request body below
+                // We'll pass it to the API
+                Object.assign(pos.coords, { actualEndTimeStr }) // Hacky way to pass it down without changing pos object scope entirely, but better to just use a local variable.
               }
             } catch (e) { console.error("Shift parse error", e) }
           }
@@ -370,7 +383,8 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
               accuracy: pos.coords.accuracy,
               overtimeReason,
               isCorrection,
-              shiftId: activeShiftId
+              shiftId: activeShiftId,
+              actualEndTimeStr: (pos.coords as any).actualEndTimeStr // retrieving the attached variable
             })
           })
 

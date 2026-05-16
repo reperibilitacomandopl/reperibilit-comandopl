@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { isHoliday } from "@/utils/holidays"
-import { getLabel } from "@/utils/agenda-codes"
+import { getLabel, AGENDA_CATEGORIES } from "@/utils/agenda-codes"
 
 // ─── Helper: calcola ore tra due timestamp in centesimi ───
 function hoursDiff(a: Date, b: Date): number {
@@ -133,6 +133,22 @@ export async function GET(request: Request) {
           const k = "0010"
           if (!codiciMap[k]) codiciMap[k] = { label: "Festività Soppresse", value: 0, unit: "gg" }
           codiciMap[k].value += 1
+        } else {
+          // Fallback: cerca dinamicamente in tutti i codici disponibili
+          let foundCode = null
+          let foundLabel = null
+          for (const cat of AGENDA_CATEGORIES) {
+            const match = cat.items.find(i => i.code === t || i.shortCode === t || (i as any).label?.toUpperCase() === t)
+            if (match) {
+              foundCode = match.code
+              foundLabel = match.label
+              break
+            }
+          }
+          if (foundCode && foundLabel) {
+             if (!codiciMap[foundCode]) codiciMap[foundCode] = { label: foundLabel, value: 0, unit: "gg" }
+             codiciMap[foundCode].value += 1
+          }
         }
       })
 

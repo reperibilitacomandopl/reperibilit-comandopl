@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { Download, FileSpreadsheet, ChevronLeft, ChevronRight, Loader2, Info, Coffee, Moon, Sun, Shield, Clock, TrendingUp, TrendingDown } from "lucide-react"
 import toast from "react-hot-toast"
 import * as XLSX from "xlsx"
+import { AGENDA_CATEGORIES } from "@/utils/agenda-codes"
 
 interface CodiceDetail {
   label: string
@@ -52,6 +53,13 @@ export default function ExportPaghePanel() {
   
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<PayrollData[]>([])
+  
+  // All possible codes from Agenda
+  const allPossibleCodes = AGENDA_CATEGORIES.flatMap(c => c.items)
+  
+  // Custom columns selector
+  const [selectedExtraCodes, setSelectedExtraCodes] = useState<string[]>([])
+  const [showCodeFilter, setShowCodeFilter] = useState(false)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -69,17 +77,33 @@ export default function ExportPaghePanel() {
 
   const filteredData = data.filter(d => selectedAgentId ? d.id === selectedAgentId : true)
 
-
-  // Raccoglie tutti i codici assenza univoci dal dataset (per colonne dinamiche)
-  const allCodici = (() => {
-    const set = new Map<string, string>()
-    filteredData.forEach(d => {
-      Object.entries(d.codici).forEach(([code, detail]) => {
-        if (!set.has(code)) set.set(code, detail.label)
-      })
+  // Raccoglie tutti i codici assenza univoci dal dataset
+  const dataCodiciMap = new Map<string, string>()
+  filteredData.forEach(d => {
+    Object.entries(d.codici).forEach(([code, detail]) => {
+      if (!dataCodiciMap.has(code)) dataCodiciMap.set(code, detail.label)
     })
-    return Array.from(set.entries()).sort((a, b) => a[0].localeCompare(b[0]))
-  })()
+  })
+
+  // Selezioniamo automaticamente i codici presenti nei dati se non è stato fatto manualmente
+  useEffect(() => {
+    if (data.length > 0 && selectedExtraCodes.length === 0) {
+      setSelectedExtraCodes(Array.from(dataCodiciMap.keys()))
+    }
+  }, [data])
+
+  // Codici da mostrare (filtrati)
+  const columnsToShow = selectedExtraCodes.map(code => {
+    const fromPossible = allPossibleCodes.find(c => c.code === code || (c as any).shortCode === code)
+    if (fromPossible) return { code, label: fromPossible.label }
+    return { code, label: dataCodiciMap.get(code) || code }
+  }).sort((a, b) => a.code.localeCompare(b.code))
+
+  const toggleCode = (code: string) => {
+    setSelectedExtraCodes(prev => 
+      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
+    )
+  }
 
   const exportExcel = () => {
     const wb = XLSX.utils.book_new()
@@ -100,7 +124,7 @@ export default function ExportPaghePanel() {
         "REP Festiva (h)": d.repFestiva,
       }
       // Colonne dinamiche assenze/codici
-      allCodici.forEach(([code, label]) => {
+      columnsToShow.forEach(({ code, label }) => {
         const detail = d.codici[code]
         row[`${code} - ${label}`] = detail ? detail.value : 0
       })
@@ -124,7 +148,7 @@ export default function ExportPaghePanel() {
       "ORE DIURNE", "ORE NOTTURNE", "BUONI PASTO", 
       "STR. DIURNO", "STR. FESTIVO", "STR. NOTTURNO", "STR. NOTTURNO FESTIVO",
       "REP FERIALE (h)", "REP FESTIVA (h)",
-      ...allCodici.map(([code, label]) => `${code} - ${label}`)
+      ...columnsToShow.map(({ code, label }) => `${code} - ${label}`)
     ]
 
     const rows = filteredData.map(d => [
@@ -132,7 +156,7 @@ export default function ExportPaghePanel() {
       d.oreDiurne.toString(), d.oreNotturne.toString(), d.buoniPasto.toString(),
       d.straordinarioDiurnoFeriale.toString(), d.straordinarioDiurnoFestivo.toString(), d.straordinarioNotturnoFeriale.toString(), d.straordinarioNotturnoFestivo.toString(),
       d.repFeriale.toString(), d.repFestiva.toString(),
-      ...allCodici.map(([code]) => (d.codici[code]?.value || 0).toString())
+      ...columnsToShow.map(({ code }) => (d.codici[code]?.value || 0).toString())
     ])
 
     const csv = [header, ...rows].map(r => r.join(";")).join("\n")
@@ -203,6 +227,42 @@ export default function ExportPaghePanel() {
                 <option key={d.id} value={d.id}>{d.nome} ({d.matricola})</option>
               ))}
             </select>
+          </div>
+
+          <div className="relative">
+            <button
+              onClick={() => setShowCodeFilter(!showCodeFilter)}
+              className="bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold shadow-sm flex items-center gap-2 hover:bg-slate-50 transition-all"
+            >
+              Filtro Colonne ({selectedExtraCodes.length})
+            </button>
+            {showCodeFilter && (
+              <div className="absolute right-0 mt-2 w-80 max-h-[400px] overflow-y-auto bg-white border border-slate-200 shadow-xl rounded-2xl z-50 p-4">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Codici Agenda</span>
+                  <div className="space-x-2">
+                    <button onClick={() => setSelectedExtraCodes(allPossibleCodes.map(c => c.code))} className="text-[10px] text-blue-600 font-bold uppercase hover:underline">Tutti</button>
+                    <button onClick={() => setSelectedExtraCodes([])} className="text-[10px] text-slate-400 font-bold uppercase hover:underline">Nessuno</button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {allPossibleCodes.map(c => (
+                    <label key={c.code} className="flex items-start gap-2 cursor-pointer group">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedExtraCodes.includes(c.code)}
+                        onChange={() => toggleCode(c.code)}
+                        className="mt-1 w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">{c.label}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">{c.code}</span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <button 
