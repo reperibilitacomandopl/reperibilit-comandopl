@@ -42,7 +42,11 @@ export function useGpsTracking({ isClockedIn, intervalMs = 300000, tenant, myShi
           
           if (isClockedIn === 'OUT' && myShifts) {
             const today = new Date().toISOString().split('T')[0]
-            const todayShift = myShifts.find(s => s.date.startsWith(today))
+            const todayShift = myShifts.find(s => {
+              if (!s.date) return false;
+              const dateStr = typeof s.date === 'string' ? s.date : new Date(s.date).toISOString();
+              return dateStr.startsWith(today);
+            })
             if (todayShift && todayShift.timeRange) {
               const shiftTime = todayShift.timeRange.split('-')[0]?.trim()
               if (shiftTime) {
