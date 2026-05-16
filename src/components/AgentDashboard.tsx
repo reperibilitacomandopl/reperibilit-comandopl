@@ -31,6 +31,7 @@ import NextShiftCard from "./agent/NextShiftCard"
 import PersonalBalances from "./agent/PersonalBalances"
 import PersonalClockHistory from "./agent/PersonalClockHistory"
 import ClockHistoryModal from "./agent/ClockHistoryModal"
+import { ClockOutModal } from "./ClockOutModal"
 import AgentCalendarView from "./agent/AgentCalendarView"
 import AgentYearlyCard from "./agent/AgentYearlyCard"
 import CartellinoSummaryView from "@/components/shared/CartellinoSummaryView"
@@ -527,6 +528,17 @@ export default function AgentDashboard({
           onClose={() => setShowAbsenceModal(false)}
           initialCode={requestFormInitialCode}
           initialNotes={requestFormInitialNotes}
+        />
+      )}
+
+      {admin.clockOutModalConfig && (
+        <ClockOutModal 
+          type={admin.clockOutModalConfig.type}
+          diffMins={admin.clockOutModalConfig.diffMins}
+          plannedEndTime={admin.clockOutModalConfig.plannedEndTime}
+          onConfirm={(data) => admin.submitClockOutWithModal(data)}
+          onCancel={() => admin.setClockOutModalConfig(null)}
+          onCorrectionOnly={admin.clockOutModalConfig.type === "OVERTIME" ? () => admin.submitClockOutWithModal({ code: "CORREZIONE", notes: "Uscita orario ufficiale", isCorrection: true }) : undefined}
         />
       )}
     </div>

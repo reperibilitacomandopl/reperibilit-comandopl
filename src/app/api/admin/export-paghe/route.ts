@@ -88,7 +88,7 @@ export async function GET(request: Request) {
            ...tf, 
            date: { gte: firstDay, lte: lastDay }, 
            status: 'APPROVED', 
-           code: { in: AGENDA_CATEGORIES.find(c => c.group === "Straordinario")?.items.map(i => i.code) || ["STR_EXTRA"] }
+           code: { in: AGENDA_CATEGORIES.filter(c => c.group === "Straordinario" || c.group === "Recupero Ore").flatMap(c => c.items).map(i => i.code) }
         },
         select: { userId: true, hours: true, date: true, code: true }
       }),

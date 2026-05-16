@@ -52,6 +52,15 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
   const [myOds, setMyOds] = useState<OdsData | null>(null)
   const [isClockedIn, setIsClockedIn] = useState<'IN' | 'OUT' | null>(null)
   const [lastClockTime, setLastClockTime] = useState<string | null>(null)
+  
+  // Modal State per Uscite fuori orario (Straordinari e Recuperi)
+  const [clockOutModalConfig, setClockOutModalConfig] = useState<{
+    type: "OVERTIME" | "EARLY_EXIT",
+    diffMins: number,
+    plannedEndTime: string,
+    activeShiftId: string,
+    pos: GeolocationPosition
+  } | null>(null)
   const [clockRecords, setClockRecords] = useState<any[]>([])
   
   // UI State (for hooks/actions)
@@ -331,93 +340,132 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
               const diffMins = Math.floor((now.getTime() - plannedEnd.getTime()) / (1000 * 60))
 
               if (diffMins >= 15) {
-                const choice = window.confirm(
-                  `⚠️ FINE TURNO RILEVATA: ${endTimeStr}\n\nSei in ritardo rispetto al turno ufficiale.\n\nVuoi richiedere lo STRAORDINARIO?\n(Clicca OK per richiedere straordinario, ANNULLA per registrare solo l'uscita o una correzione)`
-                )
-                
-                let timeInput = window.prompt(`A che ora hai EFFETTIVAMENTE terminato? (Inserisci nel formato HH:MM)\n\nSe lasci vuoto o annulli, verrà registrato l'orario attuale: ${now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`)
-                let actualEndTimeStr = null;
-                
-                if (timeInput && /^\d{1,2}:\d{2}$/.test(timeInput.trim())) {
-                  actualEndTimeStr = timeInput.trim();
-                }
-
-                if (choice) {
-                  const reason = window.prompt("Inserisci la motivazione dello straordinario.\n(Opzionale: inizia con il codice es '2020 Elezioni', '2050 Consiglio' per tipologie specifiche. Altrimenti inserisci la motivazione testuale)")
-                  if (reason) {
-                    overtimeReason = reason
-                  } else {
-                    toast.error("Motivazione obbligatoria per lo straordinario. Operazione annullata.", { id: toastId })
-                    setClockLoading(false)
-                    return
-                  }
-                } else {
-                  if (!actualEndTimeStr) {
-                    const confirmCorrection = window.confirm(`Confermi di voler registrare l'uscita all'orario ufficiale di fine turno (${endTimeStr}) scartando i minuti extra?`)
-                    if (confirmCorrection) {
-                      isCorrection = true
-                    } else {
-                      toast.error("Operazione annullata.", { id: toastId })
-                      setClockLoading(false)
-                      return
-                    }
-                  }
-                }
-                
-                // Attach the actual exit time to the request body below
-                // We'll pass it to the API
-                Object.assign(pos.coords, { actualEndTimeStr }) // Hacky way to pass it down without changing pos object scope entirely, but better to just use a local variable.
+                // Straordinario / Uscita posticipata
+                setClockOutModalConfig({
+                  type: "OVERTIME",
+                  diffMins,
+                  plannedEndTime: endTimeStr,
+                  activeShiftId,
+                  pos
+                })
+                setClockLoading(false)
+                toast.dismiss(toastId)
+                return // Ferma l'esecuzione, aspetta il modale
+              } else if (diffMins <= -15) {
+                // Uscita anticipata / Recupero
+                setClockOutModalConfig({
+                  type: "EARLY_EXIT",
+                  diffMins,
+                  plannedEndTime: endTimeStr,
+                  activeShiftId,
+                  pos
+                })
+                setClockLoading(false)
+                toast.dismiss(toastId)
+                return // Ferma l'esecuzione, aspetta il modale
               }
             } catch (e) { console.error("Shift parse error", e) }
           }
         }
 
-        try {
-          const res = await fetch('/api/admin/clock-in', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type,
-              lat: pos.coords.latitude,
-              lng: pos.coords.longitude,
-              accuracy: pos.coords.accuracy,
-              overtimeReason,
-              isCorrection,
-              shiftId: activeShiftId,
-              actualEndTimeStr: (pos.coords as any).actualEndTimeStr // retrieving the attached variable
-            })
-          })
+        // Se non ci sono anomalie di orario, procedi direttamente
+        await executeClockInRequest({
+          type,
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          shiftId: activeShiftId,
+          toastId
+        })
 
-          const data = await res.json()
-
-          if (res.ok) {
-            setIsClockedIn(type)
-            setLastClockTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
-            toast.success(`Timbratura ${type === 'IN' ? 'Entrata' : 'Uscita'} registrata!`, { id: toastId })
-          } else {
-            const errorMsg = data.distance ? 
-              `Troppo lontano! Sei a ${data.distance}m (Limite: ${data.allowed}m)` : 
-              (data.error || "Errore durante la timbratura")
-            toast.error(errorMsg, { id: toastId, duration: 6000 })
-          }
-        } catch (error) {
-          await storeOfflineRequest('/api/admin/clock-in', 'POST', {
-            type, lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy
-          })
-          setIsClockedIn(type)
-          setLastClockTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
-          toast.success(`⚠️ Offline: Timbratura archiviata localmente.`, { id: toastId })
-        } finally {
-          setClockLoading(false)
-        }
-      },
-      () => {
+      }, (err) => {
         setClockLoading(false)
-        toast.error("Impossibile ottenere la posizione. Verifica i permessi GPS.", { id: toastId })
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    )
+        let msg = "Errore GPS sconosciuto."
+        if (err.code === 1) msg = "Permesso GPS negato. Attivalo nelle impostazioni del browser."
+        if (err.code === 2) msg = "Posizione GPS non disponibile."
+        if (err.code === 3) msg = "Timeout acquisizione GPS."
+        toast.error(msg, { id: toastId })
+      }, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      })
+    } catch (error) {
+      console.error(error)
+      toast.error("Errore di sistema", { id: toastId })
+      setClockLoading(false)
+    }
   }
+
+  // Funzione chiamata dal modale dopo la conferma
+  const submitClockOutWithModal = async (data: { code: string; notes: string; actualEndTimeStr?: string; isCorrection?: boolean }) => {
+    if (!clockOutModalConfig) return
+    const toastId = toast.loading("Registrazione in corso...")
+    
+    // Combina il codice e le note per l'API (come si aspetta il backend)
+    // Es. "2020 Elezioni prolungamento" oppure "0008 Uscita anticipata"
+    const overtimeReason = data.isCorrection ? undefined : `${data.code} ${data.notes}`
+
+    await executeClockInRequest({
+      type: "OUT",
+      lat: clockOutModalConfig.pos.coords.latitude,
+      lng: clockOutModalConfig.pos.coords.longitude,
+      accuracy: clockOutModalConfig.pos.coords.accuracy,
+      shiftId: clockOutModalConfig.activeShiftId,
+      overtimeReason,
+      isCorrection: data.isCorrection,
+      actualEndTimeStr: data.actualEndTimeStr,
+      toastId
+    })
+    
+    setClockOutModalConfig(null)
+  }
+
+  // Funzione helper per la chiamata API
+  const executeClockInRequest = async (params: {
+    type: 'IN' | 'OUT',
+    lat: number,
+    lng: number,
+    accuracy: number,
+    shiftId: string | null,
+    overtimeReason?: string,
+    isCorrection?: boolean,
+    actualEndTimeStr?: string,
+    toastId: string
+  }) => {
+    try {
+      const res = await fetch('/api/admin/clock-in', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: params.type,
+          lat: params.lat,
+          lng: params.lng,
+          accuracy: params.accuracy,
+          overtimeReason: params.overtimeReason,
+          isCorrection: params.isCorrection,
+          shiftId: params.shiftId,
+          actualEndTimeStr: params.actualEndTimeStr
+        })
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        setIsClockedIn(params.type)
+        setLastClockTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+        toast.success(`Timbratura ${params.type === 'IN' ? 'Entrata' : 'Uscita'} registrata!`, { id: params.toastId })
+      } else {
+        const errorMsg = data.distance ? 
+          `Troppo lontano! Sei a ${data.distance}m (Limite: ${data.allowed}m)` : 
+          (data.error || "Errore durante la timbratura")
+        toast.error(errorMsg, { id: params.toastId })
+      }
+    } catch (err) {
+      toast.error("Errore di rete", { id: params.toastId })
+    } finally {
+      setClockLoading(false)
+    }
 
   const handleRespondSwap = async (id: string, status: "ACCEPTED" | "REJECTED") => {
     setSwapLoading(true)
@@ -557,6 +605,9 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
     lastClockTime,
     clockRecords,
     clockLoading,
+    clockOutModalConfig,
+    setClockOutModalConfig,
+    submitClockOutWithModal,
     swapLoading,
     agendaSaving,
     telegramCode,

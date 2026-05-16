@@ -121,30 +121,36 @@ export async function POST(req: Request) {
           finalTimestamp = plannedEnd
         } else if (overtimeReason) {
           const diffMs = finalTimestamp.getTime() - plannedEnd.getTime()
-          const diffMins = Math.max(0, Math.floor(diffMs / (1000 * 60)))
+          const diffMins = Math.floor(diffMs / (1000 * 60))
           
-          if (diffMins >= 15) {
-            // Arrotondamento ogni 15 minuti (es. 35 min -> 0.50h, 40 min -> 0.75h se usiamo round)
-            // Usiamo round per eccesso ai 15 min per premiare l'agente come da prassi
-            const roundedHours = Math.round(diffMins / 15) * 0.25
+          if (diffMins >= 15 || diffMins <= -15) {
+            const isEarlyExit = diffMins <= -15
+            const absMins = Math.abs(diffMins)
+            // Arrotondamento ogni 15 minuti
+            const roundedHours = Math.round(absMins / 15) * 0.25
 
             if (roundedHours > 0) {
               const { isHoliday } = await import("@/utils/holidays")
               const isFestivo = isHoliday(new Date())
               const { AGENDA_CATEGORIES } = await import("@/utils/agenda-codes")
-              let finalCode = "STR_EXTRA"
+              
+              let finalCode = isEarlyExit ? "0008" : "STR_EXTRA" // Fallback: 0008 = Recupero Ore Eccedenti
               let finalNotes = overtimeReason
 
-              const extraReasonMatch = overtimeReason.match(/^(\d{4}|STR_\w+)\b/)
+              const extraReasonMatch = overtimeReason.match(/^([A-Z0-9_]+)\b/)
               if (extraReasonMatch) {
                 const possibleCode = extraReasonMatch[1]
-                const straordGroup = AGENDA_CATEGORIES.find(c => c.group === "Straordinario")
-                if (straordGroup?.items.some(i => i.code === possibleCode)) {
+                
+                // Cerca in tutte le categorie (sia Straordinario che Recupero Ore)
+                const allItems = AGENDA_CATEGORIES.flatMap(c => c.items)
+                if (allItems.some(i => i.code === possibleCode)) {
                    finalCode = possibleCode
                    // Rimuovi il codice dal testo della nota per non ripeterlo
                    finalNotes = overtimeReason.replace(possibleCode, "").trim()
                 }
               }
+
+              const reqPrefix = isEarlyExit ? "[AUTO-USCITA ANTICIPATA]" : "[AUTO-PROLUNGAMENTO]"
 
               await prisma.agentRequest.create({
                 data: {
@@ -153,7 +159,7 @@ export async function POST(req: Request) {
                   date: new Date(),
                   code: finalCode,
                   hours: roundedHours,
-                  notes: `[AUTO-PROLUNGAMENTO] ${isFestivo ? '(FESTIVO) ' : ''}${finalNotes}`,
+                  notes: `${reqPrefix} ${isFestivo && !isEarlyExit ? '(FESTIVO) ' : ''}${finalNotes}`,
                   status: "PENDING"
                 }
               })
