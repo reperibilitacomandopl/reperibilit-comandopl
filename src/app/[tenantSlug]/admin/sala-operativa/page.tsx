@@ -474,7 +474,7 @@ export default function CentraleOperativa() {
                 </div>
 
                 {/* Esito dalla Centrale */}
-                {!i.outcome && i.status === 'ON_SITE' && (
+                {!i.outcome && i.status !== 'COMPLETED' && i.status !== 'CANCELED' && (
                   <div>
                     <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Imposta Esito dalla Centrale</p>
                     <div className="grid grid-cols-3 gap-2">

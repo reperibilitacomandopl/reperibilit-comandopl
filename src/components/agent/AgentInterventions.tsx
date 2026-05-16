@@ -174,7 +174,7 @@ export default function AgentInterventions() {
                   </p>
                 )}
                 <p className="text-[10px] text-slate-400 mt-2 text-right">
-                  Chiuso alle {i.completedAt ? new Date(i.completedAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : new Date(i.updatedAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                  Chiuso alle {i.completedAt ? new Date(i.completedAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : new Date(i.createdAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
             ))}

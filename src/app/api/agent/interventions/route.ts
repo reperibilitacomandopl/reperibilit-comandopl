@@ -53,7 +53,7 @@ export async function GET(req: Request) {
         assignedToId: { in: userIdsToCheck },
         OR: [
           { status: { notIn: ["COMPLETED", "CANCELED"] } },
-          { updatedAt: { gte: today, lt: tomorrow } }
+          { completedAt: { gte: today, lt: tomorrow } }
         ]
       },
       orderBy: { createdAt: 'desc' }
