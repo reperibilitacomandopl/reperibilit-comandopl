@@ -131,15 +131,29 @@ export async function POST(req: Request) {
             if (roundedHours > 0) {
               const { isHoliday } = await import("@/utils/holidays")
               const isFestivo = isHoliday(new Date())
+              const { AGENDA_CATEGORIES } = await import("@/utils/agenda-codes")
+              let finalCode = "STR_EXTRA"
+              let finalNotes = overtimeReason
+
+              const extraReasonMatch = overtimeReason.match(/^(\d{4}|STR_\w+)\b/)
+              if (extraReasonMatch) {
+                const possibleCode = extraReasonMatch[1]
+                const straordGroup = AGENDA_CATEGORIES.find(c => c.group === "Straordinario")
+                if (straordGroup?.items.some(i => i.code === possibleCode)) {
+                   finalCode = possibleCode
+                   // Rimuovi il codice dal testo della nota per non ripeterlo
+                   finalNotes = overtimeReason.replace(possibleCode, "").trim()
+                }
+              }
 
               await prisma.agentRequest.create({
                 data: {
                   userId,
                   tenantId,
                   date: new Date(),
-                  code: "STR_EXTRA",
+                  code: finalCode,
                   hours: roundedHours,
-                  notes: `[AUTO-PROLUNGAMENTO] ${isFestivo ? '(FESTIVO) ' : ''}${overtimeReason}`,
+                  notes: `[AUTO-PROLUNGAMENTO] ${isFestivo ? '(FESTIVO) ' : ''}${finalNotes}`,
                   status: "PENDING"
                 }
               })

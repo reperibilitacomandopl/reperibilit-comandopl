@@ -343,7 +343,7 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
                 }
 
                 if (choice) {
-                  const reason = window.prompt("Inserisci la motivazione dello straordinario (es: Intervento imprevisto):")
+                  const reason = window.prompt("Inserisci la motivazione dello straordinario.\n(Opzionale: inizia con il codice es '2020 Elezioni', '2050 Consiglio' per tipologie specifiche. Altrimenti inserisci la motivazione testuale)")
                   if (reason) {
                     overtimeReason = reason
                   } else {

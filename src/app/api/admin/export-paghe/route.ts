@@ -84,8 +84,13 @@ export async function GET(request: Request) {
         select: { userId: true, code: true, hours: true, date: true }
       }),
       prisma.agentRequest.findMany({
-        where: { ...tf, date: { gte: firstDay, lte: lastDay }, status: 'APPROVED', code: 'STR_EXTRA' },
-        select: { userId: true, hours: true, date: true }
+        where: { 
+           ...tf, 
+           date: { gte: firstDay, lte: lastDay }, 
+           status: 'APPROVED', 
+           code: { in: AGENDA_CATEGORIES.find(c => c.group === "Straordinario")?.items.map(i => i.code) || ["STR_EXTRA"] }
+        },
+        select: { userId: true, hours: true, date: true, code: true }
       }),
       prisma.clockRecord.findMany({
         where: { ...tf, timestamp: { gte: firstDay, lte: lastDay } },
@@ -193,7 +198,7 @@ export async function GET(request: Request) {
       let straordinarioNotturnoFestivo = 0
 
       // Mappa Turni Pianificati e Straordinari Approvati per giorno
-      const plannedAuthByDay: Record<string, { nominalH: number, authOvertime: number, isFestivo: boolean }> = {}
+      const plannedAuthByDay: Record<string, { nominalH: number, authOvertime: number, isFestivo: boolean, specificAuths: {code: string, hours: number}[] }> = {}
       aShifts.forEach((s: any) => {
         const d = new Date(s.date)
         const dayKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
@@ -209,15 +214,17 @@ export async function GET(request: Request) {
               nominalH = diff
            }
         }
-        if (!plannedAuthByDay[dayKey]) plannedAuthByDay[dayKey] = { nominalH: 0, authOvertime: 0, isFestivo: isHoliday(d) }
+        if (!plannedAuthByDay[dayKey]) plannedAuthByDay[dayKey] = { nominalH: 0, authOvertime: 0, isFestivo: isHoliday(d), specificAuths: [] }
         plannedAuthByDay[dayKey].nominalH += nominalH
         plannedAuthByDay[dayKey].authOvertime += (s.overtimeHours || 0)
+        if (s.overtimeHours > 0) plannedAuthByDay[dayKey].specificAuths.push({ code: "STR_EXTRA", hours: s.overtimeHours })
       })
       aStrExtra.forEach((req: any) => {
         const d = new Date(req.date)
         const dayKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
-        if (!plannedAuthByDay[dayKey]) plannedAuthByDay[dayKey] = { nominalH: 0, authOvertime: 0, isFestivo: isHoliday(d) }
+        if (!plannedAuthByDay[dayKey]) plannedAuthByDay[dayKey] = { nominalH: 0, authOvertime: 0, isFestivo: isHoliday(d), specificAuths: [] }
         plannedAuthByDay[dayKey].authOvertime += (req.hours || 0)
+        plannedAuthByDay[dayKey].specificAuths.push({ code: req.code, hours: req.hours || 0 })
       })
 
       Object.entries(clocksByDay).forEach(([dayKey, records]) => {
@@ -275,23 +282,35 @@ export async function GET(request: Request) {
            const payableOvertime = Math.min(actualOvertime, plannedInfo.authOvertime)
            
            if (payableOvertime > 0) {
-              // Ripartizione Diurno/Notturno in base alla % di notturno nel turno extra
-              // Per semplicità, se ha fatto notturno nel giorno, lo proporzioniamo o lo attribuiamo come priorità al notturno se l'OUT è di notte.
-              // Approccio rigoroso: se l'ultimo OUT è > 22:00, l'extra è primariamente notturno.
-              const lastOutTime = pairs[pairs.length - 1].outTime.getHours()
-              let extraNott = 0
-              if (lastOutTime >= 22 || lastOutTime < 6) {
-                 // Ha staccato di notte. Diamo priorità allo straordinario notturno (fino al cap delle ore notturne totali fatte)
-                 extraNott = Math.min(payableOvertime, nightHoursDay)
-              }
-              const extraDiur = payableOvertime - extraNott
+              let remaining = payableOvertime;
               
-              if (plannedInfo.isFestivo) {
-                 straordinarioNotturnoFestivo += extraNott
-                 straordinarioDiurnoFestivo += extraDiur
-              } else {
-                 straordinarioNotturnoFeriale += extraNott
-                 straordinarioDiurnoFeriale += extraDiur
+              for (const auth of plannedInfo.specificAuths) {
+                 if (remaining <= 0) break;
+                 const allocated = Math.min(remaining, auth.hours);
+                 remaining -= allocated;
+                 
+                 // Se è lo straordinario generico, applichiamo la logica di smistamento diurno/notturno feriale/festivo
+                 if (auth.code === "STR_EXTRA") {
+                     const lastOutTime = pairs[pairs.length - 1].outTime.getHours()
+                     let extraNott = 0
+                     if (lastOutTime >= 22 || lastOutTime < 6) {
+                        extraNott = Math.min(allocated, nightHoursDay)
+                     }
+                     const extraDiur = allocated - extraNott
+                     
+                     if (plannedInfo.isFestivo) {
+                        straordinarioNotturnoFestivo += extraNott
+                        straordinarioDiurnoFestivo += extraDiur
+                     } else {
+                        straordinarioNotturnoFeriale += extraNott
+                        straordinarioDiurnoFeriale += extraDiur
+                     }
+                 } else {
+                     // Altrimenti, se è stato approvato un codice specifico (es. 2020 Elezioni, 2050 A.O.)
+                     // assegnamo le ore effettuate direttamente a quel codice.
+                     if (!codiciMap[auth.code]) codiciMap[auth.code] = { label: getLabel(auth.code), value: 0, unit: "h" }
+                     codiciMap[auth.code].value += allocated
+                 }
               }
            }
         }
