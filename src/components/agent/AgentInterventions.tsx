@@ -2,55 +2,47 @@
 
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
-import { Shield, MapPin, CheckCircle, Navigation as NavIcon, Clock, AlertTriangle } from "lucide-react"
+import { Shield, MapPin, CheckCircle, Navigation as NavIcon, Clock, ThumbsUp, ThumbsDown, HelpCircle } from "lucide-react"
 import toast from "react-hot-toast"
 
 export default function AgentInterventions() {
   const { data: session } = useSession()
   const [interventions, setInterventions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [showOutcomeFor, setShowOutcomeFor] = useState<string | null>(null)
+  const [outcomeNotes, setOutcomeNotes] = useState("")
 
   const fetchInterventions = async () => {
     try {
       const res = await fetch("/api/agent/interventions")
-      if (res.ok) {
-        const data = await res.json()
-        setInterventions(data)
-      }
-    } catch (error) {
-      console.error("Fetch interventions error", error)
-    } finally {
-      setLoading(false)
-    }
+      if (res.ok) setInterventions(await res.json())
+    } catch (error) { console.error("Fetch interventions error", error) }
+    finally { setLoading(false) }
   }
 
-  // Polling per controllare nuovi interventi assegnati
   useEffect(() => {
     fetchInterventions()
     const interval = setInterval(fetchInterventions, 10000)
     return () => clearInterval(interval)
   }, [])
 
-  const updateStatus = async (id: string, action: string) => {
+  const updateStatus = async (id: string, action: string, outcome?: string) => {
     try {
       const res = await fetch("/api/agent/interventions", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, action })
+        body: JSON.stringify({ id, action, outcome, outcomeNotes: outcome ? outcomeNotes : undefined })
       })
       if (res.ok) {
         toast.success("Stato aggiornato")
+        setShowOutcomeFor(null)
+        setOutcomeNotes("")
         fetchInterventions()
-      } else {
-        toast.error("Impossibile aggiornare lo stato")
-      }
-    } catch (error) {
-      toast.error("Errore di rete")
-    }
+      } else { toast.error("Impossibile aggiornare lo stato") }
+    } catch { toast.error("Errore di rete") }
   }
 
   const handleNavigate = (lat: number, lng: number) => {
-    // Genera URL per Google Maps o app nativa
     window.open(`geo:${lat},${lng}?q=${lat},${lng}`, '_system')
   }
 
@@ -113,10 +105,35 @@ export default function AgentInterventions() {
                   </div>
                 )}
 
-                {i.status === 'ON_SITE' && (
-                  <button onClick={() => updateStatus(i.id, 'COMPLETE')} className="w-full py-3 bg-green-500 text-white rounded-xl font-bold flex items-center justify-center gap-2">
-                    <CheckCircle className="w-5 h-5" /> Intervento Terminato
+                {i.status === 'ON_SITE' && showOutcomeFor !== i.id && (
+                  <button onClick={() => setShowOutcomeFor(i.id)} className="w-full py-3 bg-green-500 text-white rounded-xl font-bold flex items-center justify-center gap-2">
+                    <CheckCircle className="w-5 h-5" /> Chiudi Intervento
                   </button>
+                )}
+
+                {/* Form Esito Intervento */}
+                {i.status === 'ON_SITE' && showOutcomeFor === i.id && (
+                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 space-y-3">
+                    <p className="text-sm font-bold text-slate-700">Esito dell'intervento:</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button onClick={() => updateStatus(i.id, 'COMPLETE', 'POSITIVO')} 
+                        className="py-3 bg-green-500 text-white rounded-xl font-bold flex flex-col items-center gap-1 text-xs">
+                        <ThumbsUp className="w-5 h-5" /> Positivo
+                      </button>
+                      <button onClick={() => updateStatus(i.id, 'COMPLETE', 'NEGATIVO')} 
+                        className="py-3 bg-red-500 text-white rounded-xl font-bold flex flex-col items-center gap-1 text-xs">
+                        <ThumbsDown className="w-5 h-5" /> Negativo
+                      </button>
+                      <button onClick={() => updateStatus(i.id, 'COMPLETE', 'INFONDATO')} 
+                        className="py-3 bg-gray-500 text-white rounded-xl font-bold flex flex-col items-center gap-1 text-xs">
+                        <HelpCircle className="w-5 h-5" /> Infondato
+                      </button>
+                    </div>
+                    <textarea value={outcomeNotes} onChange={e => setOutcomeNotes(e.target.value)}
+                      className="w-full border rounded-lg p-2 text-sm" rows={2}
+                      placeholder="Note sull'esito (opzionale)..." />
+                    <button onClick={() => setShowOutcomeFor(null)} className="w-full text-xs text-gray-500 py-1">Annulla</button>
+                  </div>
                 )}
               </div>
             </div>

@@ -38,7 +38,7 @@ export async function PUT(req: Request) {
   const tenantId = session.user.tenantId
   
   try {
-    const { id, action } = await req.json()
+    const { id, action, outcome, outcomeNotes } = await req.json()
     // action: "ACCEPT", "ARRIVE", "COMPLETE"
 
     const existing = await prisma.intervention.findUnique({ where: { id } })
@@ -57,6 +57,8 @@ export async function PUT(req: Request) {
     } else if (action === "COMPLETE" && existing.status === "ON_SITE") {
        updateData.status = "COMPLETED"
        updateData.completedAt = new Date()
+       if (outcome) updateData.outcome = outcome // POSITIVO, NEGATIVO, INFONDATO
+       if (outcomeNotes) updateData.outcomeNotes = outcomeNotes
     } else {
        return NextResponse.json({ error: "Invalid action for current status" }, { status: 400 })
     }

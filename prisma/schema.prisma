@@ -750,6 +750,8 @@ model Intervention {
   callerName      String?
   callerPhone     String?
   notes           String?   @db.Text
+  outcome         String?   // POSITIVO, NEGATIVO, INFONDATO
+  outcomeNotes    String?   @db.Text
   
   // Timestamps per "Accesso agli Atti"
   createdAt       DateTime  @default(now())
