@@ -73,9 +73,9 @@ export default function CentraleOperativa() {
       } else {
         processedIds.add(p.userId)
         groups.push({
-          id: `single-${p.userId}`,
-          title: "Agente",
-          service: p.shiftType || "Nessun Turno",
+          id: `usr-${p.userId}`,
+          title: `Agente ${p.name}`,
+          service: 'N/A',
           timeRange: p.timeRange,
           vehicle: null,
           radio: p.radio,
@@ -367,7 +367,7 @@ export default function CentraleOperativa() {
                     <option value="">— Assegna dopo —</option>
                     {groupedPatrols.map(g => (
                       <option key={g.members[0].userId} value={g.members[0].userId}>
-                        {g.title} ({g.members.length} {g.members.length === 1 ? 'agente' : 'agenti'})
+                        {g.title} — {g.members.map((m: any) => m.name?.split(' ')[0] || 'Agente').join(', ')}
                       </option>
                     ))}
                   </select>
@@ -452,7 +452,7 @@ export default function CentraleOperativa() {
                     <option value="" disabled>— Seleziona pattuglia —</option>
                     {groupedPatrols.map(g => (
                       <option key={g.members[0].userId} value={g.members[0].userId}>
-                        {g.title} ({g.members.length} {g.members.length === 1 ? 'agente' : 'agenti'})
+                        {g.title} — {g.members.map((m: any) => m.name?.split(' ')[0] || 'Agente').join(', ')}
                       </option>
                     ))}
                   </select>

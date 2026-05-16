@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { isHoliday } from "@/utils/holidays"
+import { AGENDA_CATEGORIES } from "@/utils/agenda-codes"
 
 // Calcolo distanza tra due punti in metri (Haversine)
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -142,9 +144,7 @@ export async function POST(req: Request) {
               const roundedHours = Math.round(absMins / 15) * 0.25
 
               if (roundedHours > 0) {
-                const { isHoliday } = await import("@/utils/holidays")
                 const isFestivo = isHoliday(new Date())
-                const { AGENDA_CATEGORIES } = await import("@/utils/agenda-codes")
                 
                 let finalCode = isEarlyExit ? "0008" : "STR_EXTRA" // Fallback: 0008 = Recupero Ore Eccedenti
                 let finalNotes = overtimeReason
