@@ -12,6 +12,7 @@ import PlanningMobileView from "@/components/PlanningMobileView"
 import AgentRequestForm from "./agent/AgentRequestForm"
 import AgentSwapBoard from "./agent/AgentSwapBoard"
 import FloatingSosButton from "./agent/FloatingSosButton"
+import AgentInterventions from "./agent/AgentInterventions"
 
 export default function DashboardShell({ 
   session, 
@@ -169,6 +170,12 @@ export default function DashboardShell({
                     <div className="px-1">
                       <AgentRequestForm balances={null} onClose={() => setActiveTab('dashboard')} />
                     </div>
+                  </div>
+                )}
+
+                {activeTab === 'interventions' && (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <AgentInterventions />
                   </div>
                 )}
 

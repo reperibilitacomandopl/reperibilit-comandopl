@@ -59,7 +59,9 @@ export function useGpsTracking({ isClockedIn, intervalMs = 300000, tenant, myShi
             }
           }
 
-          if (isTrackingAllowed && now - lastUpdate.current > intervalMs) {
+          if (isTrackingAllowed) {
+            const currentInterval = isClockedIn === 'IN' ? 60000 : intervalMs; // 1 min in servizio, altrimenti default
+            if (now - lastUpdate.current > currentInterval) {
             try {
               await fetch("/api/agent/location", {
                 method: "POST",
@@ -69,6 +71,7 @@ export function useGpsTracking({ isClockedIn, intervalMs = 300000, tenant, myShi
               lastUpdate.current = now
             } catch (err) {
               console.error("[GPS_HOOK_ERROR]", err)
+              }
             }
           }
 

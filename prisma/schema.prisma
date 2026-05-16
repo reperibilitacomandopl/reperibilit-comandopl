@@ -58,6 +58,7 @@ model Tenant {
   weapons            Weapon[]
   chatMessages       ChatMessage[]
   dailyOdsNotes      DailyOdsNote[]
+  interventions      Intervention[]
 }
 
 model User {
@@ -144,6 +145,7 @@ model User {
   deletedAt                DateTime?
   failedLoginAttempts      Int                @default(0)
   lockoutUntil             DateTime?
+  interventions            Intervention[]     @relation("UserInterventions")
 
   @@unique([tenantId, matricola])
 }
@@ -732,4 +734,33 @@ model DailyOdsNote {
   tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, date])
+}
+
+model Intervention {
+  id              String    @id @default(uuid())
+  tenantId        String?
+  assignedToId    String?   // L'agente incaricato (es. capopattuglia)
+  type            String    // es. INCIDENTE, VIABILITA, LITE
+  priority        String    // RED, YELLOW, GREEN
+  status          String    @default("PENDING") // PENDING, DISPATCHED, ACCEPTED, ON_SITE, COMPLETED
+  address         String
+  lat             Float?
+  lng             Float?
+  description     String?   @db.Text
+  callerName      String?
+  callerPhone     String?
+  notes           String?   @db.Text
+  
+  // Timestamps per "Accesso agli Atti"
+  createdAt       DateTime  @default(now())
+  dispatchedAt    DateTime?
+  acceptedAt      DateTime?
+  arrivedAt       DateTime?
+  completedAt     DateTime?
+  
+  assignedTo      User?     @relation("UserInterventions", fields: [assignedToId], references: [id])
+  tenant          Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([assignedToId, status])
 }
