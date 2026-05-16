@@ -55,6 +55,10 @@ export async function GET(req: Request) {
         include: {
           vehicle: true,
           radio: true,
+          serviceCategory: true,
+          serviceType: true,
+          weapon: true,
+          armor: true,
           user: {
             select: { id: true, name: true, matricola: true, lastLat: true, lastLng: true, lastSeenAt: true }
           }
@@ -75,20 +79,28 @@ export async function GET(req: Request) {
           activePatrols.push({
             userId: u.id, name: u.name, matricola: u.matricola,
             vehicle: null, radio: null, patrolGroupId: null,
+            serviceCategory: null, serviceType: null, timeRange: null,
+            shiftType: null, weapon: null, armor: null,
             lat: u.lastLat, lng: u.lastLng, lastSeenAt: u.lastSeenAt
           })
         }
       }
 
-      // Format patrols from shifts (with vehicle/radio)
+      // Format patrols from shifts (with full ODS data)
       for (const shift of shiftsToday) {
-        const u = (shift as any).user
+        const s = shift as any
         activePatrols.push({
-          userId: u.id, name: u.name, matricola: u.matricola,
-          vehicle: (shift as any).vehicle?.name || null,
-          radio: (shift as any).radio?.name || null,
-          patrolGroupId: (shift as any).patrolGroupId,
-          lat: u.lastLat, lng: u.lastLng, lastSeenAt: u.lastSeenAt
+          userId: s.user.id, name: s.user.name, matricola: s.user.matricola,
+          vehicle: s.vehicle?.name || null,
+          radio: s.radio?.name || null,
+          patrolGroupId: s.patrolGroupId,
+          serviceCategory: s.serviceCategory?.name || null,
+          serviceType: s.serviceType?.name || null,
+          timeRange: s.timeRange || null,
+          shiftType: s.type || null,
+          weapon: s.weapon?.name || null,
+          armor: s.armor?.name || null,
+          lat: s.user.lastLat, lng: s.user.lastLng, lastSeenAt: s.user.lastSeenAt
         })
       }
     }

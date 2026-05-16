@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react"
 import dynamic from "next/dynamic"
 import { useSession } from "next-auth/react"
-import { Shield, Plus, Clock, MapPin, Phone, User, X, Send, CheckCircle, XCircle } from "lucide-react"
+import { Shield, Plus, Clock, MapPin, Phone, User, X, Send, CheckCircle, XCircle, Car, RadioTower, Crosshair } from "lucide-react"
 import toast from "react-hot-toast"
+import { STRADE_ALTAMURA } from "@/data/strade-altamura"
 
 const LiveMap = dynamic(() => import("@/components/admin/LiveMap"), {
   ssr: false,
@@ -34,6 +35,8 @@ export default function CentraleOperativa() {
   const [showNewModal, setShowNewModal] = useState(false)
   const [hqCenter, setHqCenter] = useState<[number, number]>([40.8286, 16.5518])
   const [submitting, setSubmitting] = useState(false)
+  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
   
   // Form nuovo intervento
   const [form, setForm] = useState({
@@ -185,12 +188,29 @@ export default function CentraleOperativa() {
             <div className="text-center text-slate-600 py-4 text-xs">Nessun agente timbrato IN</div>
           )}
           {patrols.map(p => (
-            <div key={p.userId} className="p-2 bg-slate-800 rounded-lg border border-slate-700 text-xs flex justify-between items-center">
-              <div>
-                <p className="font-bold text-white">{p.name} <span className="text-slate-500 font-normal">({p.matricola})</span></p>
-                <p className="text-[10px] text-slate-500">{p.vehicle || 'Appiedato'} {p.radio ? `• ${p.radio}` : ''}</p>
+            <div key={p.userId} className="p-3 bg-slate-800 rounded-lg border border-slate-700 text-xs">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <p className="font-bold text-white text-sm">{p.name}</p>
+                  <p className="text-[10px] text-slate-500">Matr. {p.matricola}</p>
+                </div>
+                <div className={`w-2.5 h-2.5 rounded-full mt-1 ${p.lat ? 'bg-green-500 animate-pulse' : 'bg-slate-600'}`} title={p.lat ? 'GPS Attivo' : 'GPS N/D'}/>
               </div>
-              <div className={`w-2.5 h-2.5 rounded-full ${p.lat ? 'bg-green-500 animate-pulse' : 'bg-slate-600'}`} title={p.lat ? 'GPS Attivo' : 'GPS Non disponibile'}></div>
+              <div className="space-y-1 text-[10px]">
+                {p.serviceCategory && <p className="text-blue-400 font-semibold">{p.serviceCategory}{p.serviceType ? ` — ${p.serviceType}` : ''}</p>}
+                {p.timeRange && <p className="text-slate-400">⏰ Orario: {p.timeRange}</p>}
+                {p.shiftType && !p.serviceCategory && <p className="text-slate-400">📋 {p.shiftType}</p>}
+                <div className="flex gap-3 text-slate-500">
+                  {p.vehicle && <span className="flex items-center gap-1"><Car className="w-3 h-3 text-blue-400"/>{p.vehicle}</span>}
+                  {p.radio && <span className="flex items-center gap-1"><RadioTower className="w-3 h-3 text-green-400"/>{p.radio}</span>}
+                </div>
+                {(p.weapon || p.armor) && (
+                  <div className="flex gap-3 text-slate-500">
+                    {p.weapon && <span>🔫 {p.weapon}</span>}
+                    {p.armor && <span>🛡️ {p.armor}</span>}
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -238,7 +258,33 @@ export default function CentraleOperativa() {
                 <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Indirizzo / Luogo</label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400"/>
-                  <input required value={form.address} onChange={e => setForm({...form, address: e.target.value})} className="w-full border border-gray-200 rounded-lg p-2.5 pl-9 text-sm focus:ring-2 focus:ring-blue-500" placeholder="Es. Via Bari 12, Altamura"/>
+                  <input required value={form.address} 
+                    onChange={e => {
+                      const val = e.target.value
+                      setForm({...form, address: val})
+                      if (val.length >= 2) {
+                        const matches = STRADE_ALTAMURA.filter(s => s.toLowerCase().includes(val.toLowerCase())).slice(0, 6)
+                        setAddressSuggestions(matches)
+                        setShowSuggestions(matches.length > 0)
+                      } else {
+                        setShowSuggestions(false)
+                      }
+                    }}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                    className="w-full border border-gray-200 rounded-lg p-2.5 pl-9 text-sm focus:ring-2 focus:ring-blue-500" 
+                    placeholder="Es. Via Bari 12, Altamura"
+                    autoComplete="off"
+                  />
+                  {showSuggestions && addressSuggestions.length > 0 && (
+                    <div className="absolute z-50 top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                      {addressSuggestions.map((s, idx) => (
+                        <button key={idx} type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 border-b border-gray-50 last:border-0"
+                          onMouseDown={() => { setForm({...form, address: s}); setShowSuggestions(false) }}
+                        >{s}</button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               <div>

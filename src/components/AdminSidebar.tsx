@@ -41,6 +41,7 @@ const NAV_SECTIONS: NavSection[] = [
     accent: "text-blue-400",
     items: [
       { label: "Centrale Operativa", href: "/admin/sala-operativa", icon: Navigation, description: "Mappa GPS in Tempo Reale" },
+      { label: "Registro Interventi", href: "/admin/registro-interventi", icon: FileText, description: "Storico Interventi e Accesso Atti" },
       { label: "Overview & KPI", href: "/admin/pannello", icon: LayoutDashboard, description: "Pannello di controllo globale" },
       { label: "Pianificazione Mensile", href: "/admin/pianificazione", icon: CalendarDays, description: "Griglia Turni e Reperibilità" },
       { label: "Ordine di Servizio", href: "/admin/ods", icon: FileText, description: "Gestione Assegnazioni Giornaliere" },
