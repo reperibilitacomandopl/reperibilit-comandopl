@@ -294,7 +294,7 @@ export default function ExportPaghePanel() {
       {!loading && filteredData.length > 0 && (() => {
         const anomalies: { agent: string; issue: string; severity: 'warning' | 'error' }[] = []
         filteredData.forEach(d => {
-          const totStr = d.straordinarioDiurnoFeriale + d.straordinarioDiurnoFestivo + d.straordinarioNotturnoFeriale + d.straordinarioNotturnoFestivo;
+          const totStr = (d.codici["2000"]?.value || 0) + (d.codici["2001"]?.value || 0) + (d.codici["2002"]?.value || 0) + (d.codici["2003"]?.value || 0) + (d.codici["2020"]?.value || 0) + (d.codici["2021"]?.value || 0);
           if (totStr > 40) anomalies.push({ agent: d.nome, issue: `Straordinario eccessivo: ${totStr}h (max consigliato: 40h)`, severity: 'error' })
           if (d.buoniPasto > 26) anomalies.push({ agent: d.nome, issue: `Buoni pasto anomali: ${d.buoniPasto} (max giorni lavorativi: ~22)`, severity: 'warning' })
           if (d.oreDiurne === 0 && d.oreNotturne === 0 && d.repFeriale === 0 && d.repFestiva === 0) {
