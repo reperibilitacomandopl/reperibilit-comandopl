@@ -51,7 +51,10 @@ export async function GET(req: Request) {
       where: {
         tenantId,
         assignedToId: { in: userIdsToCheck },
-        status: { notIn: ["COMPLETED", "CANCELED"] }
+        OR: [
+          { status: { notIn: ["COMPLETED", "CANCELED"] } },
+          { updatedAt: { gte: today, lt: tomorrow } }
+        ]
       },
       orderBy: { createdAt: 'desc' }
     })

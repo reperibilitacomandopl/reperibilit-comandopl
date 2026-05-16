@@ -47,7 +47,7 @@ export default function RegistroInterventi() {
 
   const handleExport = () => {
     const csv = [
-      "Data,Ora,Tipo,Priorità,Indirizzo,Stato,Operatore,Richiedente,Telefono,Descrizione,Ora Invio,Ora Accettazione,Ora Arrivo,Ora Chiusura"
+      "Data,Ora,Tipo,Priorità,Indirizzo,Stato,Operatore,Richiedente,Telefono,Descrizione,Note Centrale,Esito,Note Operatore,Ora Invio,Ora Accettazione,Ora Arrivo,Ora Chiusura"
     ]
     for (const i of interventions) {
       const d = new Date(i.createdAt)
@@ -56,6 +56,9 @@ export default function RegistroInterventi() {
         i.type, i.priority, `"${i.address}"`, i.status,
         i.assignedTo?.name || "", i.callerName || "", i.callerPhone || "",
         `"${(i.description || '').replace(/"/g, '""')}"`,
+        `"${(i.notes || '').replace(/"/g, '""')}"`,
+        i.outcome || "",
+        `"${(i.outcomeNotes || '').replace(/"/g, '""')}"`,
         i.dispatchedAt ? new Date(i.dispatchedAt).toLocaleTimeString('it-IT') : "",
         i.acceptedAt ? new Date(i.acceptedAt).toLocaleTimeString('it-IT') : "",
         i.arrivedAt ? new Date(i.arrivedAt).toLocaleTimeString('it-IT') : "",
@@ -209,9 +212,15 @@ export default function RegistroInterventi() {
                           </div>
                         </div>
                         <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Descrizione</p>
-                          <p className="text-slate-600">{i.description || "Nessuna nota"}</p>
-                          {i.notes && <p className="mt-1 text-slate-500 italic">Note: {i.notes}</p>}
+                          <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Descrizione ed Esito</p>
+                          <p className="text-slate-600">{i.description || "Nessuna descrizione"}</p>
+                          {i.notes && <p className="mt-1 text-slate-500 italic">Note Centrale: {i.notes}</p>}
+                          {i.outcome && (
+                            <div className="mt-2 p-2 bg-white rounded border border-slate-100">
+                              <p className="text-xs font-bold text-slate-700">Esito: <span className={i.outcome === 'POSITIVO' ? 'text-green-600' : i.outcome === 'NEGATIVO' ? 'text-red-600' : 'text-slate-600'}>{i.outcome}</span></p>
+                              {i.outcomeNotes && <p className="text-xs text-slate-500 italic mt-1">Note Operatore: {i.outcomeNotes}</p>}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

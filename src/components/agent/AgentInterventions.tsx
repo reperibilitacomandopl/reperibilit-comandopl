@@ -48,6 +48,9 @@ export default function AgentInterventions() {
 
   if (loading) return <div className="p-4 text-center">Caricamento...</div>
 
+  const activeInterventions = interventions.filter(i => i.status !== 'COMPLETED' && i.status !== 'CANCELED')
+  const historyInterventions = interventions.filter(i => i.status === 'COMPLETED' || i.status === 'CANCELED')
+
   return (
     <div className="p-4 pb-24 space-y-4">
       <div className="flex items-center gap-2 mb-6">
@@ -55,14 +58,15 @@ export default function AgentInterventions() {
         <h1 className="text-xl font-bold text-slate-800">Missioni Assegnate</h1>
       </div>
 
-      {interventions.length === 0 ? (
-        <div className="text-center p-8 bg-gray-50 rounded-xl border border-gray-100">
+      {activeInterventions.length === 0 ? (
+        <div className="text-center p-8 bg-gray-50 rounded-xl border border-gray-100 mb-6">
           <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-3" />
           <p className="text-gray-500 font-medium">Nessun intervento attivo</p>
           <p className="text-sm text-gray-400">La centrale non ha inviato missioni.</p>
         </div>
       ) : (
-        interventions.map(i => (
+        <div className="space-y-4 mb-8">
+          {activeInterventions.map(i => (
           <div key={i.id} className={`bg-white rounded-xl shadow-md overflow-hidden border-t-4 ${i.priority === 'RED' ? 'border-red-500' : i.priority === 'YELLOW' ? 'border-yellow-500' : 'border-green-500'}`}>
             <div className="p-4">
               <div className="flex justify-between items-start mb-2">
@@ -138,7 +142,44 @@ export default function AgentInterventions() {
               </div>
             </div>
           </div>
-        ))
+          ))}
+        </div>
+      )}
+
+      {historyInterventions.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-slate-500" /> Storico Odierno
+          </h2>
+          <div className="space-y-3">
+            {historyInterventions.map(i => (
+              <div key={i.id} className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                <div className="flex justify-between items-start mb-1">
+                  <h3 className="font-bold text-slate-700 text-sm">{i.type}</h3>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    i.outcome === 'POSITIVO' ? 'bg-green-100 text-green-700' :
+                    i.outcome === 'NEGATIVO' ? 'bg-red-100 text-red-700' :
+                    'bg-gray-200 text-gray-700'
+                  }`}>
+                    {i.outcome || 'CHIUSO'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 text-slate-500 text-xs mb-2">
+                  <MapPin className="w-3 h-3 shrink-0" />
+                  <p className="truncate">{i.address}</p>
+                </div>
+                {i.outcomeNotes && (
+                  <p className="text-xs text-slate-600 bg-white p-2 rounded border border-slate-100 italic">
+                    Note: {i.outcomeNotes}
+                  </p>
+                )}
+                <p className="text-[10px] text-slate-400 mt-2 text-right">
+                  Chiuso alle {i.completedAt ? new Date(i.completedAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : new Date(i.updatedAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   )
