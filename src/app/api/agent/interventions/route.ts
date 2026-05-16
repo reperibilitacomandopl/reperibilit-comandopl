@@ -44,7 +44,7 @@ export async function GET(req: Request) {
         },
         select: { userId: true }
       })
-      userIdsToCheck = [...new Set([...userIdsToCheck, ...partnerShifts.map(s => s.userId)])]
+      userIdsToCheck = [...new Set([...userIdsToCheck, ...partnerShifts.map((s: any) => s.userId)])]
     }
 
     const interventions = await prisma.intervention.findMany({
