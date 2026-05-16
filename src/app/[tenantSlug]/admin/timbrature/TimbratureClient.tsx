@@ -8,6 +8,7 @@ type Record = {
   id: string
   user: { name: string; matricola: string }
   timestamp: string
+  actualTimestamp?: string
   type: string
   lat: number | null
   lng: number | null
@@ -28,12 +29,18 @@ type Alert = {
 export default function TimbratureClient({ initialRecords, tenantSettings, activeAlerts }: { initialRecords: Record[], tenantSettings: any, activeAlerts: Alert[] }) {
   const [records, setRecords] = useState(initialRecords)
   const [alerts, setAlerts] = useState<Alert[]>(activeAlerts || [])
+  const [searchQuery, setSearchQuery] = useState("")
   const [settings, setSettings] = useState({
     lat: tenantSettings?.lat || "",
     lng: tenantSettings?.lng || "",
     clockInRadius: tenantSettings?.clockInRadius || 500
   })
   const [saving, setSaving] = useState(false)
+
+  const filteredRecords = records.filter(r => 
+    r.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    r.user.matricola.includes(searchQuery)
+  )
 
   const handleSaveSettings = async () => {
     setSaving(true)
@@ -228,14 +235,23 @@ export default function TimbratureClient({ initialRecords, tenantSettings, activ
         {/* Records Table */}
         <div className="lg:col-span-2 space-y-6">
           <div className="premium-card overflow-hidden">
-            <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                  <div className="w-2 h-8 bg-emerald-500 rounded-full" />
                  <h2 className="text-xl font-black text-slate-900 font-sans tracking-tight">Ultime Timbrature</h2>
               </div>
-              <span className="px-4 py-1.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-slate-400 uppercase tracking-widest shadow-sm">
-                {records.length} Record Caricati
-              </span>
+              <div className="flex items-center gap-4">
+                <input 
+                  type="text"
+                  placeholder="Cerca agente o matricola..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all shadow-sm"
+                />
+                <span className="px-4 py-1.5 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-slate-400 uppercase tracking-widest shadow-sm whitespace-nowrap">
+                  {filteredRecords.length} Record Trovati
+                </span>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -249,7 +265,7 @@ export default function TimbratureClient({ initialRecords, tenantSettings, activ
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {records.map((r) => (
+                  {filteredRecords.map((r) => (
                     <tr key={r.id} className="hover:bg-slate-50/50 transition-colors group">
                       <td className="px-8 py-6">
                         <div className="flex flex-col gap-0.5">
@@ -265,6 +281,11 @@ export default function TimbratureClient({ initialRecords, tenantSettings, activ
                           <span className="text-[12px] text-emerald-600 font-black font-mono">
                             {new Date(r.timestamp).toLocaleTimeString("it-IT", { hour: '2-digit', minute: '2-digit' })}
                           </span>
+                          {r.actualTimestamp && (
+                            <span className="text-[10px] text-slate-400 font-mono font-medium italic mt-1">
+                              Reale: {new Date(r.actualTimestamp).toLocaleTimeString("it-IT", { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-8 py-6">
@@ -304,7 +325,7 @@ export default function TimbratureClient({ initialRecords, tenantSettings, activ
                       </td>
                     </tr>
                   ))}
-                  {records.length === 0 && (
+                  {filteredRecords.length === 0 && (
                     <tr>
                       <td colSpan={4} className="px-8 py-20 text-center">
                         <div className="flex flex-col items-center gap-4">

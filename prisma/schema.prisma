@@ -538,19 +538,20 @@ model PushSubscription {
 }
 
 model ClockRecord {
-  id         String   @id @default(uuid())
-  tenantId   String?
-  userId     String
-  timestamp  DateTime @default(now())
-  deletedAt  DateTime?
-  type       String
-  lat        Float?
-  lng        Float?
-  accuracy   Float?
-  isVerified Boolean  @default(true)
-  isManual   Boolean  @default(false)
-  tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String   @id @default(uuid())
+  tenantId        String?
+  userId          String
+  timestamp       DateTime @default(now())
+  actualTimestamp DateTime?
+  deletedAt       DateTime?
+  type            String
+  lat             Float?
+  lng             Float?
+  accuracy        Float?
+  isVerified      Boolean  @default(true)
+  isManual        Boolean  @default(false)
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, tenantId, timestamp])
 }

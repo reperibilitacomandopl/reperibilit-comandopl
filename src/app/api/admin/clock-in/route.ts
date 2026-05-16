@@ -93,79 +93,106 @@ export async function POST(req: Request) {
 
     // 2. Determine if it's a correction or overtime
     let finalTimestamp = new Date()
+    let actualTimestamp: Date | undefined = undefined
 
     if (actualEndTimeStr && type === 'OUT') {
       const [ah, am] = actualEndTimeStr.split(':').map(Number)
       finalTimestamp.setHours(ah, am, 0, 0)
     }
 
-    if (type === 'OUT' && shiftId) {
+    if (shiftId) {
       const shift = await prisma.shift.findUnique({
         where: { id: shiftId },
         select: { timeRange: true, date: true }
       })
 
       if (shift?.timeRange) {
-        const [, endTimeStr] = shift.timeRange.split(/[-–]/).map(p => p.trim())
+        const [startTimeStr, endTimeStr] = shift.timeRange.split(/[-–]/).map(p => p.trim())
+        const [sh, sm] = startTimeStr.split(':').map(Number)
         const [eh, em] = endTimeStr.split(':').map(Number)
         
+        const plannedStart = new Date(shift.date)
+        plannedStart.setHours(sh, sm, 0, 0)
+
         const plannedEnd = new Date(shift.date)
         plannedEnd.setHours(eh, em, 0, 0)
         
         // Handle night shifts
-        const startTimeStr = shift.timeRange.split(/[-–]/)[0].trim()
-        const [sh] = startTimeStr.split(':').map(Number)
         if (eh < sh) plannedEnd.setDate(plannedEnd.getDate() + 1)
 
-        if (isCorrection) {
-          finalTimestamp = plannedEnd
-        } else if (overtimeReason) {
-          const diffMs = finalTimestamp.getTime() - plannedEnd.getTime()
-          const diffMins = Math.floor(diffMs / (1000 * 60))
-          
-          if (diffMins >= 15 || diffMins <= -15) {
-            const isEarlyExit = diffMins <= -15
-            const absMins = Math.abs(diffMins)
-            // Arrotondamento ogni 15 minuti
-            const roundedHours = Math.round(absMins / 15) * 0.25
+        if (type === 'IN') {
+          // Arrotonda l'orario di ingresso a quello del turno
+          actualTimestamp = finalTimestamp
+          finalTimestamp = plannedStart
+        } else if (type === 'OUT') {
+          actualTimestamp = finalTimestamp
+          if (isCorrection) {
+            finalTimestamp = plannedEnd
+          } else if (overtimeReason) {
+            const diffMs = finalTimestamp.getTime() - plannedEnd.getTime()
+            const diffMins = Math.floor(diffMs / (1000 * 60))
+            
+            if (diffMins >= 15 || diffMins <= -15) {
+              const isEarlyExit = diffMins <= -15
+              const absMins = Math.abs(diffMins)
+              // Arrotondamento ogni 15 minuti
+              const roundedHours = Math.round(absMins / 15) * 0.25
 
-            if (roundedHours > 0) {
-              const { isHoliday } = await import("@/utils/holidays")
-              const isFestivo = isHoliday(new Date())
-              const { AGENDA_CATEGORIES } = await import("@/utils/agenda-codes")
-              
-              let finalCode = isEarlyExit ? "0008" : "STR_EXTRA" // Fallback: 0008 = Recupero Ore Eccedenti
-              let finalNotes = overtimeReason
-
-              const extraReasonMatch = overtimeReason.match(/^([A-Z0-9_]+)\b/)
-              if (extraReasonMatch) {
-                const possibleCode = extraReasonMatch[1]
+              if (roundedHours > 0) {
+                const { isHoliday } = await import("@/utils/holidays")
+                const isFestivo = isHoliday(new Date())
+                const { AGENDA_CATEGORIES } = await import("@/utils/agenda-codes")
                 
-                // Cerca in tutte le categorie (sia Straordinario che Recupero Ore)
-                const allItems = AGENDA_CATEGORIES.flatMap(c => c.items)
-                if (allItems.some(i => i.code === possibleCode)) {
-                   finalCode = possibleCode
-                   // Rimuovi il codice dal testo della nota per non ripeterlo
-                   finalNotes = overtimeReason.replace(possibleCode, "").trim()
+                let finalCode = isEarlyExit ? "0008" : "STR_EXTRA" // Fallback: 0008 = Recupero Ore Eccedenti
+                let finalNotes = overtimeReason
+
+                const extraReasonMatch = overtimeReason.match(/^([A-Z0-9_]+)\b/)
+                if (extraReasonMatch) {
+                  const possibleCode = extraReasonMatch[1]
+                  
+                  // Cerca in tutte le categorie (sia Straordinario che Recupero Ore)
+                  const allItems = AGENDA_CATEGORIES.flatMap(c => c.items)
+                  if (allItems.some(i => i.code === possibleCode)) {
+                     finalCode = possibleCode
+                     // Rimuovi il codice dal testo della nota per non ripeterlo
+                     finalNotes = overtimeReason.replace(possibleCode, "").trim()
+                  }
                 }
+
+                const reqPrefix = isEarlyExit ? "[AUTO-USCITA ANTICIPATA]" : "[AUTO-PROLUNGAMENTO]"
+
+                await prisma.agentRequest.create({
+                  data: {
+                    userId,
+                    tenantId,
+                    date: new Date(),
+                    code: finalCode,
+                    hours: roundedHours,
+                    notes: `${reqPrefix} ${isFestivo && !isEarlyExit ? '(FESTIVO) ' : ''}${finalNotes}`,
+                    status: "PENDING"
+                  }
+                })
               }
-
-              const reqPrefix = isEarlyExit ? "[AUTO-USCITA ANTICIPATA]" : "[AUTO-PROLUNGAMENTO]"
-
-              await prisma.agentRequest.create({
-                data: {
-                  userId,
-                  tenantId,
-                  date: new Date(),
-                  code: finalCode,
-                  hours: roundedHours,
-                  notes: `${reqPrefix} ${isFestivo && !isEarlyExit ? '(FESTIVO) ' : ''}${finalNotes}`,
-                  status: "PENDING"
-                }
-              })
             }
           }
         }
+      }
+    } else if (type === 'IN') {
+      // Fallback: se non c'è shiftId esplicito, cerca un turno per oggi per l'utente
+      const today = new Date()
+      today.setHours(0,0,0,0)
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      const todayShift = await prisma.shift.findFirst({
+         where: { userId, date: { gte: today, lt: tomorrow } }
+      })
+      if (todayShift?.timeRange) {
+        const [startTimeStr] = todayShift.timeRange.split(/[-–]/).map(p => p.trim())
+        const [sh, sm] = startTimeStr.split(':').map(Number)
+        const plannedStart = new Date(todayShift.date)
+        plannedStart.setHours(sh, sm, 0, 0)
+        actualTimestamp = finalTimestamp
+        finalTimestamp = plannedStart
       }
     }
 
@@ -175,6 +202,7 @@ export async function POST(req: Request) {
         userId,
         tenantId,
         timestamp: finalTimestamp,
+        actualTimestamp: actualTimestamp,
         type, // "IN" o "OUT"
         lat,
         lng,
