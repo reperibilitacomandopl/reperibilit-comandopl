@@ -360,7 +360,7 @@ export default function ExportPaghePanel() {
                   </th>
                 ))}
                 {/* COLONNE DINAMICHE ASSENZE (codice + descrizione) */}
-                {allCodici.map(([code, label]) => (
+                {columnsToShow.map(({code, label}) => (
                   <th key={code} className="p-3 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 min-w-[120px]">
                     <div className="text-slate-600 font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 text-[9px] inline-block mb-0.5">{code}</div>
                     <div className="text-[8px] text-slate-400 font-bold normal-case leading-tight">{label}</div>
@@ -390,7 +390,7 @@ export default function ExportPaghePanel() {
                         )
                       })}
                       {/* Valori colonne dinamiche */}
-                      {allCodici.map(([code]) => {
+                      {columnsToShow.map(({code}) => {
                         const detail = row.codici[code]
                         return (
                           <td key={code} className="p-3 text-center border-b border-slate-50 font-bold">
@@ -412,7 +412,7 @@ export default function ExportPaghePanel() {
                     {FIXED_COLUMNS.map(col => (
                       <td key={col.key} className="p-3 text-center">{totals[col.key as keyof typeof totals]}</td>
                     ))}
-                    {allCodici.map(([code]) => {
+                    {columnsToShow.map(({code}) => {
                       const total = filteredData.reduce((s, d) => s + (d.codici[code]?.value || 0), 0)
                       return <td key={code} className="p-3 text-center">{total > 0 ? total : "-"}</td>
                     })}
