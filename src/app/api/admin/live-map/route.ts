@@ -107,9 +107,16 @@ export async function GET(req: Request) {
       orderBy: { createdAt: 'desc' }
     })
 
+    // 4. Get Tenant coordinates (HQ position for map center)
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { lat: true, lng: true, name: true }
+    })
+
     return NextResponse.json({
        patrols: activePatrols,
-       interventions: activeInterventions
+       interventions: activeInterventions,
+       hq: tenant ? { lat: tenant.lat, lng: tenant.lng, name: tenant.name } : null
     })
 
   } catch (error) {

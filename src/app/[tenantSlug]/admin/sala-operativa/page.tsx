@@ -3,11 +3,28 @@
 import { useState, useEffect } from "react"
 import dynamic from "next/dynamic"
 import { useSession } from "next-auth/react"
-import { Shield, Plus, Navigation, AlertTriangle, CheckCircle2, Clock } from "lucide-react"
+import { Shield, Plus, Clock, MapPin, Phone, User, X, Send, CheckCircle, XCircle } from "lucide-react"
 import toast from "react-hot-toast"
 
-// Carica la mappa lato client
-const LiveMap = dynamic(() => import("@/components/admin/LiveMap"), { ssr: false, loading: () => <div className="w-full h-full flex items-center justify-center bg-gray-100">Caricamento Mappa...</div> })
+const LiveMap = dynamic(() => import("@/components/admin/LiveMap"), {
+  ssr: false,
+  loading: () => <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-400">Caricamento Mappa...</div>
+})
+
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: "In Attesa",
+  DISPATCHED: "Inviato",
+  ACCEPTED: "Accettato",
+  ON_SITE: "Sul Posto",
+  COMPLETED: "Completato",
+  CANCELED: "Annullato"
+}
+
+const PRIORITY_LABELS: Record<string, string> = {
+  RED: "🔴 Emergenza",
+  YELLOW: "🟡 Urgente",
+  GREEN: "🟢 Ordinario"
+}
 
 export default function CentraleOperativa() {
   const { data: session } = useSession()
@@ -15,20 +32,23 @@ export default function CentraleOperativa() {
   const [interventions, setInterventions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showNewModal, setShowNewModal] = useState(false)
+  const [hqCenter, setHqCenter] = useState<[number, number]>([40.8286, 16.5518])
+  const [submitting, setSubmitting] = useState(false)
   
-  // Dati per nuovo intervento
-  const [newType, setNewType] = useState("INCIDENTE")
-  const [newPriority, setNewPriority] = useState("YELLOW")
-  const [newAddress, setNewAddress] = useState("")
-  const [newDesc, setNewDesc] = useState("")
+  // Form nuovo intervento
+  const [form, setForm] = useState({
+    type: "INCIDENTE", priority: "YELLOW", address: "",
+    description: "", callerName: "", callerPhone: "", assignedToId: ""
+  })
 
   const fetchData = async () => {
     try {
       const res = await fetch("/api/admin/live-map")
       if (res.ok) {
         const data = await res.json()
-        setPatrols(data.patrols)
-        setInterventions(data.interventions)
+        setPatrols(data.patrols || [])
+        setInterventions(data.interventions || [])
+        if (data.hq?.lat && data.hq?.lng) setHqCenter([data.hq.lat, data.hq.lng])
       }
     } catch (error) {
       console.error("Fetch live map error", error)
@@ -37,41 +57,31 @@ export default function CentraleOperativa() {
     }
   }
 
-  // Polling ogni 15 secondi
   useEffect(() => {
     fetchData()
-    const interval = setInterval(fetchData, 15000)
+    const interval = setInterval(fetchData, 10000)
     return () => clearInterval(interval)
   }, [])
 
-  const handleCreateIntervention = async (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Mock lat/lng based on a central point, in a real app use Geocoding API
+    setSubmitting(true)
     const lat = 40.8286 + (Math.random() - 0.5) * 0.02
     const lng = 16.5518 + (Math.random() - 0.5) * 0.02
-
     try {
       const res = await fetch("/api/admin/interventions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: newType,
-          priority: newPriority,
-          address: newAddress,
-          description: newDesc,
-          lat, lng
-        })
+        body: JSON.stringify({ ...form, lat, lng, assignedToId: form.assignedToId || undefined })
       })
       if (res.ok) {
-        toast.success("Intervento creato")
+        toast.success("Intervento creato con successo")
         setShowNewModal(false)
+        setForm({ type: "INCIDENTE", priority: "YELLOW", address: "", description: "", callerName: "", callerPhone: "", assignedToId: "" })
         fetchData()
-      } else {
-        toast.error("Errore creazione intervento")
-      }
-    } catch (error) {
-      toast.error("Errore di rete")
-    }
+      } else { toast.error("Errore creazione") }
+    } catch { toast.error("Errore di rete") }
+    setSubmitting(false)
   }
 
   const handleAssign = async (interventionId: string, assignedToId: string) => {
@@ -81,111 +91,143 @@ export default function CentraleOperativa() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: interventionId, assignedToId })
       })
-      if (res.ok) {
-        toast.success("Pattuglia assegnata")
-        fetchData()
-      } else {
-        toast.error("Errore durante l'assegnazione")
-      }
-    } catch (error) {
-      toast.error("Errore di rete")
-    }
+      if (res.ok) { toast.success("Pattuglia assegnata"); fetchData() }
+      else { toast.error("Errore assegnazione") }
+    } catch { toast.error("Errore di rete") }
+  }
+
+  const handleClose = async (id: string) => {
+    if (!confirm("Chiudere questo intervento?")) return
+    try {
+      const res = await fetch("/api/admin/interventions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: "COMPLETED" })
+      })
+      if (res.ok) { toast.success("Intervento chiuso"); fetchData() }
+    } catch { toast.error("Errore") }
   }
 
   if (!session) return null
 
+  const now = new Date()
+
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-white overflow-hidden">
-      
-      {/* Sidebar Interventi */}
-      <div className="w-80 border-r flex flex-col bg-gray-50 z-10 shadow-lg relative">
-        <div className="p-4 bg-slate-900 text-white flex justify-between items-center">
+    <div className="flex h-screen bg-slate-900 overflow-hidden">
+      {/* === SIDEBAR === */}
+      <div className="w-[340px] flex flex-col bg-slate-900 border-r border-slate-700 z-10">
+        {/* Header */}
+        <div className="p-4 bg-gradient-to-r from-blue-900 to-slate-900 flex justify-between items-center border-b border-slate-700">
           <div className="flex items-center gap-2">
             <Shield className="w-5 h-5 text-blue-400" />
-            <h2 className="font-semibold">Centrale Operativa</h2>
+            <div>
+              <h2 className="font-bold text-white text-sm">Centrale Operativa</h2>
+              <p className="text-[10px] text-blue-300 font-mono">{now.toLocaleDateString('it-IT', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })} — {now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</p>
+            </div>
           </div>
-          <button onClick={() => setShowNewModal(true)} className="p-1 hover:bg-slate-800 rounded">
-            <Plus className="w-5 h-5" />
+          <button onClick={() => setShowNewModal(true)} className="p-2 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors" title="Nuovo Intervento">
+            <Plus className="w-4 h-4 text-white" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Interventi Attivi ({interventions.length})</h3>
+        <div className="flex-1 overflow-y-auto p-3 space-y-3">
+          {/* Interventi */}
+          <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Interventi Attivi ({interventions.length})</h3>
           
           {interventions.length === 0 && (
-             <div className="text-center text-gray-500 py-8 text-sm">Nessun intervento in corso.</div>
+            <div className="text-center text-slate-600 py-6 text-xs">Nessun intervento in corso</div>
           )}
 
           {interventions.map(i => (
-            <div key={i.id} className={`p-3 bg-white rounded-lg border-l-4 shadow-sm text-sm ${i.priority === 'RED' ? 'border-red-500' : i.priority === 'YELLOW' ? 'border-yellow-500' : 'border-green-500'}`}>
+            <div key={i.id} className={`p-3 rounded-lg border-l-4 bg-slate-800 shadow text-sm ${
+              i.priority === 'RED' ? 'border-red-500' : i.priority === 'YELLOW' ? 'border-yellow-500' : 'border-green-500'
+            }`}>
               <div className="flex justify-between items-start mb-1">
-                <span className="font-semibold">{i.type}</span>
-                <span className="text-[10px] text-gray-400"><Clock className="w-3 h-3 inline mr-1"/>{new Date(i.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-              </div>
-              <p className="text-gray-600 text-xs mb-2 truncate" title={i.address}>{i.address}</p>
-              
-              <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
-                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                  i.status === 'PENDING' ? 'bg-gray-100 text-gray-600' :
-                  i.status === 'DISPATCHED' ? 'bg-blue-100 text-blue-700' :
-                  i.status === 'ACCEPTED' ? 'bg-purple-100 text-purple-700' :
-                  'bg-green-100 text-green-700'
-                }`}>
-                  {i.status}
+                <span className="font-bold text-white text-xs">{i.type}</span>
+                <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                  <Clock className="w-3 h-3"/>
+                  {new Date(i.createdAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </span>
+              </div>
+              <p className="text-slate-400 text-[11px] truncate flex items-center gap-1"><MapPin className="w-3 h-3 shrink-0"/>{i.address}</p>
+              
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-700">
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  i.status === 'PENDING' ? 'bg-slate-700 text-slate-300' :
+                  i.status === 'DISPATCHED' ? 'bg-blue-900 text-blue-300' :
+                  i.status === 'ACCEPTED' ? 'bg-purple-900 text-purple-300' :
+                  i.status === 'ON_SITE' ? 'bg-yellow-900 text-yellow-300' :
+                  'bg-green-900 text-green-300'
+                }`}>{STATUS_LABELS[i.status] || i.status}</span>
 
                 {i.assignedTo ? (
-                  <span className="text-[10px] text-gray-600 font-medium">Assegnato: {i.assignedTo.name}</span>
+                  <span className="text-[10px] text-blue-400">{i.assignedTo.name}</span>
                 ) : (
-                  <span className="text-[10px] text-red-500 font-medium animate-pulse">In attesa di invio</span>
+                  <select className="text-[10px] bg-slate-700 text-white rounded px-1 py-0.5 border border-slate-600"
+                    onChange={e => { if (e.target.value) handleAssign(i.id, e.target.value) }} defaultValue="">
+                    <option value="" disabled>Assegna...</option>
+                    {patrols.map(p => <option key={p.userId} value={p.userId}>{p.name}</option>)}
+                  </select>
                 )}
               </div>
+              
+              {i.status !== 'COMPLETED' && (
+                <button onClick={() => handleClose(i.id)} className="mt-2 w-full text-[10px] text-slate-500 hover:text-red-400 transition-colors flex items-center justify-center gap-1 py-1">
+                  <XCircle className="w-3 h-3"/> Chiudi Intervento
+                </button>
+              )}
             </div>
           ))}
 
-          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 mt-6">Pattuglie in Servizio ({patrols.length})</h3>
+          {/* Pattuglie */}
+          <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-4">Pattuglie in Servizio ({patrols.length})</h3>
+          {patrols.length === 0 && (
+            <div className="text-center text-slate-600 py-4 text-xs">Nessun agente timbrato IN</div>
+          )}
           {patrols.map(p => (
-            <div key={p.userId} className="p-2 bg-white rounded border border-blue-100 shadow-sm text-xs flex justify-between items-center">
+            <div key={p.userId} className="p-2 bg-slate-800 rounded-lg border border-slate-700 text-xs flex justify-between items-center">
               <div>
-                <p className="font-medium text-slate-800">{p.name}</p>
-                <p className="text-[10px] text-gray-500">{p.vehicle || 'Nessun veicolo'}</p>
+                <p className="font-bold text-white">{p.name} <span className="text-slate-500 font-normal">({p.matricola})</span></p>
+                <p className="text-[10px] text-slate-500">{p.vehicle || 'Appiedato'} {p.radio ? `• ${p.radio}` : ''}</p>
               </div>
-              <div className="w-2 h-2 rounded-full bg-green-500" title="GPS Attivo"></div>
+              <div className={`w-2.5 h-2.5 rounded-full ${p.lat ? 'bg-green-500 animate-pulse' : 'bg-slate-600'}`} title={p.lat ? 'GPS Attivo' : 'GPS Non disponibile'}></div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Mappa */}
-      <div className="flex-1 relative bg-gray-200">
-        {!loading && (
-           <LiveMap patrols={patrols} interventions={interventions} onAssign={handleAssign} />
-        )}
+      {/* === MAPPA === */}
+      <div className="flex-1 relative">
+        {!loading && <LiveMap patrols={patrols} interventions={interventions} onAssign={handleAssign} center={hqCenter} />}
       </div>
 
-      {/* Modale Nuovo Intervento */}
+      {/* === MODALE NUOVO INTERVENTO === */}
       {showNewModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
-            <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
-              <h2 className="font-semibold text-slate-800">Nuovo Intervento</h2>
-              <button onClick={() => setShowNewModal(false)} className="text-gray-400 hover:text-gray-600">&times;</button>
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden">
+            <div className="p-5 bg-gradient-to-r from-blue-600 to-blue-800 flex justify-between items-center">
+              <div>
+                <h2 className="font-bold text-white text-lg">Nuovo Intervento</h2>
+                <p className="text-blue-200 text-xs">{now.toLocaleString('it-IT')}</p>
+              </div>
+              <button onClick={() => setShowNewModal(false)} className="p-1 hover:bg-white/20 rounded-lg transition"><X className="w-5 h-5 text-white"/></button>
             </div>
-            <form onSubmit={handleCreateIntervention} className="p-4 space-y-4">
+            <form onSubmit={handleCreate} className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Tipologia</label>
-                  <select value={newType} onChange={e => setNewType(e.target.value)} className="w-full border rounded-md p-2 text-sm">
-                    <option value="INCIDENTE">Incidente Stradale</option>
-                    <option value="VIABILITA">Viabilità</option>
-                    <option value="LITE">Lite in corso</option>
-                    <option value="CONTROLLO">Controllo Territorio</option>
-                    <option value="ALTRO">Altro</option>
+                  <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Tipologia</label>
+                  <select value={form.type} onChange={e => setForm({...form, type: e.target.value})} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="INCIDENTE">🚗 Incidente Stradale</option>
+                    <option value="VIABILITA">🚧 Viabilità</option>
+                    <option value="LITE">⚠️ Lite / Rissa</option>
+                    <option value="CONTROLLO">🔍 Controllo Territorio</option>
+                    <option value="SEGNALAZIONE">📞 Segnalazione Cittadino</option>
+                    <option value="ALTRO">📋 Altro</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Priorità</label>
-                  <select value={newPriority} onChange={e => setNewPriority(e.target.value)} className="w-full border rounded-md p-2 text-sm">
+                  <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Priorità</label>
+                  <select value={form.priority} onChange={e => setForm({...form, priority: e.target.value})} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     <option value="RED">🔴 Codice Rosso (Emergenza)</option>
                     <option value="YELLOW">🟡 Codice Giallo (Urgente)</option>
                     <option value="GREEN">🟢 Codice Verde (Differibile)</option>
@@ -193,16 +235,43 @@ export default function CentraleOperativa() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Indirizzo / Luogo</label>
-                <input required type="text" value={newAddress} onChange={e => setNewAddress(e.target.value)} className="w-full border rounded-md p-2 text-sm" placeholder="Es. Via Bari 12, Altamura" />
+                <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Indirizzo / Luogo</label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400"/>
+                  <input required value={form.address} onChange={e => setForm({...form, address: e.target.value})} className="w-full border border-gray-200 rounded-lg p-2.5 pl-9 text-sm focus:ring-2 focus:ring-blue-500" placeholder="Es. Via Bari 12, Altamura"/>
+                </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Descrizione Dettagliata</label>
-                <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} className="w-full border rounded-md p-2 text-sm" rows={3} placeholder="Note aggiuntive..."></textarea>
+                <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Descrizione</label>
+                <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500" rows={2} placeholder="Dettagli dell'intervento..."/>
               </div>
-              <div className="pt-4 border-t flex justify-end gap-2">
-                <button type="button" onClick={() => setShowNewModal(false)} className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200">Annulla</button>
-                <button type="submit" className="px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 shadow-sm">Crea Intervento</button>
+              {/* Dati Richiedente per Accesso agli Atti */}
+              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Dati Richiedente (Accesso agli Atti)</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="relative">
+                    <User className="absolute left-3 top-2.5 w-3.5 h-3.5 text-gray-400"/>
+                    <input value={form.callerName} onChange={e => setForm({...form, callerName: e.target.value})} className="w-full border border-gray-200 rounded-lg p-2 pl-8 text-sm" placeholder="Nome e Cognome"/>
+                  </div>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-2.5 w-3.5 h-3.5 text-gray-400"/>
+                    <input value={form.callerPhone} onChange={e => setForm({...form, callerPhone: e.target.value})} className="w-full border border-gray-200 rounded-lg p-2 pl-8 text-sm" placeholder="Telefono"/>
+                  </div>
+                </div>
+              </div>
+              {/* Assegnazione diretta */}
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Assegna Pattuglia (Opzionale)</label>
+                <select value={form.assignedToId} onChange={e => setForm({...form, assignedToId: e.target.value})} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500">
+                  <option value="">— Assegna dopo —</option>
+                  {patrols.map(p => <option key={p.userId} value={p.userId}>{p.name} {p.vehicle ? `(${p.vehicle})` : '(Appiedato)'}</option>)}
+                </select>
+              </div>
+              <div className="pt-3 border-t flex justify-end gap-3">
+                <button type="button" onClick={() => setShowNewModal(false)} className="px-5 py-2.5 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium">Annulla</button>
+                <button type="submit" disabled={submitting} className="px-5 py-2.5 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-lg font-bold flex items-center gap-2 disabled:opacity-50">
+                  <Send className="w-4 h-4"/> {submitting ? 'Invio...' : 'Crea Intervento'}
+                </button>
               </div>
             </form>
           </div>
