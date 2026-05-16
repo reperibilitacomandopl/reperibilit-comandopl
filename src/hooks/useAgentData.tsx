@@ -300,7 +300,8 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
     setClockLoading(true)
     const toastId = toast.loading(`${type === 'IN' ? 'Entrata' : 'Uscita'} in corso...`)
 
-    navigator.geolocation.getCurrentPosition(
+    try {
+      navigator.geolocation.getCurrentPosition(
       async (pos) => {
         if (pos.coords.accuracy > 500) {
           setClockLoading(false)
