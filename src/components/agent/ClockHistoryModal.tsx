@@ -6,6 +6,7 @@ import { X, Calendar, Clock, ChevronRight, LogIn, LogOut, FileText, Filter } fro
 interface ClockRecord {
   id: string
   timestamp: string
+  actualTimestamp?: string
   type: string
   isVerified: boolean
 }
@@ -136,6 +137,11 @@ export default function ClockHistoryModal({ onClose, records }: ClockHistoryModa
                                        {date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
                                        {activeTab !== 'days' && <span className="text-slate-400 font-medium ml-2">({date.toLocaleDateString('it-IT')})</span>}
                                     </p>
+                                    {r.actualTimestamp && (
+                                       <p className="text-[9px] text-slate-400 font-medium italic">
+                                          Reale: {new Date(r.actualTimestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                                       </p>
+                                    )}
                                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{isEnter ? "Entrata" : "Uscita"}</p>
                                  </div>
                               </div>

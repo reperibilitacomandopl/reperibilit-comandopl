@@ -92,6 +92,11 @@ export default function PersonalClockHistory({
                             </div>
                             <div>
                                <p className="text-sm font-black text-slate-800">{new Date(r.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</p>
+                               {r.actualTimestamp && (
+                                 <p className="text-[10px] text-slate-400 font-medium italic mt-0.5">
+                                   Reale: {new Date(r.actualTimestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                                 </p>
+                               )}
                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{isEnter ? "Entrata" : "Uscita"}</p>
                             </div>
                           </div>
