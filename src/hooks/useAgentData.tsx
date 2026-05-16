@@ -467,6 +467,8 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
     } finally {
       setClockLoading(false)
     }
+  }
+
 
   const handleRespondSwap = async (id: string, status: "ACCEPTED" | "REJECTED") => {
     setSwapLoading(true)
