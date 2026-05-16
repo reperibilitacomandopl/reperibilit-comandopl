@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { isHoliday } from "@/utils/holidays"
+import { isHoliday, isPreFestive } from "@/utils/holidays"
 import { getLabel, AGENDA_CATEGORIES } from "@/utils/agenda-codes"
 
 // ─── Helper: calcola ore tra due timestamp in centesimi ───
@@ -249,9 +249,33 @@ export async function GET(request: Request) {
         
         // Calcolo separazione Feriale/Festivo per le ore ordinarie/indennità
         const isFestivo = plannedAuthByDay[dayKey]?.isFestivo || false
+        const isPreFestiveDay = isPreFestive(new Date(pairs[0].inTime))
+
         if (isFestivo) {
           oreFestiveNotturne += nightHoursDay
           oreFestive += (totalHoursDay - nightHoursDay)
+        } else if (isPreFestiveDay) {
+          // Nei pre-festivi (es. Sabato), le ore dalle 22:00 in poi sono FESTIVE NOTTURNE
+          // Le ore dalle 00:00 alle 06:00 (se non seguono un festivo) sono NOTTURNE FERIALI
+          let preFestNottMin = 0
+          let ferialNottMin = 0
+          
+          pairs.forEach(p => {
+             const cursor = new Date(p.inTime)
+             while (cursor < p.outTime) {
+                const h = cursor.getHours()
+                if (h >= 22) preFestNottMin++
+                else if (h < 6) ferialNottMin++
+                cursor.setMinutes(cursor.getMinutes() + 1)
+             }
+          })
+          
+          const preFestNottH = Math.round((preFestNottMin / 60) * 100) / 100
+          const ferialNottH = Math.round((ferialNottMin / 60) * 100) / 100
+          
+          oreFestiveNotturne += preFestNottH
+          oreNotturne += ferialNottH
+          oreDiurne += Math.max(0, totalHoursDay - preFestNottH - ferialNottH)
         } else {
           oreNotturne += nightHoursDay
           oreDiurne += (totalHoursDay - nightHoursDay)
@@ -299,6 +323,10 @@ export async function GET(request: Request) {
                      if (plannedInfo.isFestivo) {
                         straordinarioNotturnoFestivo += extraNott
                         straordinarioDiurnoFestivo += extraDiur
+                     } else if (isPreFestiveDay) {
+                        // Se pre-festivo, solo la parte notturna (dalle 22) è festiva
+                        straordinarioNotturnoFestivo += extraNott
+                        straordinarioDiurnoFeriale += extraDiur
                      } else {
                         straordinarioNotturnoFeriale += extraNott
                         straordinarioDiurnoFeriale += extraDiur

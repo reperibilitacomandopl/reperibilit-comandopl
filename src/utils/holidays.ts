@@ -48,8 +48,20 @@ export function isCalendarHoliday(date: Date): boolean {
 
 export function isHoliday(date: Date): boolean {
   const dow = date.getDay();
-  if (dow === 0 || dow === 6) return true; // Weekend
+  if (dow === 0) return true; // Domenica è festivo
 
   return isCalendarHoliday(date);
+}
+
+/**
+ * Ritorna true se il giorno è un sabato o il giorno prima di una festività sul calendario
+ */
+export function isPreFestive(date: Date): boolean {
+  const dow = date.getDay();
+  if (dow === 6) return true; // Sabato è pre-festivo per definizione
+
+  const nextDay = new Date(date);
+  nextDay.setDate(date.getDate() + 1);
+  return isCalendarHoliday(nextDay);
 }
 
