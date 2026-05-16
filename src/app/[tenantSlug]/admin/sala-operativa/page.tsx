@@ -37,6 +37,7 @@ export default function CentraleOperativa() {
   const [submitting, setSubmitting] = useState(false)
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [selectedIntervention, setSelectedIntervention] = useState<any>(null)
   
   // Form nuovo intervento
   const [form, setForm] = useState({
@@ -107,7 +108,30 @@ export default function CentraleOperativa() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status: "COMPLETED" })
       })
-      if (res.ok) { toast.success("Intervento chiuso"); fetchData() }
+      if (res.ok) { toast.success("Intervento chiuso"); fetchData(); setSelectedIntervention(null) }
+    } catch { toast.error("Errore") }
+  }
+
+  const handleReopen = async (id: string) => {
+    try {
+      const res = await fetch("/api/admin/interventions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: "DISPATCHED" })
+      })
+      if (res.ok) { toast.success("Intervento riaperto"); fetchData(); setSelectedIntervention(null) }
+    } catch { toast.error("Errore") }
+  }
+
+  const handleUpdateIntervention = async (id: string, updates: any) => {
+    try {
+      const res = await fetch("/api/admin/interventions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...updates })
+      })
+      if (res.ok) { toast.success("Aggiornato"); fetchData(); setSelectedIntervention(null) }
+      else { toast.error("Errore aggiornamento") }
     } catch { toast.error("Errore") }
   }
 
@@ -142,7 +166,7 @@ export default function CentraleOperativa() {
           )}
 
           {interventions.map(i => (
-            <div key={i.id} className={`p-3 rounded-lg border-l-4 bg-slate-800 shadow text-sm ${
+            <div key={i.id} onClick={() => setSelectedIntervention(i)} className={`p-3 rounded-lg border-l-4 bg-slate-800 shadow text-sm cursor-pointer hover:bg-slate-750 transition-colors ${
               i.priority === 'RED' ? 'border-red-500' : i.priority === 'YELLOW' ? 'border-yellow-500' : 'border-green-500'
             }`}>
               <div className="flex justify-between items-start mb-1">
@@ -166,19 +190,9 @@ export default function CentraleOperativa() {
                 {i.assignedTo ? (
                   <span className="text-[10px] text-blue-400">{i.assignedTo.name}</span>
                 ) : (
-                  <select className="text-[10px] bg-slate-700 text-white rounded px-1 py-0.5 border border-slate-600"
-                    onChange={e => { if (e.target.value) handleAssign(i.id, e.target.value) }} defaultValue="">
-                    <option value="" disabled>Assegna...</option>
-                    {patrols.map(p => <option key={p.userId} value={p.userId}>{p.name}</option>)}
-                  </select>
+                  <span className="text-[10px] text-red-400 animate-pulse">Non assegnato</span>
                 )}
               </div>
-              
-              {i.status !== 'COMPLETED' && (
-                <button onClick={() => handleClose(i.id)} className="mt-2 w-full text-[10px] text-slate-500 hover:text-red-400 transition-colors flex items-center justify-center gap-1 py-1">
-                  <XCircle className="w-3 h-3"/> Chiudi Intervento
-                </button>
-              )}
             </div>
           ))}
 
@@ -323,6 +337,118 @@ export default function CentraleOperativa() {
           </div>
         </div>
       )}
+
+      {/* === MODALE DETTAGLIO/MODIFICA INTERVENTO === */}
+      {selectedIntervention && (() => {
+        const i = selectedIntervention
+        return (
+          <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+              <div className={`p-5 flex justify-between items-start ${
+                i.priority === 'RED' ? 'bg-gradient-to-r from-red-600 to-red-800' :
+                i.priority === 'YELLOW' ? 'bg-gradient-to-r from-yellow-600 to-yellow-800' :
+                'bg-gradient-to-r from-green-600 to-green-800'
+              }`}>
+                <div>
+                  <h2 className="font-bold text-white text-lg">{i.type}</h2>
+                  <p className="text-white/70 text-xs mt-1">{PRIORITY_LABELS[i.priority]} — {STATUS_LABELS[i.status] || i.status}</p>
+                  <p className="text-white/50 text-[10px] mt-1">ID: {i.id.slice(0,8)}... • Creato: {new Date(i.createdAt).toLocaleString('it-IT')}</p>
+                </div>
+                <button onClick={() => setSelectedIntervention(null)} className="p-1 hover:bg-white/20 rounded-lg transition"><X className="w-5 h-5 text-white"/></button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                {/* Indirizzo */}
+                <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg border">
+                  <MapPin className="w-4 h-4 text-blue-500 mt-0.5 shrink-0"/>
+                  <p className="text-sm font-medium text-slate-700">{i.address}</p>
+                </div>
+
+                {/* Descrizione */}
+                {i.description && (
+                  <div className="p-3 bg-gray-50 rounded-lg border text-sm text-slate-600">{i.description}</div>
+                )}
+
+                {/* Info Grid */}
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Richiedente</p>
+                    <p className="text-slate-700">{i.callerName || 'N/D'}</p>
+                    {i.callerPhone && <p className="text-slate-500 text-xs flex items-center gap-1"><Phone className="w-3 h-3"/>{i.callerPhone}</p>}
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Cronologia</p>
+                    <div className="text-xs text-slate-600 space-y-0.5">
+                      <p>📨 {new Date(i.createdAt).toLocaleTimeString('it-IT')}</p>
+                      {i.dispatchedAt && <p>📤 Inviato: {new Date(i.dispatchedAt).toLocaleTimeString('it-IT')}</p>}
+                      {i.acceptedAt && <p>✅ Accettato: {new Date(i.acceptedAt).toLocaleTimeString('it-IT')}</p>}
+                      {i.arrivedAt && <p>📍 Arrivo: {new Date(i.arrivedAt).toLocaleTimeString('it-IT')}</p>}
+                      {i.completedAt && <p>🏁 Chiuso: {new Date(i.completedAt).toLocaleTimeString('it-IT')}</p>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Esito */}
+                {i.outcome && (
+                  <div className={`p-3 rounded-lg border text-sm font-medium ${
+                    i.outcome === 'POSITIVO' ? 'bg-green-50 text-green-700 border-green-200' :
+                    i.outcome === 'NEGATIVO' ? 'bg-red-50 text-red-700 border-red-200' :
+                    'bg-gray-50 text-gray-700 border-gray-200'
+                  }`}>
+                    Esito: {i.outcome} {i.outcomeNotes && `— ${i.outcomeNotes}`}
+                  </div>
+                )}
+
+                {/* Assegnazione */}
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Assegna / Riassegna Pattuglia</p>
+                  <select defaultValue={i.assignedToId || ""} onChange={e => { if (e.target.value) handleAssign(i.id, e.target.value) }}
+                    className="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500">
+                    <option value="" disabled>— Seleziona pattuglia —</option>
+                    {patrols.map(p => <option key={p.userId} value={p.userId}>{p.name} {p.vehicle ? `(${p.vehicle})` : ''}</option>)}
+                  </select>
+                </div>
+
+                {/* Note */}
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Note Operative</p>
+                  <textarea defaultValue={i.notes || ""} id={`notes-${i.id}`} className="w-full border rounded-lg p-2.5 text-sm" rows={2} placeholder="Aggiungi note..."/>
+                </div>
+
+                {/* Esito dalla Centrale */}
+                {!i.outcome && i.status === 'ON_SITE' && (
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Imposta Esito dalla Centrale</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button onClick={() => handleUpdateIntervention(i.id, { outcome: 'POSITIVO', status: 'COMPLETED' })} className="py-2 bg-green-500 text-white rounded-lg text-xs font-bold">✅ Positivo</button>
+                      <button onClick={() => handleUpdateIntervention(i.id, { outcome: 'NEGATIVO', status: 'COMPLETED' })} className="py-2 bg-red-500 text-white rounded-lg text-xs font-bold">❌ Negativo</button>
+                      <button onClick={() => handleUpdateIntervention(i.id, { outcome: 'INFONDATO', status: 'COMPLETED' })} className="py-2 bg-gray-500 text-white rounded-lg text-xs font-bold">⚪ Infondato</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Azioni */}
+                <div className="pt-3 border-t flex gap-2 flex-wrap">
+                  <button onClick={() => {
+                    const notes = (document.getElementById(`notes-${i.id}`) as HTMLTextAreaElement)?.value
+                    handleUpdateIntervention(i.id, { notes })
+                  }} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium">💾 Salva Note</button>
+
+                  {i.status !== 'COMPLETED' && i.status !== 'CANCELED' && (
+                    <button onClick={() => handleClose(i.id)} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium">🛑 Chiudi</button>
+                  )}
+
+                  {(i.status === 'COMPLETED' || i.status === 'CANCELED') && (
+                    <button onClick={() => handleReopen(i.id)} className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium">🔄 Riapri</button>
+                  )}
+
+                  <button onClick={() => setSelectedIntervention(null)} className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium ml-auto">Chiudi</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
