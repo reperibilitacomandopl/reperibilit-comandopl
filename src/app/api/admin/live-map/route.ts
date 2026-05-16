@@ -17,6 +17,12 @@ export async function GET(req: Request) {
     
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
+    
+    // Per Prisma, il campo date nello Shift è stringa "YYYY-MM-DD"
+    // Per evitare fusi orari errati, prendiamo la data formattata in base a today
+    const tzOffset = today.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(Date.now() - tzOffset)).toISOString().slice(0, 10);
+    const todayStr = localISOTime;
 
     // 1. Get all Clock IN records for today that don't have a corresponding OUT
     const clocksToday = await prisma.clockRecord.findMany({
@@ -45,7 +51,7 @@ export async function GET(req: Request) {
       where: {
         tenantId,
         userId: { in: activeUserIds },
-        date: { gte: today, lt: tomorrow },
+        date: todayStr,
         deletedAt: null
       },
       include: {
