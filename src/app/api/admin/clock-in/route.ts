@@ -121,9 +121,12 @@ export async function POST(req: Request) {
         if (eh < sh) plannedEnd.setDate(plannedEnd.getDate() + 1)
 
         if (type === 'IN') {
-          // Arrotonda l'orario di ingresso a quello del turno
-          actualTimestamp = finalTimestamp
-          finalTimestamp = plannedStart
+          // Arrotonda l'orario di ingresso a quello del turno SOLO se in anticipo
+          // Se in ritardo, l'orario inizia da quando ha effettivamente timbrato
+          if (finalTimestamp.getTime() < plannedStart.getTime()) {
+             actualTimestamp = finalTimestamp
+             finalTimestamp = plannedStart
+          }
         } else if (type === 'OUT') {
           actualTimestamp = finalTimestamp
           if (isCorrection) {
@@ -191,8 +194,11 @@ export async function POST(req: Request) {
         const [sh, sm] = startTimeStr.split(':').map(Number)
         const plannedStart = new Date(todayShift.date)
         plannedStart.setHours(sh, sm, 0, 0)
-        actualTimestamp = finalTimestamp
-        finalTimestamp = plannedStart
+        
+        if (finalTimestamp.getTime() < plannedStart.getTime()) {
+           actualTimestamp = finalTimestamp
+           finalTimestamp = plannedStart
+        }
       }
     }
 
@@ -211,6 +217,21 @@ export async function POST(req: Request) {
         isManual: !!isCorrection
       }
     })
+
+    // 4. Log if it's a manual correction by admin
+    if (isCorrection) {
+      await prisma.auditLog.create({
+        data: {
+          tenantId: tenantId || null,
+          adminId: session.user.id!,
+          adminName: session.user.name!,
+          action: "MANUAL_CLOCK_CORRECTION",
+          targetId: userId,
+          targetName: "Timbrature",
+          details: `Inserimento/Correzione manuale timbratura ${type} per il giorno ${finalTimestamp.toLocaleDateString('it-IT')}`
+        }
+      })
+    }
 
     // 3. Invia Notifica Push di conferma (anche se in background)
     try {
