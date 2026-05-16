@@ -228,9 +228,13 @@ export default function CentraleOperativa() {
                   'bg-green-900 text-green-300'
                 }`}>{STATUS_LABELS[i.status] || i.status}</span>
 
-                {i.assignedTo ? (
-                  <span className="text-[10px] text-blue-400">{i.assignedTo.name}</span>
-                ) : (
+                {i.assignedToId ? (() => {
+                  const patrol = groupedPatrols.find(g => g.members.some((m: any) => m.userId === i.assignedToId))
+                  if (patrol) {
+                    return <span className="text-[10px] text-blue-400 font-medium truncate max-w-[200px]">{patrol.title} — {patrol.members.map((m: any) => m.name?.split(' ')[0] || 'Agente').join(', ')}</span>
+                  }
+                  return <span className="text-[10px] text-blue-400">{i.assignedTo?.name || "Assegnato"}</span>
+                })() : (
                   <span className="text-[10px] text-red-400 animate-pulse">Non assegnato</span>
                 )}
               </div>
@@ -447,7 +451,12 @@ export default function CentraleOperativa() {
                 {/* Assegnazione */}
                 <div>
                   <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Assegna / Riassegna Pattuglia</p>
-                  <select defaultValue={i.assignedToId || ""} onChange={e => { if (e.target.value) handleAssign(i.id, e.target.value) }}
+                  <select 
+                    defaultValue={(() => {
+                      const patrol = groupedPatrols.find(g => g.members.some((m: any) => m.userId === i.assignedToId))
+                      return patrol ? patrol.members[0].userId : (i.assignedToId || "")
+                    })()} 
+                    onChange={e => { if (e.target.value) handleAssign(i.id, e.target.value) }}
                     className="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500">
                     <option value="" disabled>— Seleziona pattuglia —</option>
                     {groupedPatrols.map(g => (
