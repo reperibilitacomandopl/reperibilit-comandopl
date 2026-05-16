@@ -190,6 +190,8 @@ export async function GET(request: Request) {
 
       let oreDiurne = 0
       let oreNotturne = 0
+      let oreFestive = 0
+      let oreFestiveNotturne = 0
       let buoniPasto = 0
       
       let straordinarioDiurnoFeriale = 0
@@ -202,18 +204,7 @@ export async function GET(request: Request) {
       aShifts.forEach((s: any) => {
         const d = new Date(s.date)
         const dayKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
-        let nominalH = 6
-        if (s.durationHours) nominalH = s.durationHours
-        else if (s.timeRange) {
-           const match = s.timeRange.split("-")
-           if (match.length === 2) {
-              const [h1, m1] = match[0].split(":").map(Number)
-              const [h2, m2] = match[1].split(":").map(Number)
-              let diff = (h2 + (m2||0)/60) - (h1 + (m1||0)/60)
-              if (diff < 0) diff += 24
-              nominalH = diff
-           }
-        }
+        const nominalH = 6 // Impostato FISSO a 6 ore per tutti come da richiesta
         if (!plannedAuthByDay[dayKey]) plannedAuthByDay[dayKey] = { nominalH: 0, authOvertime: 0, isFestivo: isHoliday(d), specificAuths: [] }
         plannedAuthByDay[dayKey].nominalH += nominalH
         plannedAuthByDay[dayKey].authOvertime += (s.overtimeHours || 0)
@@ -256,8 +247,15 @@ export async function GET(request: Request) {
           totalHoursDay += h
         })
         
-        oreNotturne += nightHoursDay
-        oreDiurne += (totalHoursDay - nightHoursDay)
+        // Calcolo separazione Feriale/Festivo per le ore ordinarie/indennità
+        const isFestivo = plannedAuthByDay[dayKey]?.isFestivo || false
+        if (isFestivo) {
+          oreFestiveNotturne += nightHoursDay
+          oreFestive += (totalHoursDay - nightHoursDay)
+        } else {
+          oreNotturne += nightHoursDay
+          oreDiurne += (totalHoursDay - nightHoursDay)
+        }
 
         // ─── BUONI PASTO ───
         // INCROCIO: Viene dato il buono se la somma ore reali rispetta le regole minime
@@ -352,6 +350,8 @@ export async function GET(request: Request) {
         repFestiva: Math.round(repFestiva * 100) / 100,
         oreDiurne,
         oreNotturne,
+        oreFestive: Math.round(oreFestive * 100) / 100,
+        oreFestiveNotturne: Math.round(oreFestiveNotturne * 100) / 100,
         buoniPasto,
       }
     })

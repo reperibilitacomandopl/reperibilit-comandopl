@@ -22,6 +22,8 @@ interface PayrollData {
   repFestiva: number
   oreDiurne: number
   oreNotturne: number
+  oreFestive: number
+  oreFestiveNotturne: number
   buoniPasto: number
 }
 
@@ -29,6 +31,8 @@ interface PayrollData {
 const FIXED_COLUMNS = [
   { key: "oreDiurne", label: "Ore Diurne", icon: Sun, color: "amber" },
   { key: "oreNotturne", label: "Ore Notturne", icon: Moon, color: "indigo" },
+  { key: "oreFestive", label: "Ore Festive", icon: Sun, color: "rose" },
+  { key: "oreFestiveNotturne", label: "Ore Festive Nott.", icon: Moon, color: "purple" },
   { key: "buoniPasto", label: "Buoni Pasto", icon: Coffee, color: "emerald" },
   { key: "repFeriale", label: "REP Feriale", icon: Shield, color: "blue" },
   { key: "repFestiva", label: "REP Festiva", icon: Shield, color: "rose" },
@@ -107,6 +111,8 @@ export default function ExportPaghePanel() {
         "Qualifica": d.qualifica,
         "Ore Diurne": d.oreDiurne,
         "Ore Notturne": d.oreNotturne,
+        "Ore Festive": d.oreFestive,
+        "Ore Festive Nott.": d.oreFestiveNotturne,
         "Buoni Pasto": d.buoniPasto,
         "REP Feriale (h)": d.repFeriale,
         "REP Festiva (h)": d.repFestiva,
@@ -133,14 +139,14 @@ export default function ExportPaghePanel() {
   const exportCSV = () => {
     const header = [
       "MATRICOLA", "NOMINATIVO", "QUALIFICA",
-      "ORE DIURNE", "ORE NOTTURNE", "BUONI PASTO", 
+      "ORE DIURNE", "ORE NOTTURNE", "ORE FESTIVE", "ORE FESTIVE NOTT.", "BUONI PASTO", 
       "REP FERIALE (h)", "REP FESTIVA (h)",
       ...columnsToShow.map(({ code, label }) => `${code} - ${label}`)
     ]
 
     const rows = filteredData.map(d => [
       d.matricola, d.nome, d.qualifica,
-      d.oreDiurne.toString(), d.oreNotturne.toString(), d.buoniPasto.toString(),
+      d.oreDiurne.toString(), d.oreNotturne.toString(), d.oreFestive.toString(), d.oreFestiveNotturne.toString(), d.buoniPasto.toString(),
       d.repFeriale.toString(), d.repFestiva.toString(),
       ...columnsToShow.map(({ code }) => (d.codici[code]?.value || 0).toString())
     ])
@@ -161,6 +167,8 @@ export default function ExportPaghePanel() {
   const totals = {
     oreDiurne: Math.round(filteredData.reduce((s, d) => s + d.oreDiurne, 0) * 100) / 100,
     oreNotturne: Math.round(filteredData.reduce((s, d) => s + d.oreNotturne, 0) * 100) / 100,
+    oreFestive: Math.round(filteredData.reduce((s, d) => s + d.oreFestive, 0) * 100) / 100,
+    oreFestiveNotturne: Math.round(filteredData.reduce((s, d) => s + d.oreFestiveNotturne, 0) * 100) / 100,
     buoniPasto: filteredData.reduce((s, d) => s + d.buoniPasto, 0),
     repFeriale: Math.round(filteredData.reduce((s, d) => s + d.repFeriale, 0) * 100) / 100,
     repFestiva: Math.round(filteredData.reduce((s, d) => s + d.repFestiva, 0) * 100) / 100,
