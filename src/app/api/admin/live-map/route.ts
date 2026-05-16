@@ -58,7 +58,7 @@ export async function GET(req: Request) {
     })
 
     // Format active patrols
-    const activePatrols = shiftsToday.map(shift => {
+    const activePatrols = shiftsToday.map((shift: any) => {
        // Se abbiamo la location dell'utente recente, usiamo quella
        const u = shift.user
        return {
