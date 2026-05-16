@@ -305,6 +305,24 @@ export async function GET(request: Request) {
       straordinarioNotturnoFeriale = Math.round(straordinarioNotturnoFeriale * 100) / 100
       straordinarioNotturnoFestivo = Math.round(straordinarioNotturnoFestivo * 100) / 100
 
+      // Inietta gli straordinari calcolati direttamente nei codici dinamici (per evitare doppioni in UI)
+      if (straordinarioDiurnoFeriale > 0) {
+         if (!codiciMap["2000"]) codiciMap["2000"] = { label: "Straordinario - Pagamento", value: 0, unit: "h" }
+         codiciMap["2000"].value += straordinarioDiurnoFeriale
+      }
+      if (straordinarioNotturnoFeriale > 0) {
+         if (!codiciMap["2001"]) codiciMap["2001"] = { label: "Straordinario Notturno", value: 0, unit: "h" }
+         codiciMap["2001"].value += straordinarioNotturnoFeriale
+      }
+      if (straordinarioDiurnoFestivo > 0) {
+         if (!codiciMap["2002"]) codiciMap["2002"] = { label: "Straordinario Festivo Diurno", value: 0, unit: "h" }
+         codiciMap["2002"].value += straordinarioDiurnoFestivo
+      }
+      if (straordinarioNotturnoFestivo > 0) {
+         if (!codiciMap["2003"]) codiciMap["2003"] = { label: "Straordinario Festivo Notturno", value: 0, unit: "h" }
+         codiciMap["2003"].value += straordinarioNotturnoFestivo
+      }
+
       return {
         id: agent.id,
         nome: agent.name,
@@ -316,10 +334,6 @@ export async function GET(request: Request) {
         oreDiurne,
         oreNotturne,
         buoniPasto,
-        straordinarioDiurnoFeriale,
-        straordinarioDiurnoFestivo,
-        straordinarioNotturnoFeriale,
-        straordinarioNotturnoFestivo
       }
     })
 

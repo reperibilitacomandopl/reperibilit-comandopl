@@ -23,10 +23,6 @@ interface PayrollData {
   oreDiurne: number
   oreNotturne: number
   buoniPasto: number
-  straordinarioDiurnoFeriale: number
-  straordinarioDiurnoFestivo: number
-  straordinarioNotturnoFeriale: number
-  straordinarioNotturnoFestivo: number
 }
 
 // Colonne fisse calcolate (sempre visibili)
@@ -34,10 +30,6 @@ const FIXED_COLUMNS = [
   { key: "oreDiurne", label: "Ore Diurne", icon: Sun, color: "amber" },
   { key: "oreNotturne", label: "Ore Notturne", icon: Moon, color: "indigo" },
   { key: "buoniPasto", label: "Buoni Pasto", icon: Coffee, color: "emerald" },
-  { key: "straordinarioDiurnoFeriale", label: "Straord. Diurno", icon: Clock, color: "orange" },
-  { key: "straordinarioDiurnoFestivo", label: "Straord. Festivo", icon: Clock, color: "orange" },
-  { key: "straordinarioNotturnoFeriale", label: "Straord. Nott.", icon: Clock, color: "orange" },
-  { key: "straordinarioNotturnoFestivo", label: "Straord. Nott. Fest.", icon: Clock, color: "orange" },
   { key: "repFeriale", label: "REP Feriale", icon: Shield, color: "blue" },
   { key: "repFestiva", label: "REP Festiva", icon: Shield, color: "rose" },
 ]
@@ -116,10 +108,6 @@ export default function ExportPaghePanel() {
         "Ore Diurne": d.oreDiurne,
         "Ore Notturne": d.oreNotturne,
         "Buoni Pasto": d.buoniPasto,
-        "Straord. Diurno": d.straordinarioDiurnoFeriale,
-        "Straord. Festivo": d.straordinarioDiurnoFestivo,
-        "Straord. Nott.": d.straordinarioNotturnoFeriale,
-        "Straord. Nott. Fest.": d.straordinarioNotturnoFestivo,
         "REP Feriale (h)": d.repFeriale,
         "REP Festiva (h)": d.repFestiva,
       }
@@ -146,7 +134,6 @@ export default function ExportPaghePanel() {
     const header = [
       "MATRICOLA", "NOMINATIVO", "QUALIFICA",
       "ORE DIURNE", "ORE NOTTURNE", "BUONI PASTO", 
-      "STR. DIURNO", "STR. FESTIVO", "STR. NOTTURNO", "STR. NOTTURNO FESTIVO",
       "REP FERIALE (h)", "REP FESTIVA (h)",
       ...columnsToShow.map(({ code, label }) => `${code} - ${label}`)
     ]
@@ -154,7 +141,6 @@ export default function ExportPaghePanel() {
     const rows = filteredData.map(d => [
       d.matricola, d.nome, d.qualifica,
       d.oreDiurne.toString(), d.oreNotturne.toString(), d.buoniPasto.toString(),
-      d.straordinarioDiurnoFeriale.toString(), d.straordinarioDiurnoFestivo.toString(), d.straordinarioNotturnoFeriale.toString(), d.straordinarioNotturnoFestivo.toString(),
       d.repFeriale.toString(), d.repFestiva.toString(),
       ...columnsToShow.map(({ code }) => (d.codici[code]?.value || 0).toString())
     ])
@@ -176,10 +162,6 @@ export default function ExportPaghePanel() {
     oreDiurne: Math.round(filteredData.reduce((s, d) => s + d.oreDiurne, 0) * 100) / 100,
     oreNotturne: Math.round(filteredData.reduce((s, d) => s + d.oreNotturne, 0) * 100) / 100,
     buoniPasto: filteredData.reduce((s, d) => s + d.buoniPasto, 0),
-    straordinarioDiurnoFeriale: Math.round(filteredData.reduce((s, d) => s + d.straordinarioDiurnoFeriale, 0) * 100) / 100,
-    straordinarioDiurnoFestivo: Math.round(filteredData.reduce((s, d) => s + d.straordinarioDiurnoFestivo, 0) * 100) / 100,
-    straordinarioNotturnoFeriale: Math.round(filteredData.reduce((s, d) => s + d.straordinarioNotturnoFeriale, 0) * 100) / 100,
-    straordinarioNotturnoFestivo: Math.round(filteredData.reduce((s, d) => s + d.straordinarioNotturnoFestivo, 0) * 100) / 100,
     repFeriale: Math.round(filteredData.reduce((s, d) => s + d.repFeriale, 0) * 100) / 100,
     repFestiva: Math.round(filteredData.reduce((s, d) => s + d.repFestiva, 0) * 100) / 100,
   }
