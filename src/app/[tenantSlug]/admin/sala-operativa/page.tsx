@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import dynamic from "next/dynamic"
 import { useSession } from "next-auth/react"
 import { Shield, Plus, Clock, MapPin, Phone, User, X, Send, CheckCircle, XCircle, Car, RadioTower, Crosshair } from "lucide-react"
@@ -39,11 +39,52 @@ export default function CentraleOperativa() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [selectedIntervention, setSelectedIntervention] = useState<any>(null)
   
-  // Form nuovo intervento
   const [form, setForm] = useState({
     type: "INCIDENTE", priority: "YELLOW", address: "",
     description: "", callerName: "", callerPhone: "", assignedToId: ""
   })
+
+  // Raggruppa pattuglie per veicolo o servizio
+  const groupedPatrols = useMemo(() => {
+    const groups: any[] = []
+    const processedIds = new Set()
+
+    patrols.forEach(p => {
+      if (processedIds.has(p.userId)) return
+      
+      const groupKey = p.patrolGroupId || p.vehicle || (p.serviceCategory ? `${p.serviceCategory}-${p.timeRange}` : null)
+      
+      if (groupKey) {
+        const members = patrols.filter(x => 
+          (x.patrolGroupId && x.patrolGroupId === p.patrolGroupId) ||
+          (x.vehicle && x.vehicle === p.vehicle) ||
+          (!x.vehicle && !x.patrolGroupId && x.serviceCategory === p.serviceCategory && x.timeRange === p.timeRange)
+        )
+        members.forEach(m => processedIds.add(m.userId))
+        groups.push({
+          id: groupKey,
+          title: p.vehicle ? `Pattuglia ${p.vehicle}` : p.serviceCategory || "Pattuglia",
+          service: p.serviceCategory ? `${p.serviceCategory} ${p.serviceType ? '- '+p.serviceType : ''}` : p.shiftType,
+          timeRange: p.timeRange,
+          vehicle: p.vehicle,
+          radio: p.radio,
+          members
+        })
+      } else {
+        processedIds.add(p.userId)
+        groups.push({
+          id: `single-${p.userId}`,
+          title: "Agente",
+          service: p.shiftType || "Nessun Turno",
+          timeRange: p.timeRange,
+          vehicle: null,
+          radio: p.radio,
+          members: [p]
+        })
+      }
+    })
+    return groups
+  }, [patrols])
 
   const fetchData = async () => {
     try {
@@ -196,34 +237,34 @@ export default function CentraleOperativa() {
             </div>
           ))}
 
-          {/* Pattuglie */}
-          <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-4">Pattuglie in Servizio ({patrols.length})</h3>
-          {patrols.length === 0 && (
+          {/* Pattuglie Raggruppate */}
+          <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-4">Pattuglie in Servizio ({groupedPatrols.length})</h3>
+          {groupedPatrols.length === 0 && (
             <div className="text-center text-slate-600 py-4 text-xs">Nessun agente timbrato IN</div>
           )}
-          {patrols.map(p => (
-            <div key={p.userId} className="p-3 bg-slate-800 rounded-lg border border-slate-700 text-xs">
-              <div className="flex justify-between items-start mb-2">
+          {groupedPatrols.map(g => (
+            <div key={g.id} className="p-3 bg-slate-800 rounded-lg border border-slate-700 text-xs">
+              <div className="flex justify-between items-start mb-2 pb-2 border-b border-slate-700">
                 <div>
-                  <p className="font-bold text-white text-sm">{p.name}</p>
-                  <p className="text-[10px] text-slate-500">Matr. {p.matricola}</p>
+                  <p className="font-bold text-white text-sm">{g.title}</p>
+                  <p className="text-[10px] text-slate-400">{g.service}</p>
                 </div>
-                <div className={`w-2.5 h-2.5 rounded-full mt-1 ${p.lat ? 'bg-green-500 animate-pulse' : 'bg-slate-600'}`} title={p.lat ? 'GPS Attivo' : 'GPS N/D'}/>
-              </div>
-              <div className="space-y-1 text-[10px]">
-                {p.serviceCategory && <p className="text-blue-400 font-semibold">{p.serviceCategory}{p.serviceType ? ` — ${p.serviceType}` : ''}</p>}
-                {p.timeRange && <p className="text-slate-400">⏰ Orario: {p.timeRange}</p>}
-                {p.shiftType && !p.serviceCategory && <p className="text-slate-400">📋 {p.shiftType}</p>}
-                <div className="flex gap-3 text-slate-500">
-                  {p.vehicle && <span className="flex items-center gap-1"><Car className="w-3 h-3 text-blue-400"/>{p.vehicle}</span>}
-                  {p.radio && <span className="flex items-center gap-1"><RadioTower className="w-3 h-3 text-green-400"/>{p.radio}</span>}
-                </div>
-                {(p.weapon || p.armor) && (
-                  <div className="flex gap-3 text-slate-500">
-                    {p.weapon && <span>🔫 {p.weapon}</span>}
-                    {p.armor && <span>🛡️ {p.armor}</span>}
+                <div className="flex flex-col items-end gap-1">
+                  {g.timeRange && <p className="text-[10px] text-slate-500">⏰ {g.timeRange}</p>}
+                  <div className="flex gap-2 text-slate-400">
+                    {g.vehicle && <Car className="w-3.5 h-3.5 text-blue-400"/>}
+                    {g.radio && <RadioTower className="w-3.5 h-3.5 text-green-400"/>}
                   </div>
-                )}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                {g.members.map((m: any) => (
+                  <div key={m.userId} className="flex justify-between items-center bg-slate-900 p-1.5 rounded">
+                    <p className="text-slate-300 font-medium text-[11px]">{m.name} <span className="text-slate-500 font-normal">({m.matricola})</span></p>
+                    <div className={`w-2 h-2 rounded-full ${m.lat ? 'bg-green-500 animate-pulse' : 'bg-slate-600'}`} title={m.lat ? 'GPS Attivo' : 'GPS N/D'}/>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
@@ -322,10 +363,14 @@ export default function CentraleOperativa() {
               {/* Assegnazione diretta */}
               <div>
                 <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Assegna Pattuglia (Opzionale)</label>
-                <select value={form.assignedToId} onChange={e => setForm({...form, assignedToId: e.target.value})} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500">
-                  <option value="">— Assegna dopo —</option>
-                  {patrols.map(p => <option key={p.userId} value={p.userId}>{p.name} {p.vehicle ? `(${p.vehicle})` : '(Appiedato)'}</option>)}
-                </select>
+                  <select value={form.assignedToId} onChange={e => setForm({...form, assignedToId: e.target.value})} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500">
+                    <option value="">— Assegna dopo —</option>
+                    {groupedPatrols.map(g => (
+                      <option key={g.members[0].userId} value={g.members[0].userId}>
+                        {g.title} ({g.members.length} {g.members.length === 1 ? 'agente' : 'agenti'})
+                      </option>
+                    ))}
+                  </select>
               </div>
               <div className="pt-3 border-t flex justify-end gap-3">
                 <button type="button" onClick={() => setShowNewModal(false)} className="px-5 py-2.5 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium">Annulla</button>
@@ -405,7 +450,11 @@ export default function CentraleOperativa() {
                   <select defaultValue={i.assignedToId || ""} onChange={e => { if (e.target.value) handleAssign(i.id, e.target.value) }}
                     className="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500">
                     <option value="" disabled>— Seleziona pattuglia —</option>
-                    {patrols.map(p => <option key={p.userId} value={p.userId}>{p.name} {p.vehicle ? `(${p.vehicle})` : ''}</option>)}
+                    {groupedPatrols.map(g => (
+                      <option key={g.members[0].userId} value={g.members[0].userId}>
+                        {g.title} ({g.members.length} {g.members.length === 1 ? 'agente' : 'agenti'})
+                      </option>
+                    ))}
                   </select>
                 </div>
 

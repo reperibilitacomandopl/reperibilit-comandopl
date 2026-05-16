@@ -12,10 +12,45 @@ export async function GET(req: Request) {
   const tenantId = session.user.tenantId
   
   try {
+    const today = new Date()
+    today.setHours(0,0,0,0)
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+
+    // Trova il turno dell'agente oggi
+    const myShift = await prisma.shift.findFirst({
+      where: {
+        tenantId,
+        userId: session.user.id,
+        date: { gte: today, lt: tomorrow },
+        deletedAt: null
+      }
+    })
+
+    let userIdsToCheck = [session.user.id]
+
+    // Se ha un turno con veicolo o gruppo, trova i colleghi
+    if (myShift && (myShift.vehicleId || myShift.patrolGroupId)) {
+      const matchCriteria: any[] = []
+      if (myShift.vehicleId) matchCriteria.push({ vehicleId: myShift.vehicleId })
+      if (myShift.patrolGroupId) matchCriteria.push({ patrolGroupId: myShift.patrolGroupId })
+      
+      const partnerShifts = await prisma.shift.findMany({
+        where: {
+          tenantId,
+          date: { gte: today, lt: tomorrow },
+          deletedAt: null,
+          OR: matchCriteria
+        },
+        select: { userId: true }
+      })
+      userIdsToCheck = [...new Set([...userIdsToCheck, ...partnerShifts.map(s => s.userId)])]
+    }
+
     const interventions = await prisma.intervention.findMany({
       where: {
         tenantId,
-        assignedToId: session.user.id,
+        assignedToId: { in: userIdsToCheck },
         status: { notIn: ["COMPLETED", "CANCELED"] }
       },
       orderBy: { createdAt: 'desc' }
