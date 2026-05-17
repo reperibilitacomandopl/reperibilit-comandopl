@@ -267,7 +267,8 @@ export function useAdminData(
     const valueUpper = finalValue.toUpperCase()
     const isRep = valueUpper.includes("REP")
     const targetDateIso = new Date(Date.UTC(currentYear, currentMonth - 1, day)).toISOString()
-    
+    const targetDateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+
     try {
       const res = await fetch('/api/admin/edit-shift', {
         method: 'PUT',
@@ -310,7 +311,14 @@ export function useAdminData(
       // Aggiornamento ottimistico locale per evitare il "blink" visivo
       setShifts(prevShifts => {
         const next = [...prevShifts]
-        const idx = next.findIndex(s => s.userId === agentId && (typeof s.date === 'string' ? s.date === targetDateIso : new Date(s.date).toISOString() === targetDateIso))
+        const idx = next.findIndex(s => {
+          if (s.userId !== agentId) return false
+          try {
+            const sDate = new Date(s.date)
+            const sStr = `${sDate.getUTCFullYear()}-${String(sDate.getUTCMonth() + 1).padStart(2, '0')}-${String(sDate.getUTCDate()).padStart(2, '0')}`
+            return sStr === targetDateStr
+          } catch { return false }
+        })
         
         if (idx !== -1) {
           if (isRep) next[idx] = { ...next[idx], repType: finalValue }
