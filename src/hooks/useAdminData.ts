@@ -339,9 +339,6 @@ export function useAdminData(
       setEditingCell(null)
       const hoursMsg = hours ? ` (${hours}h)` : ''
       toast.success(`Turno aggiornato${hoursMsg}`)
-      
-      // Chiamata soft a Next.js per allineare il server senza ricaricare il browser
-      router.refresh()
     } catch {
       toast.error("Errore nel salvataggio")
     } finally {
