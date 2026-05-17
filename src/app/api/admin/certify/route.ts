@@ -3,10 +3,12 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { sendTelegramMessage } from "@/lib/telegram"
 import { checkRateLimit } from "@/lib/rate-limit"
+import { requestTimestamp } from "@/lib/timestamp"
+import { signData } from "@/lib/certificate"
 
 export async function POST(req: Request) {
   const session = await auth()
-  
+
   if (session?.user?.role !== "ADMIN" && !session?.user?.canManageShifts) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
@@ -14,8 +16,7 @@ export async function POST(req: Request) {
   try {
     const { hash, type, metadata } = await req.json()
 
-    // --- RATE LIMITING SPECIFICO (Punto 4.5 Checklist) ---
-    // Limita la certificazione a 10/ora per utente per prevenire DoS applicativo
+    // --- RATE LIMITING SPECIFICO ---
     const limitKey = `certify-pdf-${session.user.id}`
     if (!(await checkRateLimit(limitKey, 10, 60 * 60 * 1000))) {
       return NextResponse.json({ error: "Limite orario di certificazione superato (max 10/ora). Riprova più tardi." }, { status: 429 })
@@ -25,6 +26,58 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing hash or type" }, { status: 400 })
     }
 
+    // --- TIMESTAMP RFC 3161 ---
+    let timestampToken: string | null = null
+    let timestampDate: string | null = null
+    let tsaUrl: string | null = null
+
+    try {
+      const tsResult = await requestTimestamp(hash)
+      if (tsResult) {
+        timestampToken = tsResult.token
+        timestampDate = tsResult.timestamp
+        tsaUrl = tsResult.tsaUrl
+      }
+    } catch (tsErr) {
+      console.warn("[Certify] Timestamp non disponibile, si procede senza:", tsErr)
+      // Non bloccare la certificazione se il timestamp fallisce
+    }
+
+    // --- FIRMA DIGITALE X.509 ---
+    let digitalSignature: string | null = null
+    let signAlgorithm: string | null = null
+
+    try {
+      const signResult = signData(Buffer.from(hash, "hex"))
+      if (signResult) {
+        digitalSignature = signResult.signature
+        signAlgorithm = signResult.algorithm
+      }
+    } catch (signErr) {
+      console.warn("[Certify] Firma digitale non disponibile, si procede senza:", signErr)
+    }
+
+    const enrichedMetadata = {
+      ...(typeof metadata === "string" ? JSON.parse(metadata) : metadata),
+      certifiedAt: new Date().toISOString(),
+      certifiedBy: session.user.name || "Admin",
+      ...(timestampToken && {
+        timestamp: {
+          token: timestampToken,
+          date: timestampDate,
+          tsa: tsaUrl,
+          protocol: "RFC3161"
+        }
+      }),
+      ...(digitalSignature && {
+        signature: {
+          value: digitalSignature,
+          algorithm: signAlgorithm,
+          standard: "PKCS#7/X.509"
+        }
+      })
+    }
+
     const doc = await prisma.certifiedDocument.create({
       data: {
         tenantId: session.user.tenantId || null,
@@ -32,7 +85,7 @@ export async function POST(req: Request) {
         type,
         issuerId: session.user.id,
         issuerName: session.user.name || "Admin",
-        metadata: JSON.stringify(metadata)
+        metadata: JSON.stringify(enrichedMetadata)
       }
     })
 
