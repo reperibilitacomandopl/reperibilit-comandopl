@@ -46,6 +46,7 @@ import PrivacyConsentModal from "@/components/PrivacyConsentModal";
 import TwoFactorModal from "@/components/TwoFactorModal";
 import InstitutionalFooter from "@/components/InstitutionalFooter";
 import CookieBanner from "@/components/CookieBanner";
+import ThemeWrapper from "@/components/ThemeWrapper";
 
 export default function RootLayout({
   children,
@@ -58,20 +59,22 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <SessionWrapper>
-          <a href="#main-content" className="skip-to-content">
-            Vai al contenuto principale
-          </a>
-          <main id="main-content" tabIndex={-1} className="flex-1">
-            {children}
-          </main>
-          <InstitutionalFooter />
-          <PrivacyConsentModal />
-          <TwoFactorModal />
-          <Toaster position="bottom-right" toastOptions={{ className: 'text-sm font-semibold rounded-xl shadow-lg border border-slate-100', duration: 4000 }} />
-          <PWAListener />
-          <CookieBanner />
-        </SessionWrapper>
+        <ThemeWrapper>
+          <SessionWrapper>
+            <a href="#main-content" className="skip-to-content">
+              Vai al contenuto principale
+            </a>
+            <main id="main-content" tabIndex={-1} className="flex-1">
+              {children}
+            </main>
+            <InstitutionalFooter />
+            <PrivacyConsentModal />
+            <TwoFactorModal />
+            <Toaster position="bottom-right" toastOptions={{ className: 'text-sm font-semibold rounded-xl shadow-lg border border-slate-100', duration: 4000 }} />
+            <PWAListener />
+            <CookieBanner />
+          </SessionWrapper>
+        </ThemeWrapper>
       </body>
     </html>
   );

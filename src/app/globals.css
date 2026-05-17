@@ -36,8 +36,29 @@
   --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
 }
 
+/* Dark Mode */
+.dark {
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --glass-bg: rgba(15, 23, 42, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --slate-50: #1e293b;
+  --slate-100: #334155;
+  --slate-200: #475569;
+}
+
+.dark body {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+
+.dark .premium-card {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
 body {
-  background-color: #f8fafc; /* Slate 50 for depth */
+  background-color: #f8fafc;
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
   letter-spacing: -0.01em;

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import NotificationHub from "./NotificationHub"
+import { useTheme } from "@/hooks/useTheme"
 import {
   LayoutDashboard,
   CalendarDays,
@@ -27,7 +28,9 @@ import {
   Server,
   Navigation,
   Activity,
-  Target
+  Target,
+  Sun,
+  Moon
 } from "lucide-react"
 
 type NavSection = {
@@ -351,18 +354,31 @@ export default function AdminSidebar({
           </div>
         )}
 
-        {collapsed && (
-           <button
-              onClick={() => setCollapsed(!collapsed)}
-              aria-expanded={!collapsed}
-              aria-label={collapsed ? "Espandi menu laterale" : "Riduci menu laterale"}
-              className="w-full py-4 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl text-white/20 hover:text-white transition-all"
-            >
-              <ChevronRight size={16} />
-           </button>
-        )}
+        {!collapsed && <ThemeToggleButton />}
+        <button
+           onClick={() => setCollapsed(!collapsed)}
+           aria-expanded={!collapsed}
+           aria-label={collapsed ? "Espandi menu laterale" : "Riduci menu laterale"}
+           className="w-full py-4 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl text-white/20 hover:text-white transition-all"
+        >
+           <ChevronRight size={16} />
+        </button>
       </div>
       </aside>
     </>
+  )
+}
+
+function ThemeToggleButton() {
+  const { isDark, toggle } = useTheme()
+  return (
+    <button
+      onClick={toggle}
+      aria-label={isDark ? "Attiva modalità chiara" : "Attiva modalità scura"}
+      className="w-full py-3 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl text-white/60 hover:text-white transition-all text-xs font-bold"
+    >
+      {isDark ? <Sun size={16} /> : <Moon size={16} />}
+      {isDark ? "Modalità Chiara" : "Modalità Scura"}
+    </button>
   )
 }
