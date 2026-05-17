@@ -6,8 +6,9 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Shield, Lock, ArrowRight, Building2 } from "lucide-react"
 import HCaptcha from "@hcaptcha/react-hcaptcha"
 
-const HCAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY || "10000000-ffff-ffff-ffff-000000000001" // test key
+const HCAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY || ""
 const MAX_ATTEMPTS_BEFORE_CAPTCHA = 3
+const HCAPTCHA_ENABLED = !!HCAPTCHA_SITE_KEY
 
 export default function LoginPage() {
   return (
@@ -30,12 +31,22 @@ function LoginForm() {
   useEffect(() => {
     const c = searchParams.get("c") || searchParams.get("comando")
     if (c) setTenantSlug(c)
-    // Carica tentativi falliti dalla sessione
+    // Carica tentativi falliti dalla sessione con scadenza 15 minuti
     const stored = sessionStorage.getItem("login_failed_attempts")
-    if (stored) setFailedAttempts(parseInt(stored, 10))
+    const storedTime = sessionStorage.getItem("login_failed_time")
+    if (stored && storedTime) {
+      const elapsed = Date.now() - parseInt(storedTime, 10)
+      if (elapsed < 15 * 60 * 1000) { // 15 minuti
+        setFailedAttempts(parseInt(stored, 10))
+      } else {
+        // Scaduto, pulisci
+        sessionStorage.removeItem("login_failed_attempts")
+        sessionStorage.removeItem("login_failed_time")
+      }
+    }
   }, [searchParams])
 
-  const showCaptcha = failedAttempts >= MAX_ATTEMPTS_BEFORE_CAPTCHA
+  const showCaptcha = HCAPTCHA_ENABLED && failedAttempts >= MAX_ATTEMPTS_BEFORE_CAPTCHA
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -66,6 +77,7 @@ function LoginForm() {
       const newCount = failedAttempts + 1
       setFailedAttempts(newCount)
       sessionStorage.setItem("login_failed_attempts", newCount.toString())
+      sessionStorage.setItem("login_failed_time", Date.now().toString())
       setCaptchaToken(null)
       captchaRef.current?.resetCaptcha()
       setError(res.error === "CredentialsSignin" ? "Credenziali non valide. Verifica matricola e password." : res.error)
