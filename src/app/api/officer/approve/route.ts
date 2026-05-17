@@ -55,6 +55,20 @@ export async function POST(request: Request) {
         }
       })
 
+      // Audit log
+      try {
+        const { logAudit } = await import("@/lib/audit")
+        await logAudit({
+          tenantId: u.tenantId,
+          adminId: u.id,
+          adminName: u.name || undefined,
+          action: "REJECT_REQUEST_OFFICER",
+          targetId: requestId,
+          targetName: reqDoc.user.name,
+          details: `Richiesta respinta da UFFICIALE ${u.name} | Agente: ${reqDoc.user.name} | Data: ${new Date(reqDoc.date).toLocaleDateString("it-IT")} | Codice: ${reqDoc.code} | Motivo: ${notes || "Non specificato"}`
+        })
+      } catch (_) {}
+
       // Notifica all'agente
       try {
         const { sendTelegramMessage } = await import("@/lib/telegram")
@@ -76,6 +90,20 @@ export async function POST(request: Request) {
         officerNotes: notes || null
       }
     })
+
+    // Audit log
+    try {
+      const { logAudit } = await import("@/lib/audit")
+      await logAudit({
+        tenantId: u.tenantId,
+        adminId: u.id,
+        adminName: u.name || undefined,
+        action: "APPROVE_REQUEST_OFFICER",
+        targetId: requestId,
+        targetName: reqDoc.user.name,
+        details: `Richiesta approvata da UFFICIALE ${u.name} → in attesa ADMIN | Agente: ${reqDoc.user.name} | Data: ${new Date(reqDoc.date).toLocaleDateString("it-IT")} | Codice: ${reqDoc.code}`
+      })
+    } catch (_) {}
 
     // Notifica agli admin
     try {

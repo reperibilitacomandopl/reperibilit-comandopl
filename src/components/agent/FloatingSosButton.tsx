@@ -40,8 +40,8 @@ export default function FloatingSosButton({ onSendSos }: FloatingSosButtonProps)
       setPressing(false)
       setProgress(0)
       if (animRef.current) clearInterval(animRef.current)
-      // Vibrate feedback
-      if (navigator.vibrate) navigator.vibrate(200)
+      // SOS haptic pattern: short-short-short-long-long-long-short-short-short
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100, 150, 300, 150, 300, 150, 300, 150, 100, 50, 100, 50, 100])
       setShowModal(true)
     }, LONG_PRESS_DURATION)
   }, [])

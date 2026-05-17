@@ -200,11 +200,14 @@ export default async function CompliancePage({ params }: { params: Promise<{ ten
             In quanto Pubblica Amministrazione, il Comando è tenuto a nominare un <strong>DPO (Data Protection Officer)</strong> e mantenere un <strong>Registro dei Trattamenti</strong> aggiornato (Art. 30 GDPR).
           </p>
           <div className="flex flex-wrap gap-3 pt-4">
-            <a href="#" className="px-5 py-3 bg-white text-slate-900 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-50 transition-all">
-              Template Nomina DPO
+            <a href="/api/admin/generate-compliance-doc?type=dpo" className="px-5 py-3 bg-white text-slate-900 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-50 transition-all inline-block">
+              Template Nomina DPO (PDF)
             </a>
-            <a href="#" className="px-5 py-3 bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-500/30 transition-all">
-              Registro Trattamenti (Modello)
+            <a href="/api/admin/generate-compliance-doc?type=registro" className="px-5 py-3 bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-500/30 transition-all inline-block">
+              Registro Trattamenti (PDF)
+            </a>
+            <a href="/api/admin/generate-compliance-doc?type=dpa" className="px-5 py-3 bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-500/30 transition-all inline-block">
+              DPA (PDF)
             </a>
           </div>
         </div>

@@ -164,7 +164,7 @@ export async function PUT(req: Request) {
         action: "RESET_PASSWORD",
         targetId: userId,
         targetName: targetUser?.name,
-        details: `Resettata password per l'agente ${targetUser?.name}`
+        details: `RESET PASSWORD | Agente: ${targetUser?.name} (matr. ${targetUser?.matricola}) | Eseguito da: ${session.user.name}`
       })
     }
 
