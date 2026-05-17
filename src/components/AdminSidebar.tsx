@@ -82,6 +82,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Gestione Straordinari", href: "/admin/straordinari", icon: Clock, description: "Budget mensili ed elettorali" },
       { label: "Export & Report", href: "/admin/export-paghe", icon: FileText, description: "Excel Paghe e Riepiloghi Mensili" },
       { label: "Dashboard Comandante", href: "/admin/comandante", icon: Target, description: "Visione strategica del comando" },
+      { label: "Pianificazione Ferie", href: "/admin/ferie", icon: CalendarDays, description: "Assegnazione periodi ferie annuali" },
       { label: "Report Mensile", href: "/admin/report", icon: BarChart3, description: "Grafici, KPI e statistiche mensili" },
       { label: "Compliance & Salute", href: "/admin/compliance", icon: Shield, description: "Verifica scadenze e consensi GDPR" },
       { label: "API REST & Integrazioni", href: "/admin/api", icon: Server, description: "Documentazione Endpoint" },
