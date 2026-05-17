@@ -26,7 +26,8 @@ import {
   BarChart3,
   Server,
   Navigation,
-  Activity
+  Activity,
+  Target
 } from "lucide-react"
 
 type NavSection = {
@@ -77,6 +78,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Registri di Audit", href: "/admin/audit-logs", icon: Activity, description: "Tracciabilità completa azioni" },
       { label: "Gestione Straordinari", href: "/admin/straordinari", icon: Clock, description: "Budget mensili ed elettorali" },
       { label: "Export & Report", href: "/admin/export-paghe", icon: FileText, description: "Excel Paghe e Riepiloghi Mensili" },
+      { label: "Dashboard Comandante", href: "/admin/comandante", icon: Target, description: "Visione strategica del comando" },
       { label: "Report Mensile", href: "/admin/report", icon: BarChart3, description: "Grafici, KPI e statistiche mensili" },
       { label: "Compliance & Salute", href: "/admin/compliance", icon: Shield, description: "Verifica scadenze e consensi GDPR" },
       { label: "API REST & Integrazioni", href: "/admin/api", icon: Server, description: "Documentazione Endpoint" },

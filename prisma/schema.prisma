@@ -59,6 +59,7 @@ model Tenant {
   chatMessages       ChatMessage[]
   dailyOdsNotes      DailyOdsNote[]
   interventions      Intervention[]
+  vacationPlans       VacationPlan[]
 }
 
 model User {
@@ -148,6 +149,7 @@ model User {
   lockoutReason            String?
   unlockedBy               String?
   interventions            Intervention[]     @relation("UserInterventions")
+  vacationPlans            VacationPlan[]
 
   @@unique([tenantId, matricola])
 }
@@ -491,6 +493,25 @@ model AgentRequest {
 
   @@index([userId])
   @@index([status])
+}
+
+model VacationPlan {
+  id        String    @id @default(uuid())
+  tenantId  String?
+  userId    String
+  year      Int
+  period    String    // "SUMMER" | "WINTER" | "EASTER" | "CHRISTMAS"
+  startDate DateTime
+  endDate   DateTime
+  status    String    @default("PREFERENCE") // PREFERENCE | ASSIGNED | CONFIRMED
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  tenant    Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, period, year])
+  @@index([tenantId, year])
 }
 
 model AgentBalance {
