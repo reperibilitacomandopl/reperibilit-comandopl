@@ -1,7 +1,7 @@
 import { auth } from "@/auth"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { getGlobalLimiter, getBulkLimiter } from "@/lib/rate-limit"
+import { getGlobalLimiter, getBulkLimiter, getUserLimiter, getOdsLimiter, trackOperation } from "@/lib/rate-limit"
 
 // ============================================================================
 // MIDDLEWARE DI SICUREZZA CENTRALIZZATO
@@ -148,6 +148,42 @@ export default auth(async (req) => {
       // Per le rotte UI, riportalo al suo pannello
       return NextResponse.redirect(new URL(`/${u.tenantSlug}/admin/pannello`, req.url))
     }
+  }
+
+  // 4.5 — RATE LIMITING PER-UTENTE (autenticato)
+  if (u.id && u.tenantId && process.env.NODE_ENV === "production") {
+    const userId = u.id
+
+    // Limite per GET autenticati (200 req/min per utente)
+    if (method === "GET") {
+      const userLimiter = getUserLimiter()
+      if (userLimiter) {
+        const { success } = await userLimiter.limit(`user-read-${userId}`)
+        if (!success) {
+          return addSecurityHeaders(
+            NextResponse.json({ error: "Too Many Requests", message: "Limite richieste superato." }, { status: 429 }),
+            false, requestId
+          )
+        }
+      }
+    }
+
+    // Limite specifico per generazione OdS (10/ora per tenant)
+    if (pathname.includes("/ods/generate") || pathname.includes("/certify")) {
+      const odsLimiter = getOdsLimiter()
+      if (odsLimiter) {
+        const { success } = await odsLimiter.limit(`ods-generate-${u.tenantId}`)
+        if (!success) {
+          return addSecurityHeaders(
+            NextResponse.json({ error: "Too Many Requests", message: "Limite generazione documenti superato. Riprova più tardi." }, { status: 429 }),
+            false, requestId
+          )
+        }
+      }
+    }
+
+    // Tracking operazioni per anomaly detection
+    trackOperation(u.tenantId, pathname).catch(() => {})
   }
 
   // 5. Route SuperAdmin
