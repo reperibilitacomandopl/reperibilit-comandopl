@@ -22,7 +22,7 @@ export async function GET() {
     const totalAgents = await prisma.user.count({ where: { tenantId, isActive: true, isSuperAdmin: false } })
     const totalOfficers = await prisma.user.count({ where: { tenantId, isActive: true, isUfficiale: true } })
 
-    const shiftsThisMonth = await prisma.shift.count({ where: { tenantId, date: { gte: startOfMonth, lte: endOfMonth }, type: { not: null } } })
+    const shiftsThisMonth = await prisma.shift.count({ where: { tenantId, date: { gte: startOfMonth, lte: endOfMonth } } })
     const daysInMonth = endOfMonth.getDate()
     const coverageRate = totalAgents > 0 ? Math.round((shiftsThisMonth / (totalAgents * daysInMonth)) * 100) : 0
 
