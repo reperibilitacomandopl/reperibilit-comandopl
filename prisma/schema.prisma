@@ -145,6 +145,8 @@ model User {
   deletedAt                DateTime?
   failedLoginAttempts      Int                @default(0)
   lockoutUntil             DateTime?
+  lockoutReason            String?
+  unlockedBy               String?
   interventions            Intervention[]     @relation("UserInterventions")
 
   @@unique([tenantId, matricola])

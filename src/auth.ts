@@ -6,6 +6,25 @@ import { checkRateLimit } from "@/lib/rate-limit"
 import { logAudit, AUDIT_ACTIONS } from "@/lib/audit"
 import { cookies } from "next/headers"
 
+const HCAPTCHA_SECRET = process.env.HCAPTCHA_SECRET_KEY
+const HCAPTCHA_VERIFY_URL = "https://hcaptcha.com/siteverify"
+
+async function verifyHCaptcha(token: string): Promise<boolean> {
+  if (!HCAPTCHA_SECRET) return true // Se non configurato, lascia passare
+  if (!token) return false
+  try {
+    const res = await fetch(HCAPTCHA_VERIFY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `secret=${encodeURIComponent(HCAPTCHA_SECRET)}&response=${encodeURIComponent(token)}`
+    })
+    const data = await res.json()
+    return data.success === true
+  } catch {
+    return false
+  }
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     // === PREDISPOSIZIONE SPID/CIE (OIDC) ===
@@ -24,7 +43,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       credentials: {
         tenantSlug: { label: "Codice Comando", type: "text" },
         matricola: { label: "Matricola", type: "text" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
+        captchaToken: { label: "hCaptcha Token", type: "text" }
       },
       async authorize(credentials) {
         if (!credentials?.matricola || !credentials?.password || !credentials?.tenantSlug) {
@@ -34,6 +54,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const limitKey = `login-${credentials.tenantSlug}-${credentials.matricola}`
         if (!(await checkRateLimit(limitKey, 5, 60000))) {
           throw new Error("Troppi tentativi di accesso. Riprova tra un minuto.")
+        }
+
+        // hCaptcha: validazione se il token è presente
+        const captchaToken = (credentials as any).captchaToken as string | undefined
+        if (captchaToken) {
+          const captchaValid = await verifyHCaptcha(captchaToken)
+          if (!captchaValid) {
+            throw new Error("Verifica di sicurezza fallita. Riprova.")
+          }
         }
 
         // 1. Trova il Tenant per slug
@@ -68,21 +97,40 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // --- ACCOUNT LOCKOUT CHECK ---
         if (user.lockoutUntil && user.lockoutUntil > new Date()) {
           const diff = Math.ceil((user.lockoutUntil.getTime() - Date.now()) / 60000)
-          throw new Error(`Account temporaneamente bloccato per troppi tentativi falliti. Riprova tra ${diff} minuti.`)
+          const reason = user.lockoutReason || "troppi tentativi falliti"
+          throw new Error(`Account temporaneamente bloccato per ${reason}. Riprova tra ${diff} minuti.`)
+        }
+
+        // --- PERMANENT LOCKOUT (20+ tentativi) ---
+        if ((user.failedLoginAttempts || 0) >= 20 && !user.lockoutUntil) {
+          throw new Error("Account bloccato per sicurezza. Contatta l'amministratore per lo sblocco.")
         }
 
         const isValid = await bcrypt.compare(credentials.password as string, user.password)
-        
+
         if (!isValid) {
-          // Incrementa tentativi falliti
           const newAttempts = (user.failedLoginAttempts || 0) + 1
-          const lockoutUntil = newAttempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null
-          
+          let lockoutUntil: Date | null = null
+          let lockoutReason: string | null = null
+
+          // Lockout progressivo a 3 livelli
+          if (newAttempts >= 20) {
+            lockoutUntil = null // blocco permanente (segnalato da failedAttempts >= 20 + lockoutUntil = null)
+            lockoutReason = "blocco permanente per sicurezza (20+ tentativi)"
+          } else if (newAttempts >= 10) {
+            lockoutUntil = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 ore
+            lockoutReason = "blocco 24 ore (10+ tentativi)"
+          } else if (newAttempts >= 5) {
+            lockoutUntil = new Date(Date.now() + 15 * 60 * 1000) // 15 minuti
+            lockoutReason = "blocco 15 minuti (5+ tentativi)"
+          }
+
           await prisma.user.update({
             where: { id: user.id },
-            data: { 
+            data: {
               failedLoginAttempts: newAttempts,
-              lockoutUntil: lockoutUntil
+              lockoutUntil,
+              lockoutReason
             }
           })
 
@@ -91,20 +139,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             adminId: user.id,
             adminName: user.name,
             action: AUDIT_ACTIONS.LOGIN_FAILED,
-            details: `Tentativo di accesso fallito: password errata. Tentativi: ${newAttempts}/5`
+            details: `Login fallito: password errata. Tentativi: ${newAttempts}. ${lockoutReason ? `Azione: ${lockoutReason}.` : ""}`
           })
-          
+
+          // Notifica admin su lockout
+          if (lockoutReason) {
+            try {
+              const { notifyAdminActivity } = await import("@/lib/telegram")
+              await notifyAdminActivity(
+                `🔒 <b>Account Bloccato</b>\n\nAgente: ${user.name} (${user.matricola})\nMotivo: ${lockoutReason}\nTentativi falliti: ${newAttempts}`,
+                tenant.id
+              )
+            } catch (_) { /* non blocchiamo il login se Telegram fallisce */ }
+          }
+
+          if (newAttempts >= 20) {
+            throw new Error("Account bloccato per sicurezza. Contatta l'amministratore per lo sblocco.")
+          }
           if (newAttempts >= 5) {
-            throw new Error("Account bloccato per 15 minuti causa eccessivi tentativi falliti.")
+            const min = newAttempts >= 10 ? 1440 : 15
+            throw new Error(`Account bloccato per ${min} minuti causa eccessivi tentativi falliti.`)
           }
           return null
         }
 
-        // Login riuscito: resetta contatori
-        if (user.failedLoginAttempts > 0 || user.lockoutUntil) {
+        // Login riuscito: resetta contatori e lockout
+        if (user.failedLoginAttempts > 0 || user.lockoutUntil || user.lockoutReason) {
           await prisma.user.update({
             where: { id: user.id },
-            data: { failedLoginAttempts: 0, lockoutUntil: null }
+            data: { failedLoginAttempts: 0, lockoutUntil: null, lockoutReason: null }
           })
         }
 

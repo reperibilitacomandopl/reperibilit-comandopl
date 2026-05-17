@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import { OTP } from "otplib"
 import { decrypt } from "@/lib/crypto"
+import { logAudit, AUDIT_ACTIONS } from "@/lib/audit"
 import bcrypt from "bcryptjs"
 
 const otp = new OTP({ strategy: 'totp' });
@@ -15,10 +16,10 @@ export async function POST(req: Request) {
 
   try {
     const { token } = await req.json()
-    
+
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { id: true, twoFactorSecret: true, twoFactorBackupCodes: true, trustedIps: true }
+      select: { id: true, name: true, tenantId: true, twoFactorSecret: true, twoFactorBackupCodes: true, trustedIps: true }
     })
 
     if (!user || !user.twoFactorSecret) {
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
     })
     isValid = result.valid
 
-    // 2. Se fallisce, prova con i codici di backup (Punto 2.3)
+    // 2. Se fallisce, prova con i codici di backup
     if (!isValid && user.twoFactorBackupCodes.length > 0) {
       for (const hashedCode of user.twoFactorBackupCodes) {
         const match = await bcrypt.compare(token.toUpperCase(), hashedCode)
@@ -57,10 +58,20 @@ export async function POST(req: Request) {
     }
 
     if (!isValid) {
+      // Log MFA failure
+      try {
+        await logAudit({
+          tenantId: user.tenantId,
+          adminId: user.id,
+          adminName: user.name || undefined,
+          action: AUDIT_ACTIONS.LOGIN_FAILED,
+          details: isBackupUsed ? "Verifica 2FA fallita (backup code invalido)" : "Verifica 2FA fallita (codice TOTP non valido)"
+        })
+      } catch (_) { /* non bloccare per log */ }
       return NextResponse.json({ error: "Codice non valido" }, { status: 400 })
     }
 
-    // Aggiungi l'IP attuale ai trusted IPs (Punto 2.4 - Trusted IPs)
+    // Aggiungi l'IP attuale ai trusted IPs
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1"
     const updatedIps = Array.from(new Set([...(user.trustedIps || []), ip]))
 
@@ -68,6 +79,19 @@ export async function POST(req: Request) {
       where: { id: user.id },
       data: { trustedIps: updatedIps }
     })
+
+    // Log MFA success
+    try {
+      await logAudit({
+        tenantId: user.tenantId,
+        adminId: user.id,
+        adminName: user.name || undefined,
+        action: AUDIT_ACTIONS.LOGIN,
+        details: isBackupUsed
+          ? "Verifica 2FA riuscita con backup code"
+          : "Verifica 2FA riuscita con TOTP"
+      })
+    } catch (_) { /* non bloccare per log */ }
 
     return NextResponse.json({ success: true })
   } catch (error) {

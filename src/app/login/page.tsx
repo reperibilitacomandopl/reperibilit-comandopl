@@ -1,9 +1,13 @@
 "use client"
 
 import { signIn } from "next-auth/react"
-import { useState, useEffect, Suspense } from "react"
+import { useState, useEffect, Suspense, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Shield, Lock, ArrowRight, Building2 } from "lucide-react"
+import HCaptcha from "@hcaptcha/react-hcaptcha"
+
+const HCAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY || "10000000-ffff-ffff-ffff-000000000001" // test key
+const MAX_ATTEMPTS_BEFORE_CAPTCHA = 3
 
 export default function LoginPage() {
   return (
@@ -17,35 +21,59 @@ function LoginForm() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [tenantSlug, setTenantSlug] = useState("")
+  const [failedAttempts, setFailedAttempts] = useState(0)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const captchaRef = useRef<HCaptcha>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
 
   useEffect(() => {
     const c = searchParams.get("c") || searchParams.get("comando")
     if (c) setTenantSlug(c)
+    // Carica tentativi falliti dalla sessione
+    const stored = sessionStorage.getItem("login_failed_attempts")
+    if (stored) setFailedAttempts(parseInt(stored, 10))
   }, [searchParams])
+
+  const showCaptcha = failedAttempts >= MAX_ATTEMPTS_BEFORE_CAPTCHA
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
     setError("")
-    
+
     const formData = new FormData(e.currentTarget)
     const matricola = formData.get("matricola")
     const password = formData.get("password")
     const slug = formData.get("tenantSlug")
 
+    // Se richiesto captcha, verifica che il token esista
+    if (showCaptcha && !captchaToken) {
+      setError("Completa la verifica di sicurezza.")
+      setLoading(false)
+      return
+    }
+
     const res = await signIn("credentials", {
       tenantSlug: slug,
       matricola,
       password,
+      captchaToken: captchaToken || "",
       redirect: false,
     })
 
     if (res?.error) {
-      setError("Credenziali non valide. Verifica matricola e password.")
+      const newCount = failedAttempts + 1
+      setFailedAttempts(newCount)
+      sessionStorage.setItem("login_failed_attempts", newCount.toString())
+      setCaptchaToken(null)
+      captchaRef.current?.resetCaptcha()
+      setError(res.error === "CredentialsSignin" ? "Credenziali non valide. Verifica matricola e password." : res.error)
       setLoading(false)
     } else {
+      // Reset su successo
+      sessionStorage.removeItem("login_failed_attempts")
+      setFailedAttempts(0)
       router.push("/")
       router.refresh()
     }
@@ -133,6 +161,19 @@ function LoginForm() {
                   <Lock size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/15" />
                 </div>
               </div>
+
+              {showCaptcha && (
+                <div className="flex justify-center">
+                  <HCaptcha
+                    ref={captchaRef}
+                    sitekey={HCAPTCHA_SITE_KEY}
+                    onVerify={(token) => setCaptchaToken(token)}
+                    onExpire={() => setCaptchaToken(null)}
+                    theme="dark"
+                    languageOverride="it"
+                  />
+                </div>
+              )}
 
               {error && (
                 <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-300 text-xs font-semibold flex items-center gap-2">

@@ -527,7 +527,7 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
                    <h4 className="text-sm font-black text-rose-800 uppercase flex items-center gap-2 mb-2">Stato Account</h4>
                    <div className="flex items-center justify-between">
                          <p className="text-[10px] text-rose-600/80 font-bold leading-tight max-w-[250px]">Disattivare un account impedisce l'accesso e l'assegnazione nei turni, ma conserva lo storico (Soft Delete).</p>
-                         <button 
+                         <button
                            onClick={() => setTempIsActive(!tempIsActive)}
                            className={`w-12 h-6 shrink-0 rounded-full transition-all relative ${tempIsActive ? 'bg-emerald-500' : 'bg-slate-300'}`}
                          >
@@ -535,6 +535,46 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
                          </button>
                    </div>
                 </div>
+
+                {(editingAgent?.failedLoginAttempts > 0 || editingAgent?.lockoutUntil) && (
+                <div className={`p-5 rounded-2xl border mt-3 ${editingAgent.lockoutUntil && new Date(editingAgent.lockoutUntil) > new Date() ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+                   <h4 className="text-sm font-black text-red-800 uppercase flex items-center gap-2 mb-2">🔒 Account Bloccato</h4>
+                   <div className="space-y-2 text-xs">
+                     <p className="text-red-700 font-bold">
+                       Tentativi falliti: {editingAgent.failedLoginAttempts}
+                     </p>
+                     {editingAgent.lockoutUntil && new Date(editingAgent.lockoutUntil) > new Date() && (
+                       <p className="text-red-600">
+                         Bloccato fino: {new Date(editingAgent.lockoutUntil).toLocaleString('it-IT')}
+                       </p>
+                     )}
+                     {editingAgent.lockoutReason && (
+                       <p className="text-red-500 text-[10px]">Motivo: {editingAgent.lockoutReason}</p>
+                     )}
+                     {editingAgent.unlockedBy && (
+                       <p className="text-green-600 text-[10px]">Ultimo sblocco da: {editingAgent.unlockedBy}</p>
+                     )}
+                   </div>
+                   <button
+                     onClick={async () => {
+                       try {
+                         const res = await fetch('/api/admin/users/unlock', {
+                           method: 'POST',
+                           headers: { 'Content-Type': 'application/json' },
+                           body: JSON.stringify({ userId: editingAgent.id })
+                         })
+                         if (res.ok) {
+                           const agent = { ...editingAgent, failedLoginAttempts: 0, lockoutUntil: null, lockoutReason: null, unlockedBy: 'Tu' }
+                           setEditingAgent(agent)
+                         }
+                       } catch (_) {}
+                     }}
+                     className="mt-3 w-full py-2 bg-red-600 text-white text-xs font-black rounded-xl hover:bg-red-700 transition-colors"
+                   >
+                     Sblocca Account
+                   </button>
+                </div>
+                )}
               </div>
             )}
 

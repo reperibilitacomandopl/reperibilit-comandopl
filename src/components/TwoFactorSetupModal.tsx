@@ -1,18 +1,20 @@
 "use client"
 
 import React, { useState } from "react"
-import { ShieldCheck, Smartphone, CheckCircle, RefreshCw, X, Copy, AlertCircle } from "lucide-react"
+import { ShieldCheck, Smartphone, CheckCircle, RefreshCw, X, Copy, AlertCircle, Download, Printer } from "lucide-react"
 
 interface TwoFactorSetupModalProps {
   onClose: () => void
 }
 
 export default function TwoFactorSetupModal({ onClose }: TwoFactorSetupModalProps) {
-  const [step, setStep] = useState(1) // 1: Info, 2: QR, 3: Verify
+  const [step, setStep] = useState(1) // 1: Info, 2: QR, 3: Verify, 4: BackupCodes, 5: Done
   const [setupData, setSetupData] = useState<{ secret: string, qrCodeUrl: string } | null>(null)
+  const [backupCodes, setBackupCodes] = useState<string[]>([])
   const [token, setToken] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [codesSaved, setCodesSaved] = useState(false)
 
   const startSetup = async () => {
     setIsLoading(true)
@@ -40,7 +42,12 @@ export default function TwoFactorSetupModal({ onClose }: TwoFactorSetupModalProp
       })
       const data = await res.json()
       if (res.ok && data.success) {
-        setStep(4) // Success
+        if (data.backupCodes?.length > 0) {
+          setBackupCodes(data.backupCodes)
+          setStep(4) // Show backup codes
+        } else {
+          setStep(5) // Success (no codes = already enabled)
+        }
       } else {
         setError(data.error || "Codice non valido")
       }
@@ -49,6 +56,24 @@ export default function TwoFactorSetupModal({ onClose }: TwoFactorSetupModalProp
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const copyCodesToClipboard = () => {
+    navigator.clipboard.writeText(backupCodes.join("\n"))
+    setCodesSaved(true)
+  }
+
+  const downloadCodes = () => {
+    const text = "CODICI DI BACKUP 2FA - Sentinel Security\n" +
+      "Conserva questi codici in un luogo sicuro. Ogni codice è monouso.\n\n" +
+      backupCodes.map((c, i) => `${i + 1}. ${c}`).join("\n") +
+      "\n\nData generazione: " + new Date().toLocaleDateString("it-IT")
+    const blob = new Blob([text], { type: "text/plain" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url; a.download = "codici-backup-2fa.txt"
+    a.click(); URL.revokeObjectURL(url)
+    setCodesSaved(true)
   }
 
   return (
@@ -166,7 +191,59 @@ export default function TwoFactorSetupModal({ onClose }: TwoFactorSetupModalProp
             </div>
           )}
 
-          {step === 4 && (
+          {step === 4 && backupCodes.length > 0 && (
+            <div className="space-y-8 text-center">
+              <div className="space-y-2">
+                <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 mx-auto shadow-inner">
+                  <Download width={40} height={40} />
+                </div>
+                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Salva i Codici di Backup</h3>
+                <p className="text-xs text-slate-500 font-medium leading-relaxed px-4">
+                  Questi codici ti permettono di accedere se perdi il telefono. <strong>Ogni codice è monouso.</strong> Salvali subito — non potrai più vederli.
+                </p>
+              </div>
+
+              <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 grid grid-cols-2 gap-3">
+                {backupCodes.map((code, i) => (
+                  <div key={i} className="bg-slate-800 rounded-xl py-3 px-4 flex items-center justify-between">
+                    <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest">{i + 1}</span>
+                    <code className="font-mono text-sm font-bold text-emerald-400 tracking-[0.15em]">{code}</code>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={copyCodesToClipboard}
+                  className="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all"
+                >
+                  <Copy size={14} /> {codesSaved ? "Copiati" : "Copia"}
+                </button>
+                <button
+                  onClick={downloadCodes}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all"
+                >
+                  <Printer size={14} /> Scarica
+                </button>
+              </div>
+
+              {!codesSaved && (
+                <p className="text-[10px] text-rose-500 font-bold uppercase flex items-center justify-center gap-1">
+                  <AlertCircle size={12} /> Devi salvare i codici per proseguire
+                </p>
+              )}
+
+              <button
+                onClick={() => setStep(5)}
+                disabled={!codesSaved}
+                className={`w-full py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl transition-all active:scale-95 ${codesSaved ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+              >
+                Ho salvato i codici — Completa
+              </button>
+            </div>
+          )}
+
+          {step === 5 && (
             <div className="py-12 space-y-10 text-center animate-in fade-in zoom-in duration-500">
               <div className="flex flex-col items-center space-y-4">
                 <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 shadow-inner">
@@ -174,11 +251,11 @@ export default function TwoFactorSetupModal({ onClose }: TwoFactorSetupModalProp
                 </div>
                 <div>
                   <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Configurazione Completata</h3>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Il tuo account è ora protetto</p>
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Il tuo account è ora protetto con 2FA</p>
                 </div>
               </div>
-              
-              <button 
+
+              <button
                 onClick={onClose}
                 className="w-full bg-slate-900 hover:bg-slate-800 text-white py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl transition-all active:scale-95"
               >

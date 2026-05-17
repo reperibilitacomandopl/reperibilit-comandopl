@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import { OTP } from "otplib"
 import { encrypt, decrypt } from "@/lib/crypto"
+import { logAudit, AUDIT_ACTIONS } from "@/lib/audit"
 import QRCode from "qrcode"
 import crypto from "crypto"
 import bcrypt from "bcryptjs"
@@ -90,15 +91,25 @@ export async function POST(req: Request) {
 
       await prisma.user.update({
         where: { id: user.id },
-        data: { 
+        data: {
           twoFactorEnabled: true,
           trustedIps: updatedIps,
           twoFactorBackupCodes: hashedBackupCodes
         }
       })
 
-      return NextResponse.json({ 
-        success: true, 
+      try {
+        await logAudit({
+          tenantId: session.user.tenantId,
+          adminId: session.user.id,
+          adminName: session.user.name || undefined,
+          action: AUDIT_ACTIONS.SYSTEM_CONFIG,
+          details: "2FA attivato con 8 backup codes"
+        })
+      } catch (_) {}
+
+      return NextResponse.json({
+        success: true,
         enabled: true,
         backupCodes // Restituiti SOLO ora all'utente
       })
@@ -119,6 +130,16 @@ export async function POST(req: Request) {
         where: { id: user.id },
         data: { twoFactorEnabled: false, twoFactorSecret: null }
       })
+
+      try {
+        await logAudit({
+          tenantId: session.user.tenantId,
+          adminId: session.user.id,
+          adminName: session.user.name || undefined,
+          action: AUDIT_ACTIONS.SYSTEM_CONFIG,
+          details: "2FA disattivato"
+        })
+      } catch (_) {}
 
       return NextResponse.json({ success: true, enabled: false })
     }
