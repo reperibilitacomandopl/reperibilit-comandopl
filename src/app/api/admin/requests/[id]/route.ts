@@ -29,7 +29,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: "Richiesta non trovata" }, { status: 404 })
     }
 
-    if (agentRequest.status !== "PENDING") {
+    // Accetta sia richieste in attesa ufficiale che in attesa admin
+    if (!["PENDING", "PENDING_OFFICER", "PENDING_ADMIN"].includes(agentRequest.status)) {
       return NextResponse.json({ error: "Richiesta già processata" }, { status: 400 })
     }
 
@@ -38,9 +39,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       // 1. Aggiorna lo stato della richiesta
       const updatedRequest = await tx.agentRequest.update({
         where: { id },
-        data: { 
+        data: {
           status,
-          reviewedBy: session.user.name
+          reviewedBy: session.user.name,
+          adminReviewedAt: new Date()
         }
       })
 

@@ -466,25 +466,31 @@ model ShiftSwapRequest {
 }
 
 model AgentRequest {
-  id         String    @id @default(uuid())
-  tenantId   String?
-  userId     String
-  date       DateTime
-  endDate    DateTime?
-  startTime  String?
-  endTime    String?
-  hours      Float?
-  code       String
-  notes      String?
-  status     String    @default("PENDING")
-  reviewedBy String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  deletedAt  DateTime?
-  tenant     Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user       User      @relation("AgentRequests", fields: [userId], references: [id], onDelete: Cascade)
+  id                    String    @id @default(uuid())
+  tenantId              String?
+  userId                String
+  date                  DateTime
+  endDate               DateTime?
+  startTime             String?
+  endTime               String?
+  hours                 Float?
+  code                  String
+  notes                 String?
+  status                String    @default("PENDING_OFFICER")
+  reviewedBy            String?
+  reviewedByOfficerId   String?
+  officerReviewedAt     DateTime?
+  officerNotes          String?
+  adminReviewedAt       DateTime?
+  escalatedAt           DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  deletedAt             DateTime?
+  tenant                Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user                  User      @relation("AgentRequests", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([status])
 }
 
 model AgentBalance {

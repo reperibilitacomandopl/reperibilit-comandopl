@@ -104,41 +104,42 @@ export async function POST(req: Request) {
         hours: hours ? parseFloat(hours) : null,
         code,
         notes,
-        status: "PENDING"
+        status: "PENDING_OFFICER"
       }
     })
 
-    // --- NOTIFICA PER GLI ADMIN ---
+    // --- NOTIFICA AGLI UFFICIALI DI TURNO (step 1 del workflow) ---
     try {
-      const admins = await prisma.user.findMany({
-        where: { 
+      const officers = await prisma.user.findMany({
+        where: {
           tenantId: tenantId || null,
-          role: "ADMIN"
+          role: "ADMIN",
+          isActive: true
         },
-        select: { id: true }
+        select: { id: true, telegramChatId: true, telegramOptIn: true }
       })
 
-      if (admins.length > 0) {
+      if (officers.length > 0) {
         const label = getLabel(code)
         const startStr = new Date(date).toLocaleDateString("it-IT")
-        const periodStr = endDate 
-          ? `dal ${startStr} al ${new Date(endDate).toLocaleDateString("it-IT")}` 
+        const periodStr = endDate
+          ? `dal ${startStr} al ${new Date(endDate).toLocaleDateString("it-IT")}`
           : `per il ${startStr}`
 
         await (prisma as any).notification.createMany({
-          data: admins.map((admin: any) => ({
+          data: officers.map((o: any) => ({
             tenantId: tenantId || null,
-            userId: admin.id,
-            title: "Nuova Richiesta",
-            message: `${session.user.name} ha richiesto ${label} ${periodStr}.`,
+            userId: o.id,
+            title: "Nuova Richiesta — In Attesa Ufficiale",
+            message: `${session.user.name} ha richiesto ${label} ${periodStr}. Necessaria approvazione ufficiale di turno.`,
             type: "REQUEST",
             link: `/admin/richieste`,
-            metadata: JSON.stringify({ requestId: request.id })
+            metadata: JSON.stringify({ requestId: request.id, step: "officer" })
           }))
         })
       }
     } catch (notifyError) {
-      console.error("Error creating notification for admins:", notifyError)
+      console.error("Error creating notification for officers:", notifyError)
     }
 
     return NextResponse.json({ success: true, request })
