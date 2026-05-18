@@ -60,6 +60,9 @@ model Tenant {
   dailyOdsNotes      DailyOdsNote[]
   interventions      Intervention[]
   vacationPlans       VacationPlan[]
+  vacationRotationPeriods VacationRotationPeriod[]
+  vacationRotationGroups  VacationRotationGroup[]
+  holidayRotationGroups   HolidayRotationGroup[]
 }
 
 model User {
@@ -150,6 +153,8 @@ model User {
   unlockedBy               String?
   interventions            Intervention[]     @relation("UserInterventions")
   vacationPlans            VacationPlan[]
+  vacationRotationGroups   VacationRotationGroup[] @relation("VacationRotationGroupMembers")
+  holidayRotationGroups    HolidayRotationGroup[]  @relation("HolidayRotationGroupMembers")
 
   @@unique([tenantId, matricola])
 }
@@ -512,6 +517,56 @@ model VacationPlan {
 
   @@unique([userId, period, year])
   @@index([tenantId, year])
+}
+
+model VacationRotationPeriod {
+  id        String   @id @default(uuid())
+  tenantId  String?
+  season    String   // "SUMMER" | "WINTER"
+  name      String   // es. "1° Quindicina Luglio"
+  startDay  Int      // Giorno inizio (es. 1)
+  startMonth Int     // Mese inizio (es. 7)
+  endDay    Int      // Giorno fine (es. 15)
+  endMonth  Int      // Mese fine (es. 7)
+  orderIndex Int     @default(0) // Sequenza ordinale per la rotazione
+  createdAt DateTime @default(now())
+  
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  rotationGroups VacationRotationGroup[] @relation("PeriodRotationGroups")
+
+  @@unique([tenantId, season, orderIndex])
+  @@index([tenantId])
+}
+
+model VacationRotationGroup {
+  id              String   @id @default(uuid())
+  tenantId        String?
+  name            String   // es. "Gruppo Alpha", "Gruppo Beta"
+  season          String   // "SUMMER" | "WINTER"
+  baseYear        Int      // Anno di riferimento per l'assegnazione iniziale (es. 2026)
+  basePeriodId    String   // Periodo iniziale assegnato nel baseYear
+  createdAt       DateTime @default(now())
+  
+  basePeriod      VacationRotationPeriod @relation("PeriodRotationGroups", fields: [basePeriodId], references: [id])
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  members         User[]   @relation("VacationRotationGroupMembers")
+
+  @@index([tenantId])
+}
+
+model HolidayRotationGroup {
+  id         String   @id @default(uuid())
+  tenantId   String?
+  name       String   // es. "Gruppo Festivo A", "Gruppo Festivo B"
+  baseYear   Int      @default(2026)
+  orderIndex Int      @default(0) // Ordine cronologico/sequenza del gruppo
+  createdAt  DateTime @default(now())
+  
+  tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  members    User[]   @relation("HolidayRotationGroupMembers")
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
 }
 
 model AgentBalance {
