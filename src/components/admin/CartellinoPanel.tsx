@@ -463,7 +463,7 @@ export default function CartellinoPanel() {
                       type="number" step="0.5" placeholder="H"
                       value={newReq.hours}
                       onChange={e => setNewReq(p => ({ ...p, hours: e.target.value }))}
-                      className="w-full p-2 text-xs font-bold border rounded-lg outline-none focus:border-indigo-500"
+                      className="w-full p-2 text-xs font-bold border border-slate-200 text-slate-900 bg-white rounded-lg outline-none focus:border-indigo-500"
                     />
                   </div>
                   <div className="flex-1">
@@ -472,7 +472,7 @@ export default function CartellinoPanel() {
                       type="text" placeholder="Note facoltative..."
                       value={newReq.notes}
                       onChange={e => setNewReq(p => ({ ...p, notes: e.target.value }))}
-                      className="w-full p-2 text-xs border rounded-lg outline-none focus:border-indigo-500"
+                      className="w-full p-2 text-xs border border-slate-200 text-slate-900 bg-white rounded-lg outline-none focus:border-indigo-500"
                     />
                   </div>
                   <div className="flex items-end">
@@ -529,11 +529,11 @@ export default function CartellinoPanel() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Straordinario</label>
-                  <input type="number" step="0.5" value={detailData.overtimeHours} onChange={e => setDetailData(prev => ({ ...prev, overtimeHours: parseFloat(e.target.value) || 0 }))} className="w-full p-2.5 border rounded-lg font-bold" />
+                  <input type="number" step="0.5" value={detailData.overtimeHours} onChange={e => setDetailData(prev => ({ ...prev, overtimeHours: parseFloat(e.target.value) || 0 }))} className="w-full p-2.5 border border-slate-200 text-slate-900 bg-white rounded-lg font-bold outline-none focus:border-slate-400" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Note</label>
-                  <input type="text" value={detailData.note} onChange={e => setDetailData(prev => ({ ...prev, note: e.target.value }))} className="w-full p-2.5 border rounded-lg text-sm" />
+                  <input type="text" value={detailData.note} onChange={e => setDetailData(prev => ({ ...prev, note: e.target.value }))} className="w-full p-2.5 border border-slate-200 text-slate-900 bg-white rounded-lg text-sm outline-none focus:border-slate-400" />
                 </div>
               </div>
 
@@ -544,10 +544,10 @@ export default function CartellinoPanel() {
                 </div>
                 {detailData.clocks.map((c, i) => (
                   <div key={i} className="flex gap-2">
-                    <select value={c.type} onChange={e => { const n = [...detailData.clocks]; n[i].type = e.target.value; setDetailData(p => ({ ...p, clocks: n })) }} className="p-2 border rounded text-xs font-bold">
+                    <select value={c.type} onChange={e => { const n = [...detailData.clocks]; n[i].type = e.target.value; setDetailData(p => ({ ...p, clocks: n })) }} className="p-2 border border-slate-200 rounded text-xs font-bold text-slate-900 bg-white outline-none">
                       <option value="IN">IN</option><option value="OUT">OUT</option>
                     </select>
-                    <input type="time" value={!isNaN(new Date(c.timestamp).getTime()) ? format(new Date(c.timestamp), "HH:mm") : "12:00"} onChange={e => { const [h, m] = e.target.value.split(":"); const d = new Date(selectedCell.dateStr); d.setHours(parseInt(h), parseInt(m)); const n = [...detailData.clocks]; n[i].timestamp = d.toISOString(); setDetailData(p => ({ ...p, clocks: n })) }} className="flex-1 p-2 border rounded text-xs font-bold" />
+                    <input type="time" value={!isNaN(new Date(c.timestamp).getTime()) ? format(new Date(c.timestamp), "HH:mm") : "12:00"} onChange={e => { const [h, m] = e.target.value.split(":"); const d = new Date(selectedCell.dateStr); d.setHours(parseInt(h), parseInt(m)); const n = [...detailData.clocks]; n[i].timestamp = d.toISOString(); setDetailData(p => ({ ...p, clocks: n })) }} className="flex-1 p-2 border border-slate-200 rounded text-xs font-bold text-slate-900 bg-white outline-none" />
                     <button onClick={() => { const n = [...detailData.clocks]; n.splice(i, 1); setDetailData(p => ({ ...p, clocks: n })) }} className="text-rose-500 p-2"><X size={16} /></button>
                   </div>
                 ))}
