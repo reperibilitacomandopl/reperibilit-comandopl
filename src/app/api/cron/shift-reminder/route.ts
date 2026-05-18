@@ -143,11 +143,18 @@ export async function GET(req: Request) {
       }
 
       // ═══════════════════════════════════════════════════
-      // 2. NOTIFICA 10-20 MIN DOPO L'INIZIO DEL TURNO
+      // 2. NOTIFICA DOPO L'INIZIO DEL TURNO (Smart Reminder)
+      //    Nei primi 15 min: invio ogni 5 minuti.
+      //    Successivamente: invio ogni 15 minuti.
       //    Se non ha timbrato l'entrata → controlla GPS e suggerisci
       // ═══════════════════════════════════════════════════
       const minutesAfterStart = currentTotalMinutes - shiftStartMinutes
-      if (minutesAfterStart >= 10 && minutesAfterStart <= 20) {
+      const shouldNotify = (
+        (minutesAfterStart >= 0 && minutesAfterStart <= 15 && minutesAfterStart % 5 === 0) ||
+        (minutesAfterStart > 15 && minutesAfterStart <= 180 && minutesAfterStart % 15 === 0)
+      )
+
+      if (shouldNotify) {
         const existingClockIn = await prisma.clockRecord.findFirst({
           where: {
             userId,

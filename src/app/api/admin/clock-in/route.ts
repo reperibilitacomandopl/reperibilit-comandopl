@@ -130,36 +130,50 @@ export async function POST(req: Request) {
              finalTimestamp = plannedStart
           } else if (overtimeReason) {
              // Gestione Giustificazione di Ritardo in Entrata
-             const diffMs = finalTimestamp.getTime() - plannedStart.getTime()
-             const diffMins = Math.floor(diffMs / (1000 * 60))
-             
-             if (diffMins >= 15) {
-               const roundedHours = Math.round(diffMins / 15) * 0.25
-               if (roundedHours > 0) {
-                 let finalCode = "0008" // Default: Recupero Ore
-                 let finalNotes = overtimeReason
+             let finalCode = "0008" // Default: Recupero Ore
+             let finalNotes = overtimeReason
 
-                 const extraReasonMatch = overtimeReason.match(/^([A-Z0-9_]+)\b/)
-                 if (extraReasonMatch) {
-                   const possibleCode = extraReasonMatch[1]
-                   const allItems = AGENDA_CATEGORIES.flatMap(c => c.items)
-                   if (allItems.some(i => i.code === possibleCode)) {
-                      finalCode = possibleCode
-                      finalNotes = overtimeReason.replace(possibleCode, "").trim()
-                   }
+             const extraReasonMatch = overtimeReason.match(/^([A-Z0-9_]+)\b/)
+             if (extraReasonMatch) {
+               const possibleCode = extraReasonMatch[1]
+               const allItems = AGENDA_CATEGORIES.flatMap(c => c.items)
+               if (allItems.some(i => i.code === possibleCode)) {
+                  finalCode = possibleCode
+                  finalNotes = overtimeReason.replace(possibleCode, "").trim()
+               }
+             }
+
+             if (finalCode === "TIMB_MANC") {
+               await prisma.agentRequest.create({
+                 data: {
+                   userId,
+                   tenantId,
+                   date: new Date(),
+                   code: "TIMB_MANC",
+                   hours: 0,
+                   notes: `[AUTO-GIUSTIFICAZIONE RITARDO ENTRATA] Mancata timbratura per dimenticanza. Timbratura corretta all'orario di inizio turno (${plannedStart.toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'})}). Nota: ${finalNotes}`,
+                   status: "PENDING"
                  }
-
-                 await prisma.agentRequest.create({
-                   data: {
-                     userId,
-                     tenantId,
-                     date: new Date(),
-                     code: finalCode,
-                     hours: roundedHours,
-                     notes: `[AUTO-GIUSTIFICAZIONE RITARDO ENTRATA] ${finalNotes}`,
-                     status: "PENDING"
-                   }
-                 })
+               })
+             } else {
+               const diffMs = finalTimestamp.getTime() - plannedStart.getTime()
+               const diffMins = Math.floor(diffMs / (1000 * 60))
+               
+               if (diffMins >= 15) {
+                 const roundedHours = Math.round(diffMins / 15) * 0.25
+                 if (roundedHours > 0) {
+                   await prisma.agentRequest.create({
+                     data: {
+                       userId,
+                       tenantId,
+                       date: new Date(),
+                       code: finalCode,
+                       hours: roundedHours,
+                       notes: `[AUTO-GIUSTIFICAZIONE RITARDO ENTRATA] ${finalNotes}`,
+                       status: "PENDING"
+                     }
+                   })
+                 }
                }
              }
           }
@@ -234,36 +248,50 @@ export async function POST(req: Request) {
            finalTimestamp = plannedStart
         } else if (overtimeReason) {
            // Gestione Giustificazione di Ritardo in Entrata
-           const diffMs = finalTimestamp.getTime() - plannedStart.getTime()
-           const diffMins = Math.floor(diffMs / (1000 * 60))
-           
-           if (diffMins >= 15) {
-             const roundedHours = Math.round(diffMins / 15) * 0.25
-             if (roundedHours > 0) {
-               let finalCode = "0008" // Default: Recupero Ore
-               let finalNotes = overtimeReason
+           let finalCode = "0008" // Default: Recupero Ore
+           let finalNotes = overtimeReason
 
-               const extraReasonMatch = overtimeReason.match(/^([A-Z0-9_]+)\b/)
-               if (extraReasonMatch) {
-                 const possibleCode = extraReasonMatch[1]
-                 const allItems = AGENDA_CATEGORIES.flatMap(c => c.items)
-                 if (allItems.some(i => i.code === possibleCode)) {
-                    finalCode = possibleCode
-                    finalNotes = overtimeReason.replace(possibleCode, "").trim()
-                 }
+           const extraReasonMatch = overtimeReason.match(/^([A-Z0-9_]+)\b/)
+           if (extraReasonMatch) {
+             const possibleCode = extraReasonMatch[1]
+             const allItems = AGENDA_CATEGORIES.flatMap(c => c.items)
+             if (allItems.some(i => i.code === possibleCode)) {
+                finalCode = possibleCode
+                finalNotes = overtimeReason.replace(possibleCode, "").trim()
+             }
+           }
+
+           if (finalCode === "TIMB_MANC") {
+             await prisma.agentRequest.create({
+               data: {
+                 userId,
+                 tenantId,
+                 date: new Date(),
+                 code: "TIMB_MANC",
+                 hours: 0,
+                 notes: `[AUTO-GIUSTIFICAZIONE RITARDO ENTRATA] Mancata timbratura per dimenticanza. Timbratura corretta all'orario di inizio turno (${plannedStart.toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'})}). Nota: ${finalNotes}`,
+                 status: "PENDING"
                }
-
-               await prisma.agentRequest.create({
-                 data: {
-                   userId,
-                   tenantId,
-                   date: new Date(),
-                   code: finalCode,
-                   hours: roundedHours,
-                   notes: `[AUTO-GIUSTIFICAZIONE RITARDO ENTRATA] ${finalNotes}`,
-                   status: "PENDING"
-                 }
-               })
+             })
+           } else {
+             const diffMs = finalTimestamp.getTime() - plannedStart.getTime()
+             const diffMins = Math.floor(diffMs / (1000 * 60))
+             
+             if (diffMins >= 15) {
+               const roundedHours = Math.round(diffMins / 15) * 0.25
+               if (roundedHours > 0) {
+                 await prisma.agentRequest.create({
+                   data: {
+                     userId,
+                     tenantId,
+                     date: new Date(),
+                     code: finalCode,
+                     hours: roundedHours,
+                     notes: `[AUTO-GIUSTIFICAZIONE RITARDO ENTRATA] ${finalNotes}`,
+                     status: "PENDING"
+                   }
+                 })
+               }
              }
            }
         }

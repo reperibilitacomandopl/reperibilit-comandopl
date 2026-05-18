@@ -31,6 +31,7 @@ const RECOVERY_OPTIONS = [
 
 // Codici Giustificazione Ritardo
 const LATE_OPTIONS = [
+  { code: "TIMB_MANC", label: "Mancata Timbratura (Dimenticanza)" },
   { code: "0008", label: "Recupero Ore (Banca Ore)" },
   { code: "0014", label: "Particolari Motivi Personali/Familiari" },
   { code: "0032", label: "Permesso Visita Medica" },
@@ -51,6 +52,8 @@ export function ClockOutModal({ type, plannedEndTime, diffMins, onConfirm, onCan
   const [selectedCode, setSelectedCode] = useState(options[0].code)
   const [notes, setNotes] = useState("")
   const [actualTime, setActualTime] = useState("")
+  
+  const isMancataTimbratura = isLateIn && selectedCode === "TIMB_MANC"
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,7 +63,7 @@ export function ClockOutModal({ type, plannedEndTime, diffMins, onConfirm, onCan
       onConfirm({
         code: selectedCode,
         notes: notes.trim(),
-        actualStartTimeStr: actualTime.trim() || undefined
+        actualStartTimeStr: isMancataTimbratura ? plannedEndTime : (actualTime.trim() || undefined)
       })
     } else {
       onConfirm({
@@ -143,18 +146,23 @@ export function ClockOutModal({ type, plannedEndTime, diffMins, onConfirm, onCan
           <div>
             <label className="text-[9px] uppercase font-black text-slate-400 tracking-widest mb-1 block">
               {isLateIn 
-                ? "Orario Effettivo di Ingresso (Opzionale)" 
+                ? "Orario Effettivo di Ingresso" 
                 : "Orario Effettivo di Uscita (Opzionale)"
               }
             </label>
             <input 
               type="time" 
-              value={actualTime}
+              value={isMancataTimbratura ? plannedEndTime : actualTime}
               onChange={(e) => setActualTime(e.target.value)}
-              className="w-full p-2.5 border border-slate-200 rounded-lg font-bold text-xs text-slate-700 outline-none transition-colors focus:border-slate-400"
+              disabled={isMancataTimbratura}
+              className={`w-full p-2.5 border border-slate-200 rounded-lg font-bold text-xs text-slate-700 outline-none transition-colors 
+                ${isMancataTimbratura ? 'bg-slate-100 border-slate-300 text-slate-400 cursor-not-allowed' : 'focus:border-slate-400'}`}
             />
             <p className="text-[9px] text-slate-400 mt-1 font-semibold px-0.5">
-              Lascia vuoto per usare l'orario attuale.
+              {isMancataTimbratura 
+                ? `Verrà impostato automaticamente l'orario di inizio del turno (${plannedEndTime}).`
+                : "Lascia vuoto per usare l'orario attuale."
+              }
             </p>
           </div>
 
