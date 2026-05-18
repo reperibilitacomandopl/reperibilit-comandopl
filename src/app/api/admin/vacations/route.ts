@@ -31,6 +31,13 @@ export async function GET(request: Request) {
   }
 }
 
+const PERIOD_LABELS: Record<string, string> = {
+  SUMMER: "Estate ☀️",
+  WINTER: "Inverno ❄️",
+  EASTER: "Pasqua 🐣",
+  CHRISTMAS: "Natale 🎄"
+}
+
 export async function POST(request: Request) {
   const session = await auth()
   const u = session?.user
@@ -71,6 +78,61 @@ export async function POST(request: Request) {
       }
     })
 
+    // --- NOTIFICA AUTOMATICA SUL CELLULARE DELL'AGENTE ---
+    try {
+      const targetUser = await prisma.user.findUnique({
+        where: { id: targetUserId },
+        select: { name: true, telegramChatId: true, telegramOptIn: true }
+      })
+
+      if (targetUser) {
+        const startStr = new Date(startDate).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        const endStr = new Date(endDate).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        const periodLabel = PERIOD_LABELS[period] || period
+
+        let title = ""
+        let body = ""
+
+        if (planStatus === "CONFIRMED") {
+          title = "🎉 Ferie Confermate dal Comando!"
+          body = `Il tuo periodo di ferie per ${periodLabel} (${startStr} - ${endStr}) è stato CONFERMATO dal Comando.`
+        } else if (planStatus === "ASSIGNED") {
+          title = "📅 Nuovo Piano Ferie Assegnato"
+          body = `Ti è stato assegnato il periodo di ferie per ${periodLabel} dal ${startStr} al ${endStr}.`
+        } else {
+          title = "📝 Preferenza Ferie Registrata"
+          body = `La tua preferenza di ferie per ${periodLabel} (${startStr} - ${endStr}) è stata registrata.`
+        }
+
+        // 1. Invia Push PWA
+        try {
+          const { sendPushNotification } = await import("@/lib/push-notifications")
+          await sendPushNotification(targetUserId, {
+            title,
+            body,
+            url: "/"
+          })
+        } catch (pe) {
+          console.error("[VACATIONS_PUSH_ERROR]", pe)
+        }
+
+        // 2. Invia Telegram
+        if (targetUser.telegramChatId && targetUser.telegramOptIn) {
+          try {
+            const { sendTelegramMessage } = await import("@/lib/telegram")
+            await sendTelegramMessage(
+              targetUser.telegramChatId,
+              `<b>${title.toUpperCase()}</b>\n\nCiao ${targetUser.name.split(' ')[0]},\n${body} 👮‍♂️✈️`
+            )
+          } catch (te) {
+            console.error("[VACATIONS_TELEGRAM_ERROR]", te)
+          }
+        }
+      }
+    } catch (ne) {
+      console.error("[VACATION_NOTIFY_ERROR]", ne)
+    }
+
     return NextResponse.json({ success: true, plan })
   } catch (error) {
     console.error("[VACATIONS_POST]", error)
@@ -86,6 +148,42 @@ export async function DELETE(request: Request) {
   const id = searchParams.get("id")
   if (!id) return NextResponse.json({ error: "id obbligatorio" }, { status: 400 })
 
-  await prisma.vacationPlan.delete({ where: { id } })
-  return NextResponse.json({ success: true })
+  try {
+    // Recupera il plan prima di eliminarlo per poter notificare
+    const plan = await prisma.vacationPlan.findUnique({
+      where: { id },
+      include: { user: { select: { id: true, name: true, telegramChatId: true, telegramOptIn: true } } }
+    })
+
+    await prisma.vacationPlan.delete({ where: { id } })
+
+    if (plan && plan.user) {
+      const startStr = new Date(plan.startDate).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      const endStr = new Date(plan.endDate).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      const periodLabel = PERIOD_LABELS[plan.period] || plan.period
+
+      const title = "❌ Periodo Ferie Annullato"
+      const body = `Il periodo di ferie per ${periodLabel} (${startStr} - ${endStr}) è stato rimosso o annullato.`
+
+      try {
+        const { sendPushNotification } = await import("@/lib/push-notifications")
+        await sendPushNotification(plan.user.id, { title, body, url: "/" })
+      } catch {}
+
+      if (plan.user.telegramChatId && plan.user.telegramOptIn) {
+        try {
+          const { sendTelegramMessage } = await import("@/lib/telegram")
+          await sendTelegramMessage(
+            plan.user.telegramChatId,
+            `<b>${title.toUpperCase()}</b>\n\nCiao ${plan.user.name.split(' ')[0]},\n${body} 👮‍♂️`
+          )
+        } catch {}
+      }
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("[VACATIONS_DELETE]", error)
+    return NextResponse.json({ error: "Errore interno" }, { status: 500 })
+  }
 }
