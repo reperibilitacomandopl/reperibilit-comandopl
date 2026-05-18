@@ -31,7 +31,7 @@ WORKDIR /app
 ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
 
-RUN apk add --no-cache tzdata postgresql-client
+RUN apk add --no-cache tzdata postgresql-client openssl
 ENV TZ=Europe/Rome
 
 RUN addgroup --system --gid 1001 nodejs
