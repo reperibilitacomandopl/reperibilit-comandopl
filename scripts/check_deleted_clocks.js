@@ -35,6 +35,10 @@ async function run() {
     console.log(`    deletedAt: ${c.deletedAt ? c.deletedAt.toISOString() : 'NULL (ACTIVE)'}`);
   });
 
+  const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
   // Check notifications sent today
   const notifications = await prisma.notification.findMany({
     where: {

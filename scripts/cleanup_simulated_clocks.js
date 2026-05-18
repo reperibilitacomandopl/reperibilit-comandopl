@@ -18,12 +18,16 @@ async function run() {
       userId: agent.id,
       timestamp: {
         gte: new Date('2026-05-01T00:00:00Z'),
-        lte: new Date('2026-05-31T23:59:59Z'),
-        not: {
-          gte: todayStart,
-          lte: todayEnd
+        lte: new Date('2026-05-31T23:59:59Z')
+      },
+      NOT: [
+        {
+          timestamp: {
+            gte: todayStart,
+            lte: todayEnd
+          }
         }
-      }
+      ]
     }
   });
   console.log(`Eliminate ${deletedClocks.count} timbrature simulate di Maggio (escluso oggi).`);
@@ -36,12 +40,16 @@ async function run() {
       notes: 'Servizio prolungato per test',
       date: {
         gte: new Date('2026-05-01T00:00:00Z'),
-        lte: new Date('2026-05-31T23:59:59Z'),
-        not: {
-          gte: todayStart,
-          lte: todayEnd
+        lte: new Date('2026-05-31T23:59:59Z')
+      },
+      NOT: [
+        {
+          date: {
+            gte: todayStart,
+            lte: todayEnd
+          }
         }
-      }
+      ]
     }
   });
   console.log(`Eliminate ${deletedRequests.count} richieste di straordinario simulate di Maggio.`);
