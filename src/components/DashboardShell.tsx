@@ -13,6 +13,8 @@ import AgentRequestForm from "./agent/AgentRequestForm"
 import AgentSwapBoard from "./agent/AgentSwapBoard"
 import FloatingSosButton from "./agent/FloatingSosButton"
 import AgentInterventions from "./agent/AgentInterventions"
+import PersonalBalances from "./agent/PersonalBalances"
+import AgentRotationView from "./agent/AgentRotationView"
 
 export default function DashboardShell({ 
   session, 
@@ -176,6 +178,13 @@ export default function DashboardShell({
                 {activeTab === 'interventions' && (
                   <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <AgentInterventions />
+                  </div>
+                )}
+
+                {activeTab === 'ferie' && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <PersonalBalances />
+                    <AgentRotationView />
                   </div>
                 )}
 
