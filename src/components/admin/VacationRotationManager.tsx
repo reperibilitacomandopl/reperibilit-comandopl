@@ -15,6 +15,8 @@ export default function VacationRotationManager() {
   const [holidayGroups, setHolidayGroups] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [groupSearchQuery, setGroupSearchQuery] = useState("")
+  const [holidaySearchQuery, setHolidaySearchQuery] = useState("")
 
   // Form states for Vacation Periods
   const [periodForm, setPeriodForm] = useState({ id: "", name: "", startDay: 1, startMonth: 7, endDay: 15, endMonth: 7, orderIndex: 0 })
@@ -589,24 +591,42 @@ export default function VacationRotationManager() {
                   {/* Member selection */}
                   <div>
                     <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-widest font-black block mb-2">Seleziona Operatori</label>
+                    <input
+                      type="text"
+                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-3 py-1.5 text-xs font-bold mb-2 outline-none placeholder-slate-400"
+                      placeholder="Cerca operatore..."
+                      value={groupSearchQuery}
+                      onChange={e => setGroupSearchQuery(e.target.value)}
+                    />
                     <div className="bg-slate-50 dark:bg-slate-900 border border-slate-250 dark:border-slate-800 rounded-xl p-3 max-h-[180px] overflow-y-auto space-y-2">
-                      {users.map(u => {
-                        const isChecked = groupForm.memberIds.includes(u.id)
-                        return (
-                          <label key={u.id} className="flex items-center gap-2.5 hover:bg-slate-100 dark:hover:bg-slate-850 p-1.5 rounded-lg cursor-pointer transition-colors">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => toggleMemberInForm(u.id, false)}
-                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500/25"
-                            />
-                            <div className="text-xs">
-                              <p className="font-black text-slate-850 dark:text-white uppercase leading-tight">{u.name}</p>
-                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{u.qualifica || "Agente"} ({u.matricola})</span>
-                            </div>
-                          </label>
+                      {users
+                        .filter(u => 
+                          u.name?.toLowerCase().includes(groupSearchQuery.toLowerCase()) || 
+                          u.matricola?.toLowerCase().includes(groupSearchQuery.toLowerCase())
                         )
-                      })}
+                        .map(u => {
+                          const isChecked = (groupForm.memberIds || []).includes(u.id)
+                          return (
+                            <label key={u.id} className="flex items-center gap-2.5 hover:bg-slate-100 dark:hover:bg-slate-850 p-1.5 rounded-lg cursor-pointer transition-colors">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleMemberInForm(u.id, false)}
+                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500/25"
+                              />
+                              <div className="text-xs">
+                                <p className="font-black text-slate-850 dark:text-white uppercase leading-tight">{u.name}</p>
+                                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{u.qualifica || "Agente"} ({u.matricola})</span>
+                              </div>
+                            </label>
+                          )
+                        })}
+                      {users.filter(u => 
+                        u.name?.toLowerCase().includes(groupSearchQuery.toLowerCase()) || 
+                        u.matricola?.toLowerCase().includes(groupSearchQuery.toLowerCase())
+                      ).length === 0 && (
+                        <p className="text-[10px] text-slate-450 italic text-center py-2">Nessun operatore trovato</p>
+                      )}
                     </div>
                   </div>
 
@@ -668,14 +688,14 @@ export default function VacationRotationManager() {
                             🏁 Turno Iniziale ({group.baseYear}): <span className="font-bold text-slate-800 dark:text-white">{group.basePeriod?.name}</span>
                           </p>
                           <div className="border-t border-dashed border-slate-150 dark:border-slate-850 pt-2.5">
-                            <span className="text-[9px] font-black uppercase text-slate-400 block mb-1">Membri del Gruppo ({group.members.length}):</span>
+                            <span className="text-[9px] font-black uppercase text-slate-400 block mb-1">Membri del Gruppo ({group.members?.length || 0}):</span>
                             <div className="flex flex-wrap gap-1">
-                              {group.members.map((m: any) => (
+                              {(group.members || []).map((m: any) => (
                                 <span key={m.id} className="text-[9px] font-bold bg-slate-50 dark:bg-slate-900 border border-slate-150 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-lg">
-                                  {m.name.split(" ")[0]}
+                                  {m.name ? m.name.split(" ")[0] : "Agente"}
                                 </span>
                               ))}
-                              {group.members.length === 0 && <span className="text-[10px] text-slate-400 italic">Nessun agente in questo gruppo</span>}
+                              {(!group.members || group.members.length === 0) && <span className="text-[10px] text-slate-400 italic">Nessun agente in questo gruppo</span>}
                             </div>
                           </div>
                         </div>
@@ -746,24 +766,42 @@ export default function VacationRotationManager() {
                   {/* Member selection */}
                   <div>
                     <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-widest font-black block mb-2">Seleziona Operatori</label>
+                    <input
+                      type="text"
+                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-3 py-1.5 text-xs font-bold mb-2 outline-none placeholder-slate-400"
+                      placeholder="Cerca operatore..."
+                      value={holidaySearchQuery}
+                      onChange={e => setHolidaySearchQuery(e.target.value)}
+                    />
                     <div className="bg-slate-50 dark:bg-slate-900 border border-slate-250 dark:border-slate-800 rounded-xl p-3 max-h-[180px] overflow-y-auto space-y-2">
-                      {users.map(u => {
-                        const isChecked = holidayGroupForm.memberIds.includes(u.id)
-                        return (
-                          <label key={u.id} className="flex items-center gap-2.5 hover:bg-slate-100 dark:hover:bg-slate-850 p-1.5 rounded-lg cursor-pointer transition-colors">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => toggleMemberInForm(u.id, true)}
-                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500/25"
-                            />
-                            <div className="text-xs">
-                              <p className="font-black text-slate-850 dark:text-white uppercase leading-tight">{u.name}</p>
-                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{u.qualifica || "Agente"} ({u.matricola})</span>
-                            </div>
-                          </label>
+                      {users
+                        .filter(u => 
+                          u.name?.toLowerCase().includes(holidaySearchQuery.toLowerCase()) || 
+                          u.matricola?.toLowerCase().includes(holidaySearchQuery.toLowerCase())
                         )
-                      })}
+                        .map(u => {
+                          const isChecked = (holidayGroupForm.memberIds || []).includes(u.id)
+                          return (
+                            <label key={u.id} className="flex items-center gap-2.5 hover:bg-slate-100 dark:hover:bg-slate-850 p-1.5 rounded-lg cursor-pointer transition-colors">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleMemberInForm(u.id, true)}
+                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500/25"
+                              />
+                              <div className="text-xs">
+                                <p className="font-black text-slate-850 dark:text-white uppercase leading-tight">{u.name}</p>
+                                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{u.qualifica || "Agente"} ({u.matricola})</span>
+                              </div>
+                            </label>
+                          )
+                        })}
+                      {users.filter(u => 
+                        u.name?.toLowerCase().includes(holidaySearchQuery.toLowerCase()) || 
+                        u.matricola?.toLowerCase().includes(holidaySearchQuery.toLowerCase())
+                      ).length === 0 && (
+                        <p className="text-[10px] text-slate-455 italic text-center py-2">Nessun operatore trovato</p>
+                      )}
                     </div>
                   </div>
 
@@ -825,14 +863,14 @@ export default function VacationRotationManager() {
                             ⚙️ Anno Base: <span className="font-bold text-slate-800 dark:text-white">{group.baseYear}</span>
                           </p>
                           <div className="border-t border-dashed border-slate-150 dark:border-slate-850 pt-2.5">
-                            <span className="text-[9px] font-black uppercase text-slate-400 block mb-1">Membri Festivi ({group.members.length}):</span>
+                            <span className="text-[9px] font-black uppercase text-slate-400 block mb-1">Membri Festivi ({group.members?.length || 0}):</span>
                             <div className="flex flex-wrap gap-1">
-                              {group.members.map((m: any) => (
+                              {(group.members || []).map((m: any) => (
                                 <span key={m.id} className="text-[9px] font-bold bg-slate-50 dark:bg-slate-900 border border-slate-150 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-lg">
-                                  {m.name.split(" ")[0]}
+                                  {m.name ? m.name.split(" ")[0] : "Agente"}
                                 </span>
                               ))}
-                              {group.members.length === 0 && <span className="text-[10px] text-slate-400 italic">Nessun agente in questo gruppo</span>}
+                              {(!group.members || group.members.length === 0) && <span className="text-[10px] text-slate-400 italic">Nessun agente in questo gruppo</span>}
                             </div>
                           </div>
                         </div>
