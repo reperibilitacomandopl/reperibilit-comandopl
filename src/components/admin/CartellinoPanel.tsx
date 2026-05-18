@@ -354,7 +354,7 @@ export default function CartellinoPanel() {
                         expectedHours = diff / 60
                       } catch {}
                     }
-                    const delta = totalClockedHours > 0 ? (totalClockedHours - expectedHours) : 0
+                    const delta = totalClockedHours > 0 ? (totalClockedHours - expectedHours - overtime) : 0
 
                     return (
                       <tr key={day} className={`hover:bg-slate-800/50 transition-colors ${isWeekend ? 'bg-slate-800/20' : ''}`}>
