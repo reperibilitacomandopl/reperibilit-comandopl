@@ -36,6 +36,7 @@ import AgentCalendarView from "./agent/AgentCalendarView"
 import AgentYearlyCard from "./agent/AgentYearlyCard"
 import CartellinoSummaryView from "@/components/shared/CartellinoSummaryView"
 import AgentTimecardView from "./agent/AgentTimecardView"
+import AgentRotationView from "./agent/AgentRotationView"
 import { useGpsTracking } from "@/hooks/useGpsTracking"
 
 import { isAssenza } from "@/utils/shift-logic"
@@ -122,7 +123,7 @@ export default function AgentDashboard({
   const [showChat, setShowChat] = useState(false)
   const [showSectionChat, setShowSectionChat] = useState(false)
   const [isMobileView, setIsMobileView] = useState(false)
-  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'yearly' | 'timecard'>('calendar')
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'yearly' | 'timecard' | 'rotazione'>('calendar')
   const [selectedShiftForSwap, setSelectedShiftForSwap] = useState<DashboardShift | null>(null)
   const [agendaDate, setAgendaDate] = useState('')
   const [showClockHistory, setShowClockHistory] = useState(false)
@@ -353,6 +354,12 @@ export default function AgentDashboard({
               >
                 Cartellino
               </button>
+              <button 
+                onClick={() => setViewMode('rotazione')}
+                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'rotazione' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                Rotazioni
+              </button>
            </div>
         </div>
 
@@ -400,6 +407,8 @@ export default function AgentDashboard({
               setShowAbsenceModal(true)
             }}
           />
+        ) : viewMode === 'rotazione' ? (
+          <AgentRotationView />
         ) : (
           <AgentShiftsList 
             isPublished={isPublished}
