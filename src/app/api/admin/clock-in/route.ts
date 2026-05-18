@@ -97,7 +97,7 @@ export async function POST(req: Request) {
     let finalTimestamp = new Date()
     let actualTimestamp: Date | undefined = undefined
 
-    if (actualEndTimeStr && type === 'OUT') {
+    if (actualEndTimeStr) {
       const [ah, am] = actualEndTimeStr.split(':').map(Number)
       finalTimestamp.setHours(ah, am, 0, 0)
     }
@@ -128,6 +128,40 @@ export async function POST(req: Request) {
           if (finalTimestamp.getTime() < plannedStart.getTime()) {
              actualTimestamp = finalTimestamp
              finalTimestamp = plannedStart
+          } else if (overtimeReason) {
+             // Gestione Giustificazione di Ritardo in Entrata
+             const diffMs = finalTimestamp.getTime() - plannedStart.getTime()
+             const diffMins = Math.floor(diffMs / (1000 * 60))
+             
+             if (diffMins >= 15) {
+               const roundedHours = Math.round(diffMins / 15) * 0.25
+               if (roundedHours > 0) {
+                 let finalCode = "0008" // Default: Recupero Ore
+                 let finalNotes = overtimeReason
+
+                 const extraReasonMatch = overtimeReason.match(/^([A-Z0-9_]+)\b/)
+                 if (extraReasonMatch) {
+                   const possibleCode = extraReasonMatch[1]
+                   const allItems = AGENDA_CATEGORIES.flatMap(c => c.items)
+                   if (allItems.some(i => i.code === possibleCode)) {
+                      finalCode = possibleCode
+                      finalNotes = overtimeReason.replace(possibleCode, "").trim()
+                   }
+                 }
+
+                 await prisma.agentRequest.create({
+                   data: {
+                     userId,
+                     tenantId,
+                     date: new Date(),
+                     code: finalCode,
+                     hours: roundedHours,
+                     notes: `[AUTO-GIUSTIFICAZIONE RITARDO ENTRATA] ${finalNotes}`,
+                     status: "PENDING"
+                   }
+                 })
+               }
+             }
           }
         } else if (type === 'OUT') {
           actualTimestamp = finalTimestamp
@@ -198,6 +232,40 @@ export async function POST(req: Request) {
         if (finalTimestamp.getTime() < plannedStart.getTime()) {
            actualTimestamp = finalTimestamp
            finalTimestamp = plannedStart
+        } else if (overtimeReason) {
+           // Gestione Giustificazione di Ritardo in Entrata
+           const diffMs = finalTimestamp.getTime() - plannedStart.getTime()
+           const diffMins = Math.floor(diffMs / (1000 * 60))
+           
+           if (diffMins >= 15) {
+             const roundedHours = Math.round(diffMins / 15) * 0.25
+             if (roundedHours > 0) {
+               let finalCode = "0008" // Default: Recupero Ore
+               let finalNotes = overtimeReason
+
+               const extraReasonMatch = overtimeReason.match(/^([A-Z0-9_]+)\b/)
+               if (extraReasonMatch) {
+                 const possibleCode = extraReasonMatch[1]
+                 const allItems = AGENDA_CATEGORIES.flatMap(c => c.items)
+                 if (allItems.some(i => i.code === possibleCode)) {
+                    finalCode = possibleCode
+                    finalNotes = overtimeReason.replace(possibleCode, "").trim()
+                 }
+               }
+
+               await prisma.agentRequest.create({
+                 data: {
+                   userId,
+                   tenantId,
+                   date: new Date(),
+                   code: finalCode,
+                   hours: roundedHours,
+                   notes: `[AUTO-GIUSTIFICAZIONE RITARDO ENTRATA] ${finalNotes}`,
+                   status: "PENDING"
+                 }
+               })
+             }
+           }
         }
       }
     }

@@ -55,7 +55,7 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
   
   // Modal State per Uscite fuori orario (Straordinari e Recuperi)
   const [clockOutModalConfig, setClockOutModalConfig] = useState<{
-    type: "OVERTIME" | "EARLY_EXIT",
+    type: "OVERTIME" | "EARLY_EXIT" | "LATE_IN",
     diffMins: number,
     plannedEndTime: string,
     activeShiftId: string,
@@ -312,61 +312,85 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
           toast("Segnale GPS impreciso, la timbratura potrebbe essere rifiutata.", { icon: "⚠️" })
         }
         
-        // 1. Detect Overtime/Correction for OUT
+        // 1. Detect Overtime/Correction/Delay anomalies
         let overtimeReason = null
         let isCorrection = false
         let activeShiftId = null
 
-        if (type === 'OUT') {
-          const now = new Date()
-          const today = now.toISOString().split('T')[0]
-          const todayShift = myShifts.find(s => {
-            const sDate = s.date instanceof Date ? s.date.toISOString().split('T')[0] : s.date.split('T')[0]
-            return sDate === today && !isAssenza(s.type)
-          })
+        const now = new Date()
+        const today = now.toISOString().split('T')[0]
+        const todayShift = myShifts.find(s => {
+          const sDate = s.date instanceof Date ? s.date.toISOString().split('T')[0] : s.date.split('T')[0]
+          return sDate === today && !isAssenza(s.type)
+        })
 
-          if (todayShift && todayShift.timeRange) {
-            activeShiftId = todayShift.id
-            try {
-              const [, endTimeStr] = todayShift.timeRange.split(/[-–]/).map(p => p.trim())
-              const [eh, em] = endTimeStr.split(':').map(Number)
-              const plannedEnd = new Date(now)
-              plannedEnd.setHours(eh, em, 0, 0)
+        if (type === 'IN' && todayShift && todayShift.timeRange) {
+          activeShiftId = todayShift.id
+          try {
+            const [startTimeStr] = todayShift.timeRange.split(/[-–]/).map(p => p.trim())
+            const [sh, sm] = startTimeStr.split(':').map(Number)
+            const plannedStart = new Date(now)
+            plannedStart.setHours(sh, sm, 0, 0)
 
-              // Handle night shift scavalco
-              const startTimeStr = todayShift.timeRange.split(/[-–]/)[0].trim()
-              const [sh] = startTimeStr.split(':').map(Number)
-              if (eh < sh) plannedEnd.setDate(plannedEnd.getDate() + 1)
+            const diffMins = Math.floor((now.getTime() - plannedStart.getTime()) / (1000 * 60))
 
-              const diffMins = Math.floor((now.getTime() - plannedEnd.getTime()) / (1000 * 60))
+            if (diffMins >= 15) {
+              // RITARDO IN ENTRATA
+              setClockOutModalConfig({
+                type: "LATE_IN",
+                diffMins,
+                plannedEndTime: startTimeStr,
+                activeShiftId,
+                pos
+              })
+              setClockLoading(false)
+              toast.dismiss(toastId)
+              return // Ferma l'esecuzione, aspetta il modale
+            }
+          } catch (e) { console.error("Shift parse error", e) }
+        }
 
-              if (diffMins >= 15) {
-                // Straordinario / Uscita posticipata
-                setClockOutModalConfig({
-                  type: "OVERTIME",
-                  diffMins,
-                  plannedEndTime: endTimeStr,
-                  activeShiftId,
-                  pos
-                })
-                setClockLoading(false)
-                toast.dismiss(toastId)
-                return // Ferma l'esecuzione, aspetta il modale
-              } else if (diffMins <= -15) {
-                // Uscita anticipata / Recupero
-                setClockOutModalConfig({
-                  type: "EARLY_EXIT",
-                  diffMins,
-                  plannedEndTime: endTimeStr,
-                  activeShiftId,
-                  pos
-                })
-                setClockLoading(false)
-                toast.dismiss(toastId)
-                return // Ferma l'esecuzione, aspetta il modale
-              }
-            } catch (e) { console.error("Shift parse error", e) }
-          }
+        if (type === 'OUT' && todayShift && todayShift.timeRange) {
+          activeShiftId = todayShift.id
+          try {
+            const [, endTimeStr] = todayShift.timeRange.split(/[-–]/).map(p => p.trim())
+            const [eh, em] = endTimeStr.split(':').map(Number)
+            const plannedEnd = new Date(now)
+            plannedEnd.setHours(eh, em, 0, 0)
+
+            // Handle night shift scavalco
+            const startTimeStr = todayShift.timeRange.split(/[-–]/)[0].trim()
+            const [sh] = startTimeStr.split(':').map(Number)
+            if (eh < sh) plannedEnd.setDate(plannedEnd.getDate() + 1)
+
+            const diffMins = Math.floor((now.getTime() - plannedEnd.getTime()) / (1000 * 60))
+
+            if (diffMins >= 15) {
+              // Straordinario / Uscita posticipata
+              setClockOutModalConfig({
+                type: "OVERTIME",
+                diffMins,
+                plannedEndTime: endTimeStr,
+                activeShiftId,
+                pos
+              })
+              setClockLoading(false)
+              toast.dismiss(toastId)
+              return // Ferma l'esecuzione, aspetta il modale
+            } else if (diffMins <= -15) {
+              // Uscita anticipata / Recupero
+              setClockOutModalConfig({
+                type: "EARLY_EXIT",
+                diffMins,
+                plannedEndTime: endTimeStr,
+                activeShiftId,
+                pos
+              })
+              setClockLoading(false)
+              toast.dismiss(toastId)
+              return // Ferma l'esecuzione, aspetta il modale
+            }
+          } catch (e) { console.error("Shift parse error", e) }
         }
 
         // Se non ci sono anomalie di orario, procedi direttamente
@@ -375,7 +399,7 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           accuracy: pos.coords.accuracy,
-          shiftId: activeShiftId,
+          shiftId: activeShiftId || (todayShift ? todayShift.id : null),
           toastId
         })
 
@@ -399,23 +423,23 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
   }
 
   // Funzione chiamata dal modale dopo la conferma
-  const submitClockOutWithModal = async (data: { code: string; notes: string; actualEndTimeStr?: string; isCorrection?: boolean }) => {
+  const submitClockOutWithModal = async (data: { code: string; notes: string; actualEndTimeStr?: string; actualStartTimeStr?: string; isCorrection?: boolean }) => {
     if (!clockOutModalConfig) return
     const toastId = toast.loading("Registrazione in corso...")
     
     // Combina il codice e le note per l'API (come si aspetta il backend)
-    // Es. "2020 Elezioni prolungamento" oppure "0008 Uscita anticipata"
     const overtimeReason = data.isCorrection ? undefined : `${data.code} ${data.notes}`
+    const isLateIn = clockOutModalConfig.type === "LATE_IN"
 
     await executeClockInRequest({
-      type: "OUT",
+      type: isLateIn ? "IN" : "OUT",
       lat: clockOutModalConfig.pos.coords.latitude,
       lng: clockOutModalConfig.pos.coords.longitude,
       accuracy: clockOutModalConfig.pos.coords.accuracy,
       shiftId: clockOutModalConfig.activeShiftId,
       overtimeReason,
       isCorrection: data.isCorrection,
-      actualEndTimeStr: data.actualEndTimeStr,
+      actualEndTimeStr: isLateIn ? data.actualStartTimeStr : data.actualEndTimeStr,
       toastId
     })
     
