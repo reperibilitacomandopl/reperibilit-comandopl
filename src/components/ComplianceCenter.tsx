@@ -48,16 +48,25 @@ export default function ComplianceCenter() {
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
         <h3 className="text-sm font-black text-slate-800 uppercase mb-4">Service Level Agreement</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {slaLevels.map(sla => (
-            <div key={sla.level} className={`bg-${sla.color}-50 border border-${sla.color}-200 rounded-xl p-4`}>
-              <span className={`text-xs font-black text-${sla.color}-600 uppercase`}>{sla.level}</span>
+          {slaLevels.map(sla => {
+            const colors: Record<string, string> = {
+              rose: "bg-rose-50 border-rose-200 text-rose-600",
+              amber: "bg-amber-50 border-amber-200 text-amber-600",
+              blue: "bg-blue-50 border-blue-200 text-blue-600"
+            }
+            const colorClass = colors[sla.color] || colors.blue
+            const [bgClass, borderClass, textClass] = colorClass.split(" ")
+            return (
+            <div key={sla.level} className={`${bgClass} border ${borderClass} rounded-xl p-4`}>
+              <span className={`text-xs font-black ${textClass} uppercase`}>{sla.level}</span>
               <p className="text-[10px] text-slate-500 mt-1">{sla.desc}</p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <div><span className="text-[9px] text-slate-400">Risposta</span><p className="text-sm font-black">{sla.response}</p></div>
                 <div><span className="text-[9px] text-slate-400">Risoluzione</span><p className="text-sm font-black">{sla.resolution}</p></div>
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 

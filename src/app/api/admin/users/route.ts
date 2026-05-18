@@ -66,8 +66,7 @@ export async function GET(req: Request) {
     const users = await prisma.user.findMany({
       where: { 
         tenantId, 
-        isActive: true,
-        isSuperAdmin: false 
+        isActive: true
       },
       orderBy: { name: "asc" }
     })

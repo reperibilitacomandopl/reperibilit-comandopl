@@ -28,7 +28,7 @@ export async function GET() {
 
     const absencesToday = await prisma.absence.count({ where: { tenantId, date: { gte: today, lt: tomorrow } } })
 
-    const pendingRequests = await prisma.agentRequest.count({ where: { tenantId, status: { in: ["PENDING_OFFICER", "PENDING_ADMIN"] } } })
+    const pendingRequests = await prisma.agentRequest.count({ where: { tenantId, status: { in: ["PENDING", "PENDING_OFFICER", "PENDING_ADMIN"] } } })
 
     const expiringDocs = await prisma.user.count({
       where: { tenantId, isActive: true, OR: [
