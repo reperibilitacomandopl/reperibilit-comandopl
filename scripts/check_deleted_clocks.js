@@ -15,21 +15,19 @@ async function run() {
     return;
   }
 
-  const todayStr = now.toISOString().split('T')[0];
-  const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const mayStart = new Date('2026-05-01T00:00:00Z');
+  const mayEnd = new Date('2026-05-31T23:59:59Z');
 
-  // Check all clock records today (including deleted ones)
+  // Check all clock records in May
   const clocks = await prisma.clockRecord.findMany({
     where: {
       userId: agent.id,
-      timestamp: { gte: today, lt: tomorrow }
+      timestamp: { gte: mayStart, lt: mayEnd }
     },
     orderBy: { timestamp: 'asc' }
   });
 
-  console.log(`\nFound ${clocks.length} clock records for today (including deleted):`);
+  console.log(`\nFound ${clocks.length} clock records in May 2026:`);
   clocks.forEach(c => {
     console.log(`  Clock ID: ${c.id}`);
     console.log(`    Type: ${c.type}`);
