@@ -332,7 +332,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   session: { 
     strategy: "jwt",
-    maxAge: 8 * 60 * 60, // 8 ore (durata media di un turno lavorativo)
+    maxAge: 30 * 24 * 60 * 60, // 30 giorni (mantiene l'accesso su smartphone)
   },
   pages: {
     signIn: '/login',

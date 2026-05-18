@@ -117,15 +117,18 @@ export async function PUT(req: Request) {
 
     const rawMacro = type !== undefined ? type : (existingShift?.type || "M8");
 
+    // Se il turno base viene esplicitamente cambiato, puliamo il vecchio orario operativo stale
+    const baseShiftChanged = type !== undefined && existingShift && existingShift.type !== type;
+
     const normalized = normalizeShiftData({
       macroType: rawMacro,
-      timeRange: timeRange !== undefined ? timeRange : existingShift?.timeRange,
-      serviceCategoryId: serviceCategoryId !== undefined ? serviceCategoryId : existingShift?.serviceCategoryId,
-      serviceTypeId: serviceTypeId !== undefined ? serviceTypeId : existingShift?.serviceTypeId,
-      vehicleId: vehicleId !== undefined ? vehicleId : existingShift?.vehicleId,
-      radioId: radioId !== undefined ? radioId : existingShift?.radioId,
-      weaponId: weaponId !== undefined ? (weaponId || null) : existingShift?.weaponId,
-      armorId: armorId !== undefined ? (armorId || null) : existingShift?.armorId,
+      timeRange: timeRange !== undefined ? timeRange : (baseShiftChanged ? null : existingShift?.timeRange),
+      serviceCategoryId: serviceCategoryId !== undefined ? serviceCategoryId : (baseShiftChanged ? null : existingShift?.serviceCategoryId),
+      serviceTypeId: serviceTypeId !== undefined ? serviceTypeId : (baseShiftChanged ? null : existingShift?.serviceTypeId),
+      vehicleId: vehicleId !== undefined ? vehicleId : (baseShiftChanged ? null : existingShift?.vehicleId),
+      radioId: radioId !== undefined ? radioId : (baseShiftChanged ? null : existingShift?.radioId),
+      weaponId: weaponId !== undefined ? (weaponId || null) : (baseShiftChanged ? null : existingShift?.weaponId),
+      armorId: armorId !== undefined ? (armorId || null) : (baseShiftChanged ? null : existingShift?.armorId),
       repType: existingShift?.repType
     });
 

@@ -94,13 +94,16 @@ export async function PUT(req: Request) {
     let rawMacro = isRep ? (existingShift?.type || "") : value;
     let rawRep = isRep ? value : (existingShift?.repType || null);
 
+    // Se il turno base (macro) è stato modificato, il vecchio orario operativo non è più valido
+    const baseShiftChanged = !isRep && existingShift && existingShift.type !== value;
+
     // Run the pipeline
     const normalized = normalizeShiftData({
       macroType: rawMacro,
-      timeRange: existingShift?.timeRange,
-      serviceCategoryId: existingShift?.serviceCategoryId,
-      serviceTypeId: existingShift?.serviceTypeId,
-      vehicleId: existingShift?.vehicleId,
+      timeRange: baseShiftChanged ? null : existingShift?.timeRange,
+      serviceCategoryId: baseShiftChanged ? null : existingShift?.serviceCategoryId,
+      serviceTypeId: baseShiftChanged ? null : existingShift?.serviceTypeId,
+      vehicleId: baseShiftChanged ? null : existingShift?.vehicleId,
       repType: rawRep
     });
 
