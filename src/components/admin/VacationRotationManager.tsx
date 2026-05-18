@@ -14,9 +14,15 @@ export default function VacationRotationManager() {
   const [groups, setGroups] = useState<any[]>([])
   const [holidayGroups, setHolidayGroups] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
+  const [holidays, setHolidays] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [groupSearchQuery, setGroupSearchQuery] = useState("")
   const [holidaySearchQuery, setHolidaySearchQuery] = useState("")
+  const [subTab, setSubTab] = useState<"groups" | "assignments">("groups")
+  const [customHolidayForm, setCustomHolidayForm] = useState({ id: "", name: "", date: "" })
+  const [selectedHoliday, setSelectedHoliday] = useState<any | null>(null)
+  const [assignedMemberIds, setAssignedMemberIds] = useState<string[]>([])
+  const [holidaySearchQueryText, setHolidaySearchQueryText] = useState("")
 
   // Form states for Vacation Periods
   const [periodForm, setPeriodForm] = useState({ id: "", name: "", startDay: 1, startMonth: 7, endDay: 15, endMonth: 7, orderIndex: 0 })
@@ -44,31 +50,46 @@ export default function VacationRotationManager() {
 
   useEffect(() => {
     loadAllData()
-  }, [season])
+  }, [season, yearSim])
 
   const loadAllData = async () => {
     setLoading(true)
     try {
-      const [pRes, gRes, hgRes, uRes] = await Promise.all([
+      const [pRes, gRes, hgRes, uRes, cRes] = await Promise.all([
         fetch(`/api/admin/vacations/rotation/periods?season=${season}`),
         fetch(`/api/admin/vacations/rotation/groups?season=${season}`),
         fetch("/api/admin/vacations/rotation/holidays"),
-        fetch("/api/admin/users")
+        fetch("/api/admin/users"),
+        fetch(`/api/admin/vacations/rotation/holidays/custom?year=${yearSim}`)
       ])
       const pData = await pRes.json()
       const gData = await gRes.json()
       const hgData = await hgRes.json()
       const uData = await uRes.json()
+      const cData = await cRes.json()
 
       setPeriods(pData.periods || [])
       setGroups(gData.groups || [])
       setHolidayGroups(hgData.groups || [])
       setUsers(uData.users || [])
+      setHolidays(cData.holidays || [])
     } catch (e) {
       console.error("Error loading rotation data:", e)
       toast.error("Errore nel caricamento dei dati")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadHolidays = async () => {
+    try {
+      const res = await fetch(`/api/admin/vacations/rotation/holidays/custom?year=${yearSim}`)
+      const data = await res.json()
+      if (data.success) {
+        setHolidays(data.holidays || [])
+      }
+    } catch (e) {
+      console.error("Error loading custom holidays:", e)
     }
   }
 
@@ -189,6 +210,72 @@ export default function VacationRotationManager() {
         loadAllData()
       } else {
         toast.error("Errore")
+      }
+    } catch {
+      toast.error("Errore di rete")
+    }
+  }
+
+  const saveCustomHoliday = async () => {
+    if (!customHolidayForm.name || !customHolidayForm.date) {
+      toast.error("Nome e Data della festività sono obbligatori")
+      return
+    }
+    try {
+      const res = await fetch("/api/admin/vacations/rotation/holidays/custom", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(customHolidayForm)
+      })
+      if (res.ok) {
+        toast.success(customHolidayForm.id ? "Festività aggiornata" : "Festività creata con successo")
+        setCustomHolidayForm({ id: "", name: "", date: "" })
+        loadHolidays()
+      } else {
+        const err = await res.json()
+        toast.error(err.error || "Errore nel salvataggio")
+      }
+    } catch {
+      toast.error("Errore di rete")
+    }
+  }
+
+  const deleteCustomHoliday = async (id: string) => {
+    if (!confirm("Sicuro di voler eliminare questa festività personalizzata? Verranno rimosse anche le relative assegnazioni e i turni.")) return
+    try {
+      const res = await fetch(`/api/admin/vacations/rotation/holidays/custom?id=${id}`, { method: "DELETE" })
+      if (res.ok) {
+        toast.success("Festività eliminata")
+        loadHolidays()
+      } else {
+        const err = await res.json()
+        toast.error(err.error || "Errore")
+      }
+    } catch {
+      toast.error("Errore di rete")
+    }
+  }
+
+  const saveHolidayAssignments = async () => {
+    if (!selectedHoliday) return
+    try {
+      const res = await fetch("/api/admin/vacations/rotation/holidays/custom", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: selectedHoliday.id,
+          name: selectedHoliday.name,
+          date: selectedHoliday.date,
+          userIds: assignedMemberIds
+        })
+      })
+      if (res.ok) {
+        toast.success("Assegnazioni salvate con successo!")
+        setSelectedHoliday(null)
+        loadHolidays()
+      } else {
+        const err = await res.json()
+        toast.error(err.error || "Errore")
       }
     } catch {
       toast.error("Errore di rete")
@@ -707,178 +794,340 @@ export default function VacationRotationManager() {
             </div>
           )}
 
-          {/* TAB 3: HOLIDAY ROTATION GROUPS */}
+          {/* TAB 3: ROTATION FESTIVI INFRASETTIMANALI */}
           {activeTab === "holidays" && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
-              {/* Form creation */}
-              <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 font-black">
-                    {isEditingHolidayGroup ? "Modifica Gruppo Festivo" : "Nuovo Gruppo Festivo"}
-                  </h3>
-                  {isEditingHolidayGroup && (
-                    <button
-                      onClick={() => {
-                        setIsEditingHolidayGroup(false)
-                        setHolidayGroupForm({ id: "", name: "", baseYear: new Date().getFullYear(), orderIndex: holidayGroups.length + 1, memberIds: [] })
-                      }}
-                      className="text-xs text-red-500 hover:underline font-bold"
-                    >
-                      Annulla
-                    </button>
-                  )}
-                </div>
+            <div className="space-y-6">
+              {/* Sub-tabs switcher */}
+              <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 w-fit">
+                <button
+                  onClick={() => setSubTab("groups")}
+                  className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+                    subTab === "groups"
+                      ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md"
+                      : "text-slate-650 dark:text-slate-455 hover:bg-slate-200/50 dark:hover:bg-slate-850"
+                  }`}
+                >
+                  👥 Gruppi di Rotazione Round-Robin
+                </button>
+                <button
+                  onClick={() => setSubTab("assignments")}
+                  className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+                    subTab === "assignments"
+                      ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md"
+                      : "text-slate-650 dark:text-slate-455 hover:bg-slate-200/50 dark:hover:bg-slate-850"
+                  }`}
+                >
+                  📅 Assegnazione Personale & Festività Custom
+                </button>
+              </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-widest font-black">Nome Gruppo Festivo (es. Squadra Festivo 1)</label>
-                    <input
-                      type="text"
-                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-sm font-bold mt-1 outline-none"
-                      placeholder="es. Squadra Festivo 1"
-                      value={holidayGroupForm.name}
-                      onChange={e => setHolidayGroupForm({ ...holidayGroupForm, name: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-widest font-black">Anno di Partenza</label>
-                      <input
-                        type="number"
-                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-sm font-bold mt-1 outline-none"
-                        value={holidayGroupForm.baseYear}
-                        onChange={e => setHolidayGroupForm({ ...holidayGroupForm, baseYear: parseInt(e.target.value) || new Date().getFullYear() })}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-widest font-black">Ordine di Sequenza</label>
-                      <input
-                        type="number"
-                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-sm font-bold mt-1 outline-none"
-                        value={holidayGroupForm.orderIndex}
-                        onChange={e => setHolidayGroupForm({ ...holidayGroupForm, orderIndex: parseInt(e.target.value) || 0 })}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Member selection */}
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-widest font-black block mb-2">Seleziona Operatori</label>
-                    <input
-                      type="text"
-                      className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-3 py-1.5 text-xs font-bold mb-2 outline-none placeholder-slate-400"
-                      placeholder="Cerca operatore..."
-                      value={holidaySearchQuery}
-                      onChange={e => setHolidaySearchQuery(e.target.value)}
-                    />
-                    <div className="bg-slate-50 dark:bg-slate-900 border border-slate-250 dark:border-slate-800 rounded-xl p-3 max-h-[180px] overflow-y-auto space-y-2">
-                      {users
-                        .filter(u => 
-                          u.name?.toLowerCase().includes(holidaySearchQuery.toLowerCase()) || 
-                          u.matricola?.toLowerCase().includes(holidaySearchQuery.toLowerCase())
-                        )
-                        .map(u => {
-                          const isChecked = (holidayGroupForm.memberIds || []).includes(u.id)
-                          return (
-                            <label key={u.id} className="flex items-center gap-2.5 hover:bg-slate-100 dark:hover:bg-slate-850 p-1.5 rounded-lg cursor-pointer transition-colors">
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => toggleMemberInForm(u.id, true)}
-                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500/25"
-                              />
-                              <div className="text-xs">
-                                <p className="font-black text-slate-850 dark:text-white uppercase leading-tight">{u.name}</p>
-                                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{u.qualifica || "Agente"} ({u.matricola})</span>
-                              </div>
-                            </label>
-                          )
-                        })}
-                      {users.filter(u => 
-                        u.name?.toLowerCase().includes(holidaySearchQuery.toLowerCase()) || 
-                        u.matricola?.toLowerCase().includes(holidaySearchQuery.toLowerCase())
-                      ).length === 0 && (
-                        <p className="text-[10px] text-slate-455 italic text-center py-2">Nessun operatore trovato</p>
+              {subTab === "groups" ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  
+                  {/* Form creation */}
+                  <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 font-black">
+                        {isEditingHolidayGroup ? "Modifica Gruppo Festivo" : "Nuovo Gruppo Festivo"}
+                      </h3>
+                      {isEditingHolidayGroup && (
+                        <button
+                          onClick={() => {
+                            setIsEditingHolidayGroup(false)
+                            setHolidayGroupForm({ id: "", name: "", baseYear: new Date().getFullYear(), orderIndex: holidayGroups.length + 1, memberIds: [] })
+                          }}
+                          className="text-xs text-red-500 hover:underline font-bold"
+                        >
+                          Annulla
+                        </button>
                       )}
                     </div>
-                  </div>
 
-                  <button
-                    onClick={saveHolidayGroup}
-                    className="w-full py-3 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2"
-                  >
-                    <Calendar size={14} /> Salva Gruppo Festivo
-                  </button>
-                </div>
-              </div>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-widest font-black">Nome Gruppo Festivo (es. Squadra Festivo 1)</label>
+                        <input
+                          type="text"
+                          className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-sm font-bold mt-1 outline-none"
+                          placeholder="es. Squadra Festivo 1"
+                          value={holidayGroupForm.name}
+                          onChange={e => setHolidayGroupForm({ ...holidayGroupForm, name: e.target.value })}
+                        />
+                      </div>
 
-              {/* List table */}
-              <div className="lg:col-span-2 space-y-4">
-                {holidayGroups.length === 0 ? (
-                  <div className="bg-white dark:bg-slate-950 p-12 text-center rounded-2xl border border-dashed border-slate-250 dark:border-slate-800 flex flex-col items-center justify-center gap-3">
-                    <Calendar className="text-slate-300 dark:text-slate-700" size={32} />
-                    <div>
-                      <p className="text-sm font-bold text-slate-800 dark:text-white">Nessun gruppo di rotazione festivi configurato</p>
-                      <p className="text-xs text-slate-400">Organizza gli agenti in gruppi per ruotare i festivi infrasettimanali durante l'anno.</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {holidayGroups.map(group => (
-                      <div key={group.id} className="bg-white dark:bg-slate-950 p-5 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-3 shadow-sm hover:shadow-md transition-shadow relative">
-                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-850 pb-2">
-                          <div>
-                            <span className="text-xs font-black text-slate-850 dark:text-white uppercase">{group.name}</span>
-                            <span className="text-[9px] block text-slate-400 font-semibold">Ordine Sequenza: #{group.orderIndex}</span>
-                          </div>
-                          <div className="flex gap-1.5">
-                            <button
-                              onClick={() => {
-                                setHolidayGroupForm({
-                                  id: group.id,
-                                  name: group.name,
-                                  baseYear: group.baseYear,
-                                  orderIndex: group.orderIndex,
-                                  memberIds: group.members.map((m: any) => m.id)
-                                })
-                                setIsEditingHolidayGroup(true)
-                              }}
-                              className="text-[10px] font-black text-blue-650 hover:underline px-2 py-1"
-                            >
-                              Modifica
-                            </button>
-                            <button
-                              onClick={() => deleteHolidayGroup(group.id)}
-                              className="text-slate-400 hover:text-red-500 p-1"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-widest font-black">Anno di Partenza</label>
+                          <input
+                            type="number"
+                            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-sm font-bold mt-1 outline-none"
+                            value={holidayGroupForm.baseYear}
+                            onChange={e => setHolidayGroupForm({ ...holidayGroupForm, baseYear: parseInt(e.target.value) || new Date().getFullYear() })}
+                          />
                         </div>
-
-                        <div className="space-y-1.5 text-xs">
-                          <p className="font-semibold text-slate-650 dark:text-slate-400">
-                            ⚙️ Anno Base: <span className="font-bold text-slate-800 dark:text-white">{group.baseYear}</span>
-                          </p>
-                          <div className="border-t border-dashed border-slate-150 dark:border-slate-850 pt-2.5">
-                            <span className="text-[9px] font-black uppercase text-slate-400 block mb-1">Membri Festivi ({group.members?.length || 0}):</span>
-                            <div className="flex flex-wrap gap-1">
-                              {(group.members || []).map((m: any) => (
-                                <span key={m.id} className="text-[9px] font-bold bg-slate-50 dark:bg-slate-900 border border-slate-150 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-lg">
-                                  {m.name ? m.name.split(" ")[0] : "Agente"}
-                                </span>
-                              ))}
-                              {(!group.members || group.members.length === 0) && <span className="text-[10px] text-slate-400 italic">Nessun agente in questo gruppo</span>}
-                            </div>
-                          </div>
+                        <div>
+                          <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-widest font-black">Ordine di Sequenza</label>
+                          <input
+                            type="number"
+                            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-sm font-bold mt-1 outline-none"
+                            value={holidayGroupForm.orderIndex}
+                            onChange={e => setHolidayGroupForm({ ...holidayGroupForm, orderIndex: parseInt(e.target.value) || 0 })}
+                          />
                         </div>
                       </div>
-                    ))}
+
+                      {/* Member selection */}
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-widest font-black block mb-2">Seleziona Operatori</label>
+                        <input
+                          type="text"
+                          className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-3 py-1.5 text-xs font-bold mb-2 outline-none placeholder-slate-400"
+                          placeholder="Cerca operatore..."
+                          value={holidaySearchQuery}
+                          onChange={e => setHolidaySearchQuery(e.target.value)}
+                        />
+                        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-250 dark:border-slate-800 rounded-xl p-3 max-h-[180px] overflow-y-auto space-y-2">
+                          {users
+                            .filter(u => 
+                              u.name?.toLowerCase().includes(holidaySearchQuery.toLowerCase()) || 
+                              u.matricola?.toLowerCase().includes(holidaySearchQuery.toLowerCase())
+                            )
+                            .map(u => {
+                              const isChecked = (holidayGroupForm.memberIds || []).includes(u.id)
+                              return (
+                                <label key={u.id} className="flex items-center gap-2.5 hover:bg-slate-100 dark:hover:bg-slate-850 p-1.5 rounded-lg cursor-pointer transition-colors">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => toggleMemberInForm(u.id, true)}
+                                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500/25"
+                                  />
+                                  <div className="text-xs">
+                                    <p className="font-black text-slate-850 dark:text-white uppercase leading-tight">{u.name}</p>
+                                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{u.qualifica || "Agente"} ({u.matricola})</span>
+                                  </div>
+                                </label>
+                              )
+                            })}
+                          {users.filter(u => 
+                            u.name?.toLowerCase().includes(holidaySearchQuery.toLowerCase()) || 
+                            u.matricola?.toLowerCase().includes(holidaySearchQuery.toLowerCase())
+                          ).length === 0 && (
+                            <p className="text-[10px] text-slate-455 italic text-center py-2">Nessun operatore trovato</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={saveHolidayGroup}
+                        className="w-full py-3 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+                      >
+                        <Calendar size={14} /> Salva Gruppo Festivo
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  {/* List table */}
+                  <div className="lg:col-span-2 space-y-4">
+                    {holidayGroups.length === 0 ? (
+                      <div className="bg-white dark:bg-slate-950 p-12 text-center rounded-2xl border border-dashed border-slate-250 dark:border-slate-800 flex flex-col items-center justify-center gap-3">
+                        <Calendar className="text-slate-300 dark:text-slate-700" size={32} />
+                        <div>
+                          <p className="text-sm font-bold text-slate-800 dark:text-white">Nessun gruppo di rotazione festivi configurato</p>
+                          <p className="text-xs text-slate-400">Organizza gli agenti in gruppi per ruotare i festivi infrasettimanali durante l'anno.</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {holidayGroups.map(group => (
+                          <div key={group.id} className="bg-white dark:bg-slate-950 p-5 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-3 shadow-sm hover:shadow-md transition-shadow relative">
+                            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-850 pb-2">
+                              <div>
+                                <span className="text-xs font-black text-slate-850 dark:text-white uppercase">{group.name}</span>
+                                <span className="text-[9px] block text-slate-400 font-semibold">Ordine Sequenza: #{group.orderIndex}</span>
+                              </div>
+                              <div className="flex gap-1.5">
+                                <button
+                                  onClick={() => {
+                                    setHolidayGroupForm({
+                                      id: group.id,
+                                      name: group.name,
+                                      baseYear: group.baseYear,
+                                      orderIndex: group.orderIndex,
+                                      memberIds: group.members.map((m: any) => m.id)
+                                    })
+                                    setIsEditingHolidayGroup(true)
+                                  }}
+                                  className="text-[10px] font-black text-blue-650 hover:underline px-2 py-1"
+                                >
+                                  Modifica
+                                </button>
+                                <button
+                                  onClick={() => deleteHolidayGroup(group.id)}
+                                  className="text-slate-400 hover:text-red-500 p-1"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5 text-xs">
+                              <p className="font-semibold text-slate-650 dark:text-slate-450">
+                                ⚙️ Anno Base: <span className="font-bold text-slate-800 dark:text-white">{group.baseYear}</span>
+                              </p>
+                              <div className="border-t border-dashed border-slate-150 dark:border-slate-850 pt-2.5">
+                                <span className="text-[9px] font-black uppercase text-slate-400 block mb-1">Membri Festivi ({group.members?.length || 0}):</span>
+                                <div className="flex flex-wrap gap-1">
+                                  {(group.members || []).map((m: any) => (
+                                    <span key={m.id} className="text-[9px] font-bold bg-slate-50 dark:bg-slate-900 border border-slate-150 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-lg">
+                                      {m.name ? m.name.split(" ")[0] : "Agente"}
+                                    </span>
+                                  ))}
+                                  {(!group.members || group.members.length === 0) && <span className="text-[10px] text-slate-400 italic">Nessun agente in questo gruppo</span>}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  
+                  {/* Form per festivo custom */}
+                  <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 font-black">
+                        {customHolidayForm.id ? "Modifica Festivo Custom" : "Nuovo Festivo Custom"}
+                      </h3>
+                      {customHolidayForm.id && (
+                        <button
+                          onClick={() => setCustomHolidayForm({ id: "", name: "", date: "" })}
+                          className="text-xs text-red-500 hover:underline font-bold"
+                        >
+                          Annulla
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-widest block font-bold">Nome Festività (es. Festa Patronale)</label>
+                        <input
+                          type="text"
+                          className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-sm font-bold mt-1 outline-none"
+                          placeholder="es. Festa Patronale di San Nicola"
+                          value={customHolidayForm.name}
+                          onChange={e => setCustomHolidayForm({ ...customHolidayForm, name: e.target.value })}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-widest block font-bold">Data del Festivo</label>
+                        <input
+                          type="date"
+                          className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-sm font-bold mt-1 outline-none"
+                          value={customHolidayForm.date}
+                          onChange={e => setCustomHolidayForm({ ...customHolidayForm, date: e.target.value })}
+                        />
+                      </div>
+
+                      <button
+                        onClick={saveCustomHoliday}
+                        className="w-full py-3 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+                      >
+                        <Plus size={14} /> Salva Festività Custom
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Lista Festività dell'anno */}
+                  <div className="lg:col-span-2 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                        Festività Infrasettimanali dell'anno {yearSim}
+                      </h3>
+                      <span className="text-[10px] text-slate-400 font-bold bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded-lg">
+                        Domeniche escluse
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {holidays.map(h => {
+                        const dateFormatted = new Date(h.date).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
+                        return (
+                          <div key={h.id} className="bg-white dark:bg-slate-950 p-5 rounded-2xl border border-slate-200 dark:border-slate-850 space-y-3 shadow-sm hover:shadow-md transition-shadow relative">
+                            <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-850 pb-2">
+                              <div>
+                                <span className="text-xs font-black text-slate-850 dark:text-white uppercase leading-tight block">
+                                  {h.name}
+                                </span>
+                                <span className="text-[10px] block text-slate-500 font-semibold mt-0.5">📅 {dateFormatted}</span>
+                              </div>
+                              <div className="flex gap-1.5">
+                                {h.isCustom ? (
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        const d = new Date(h.date).toISOString().split("T")[0]
+                                        setCustomHolidayForm({ id: h.id, name: h.name, date: d })
+                                      }}
+                                      className="text-slate-400 hover:text-blue-500 px-1 font-bold"
+                                      title="Modifica"
+                                    >
+                                      ✏️
+                                    </button>
+                                    <button
+                                      onClick={() => deleteCustomHoliday(h.id)}
+                                      className="text-slate-400 hover:text-red-500 px-1 font-bold"
+                                      title="Elimina"
+                                    >
+                                      🗑️
+                                    </button>
+                                  </>
+                                ) : (
+                                  <span className="text-[8px] font-black uppercase text-blue-500 bg-blue-50 dark:bg-blue-950/20 px-1.5 py-0.5 rounded">Nazionale</span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="space-y-2 text-xs">
+                              <div>
+                                <span className="text-[9px] font-black uppercase text-slate-400 block mb-1">Personale Assegnato ({h.assignments?.length || 0}):</span>
+                                <div className="flex flex-wrap gap-1">
+                                  {(h.assignments || []).map((m: any) => (
+                                    <span key={m.id} className="text-[9px] font-bold bg-slate-50 dark:bg-slate-900 border border-slate-150 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                                      👮‍♂️ {m.name ? m.name.split(" ")[0] : "Operatore"}
+                                    </span>
+                                  ))}
+                                  {(!h.assignments || h.assignments.length === 0) && (
+                                    <span className="text-[10px] text-slate-400 italic">Nessun operatore assegnato direttamente</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <button
+                                onClick={() => {
+                                  setSelectedHoliday(h)
+                                  setAssignedMemberIds((h.assignments || []).map((a: any) => a.id))
+                                }}
+                                className="w-full mt-2 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-850 text-slate-850 dark:text-slate-200 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors flex items-center justify-center gap-1 font-bold"
+                              >
+                                👤 Gestisci Personale
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
             </div>
           )}
 
@@ -1022,6 +1271,122 @@ export default function VacationRotationManager() {
             </div>
           )}
 
+        </div>
+      )}
+
+      {/* MODAL GESTIONE ASSEGNAZIONE PERSONALE FESTIVO */}
+      {selectedHoliday && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-950 w-full max-w-lg rounded-3xl border border-slate-200 dark:border-slate-850 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
+            
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 dark:border-slate-850 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded">Assegnazione Personale</span>
+                <h3 className="text-base font-black text-slate-900 dark:text-white uppercase mt-1.5">{selectedHoliday.name}</h3>
+                <p className="text-xs text-slate-500 font-bold mt-0.5">
+                  📅 {new Date(selectedHoliday.date).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedHoliday(null)}
+                className="text-slate-400 hover:text-slate-655 dark:hover:text-slate-200 text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* User Search & Selection */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              <input
+                type="text"
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl px-4 py-2.5 text-xs font-bold outline-none placeholder-slate-400"
+                placeholder="Cerca operatore..."
+                value={holidaySearchQueryText}
+                onChange={e => setHolidaySearchQueryText(e.target.value)}
+              />
+
+              <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-1">
+                {users
+                  .filter(u => 
+                    u.name?.toLowerCase().includes(holidaySearchQueryText.toLowerCase()) || 
+                    u.matricola?.toLowerCase().includes(holidaySearchQueryText.toLowerCase())
+                  )
+                  .map(u => {
+                    const isChecked = assignedMemberIds.includes(u.id)
+                    const isExcluded = selectedHoliday.excludedUserIds?.includes(u.id)
+
+                    return (
+                      <div
+                        key={u.id}
+                        className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
+                          isExcluded
+                            ? "bg-red-50/30 dark:bg-red-955/5 border-red-100 dark:border-red-900/20 opacity-75"
+                            : isChecked
+                            ? "bg-slate-50 dark:bg-slate-900/50 border-slate-350 dark:border-slate-800"
+                            : "bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-850 hover:bg-slate-50/50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            disabled={isExcluded}
+                            onChange={() => {
+                              if (isChecked) {
+                                setAssignedMemberIds(assignedMemberIds.filter(id => id !== u.id))
+                              } else {
+                                setAssignedMemberIds([...assignedMemberIds, u.id])
+                              }
+                            }}
+                            className={`rounded border-slate-300 text-slate-900 focus:ring-slate-500/25 h-4 w-4 ${isExcluded ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                          />
+                          <div className="text-xs">
+                            <p className={`font-black uppercase leading-tight ${isExcluded ? "text-slate-400 line-through font-bold" : "text-slate-850 dark:text-white"}`}>
+                              {u.name}
+                            </p>
+                            <span className="text-[9px] text-slate-450 font-bold uppercase tracking-wider">{u.qualifica || "Agente"} ({u.matricola})</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          {isExcluded ? (
+                            <span className="text-[8px] font-black uppercase text-red-600 bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 px-2 py-0.5 rounded-lg">
+                              🏖️ In Ferie (Escluso)
+                            </span>
+                          ) : isChecked ? (
+                            <span className="text-[8px] font-black uppercase text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/50 px-2 py-0.5 rounded-lg font-bold">
+                              Assegnato
+                            </span>
+                          ) : (
+                            <span className="text-[8px] font-black uppercase text-slate-400 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-0.5 rounded-lg">
+                              Disponibile
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="p-6 border-t border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-950 flex gap-3">
+              <button
+                onClick={() => setSelectedHoliday(null)}
+                className="flex-1 py-3 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={saveHolidayAssignments}
+                className="flex-1 py-3 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 rounded-xl text-xs font-black uppercase tracking-wider transition-colors"
+              >
+                Salva Assegnazioni
+              </button>
+            </div>
+
+          </div>
         </div>
       )}
     </div>

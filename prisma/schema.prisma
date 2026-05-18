@@ -63,6 +63,7 @@ model Tenant {
   vacationRotationPeriods VacationRotationPeriod[]
   vacationRotationGroups  VacationRotationGroup[]
   holidayRotationGroups   HolidayRotationGroup[]
+  customHolidays          CustomHoliday[]
 }
 
 model User {
@@ -146,6 +147,7 @@ model User {
   patrolTemplates          PatrolTemplate[]   @relation("PatrolMembers")
   sentMessages             ChatMessage[]      @relation("SentMessages")
   documents                UserDocument[]
+  customHolidayAssignments CustomHolidayAssignment[]
   deletedAt                DateTime?
   failedLoginAttempts      Int                @default(0)
   lockoutUntil             DateTime?
@@ -849,4 +851,30 @@ model Intervention {
 
   @@index([tenantId, status])
   @@index([assignedToId, status])
+}
+
+model CustomHoliday {
+  id        String   @id @default(uuid())
+  tenantId  String?
+  name      String   // es. "Festa Patronale di Altamura"
+  date      DateTime
+  createdAt DateTime @default(now())
+  
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assignments CustomHolidayAssignment[]
+
+  @@unique([tenantId, date])
+  @@index([tenantId])
+}
+
+model CustomHolidayAssignment {
+  id        String   @id @default(uuid())
+  holidayId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  holiday   CustomHoliday @relation(fields: [holidayId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([holidayId, userId])
 }

@@ -24,11 +24,11 @@ export default function MobileNavBar({ activeTab, setActiveTab, onSOS, loadingSO
     <nav className="fixed bottom-0 left-0 right-0 z-[100] lg:hidden">
       {/* Container with Glass effect */}
       <div className="mx-4 mb-6 px-4 py-3 bg-white/80 backdrop-blur-xl border border-white/20 shadow-[0_-8px_30px_rgb(0,0,0,0.12)] rounded-[2rem] flex items-center justify-between">
-        
+
         {tabs.map((tab) => {
           const Icon = tab.icon
           const isActive = activeTab === tab.id
-          
+
           return (
             <button
               key={tab.id}
