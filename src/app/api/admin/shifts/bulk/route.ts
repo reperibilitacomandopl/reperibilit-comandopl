@@ -26,9 +26,10 @@ export async function POST(req: Request) {
     const finalRepType = isRep ? "rep_m" : null
     const finalType = isRep ? "RP" : upperCode
 
+    const lastDate = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()))
+
     const updates = []
     let currentDate = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()))
-    const lastDate = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()))
 
     while (currentDate <= lastDate) {
       const dateToSave = new Date(currentDate)

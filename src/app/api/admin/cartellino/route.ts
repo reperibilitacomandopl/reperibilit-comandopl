@@ -39,7 +39,7 @@ export async function GET(req: Request) {
     const startOfYear = new Date(Date.UTC(year, 0, 1))
     const endOfYear = new Date(Date.UTC(year + 1, 0, 1))
 
-    const [shifts, requests, clockRecords, agenda, balances, settings, yearShifts] = await Promise.all([
+    const [shifts, requests, clockRecords, agenda, balances, settings, yearShifts, certifiedDocs] = await Promise.all([
       prisma.shift.findMany({
         where: { userId, date: { gte: startDate, lt: endDate }, ...tf },
         orderBy: { date: "asc" }
@@ -66,8 +66,23 @@ export async function GET(req: Request) {
       prisma.shift.findMany({
         where: { userId, date: { gte: startOfYear, lt: endOfYear }, ...tf },
         select: { type: true }
+      }),
+      prisma.certifiedDocument.findMany({
+        where: {
+          tenantId: tenantId || null,
+          type: "ODS"
+        }
       })
     ])
+
+    const certifiedDates = certifiedDocs.map((d: any) => {
+      try {
+        const meta = JSON.parse(d.metadata || "{}")
+        return meta.date
+      } catch {
+        return null
+      }
+    }).filter(Boolean)
 
     const usedFerie = yearShifts.filter((s: any) => {
       const t = (s.type || "").toUpperCase()
@@ -87,6 +102,7 @@ export async function GET(req: Request) {
        agenda,
        balances,
        settings,
+       certifiedDates,
        yearlyStats: {
          usedFerie,
          usedMalattia

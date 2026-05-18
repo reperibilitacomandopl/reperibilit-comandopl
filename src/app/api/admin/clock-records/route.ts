@@ -19,6 +19,7 @@ export async function PUT(req: Request) {
     }
 
     const tenantId = session.user.tenantId
+
     const targetDate = new Date(date)
     const nextDate = new Date(targetDate)
     nextDate.setDate(nextDate.getDate() + 1)

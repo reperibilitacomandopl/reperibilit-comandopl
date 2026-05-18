@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { format, getDaysInMonth } from "date-fns"
 import { it } from "date-fns/locale"
-import { Calendar as CalendarIcon, Clock, Edit2, AlertCircle, CheckCircle2, RefreshCcw, Download, User, Info, X, LayoutDashboard, ListTodo } from "lucide-react"
+import { Calendar as CalendarIcon, Clock, Edit2, AlertCircle, CheckCircle2, RefreshCcw, Download, User, Info, X, LayoutDashboard, ListTodo, Unlock } from "lucide-react"
 import { AGENDA_CATEGORIES, getLabel } from "@/utils/agenda-codes"
 import CartellinoSummaryView from "@/components/shared/CartellinoSummaryView"
 import { toast } from "react-hot-toast"
@@ -195,35 +195,45 @@ export default function CartellinoPanel() {
     setSavingDetail(true)
     
     try {
-      const [resShifts, resClocks] = await Promise.all([
-        fetch("/api/admin/shifts/monthly", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-             updates: [{ 
-                userId: selectedCell.userId, 
-                date: selectedCell.dateStr, 
-                type: detailData.type,
-                overtimeHours: detailData.overtimeHours,
-                serviceDetails: detailData.note
-             }] 
-          })
-        }),
-        fetch("/api/admin/clock-records", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: selectedCell.userId,
-            date: selectedCell.dateStr,
-            clocks: detailData.clocks
-          })
+      const resShifts = await fetch("/api/admin/shifts/monthly", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+           updates: [{ 
+              userId: selectedCell.userId, 
+              date: selectedCell.dateStr, 
+              type: detailData.type,
+              overtimeHours: detailData.overtimeHours,
+              serviceDetails: detailData.note
+           }] 
         })
-      ])
-      if (!resShifts.ok || !resClocks.ok) throw new Error("Errore API")
+      })
+
+      if (!resShifts.ok) {
+        const errJson = await resShifts.json().catch(() => ({}))
+        throw new Error(errJson.error || "Impossibile aggiornare la turnazione.")
+      }
+
+      const resClocks = await fetch("/api/admin/clock-records", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: selectedCell.userId,
+          date: selectedCell.dateStr,
+          clocks: detailData.clocks
+        })
+      })
+
+      if (!resClocks.ok) {
+        const errJson = await resClocks.json().catch(() => ({}))
+        throw new Error(errJson.error || "Impossibile aggiornare le timbrature.")
+      }
+
+      toast.success("Dettagli salvati con successo")
       setDetailModalOpen(false)
       fetchCartellinoData()
-    } catch (e) {
-      alert("Errore durante il salvataggio dei dettagli")
+    } catch (e: any) {
+      toast.error(e.message || "Errore durante il salvataggio dei dettagli")
     } finally {
       setSavingDetail(false)
     }
@@ -327,6 +337,7 @@ export default function CartellinoPanel() {
                     const dateObj = new Date(Date.UTC(year, month - 1, day))
                     const dateStr = dateObj.toISOString().split('T')[0]
                     const isWeekend = dateObj.getUTCDay() === 0 || dateObj.getUTCDay() === 6
+                    const isCertified = data.certifiedDates?.includes(dateStr)
                     const dayShifts = data.shifts.filter((s: any) => new Date(s.date).toISOString().split('T')[0] === dateStr)
                     const requests = data.requests.filter((r: any) => new Date(r.date).toISOString().split('T')[0] === dateStr)
                     const clocks = data.clockRecords.filter((c: any) => new Date(c.timestamp).toISOString().split('T')[0] === dateStr)
@@ -362,6 +373,11 @@ export default function CartellinoPanel() {
                           <div className="flex flex-col">
                             <span className={`font-medium ${isWeekend ? 'text-amber-500' : 'text-slate-200'}`}>{day} {format(dateObj, "MMM", { locale: it })}</span>
                             <span className="text-xs text-slate-500 capitalize">{format(dateObj, "EEEE", { locale: it })}</span>
+                            {isCertified && (
+                              <span className="inline-flex items-center gap-1 text-[9px] text-amber-400 font-bold bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20 mt-1.5 w-fit cursor-help" title="Ordine di Servizio Certificato - Inserimenti Successivi Consentiti">
+                                <Unlock size={9} className="text-amber-400" /> 🔓 ODS
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3">
