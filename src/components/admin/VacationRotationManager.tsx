@@ -1228,17 +1228,21 @@ export default function VacationRotationManager() {
                     <p className="text-xs text-slate-455 italic py-6 text-center">Configura almeno un Gruppo Festivo per visualizzare la simulazione.</p>
                   ) : (
                     <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
-                      {getMidweekHolidaysSim(yearSim).map((holiday, idx) => {
+                      {holidays.map((holiday, idx) => {
                         // Calcola quale gruppo festivo è di turno
                         const baseYear = holidayGroups[0].baseYear || 2026
                         const yearsDiff = yearSim - baseYear
                         const groupIndex = (((idx + yearsDiff) % holidayGroups.length) + holidayGroups.length) % holidayGroups.length
                         const groupOnDuty = holidayGroups[groupIndex]
+                        const dateFormatted = new Date(holiday.date).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" })
 
                         return (
-                          <div key={idx} className="p-4 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+                          <div key={holiday.id || idx} className="p-4 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
                             <div>
-                              <span className="text-xs font-black text-slate-800 dark:text-white uppercase block">{holiday.name}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-black text-slate-800 dark:text-white uppercase block">{holiday.name}</span>
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded-lg">📅 {dateFormatted}</span>
+                              </div>
                               <span className="text-[9px] font-black uppercase text-emerald-650 dark:text-emerald-555 tracking-widest mt-1 block">Gruppo di turno: {groupOnDuty?.name || "Nessuno"}</span>
                             </div>
                             <div className="flex flex-wrap gap-1 max-w-[150px] justify-end">

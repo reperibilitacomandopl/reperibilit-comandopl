@@ -64,8 +64,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Nessun gruppo rotazione festivi configurato" }, { status: 400 })
     }
 
-    // 2. Recupera i festivi infrasettimanali dell'anno
-    const midweekHolidays = getMidweekHolidays(year)
+    // 2. Recupera i festivi infrasettimanali dell'anno (standard + custom del tenant)
+    const standardHolidays = getMidweekHolidays(year)
+    const dbHolidays = await prisma.customHoliday.findMany({
+      where: {
+        tenantId: u.tenantId,
+        date: {
+          gte: new Date(year, 0, 1),
+          lte: new Date(year, 11, 31, 23, 59, 59)
+        }
+      }
+    })
+
+    const combinedMap = new Map<string, { name: string; date: Date }>()
+    for (const sh of standardHolidays) {
+      const dateKey = sh.date.toISOString().split("T")[0]
+      combinedMap.set(dateKey, sh)
+    }
+    for (const dbh of dbHolidays) {
+      const dateKey = dbh.date.toISOString().split("T")[0]
+      combinedMap.set(dateKey, { name: dbh.name, date: dbh.date })
+    }
+
+    const midweekHolidays = Array.from(combinedMap.values()).sort((a, b) => a.date.getTime() - b.date.getTime())
     const results = []
 
     for (let i = 0; i < midweekHolidays.length; i++) {
