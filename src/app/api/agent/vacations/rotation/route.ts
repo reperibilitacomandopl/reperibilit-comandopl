@@ -46,6 +46,14 @@ export async function GET(request: Request) {
   const years = [currentYear, currentYear + 1, currentYear + 2]
 
   try {
+    const activePlans = await prisma.vacationPlan.findMany({
+      where: {
+        tenantId: u.tenantId,
+        userId: u.id,
+        year: { in: years }
+      }
+    })
+
     // 1. Carica i gruppi di ferie a cui appartiene l'agente
     const vacationGroups = await prisma.vacationRotationGroup.findMany({
       where: {
@@ -144,10 +152,68 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       vacations: vacationRotations,
-      holidays: holidayRotations
+      holidays: holidayRotations,
+      activePlans
     })
   } catch (error) {
     console.error("[AGENT_ROTATION_GET]", error)
+    return NextResponse.json({ error: "Errore interno" }, { status: 500 })
+  }
+}
+
+export async function POST(request: Request) {
+  const session = await auth()
+  const u = session?.user
+  if (!u) return NextResponse.json({ error: "Non autenticato" }, { status: 401 })
+
+  try {
+    const { planId, action } = await request.json()
+    if (!planId || !action) {
+      return NextResponse.json({ error: "planId e action obbligatori" }, { status: 400 })
+    }
+
+    const plan = await prisma.vacationPlan.findFirst({
+      where: { id: planId, userId: u.id, tenantId: u.tenantId }
+    })
+
+    if (!plan) {
+      return NextResponse.json({ error: "Piano ferie non trovato" }, { status: 404 })
+    }
+
+    if (action === "ACCEPT") {
+      // Aggiorna lo stato a CONFIRMED
+      const updatedPlan = await prisma.vacationPlan.update({
+        where: { id: planId },
+        data: { status: "CONFIRMED" }
+      })
+
+      // Sincronizza i turni (scrive "FERIE" nel calendario)
+      const { syncVacationShifts } = await import("@/utils/vacations")
+      await syncVacationShifts(u.tenantId || "", u.id, plan.startDate, plan.endDate, "CONFIRMED")
+
+      // Notifica il comandante o crea una notifica
+      try {
+        const admins = await prisma.user.findMany({
+          where: { tenantId: u.tenantId, role: "ADMIN" }
+        })
+        const { sendPushNotification } = await import("@/lib/push-notifications")
+        for (const adminUser of admins) {
+          await sendPushNotification(adminUser.id, {
+            title: "✔️ Ferie Rotazione Accettate",
+            body: `L'agente ${u.name} ha accettato le ferie di rotazione per ${plan.period} (${plan.startDate.toLocaleDateString('it-IT')} - ${plan.endDate.toLocaleDateString('it-IT')}).`,
+            url: "/admin/ferie"
+          })
+        }
+      } catch (ne) {
+        console.error("[AGENT_VACATION_ACCEPT_NOTIFY_ERROR]", ne)
+      }
+
+      return NextResponse.json({ success: true, plan: updatedPlan })
+    }
+
+    return NextResponse.json({ error: "Azione non supportata" }, { status: 400 })
+  } catch (error) {
+    console.error("[AGENT_ROTATION_POST]", error)
     return NextResponse.json({ error: "Errore interno" }, { status: 500 })
   }
 }

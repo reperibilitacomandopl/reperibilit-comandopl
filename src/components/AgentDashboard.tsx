@@ -60,6 +60,7 @@ export interface AgentDashboardProps {
   logoUrl?: string | null
   tenant?: any
   certifiedDates?: string[]
+  agentData?: any
 }
 
 export default function AgentDashboard({ 
@@ -76,10 +77,12 @@ export default function AgentDashboard({
   tenantSlug,
   logoUrl,
   tenant,
-  certifiedDates
+  certifiedDates,
+  agentData
 }: AgentDashboardProps) {
   
-  const admin = useAgentData({ currentUser, currentYear, currentMonth, shifts, tenant });
+  const localAgentData = useAgentData({ currentUser, currentYear, currentMonth, shifts, tenant });
+  const admin = agentData || localAgentData;
 
   // GPS REAL-TIME TRACKING (GEOFENCING SMART)
   const coords = useGpsTracking({ 
@@ -250,7 +253,7 @@ export default function AgentDashboard({
 
             {featuredShifts.length > 1 && (
               <div className="flex justify-center gap-2 -mt-4 mb-6">
-                {featuredShifts.map((_, i) => (
+                {featuredShifts.map((_: any, i: number) => (
                   <div key={i} className={`h-1.5 rounded-full transition-all ${i === activeShiftIndex ? 'w-6 bg-blue-600' : 'w-1.5 bg-slate-300'}`} />
                 ))}
               </div>
@@ -446,6 +449,9 @@ export default function AgentDashboard({
              currentUserId={currentUser.id} 
              handleRespondSwap={admin.handleRespondSwap} 
              swapLoading={admin.swapLoading} 
+             vacationSwapRequests={admin.vacationSwapRequests}
+             handleRespondVacationSwap={admin.handleRespondVacationSwap}
+             handleProposeVacationSwap={admin.handleProposeVacationSwap}
         />
         <AgentPersonalAgenda 
              currentMonthName={currentMonthName} 

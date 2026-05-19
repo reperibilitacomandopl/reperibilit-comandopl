@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
+import { syncVacationShifts } from "@/utils/vacations"
+
 const PERIOD_LABELS: Record<string, string> = {
   SUMMER: "Estate ☀️",
   WINTER: "Inverno ❄️"
@@ -81,46 +83,9 @@ export async function POST(request: Request) {
           }
         })
 
-        // Sincronizzazione automatica nella tabella Shift come turni di tipo "FERIE"
+        // Sincronizzazione automatica (pulisce turni esistenti ma non ne inserisce di nuovi perché lo stato è ASSIGNED)
         try {
-          const startDay = new Date(startDate)
-          const endDay = new Date(endDate)
-          
-          let loopDate = new Date(Date.UTC(startDay.getFullYear(), startDay.getMonth(), startDay.getDate()))
-          const endUTC = new Date(Date.UTC(endDay.getFullYear(), endDay.getMonth(), endDay.getDate()))
-          
-          while (loopDate <= endUTC) {
-            const currentDate = new Date(loopDate)
-            
-            const existingShift = await prisma.shift.findFirst({
-              where: {
-                tenantId: u.tenantId,
-                userId: member.id,
-                date: currentDate
-              }
-            })
-
-            if (existingShift) {
-              const protectedTypes = ["MALATTIA", "MAL", "MALATT", "104", "CONGEDO", "ASPETTATIVA"]
-              if (!protectedTypes.includes(existingShift.type)) {
-                await prisma.shift.update({
-                  where: { id: existingShift.id },
-                  data: { type: "FERIE" }
-                })
-              }
-            } else {
-              await prisma.shift.create({
-                data: {
-                  tenantId: u.tenantId,
-                  userId: member.id,
-                  date: currentDate,
-                  type: "FERIE"
-                }
-              })
-            }
-            
-            loopDate.setUTCDate(loopDate.getUTCDate() + 1)
-          }
+          await syncVacationShifts(u.tenantId || "", member.id, startDate, endDate, "ASSIGNED")
         } catch (syncErr) {
           console.error("[ROTATION_PUBLISH_SHIFT_SYNC_ERROR]", syncErr)
         }

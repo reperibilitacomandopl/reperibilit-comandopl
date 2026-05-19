@@ -15,6 +15,7 @@ import FloatingSosButton from "./agent/FloatingSosButton"
 import AgentInterventions from "./agent/AgentInterventions"
 import PersonalBalances from "./agent/PersonalBalances"
 import AgentRotationView from "./agent/AgentRotationView"
+import { useAgentData } from "@/hooks/useAgentData"
 
 export default function DashboardShell({ 
   session, 
@@ -37,6 +38,14 @@ export default function DashboardShell({
 }: any) {
   const [activeTab, setActiveTab] = useState('dashboard')
   const { role, name, matricola, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem } = session.user
+
+  const agentData = useAgentData({
+    currentUser: session.user,
+    currentYear,
+    currentMonth,
+    shifts,
+    tenant
+  })
   const containerClass = "w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
 
   // Calculate Navigation Params
@@ -137,6 +146,7 @@ export default function DashboardShell({
                   logoUrl={logoUrl}
                   tenant={tenant}
                   certifiedDates={certifiedDates}
+                  agentData={agentData}
                 />
               </div>
 
@@ -197,10 +207,13 @@ export default function DashboardShell({
                       <p className="text-slate-300 text-[10px] font-black uppercase tracking-[0.2em]">Reperibilità e Servizio</p>
                     </div>
                     <AgentSwapBoard 
-                      swapRequests={[]} 
                       currentUserId={session.user.id} 
-                      handleRespondSwap={async () => {}} 
-                      swapLoading={false} 
+                      swapRequests={agentData.swapRequests} 
+                      swapLoading={agentData.swapLoading} 
+                      handleRespondSwap={agentData.handleRespondSwap}
+                      vacationSwapRequests={agentData.vacationSwapRequests}
+                      handleRespondVacationSwap={agentData.handleRespondVacationSwap}
+                      handleProposeVacationSwap={agentData.handleProposeVacationSwap}
                     />
                     <div className="mt-10 p-8 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 text-center">
                        <Smartphone className="mx-auto text-slate-300 mb-4" size={32} />

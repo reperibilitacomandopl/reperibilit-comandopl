@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from "react"
 import { Calendar, RefreshCw, Compass, AlertCircle, Sun, Snowflake, Star } from "lucide-react"
+import toast from "react-hot-toast"
 
 export default function AgentRotationView() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [season, setSeason] = useState<"SUMMER" | "WINTER">("SUMMER")
+  const [respondingPlanId, setRespondingPlanId] = useState<string | null>(null)
 
   useEffect(() => {
     fetch("/api/agent/vacations/rotation")
@@ -21,6 +23,36 @@ export default function AgentRotationView() {
       })
   }, [])
 
+  const handleAcceptPlan = async (planId: string) => {
+    setRespondingPlanId(planId)
+    try {
+      const res = await fetch("/api/agent/vacations/rotation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId, action: "ACCEPT" })
+      })
+      const d = await res.json()
+      if (res.ok) {
+        toast.success("Periodo ferie accettato con successo!")
+        setData((prev: any) => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            activePlans: prev.activePlans.map((p: any) => 
+              p.id === planId ? { ...p, status: "CONFIRMED" } : p
+            )
+          }
+        })
+      } else {
+        toast.error(d.error || "Errore durante l'accettazione")
+      }
+    } catch (err) {
+      toast.error("Errore di rete")
+    } finally {
+      setRespondingPlanId(null)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-12 bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800/80 shadow-sm">
@@ -32,8 +64,11 @@ export default function AgentRotationView() {
 
   const vacations = data?.vacations || []
   const holidays = data?.holidays || []
+  const activePlans = data?.activePlans || []
 
   const activeVacationGroup = vacations.find((v: any) => v.season === season)
+  const currentYear = new Date().getFullYear()
+  const currentSeasonPlan = activePlans.find((p: any) => p.period === season && p.year === currentYear)
 
   return (
     <div className="space-y-6">
@@ -53,6 +88,64 @@ export default function AgentRotationView() {
           </p>
         </div>
       </div>
+
+      {currentSeasonPlan && (
+        <div className={`p-6 rounded-[2rem] border shadow-sm transition-all duration-300 ${
+          currentSeasonPlan.status === "ASSIGNED" 
+            ? "bg-amber-50/50 dark:bg-amber-950/10 border-amber-250 dark:border-amber-900/40 animate-pulse-slow" 
+            : "bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-250 dark:border-emerald-900/40"
+        }`}>
+          <div className="flex items-start gap-4">
+            <div className={`p-3 rounded-2xl ${
+              currentSeasonPlan.status === "ASSIGNED" ? "bg-amber-100 text-amber-600" : "bg-emerald-100 text-emerald-650"
+            }`}>
+              <Calendar size={24} />
+            </div>
+            <div className="flex-1 space-y-2">
+              <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${
+                currentSeasonPlan.status === "ASSIGNED" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+              }`}>
+                {currentSeasonPlan.status === "ASSIGNED" ? "Da Accettare" : "Confermato"}
+              </span>
+              <h4 className="text-base font-black text-slate-900 dark:text-white">
+                {currentSeasonPlan.status === "ASSIGNED" ? "Periodo Ferie Assegnato d'Ufficio" : "Il Tuo Periodo Ferie Confermato"}
+              </h4>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Dal {new Date(currentSeasonPlan.startDate).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })} al {new Date(currentSeasonPlan.endDate).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+              </p>
+              
+              {currentSeasonPlan.status === "ASSIGNED" && (
+                <div className="space-y-4 pt-2">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                    Questo periodo ti è stato assegnato d'ufficio per la rotazione di quest'anno. Per inserirlo definitivamente nel tuo calendario, clicca su "Accetta". In alternativa, puoi richiederne lo scambio con un collega o fare richiesta per un altro periodo.
+                  </p>
+                  <div className="flex flex-wrap gap-2.5">
+                    <button
+                      disabled={respondingPlanId === currentSeasonPlan.id}
+                      onClick={() => handleAcceptPlan(currentSeasonPlan.id)}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md shadow-emerald-500/10 active:scale-95"
+                    >
+                      {respondingPlanId === currentSeasonPlan.id ? "Accettazione..." : "Accetta Periodo"}
+                    </button>
+                    <button
+                      onClick={() => alert("Per scambiare questo turno di ferie, vai alla scheda 'Scambio Turni' e crea una proposta di scambio per questo periodo.")}
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-355 rounded-xl text-xs font-bold transition-all active:scale-95"
+                    >
+                      Scambia con Collega
+                    </button>
+                    <button
+                      onClick={() => alert("Per richiedere un altro periodo, usa il tasto 'Richiesta Congedi' nella pagina principale per presentare una preferenza alternativa.")}
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-355 rounded-xl text-xs font-bold transition-all active:scale-95"
+                    >
+                      Richiedi Altro Periodo
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 

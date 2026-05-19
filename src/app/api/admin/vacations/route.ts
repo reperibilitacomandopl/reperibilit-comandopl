@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { syncVacationShifts } from "@/utils/vacations"
 
 export async function GET(request: Request) {
   const session = await auth()
@@ -68,31 +69,10 @@ export async function POST(request: Request) {
       }
     })
 
-    if (existingPlan && (existingPlan.status === "ASSIGNED" || existingPlan.status === "CONFIRMED")) {
+    if (existingPlan) {
+      // Pulisci i vecchi turni indipendentemente dallo stato precedente
       try {
-        const oldStart = new Date(existingPlan.startDate)
-        const oldEnd = new Date(existingPlan.endDate)
-        let loopDate = new Date(Date.UTC(oldStart.getFullYear(), oldStart.getMonth(), oldStart.getDate()))
-        const endUTC = new Date(Date.UTC(oldEnd.getFullYear(), oldEnd.getMonth(), oldEnd.getDate()))
-        while (loopDate <= endUTC) {
-          const currentDate = new Date(loopDate)
-          const existingShift = await prisma.shift.findFirst({
-            where: { tenantId: u.tenantId, userId: targetUserId, date: currentDate }
-          })
-          if (existingShift && existingShift.type === "FERIE") {
-            if (existingShift.serviceDetails || existingShift.repType) {
-              await prisma.shift.update({
-                where: { id: existingShift.id },
-                data: { type: "" }
-              })
-            } else {
-              await prisma.shift.delete({
-                where: { id: existingShift.id }
-              })
-            }
-          }
-          loopDate.setUTCDate(loopDate.getUTCDate() + 1)
-        }
+        await syncVacationShifts(u.tenantId || "", targetUserId, existingPlan.startDate, existingPlan.endDate, "CLEANUP")
       } catch (syncErr) {
         console.error("[MANUAL_VACATION_CLEANUP_SYNC_ERROR]", syncErr)
       }
@@ -119,50 +99,11 @@ export async function POST(request: Request) {
       }
     })
 
-    // Sincronizzazione automatica nella tabella Shift come turni di tipo "FERIE"
-    if (planStatus === "ASSIGNED" || planStatus === "CONFIRMED") {
-      try {
-        const startDay = new Date(startDate)
-        const endDay = new Date(endDate)
-        
-        let loopDate = new Date(Date.UTC(startDay.getFullYear(), startDay.getMonth(), startDay.getDate()))
-        const endUTC = new Date(Date.UTC(endDay.getFullYear(), endDay.getMonth(), endDay.getDate()))
-        
-        while (loopDate <= endUTC) {
-          const currentDate = new Date(loopDate)
-          
-          const existingShift = await prisma.shift.findFirst({
-            where: {
-              tenantId: u.tenantId,
-              userId: targetUserId,
-              date: currentDate
-            }
-          })
-
-          if (existingShift) {
-            const protectedTypes = ["MALATTIA", "MAL", "MALATTIA", "104", "CONGEDO", "ASPETTATIVA"]
-            if (!protectedTypes.includes(existingShift.type)) {
-              await prisma.shift.update({
-                where: { id: existingShift.id },
-                data: { type: "FERIE" }
-              })
-            }
-          } else {
-            await prisma.shift.create({
-              data: {
-                tenantId: u.tenantId,
-                userId: targetUserId,
-                date: currentDate,
-                type: "FERIE"
-              }
-            })
-          }
-          
-          loopDate.setUTCDate(loopDate.getUTCDate() + 1)
-        }
-      } catch (syncErr) {
-        console.error("[MANUAL_VACATION_SHIFT_SYNC_ERROR]", syncErr)
-      }
+    // Sincronizzazione automatica nella tabella Shift come turni di tipo "FERIE" (solo se CONFIRMED)
+    try {
+      await syncVacationShifts(u.tenantId || "", targetUserId, startDate, endDate, planStatus)
+    } catch (syncErr) {
+      console.error("[MANUAL_VACATION_SHIFT_SYNC_ERROR]", syncErr)
     }
 
     // --- NOTIFICA AUTOMATICA SUL CELLULARE DELL'AGENTE ---
@@ -246,35 +187,11 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Piano non trovato" }, { status: 444 })
     }
 
-    // Pulisci i turni legati a questo piano se era assegnato o confermato
-    if (plan.status === "ASSIGNED" || plan.status === "CONFIRMED") {
-      try {
-        const startDay = new Date(plan.startDate)
-        const endDay = new Date(plan.endDate)
-        let loopDate = new Date(Date.UTC(startDay.getFullYear(), startDay.getMonth(), startDay.getDate()))
-        const endUTC = new Date(Date.UTC(endDay.getFullYear(), endDay.getMonth(), endDay.getDate()))
-        while (loopDate <= endUTC) {
-          const currentDate = new Date(loopDate)
-          const existingShift = await prisma.shift.findFirst({
-            where: { tenantId: session.user.tenantId, userId: plan.userId, date: currentDate }
-          })
-          if (existingShift && existingShift.type === "FERIE") {
-            if (existingShift.serviceDetails || existingShift.repType) {
-              await prisma.shift.update({
-                where: { id: existingShift.id },
-                data: { type: "" }
-              })
-            } else {
-              await prisma.shift.delete({
-                where: { id: existingShift.id }
-              })
-            }
-          }
-          loopDate.setUTCDate(loopDate.getUTCDate() + 1)
-        }
-      } catch (syncErr) {
-        console.error("[MANUAL_VACATION_DELETE_SYNC_ERROR]", syncErr)
-      }
+    // Pulisci i turni legati a questo piano
+    try {
+      await syncVacationShifts(session.user.tenantId || "", plan.userId, plan.startDate, plan.endDate, "CLEANUP")
+    } catch (syncErr) {
+      console.error("[MANUAL_VACATION_DELETE_SYNC_ERROR]", syncErr)
     }
 
     await prisma.vacationPlan.delete({ where: { id } })
