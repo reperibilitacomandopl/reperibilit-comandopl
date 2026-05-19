@@ -1193,41 +1193,62 @@ export default function VacationRotationManager() {
                     <p className="text-xs text-slate-450 italic py-6 text-center">Configura almeno un Turno e un Gruppo per visualizzare la simulazione.</p>
                   ) : (
                     <div className="space-y-3">
-                      {groups.map(group => {
-                        const yearsDiff = yearSim - group.baseYear
-                        const baseIndex = periods.findIndex(p => p.id === group.basePeriodId)
-                        
-                        let currentPeriodName = "Turno non trovato"
-                        let currentDates = ""
-
-                        if (baseIndex !== -1) {
+                      {(() => {
+                        const getGroupActivePeriod = (g: any) => {
+                          const yearsDiff = yearSim - g.baseYear
+                          const baseIndex = periods.findIndex(p => p.id === g.basePeriodId)
+                          if (baseIndex === -1) return null
                           const activeIndex = (((baseIndex + yearsDiff) % periods.length) + periods.length) % periods.length
-                          const activePeriod = periods[activeIndex]
-                          currentPeriodName = activePeriod.name
-                          currentDates = `${String(activePeriod.startDay).padStart(2, '0')}/${String(activePeriod.startMonth).padStart(2, '0')} - ${String(activePeriod.endDay).padStart(2, '0')}/${String(activePeriod.endMonth).padStart(2, '0')}`
+                          return periods[activeIndex]
                         }
 
-                        return (
-                          <div key={group.id} className="p-4 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-                            <div>
-                              <span className="text-xs font-black uppercase text-slate-800 dark:text-white">{group.name}</span>
-                              <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                {group.members.map((m: any) => (
-                                  <span key={m.id} className="text-[9px] font-bold bg-white dark:bg-slate-900 text-slate-650 dark:text-slate-400 px-2 py-0.5 rounded border border-slate-150 dark:border-slate-800">
-                                    {m.name.split(" ")[0]}
-                                  </span>
-                                ))}
+                        const sorted = [...groups].sort((a, b) => {
+                          const pA = getGroupActivePeriod(a)
+                          const pB = getGroupActivePeriod(b)
+                          if (!pA) return 1
+                          if (!pB) return -1
+                          if (pA.startMonth !== pB.startMonth) {
+                            return pA.startMonth - pB.startMonth
+                          }
+                          return pA.startDay - pB.startDay
+                        })
+
+                        return sorted.map(group => {
+                          const yearsDiff = yearSim - group.baseYear
+                          const baseIndex = periods.findIndex(p => p.id === group.basePeriodId)
+                          
+                          let currentPeriodName = "Turno non trovato"
+                          let currentDates = ""
+
+                          if (baseIndex !== -1) {
+                            const activeIndex = (((baseIndex + yearsDiff) % periods.length) + periods.length) % periods.length
+                            const activePeriod = periods[activeIndex]
+                            currentPeriodName = activePeriod.name
+                            currentDates = `${String(activePeriod.startDay).padStart(2, '0')}/${String(activePeriod.startMonth).padStart(2, '0')} - ${String(activePeriod.endDay).padStart(2, '0')}/${String(activePeriod.endMonth).padStart(2, '0')}`
+                          }
+
+                          return (
+                            <div key={group.id} className="p-4 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+                              <div>
+                                <span className="text-xs font-black uppercase text-slate-800 dark:text-white">{group.name}</span>
+                                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                  {group.members.map((m: any) => (
+                                    <span key={m.id} className="text-[9px] font-bold bg-white dark:bg-slate-900 text-slate-650 dark:text-slate-400 px-2 py-0.5 rounded border border-slate-150 dark:border-slate-800">
+                                      {m.name.split(" ")[0]}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-xs font-black text-amber-600 dark:text-amber-450 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/50 px-2.5 py-1 rounded-xl block uppercase">
+                                  {currentPeriodName}
+                                </span>
+                                <span className="text-[10px] text-slate-500 font-bold block mt-1">📅 {currentDates}</span>
                               </div>
                             </div>
-                            <div className="text-right">
-                              <span className="text-xs font-black text-amber-600 dark:text-amber-450 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/50 px-2.5 py-1 rounded-xl block uppercase">
-                                {currentPeriodName}
-                              </span>
-                              <span className="text-[10px] text-slate-500 font-bold block mt-1">📅 {currentDates}</span>
-                            </div>
-                          </div>
-                        )
-                      })}
+                          )
+                        })
+                      })()}
                     </div>
                   )}
                 </div>
@@ -1535,31 +1556,52 @@ export default function VacationRotationManager() {
                 </tr>
               </thead>
               <tbody>
-                {groups.map(group => {
-                  const yearsDiff = yearSim - group.baseYear
-                  const baseIndex = periods.findIndex(p => p.id === group.basePeriodId)
-                  
-                  let currentPeriodName = "Non assegnato"
-                  let currentDates = "—"
- 
-                  if (baseIndex !== -1) {
+                {(() => {
+                  const getGroupActivePeriod = (g: any) => {
+                    const yearsDiff = yearSim - g.baseYear
+                    const baseIndex = periods.findIndex(p => p.id === g.basePeriodId)
+                    if (baseIndex === -1) return null
                     const activeIndex = (((baseIndex + yearsDiff) % periods.length) + periods.length) % periods.length
-                    const activePeriod = periods[activeIndex]
-                    currentPeriodName = activePeriod.name
-                    currentDates = `${String(activePeriod.startDay).padStart(2, '0')}/${String(activePeriod.startMonth).padStart(2, '0')} al ${String(activePeriod.endDay).padStart(2, '0')}/${String(activePeriod.endMonth).padStart(2, '0')}`
+                    return periods[activeIndex]
                   }
- 
-                  return (
-                    <tr key={group.id}>
-                      <td className="border border-black p-2 font-bold uppercase tracking-wide text-black text-[10px]">{group.name}</td>
-                      <td className="border border-black p-2 text-[10px] font-bold text-black leading-snug">
-                        {(group.members || []).map((m: any) => m.name.toUpperCase()).join(', ')}
-                      </td>
-                      <td className="border border-black p-2 font-black uppercase text-black text-center text-[10px]">{currentPeriodName}</td>
-                      <td className="border border-black p-2 font-mono font-bold text-black text-center text-[10px]">{currentDates}</td>
-                    </tr>
-                  )
-                })}
+
+                  const sorted = [...groups].sort((a, b) => {
+                    const pA = getGroupActivePeriod(a)
+                    const pB = getGroupActivePeriod(b)
+                    if (!pA) return 1
+                    if (!pB) return -1
+                    if (pA.startMonth !== pB.startMonth) {
+                      return pA.startMonth - pB.startMonth
+                    }
+                    return pA.startDay - pB.startDay
+                  })
+
+                  return sorted.map(group => {
+                    const yearsDiff = yearSim - group.baseYear
+                    const baseIndex = periods.findIndex(p => p.id === group.basePeriodId)
+                    
+                    let currentPeriodName = "Non assegnato"
+                    let currentDates = "—"
+   
+                    if (baseIndex !== -1) {
+                      const activeIndex = (((baseIndex + yearsDiff) % periods.length) + periods.length) % periods.length
+                      const activePeriod = periods[activeIndex]
+                      currentPeriodName = activePeriod.name
+                      currentDates = `${String(activePeriod.startDay).padStart(2, '0')}/${String(activePeriod.startMonth).padStart(2, '0')} al ${String(activePeriod.endDay).padStart(2, '0')}/${String(activePeriod.endMonth).padStart(2, '0')}`
+                    }
+
+                    return (
+                      <tr key={group.id}>
+                        <td className="border border-black p-2 font-bold uppercase tracking-wide text-black text-[10px]">{group.name}</td>
+                        <td className="border border-black p-2 text-[10px] font-bold text-black leading-snug">
+                          {(group.members || []).map((m: any) => m.name.toUpperCase()).join(', ')}
+                        </td>
+                        <td className="border border-black p-2 font-black uppercase text-black text-center text-[10px]">{currentPeriodName}</td>
+                        <td className="border border-black p-2 font-mono font-bold text-black text-center text-[10px]">{currentDates}</td>
+                      </tr>
+                    )
+                  })
+                })()}
               </tbody>
             </table>
           </div>
