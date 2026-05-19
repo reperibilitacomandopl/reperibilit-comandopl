@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { getVacationShiftType } from "@/utils/vacations"
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -140,7 +141,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             }
           })
 
-          // 2. Elimina i vecchi turni giornalieri di tipo "FERIE" per entrambi i periodi
+          // 2. Elimina i vecchi turni giornalieri di tipo "FERIE", "R", "(INFR)" per entrambi i periodi
           // Periodo A
           const startUTC_A = new Date(Date.UTC(startA.getFullYear(), startA.getMonth(), startA.getDate()))
           const endUTC_A = new Date(Date.UTC(endA.getFullYear(), endA.getMonth(), endA.getDate(), 23, 59, 59))
@@ -149,7 +150,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             where: {
               tenantId,
               userId: swapRequest.requesterId,
-              type: "FERIE",
+              type: { in: ["FERIE", "R", "(INFR)"] },
               date: { gte: startUTC_A, lte: endUTC_A }
             }
           })
@@ -162,15 +163,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             where: {
               tenantId,
               userId: swapRequest.targetUserId!,
-              type: "FERIE",
+              type: { in: ["FERIE", "R", "(INFR)"] },
               date: { gte: startUTC_B, lte: endUTC_B }
             }
           })
 
-          // 3. Genera i nuovi turni di tipo "FERIE" incrociati
+          // 3. Genera i nuovi turni di tipo corretto incrociati
           const protectedTypes = ["MALATTIA", "MAL", "MALATT", "104", "CONGEDO", "ASPETTATIVA"]
 
-          // Genera Ferie per Richiedente nel Periodo B
+          // Genera Ferie/Riposi per Richiedente nel Periodo B
           let loopDateB = new Date(startUTC_B)
           while (loopDateB <= endUTC_B) {
             const currentDate = new Date(loopDateB)
@@ -178,11 +179,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
               where: { tenantId, userId: swapRequest.requesterId, date: currentDate }
             })
 
+            const targetType = getVacationShiftType(currentDate)
+
             if (existingShift) {
               if (!protectedTypes.includes(existingShift.type)) {
                 await tx.shift.update({
                   where: { id: existingShift.id },
-                  data: { type: "FERIE" }
+                  data: { type: targetType }
                 })
               }
             } else {
@@ -191,14 +194,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                   tenantId,
                   userId: swapRequest.requesterId,
                   date: currentDate,
-                  type: "FERIE"
+                  type: targetType
                 }
               })
             }
             loopDateB.setUTCDate(loopDateB.getUTCDate() + 1)
           }
 
-          // Genera Ferie per Collega target nel Periodo A
+          // Genera Ferie/Riposi per Collega target nel Periodo A
           let loopDateA = new Date(startUTC_A)
           while (loopDateA <= endUTC_A) {
             const currentDate = new Date(loopDateA)
@@ -206,11 +209,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
               where: { tenantId, userId: swapRequest.targetUserId!, date: currentDate }
             })
 
+            const targetType = getVacationShiftType(currentDate)
+
             if (existingShift) {
               if (!protectedTypes.includes(existingShift.type)) {
                 await tx.shift.update({
                   where: { id: existingShift.id },
-                  data: { type: "FERIE" }
+                  data: { type: targetType }
                 })
               }
             } else {
@@ -219,7 +224,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                   tenantId,
                   userId: swapRequest.targetUserId!,
                   date: currentDate,
-                  type: "FERIE"
+                  type: targetType
                 }
               })
             }
