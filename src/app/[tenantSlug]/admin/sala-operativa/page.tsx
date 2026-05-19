@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import dynamic from "next/dynamic"
 import { useSession } from "next-auth/react"
-import { Shield, Plus, Clock, MapPin, Phone, User, X, Send, CheckCircle, XCircle, Car, RadioTower, Crosshair, AlertTriangle } from "lucide-react"
+import { Shield, Plus, Clock, MapPin, Phone, User, X, Send, CheckCircle, XCircle, Car, RadioTower, Crosshair, AlertTriangle, Volume2 } from "lucide-react"
 import toast from "react-hot-toast"
 import { STRADE_ALTAMURA } from "@/data/strade-altamura"
 
@@ -46,6 +46,9 @@ export default function CentraleOperativa() {
   const [interventions, setInterventions] = useState<any[]>([])
   const [sosAlerts, setSosAlerts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [clockTick, setClockTick] = useState(0) // for elapsed timer re-renders
+  const prevSosCountRef = useRef(0)
+  const audioCtxRef = useRef<AudioContext | null>(null)
   const [showNewModal, setShowNewModal] = useState(false)
   const [hqCenter, setHqCenter] = useState<[number, number]>([40.8286, 16.5518])
   const [submitting, setSubmitting] = useState(false)
@@ -135,11 +138,56 @@ export default function CentraleOperativa() {
     }
   }
 
+  // Audio beep when new SOS arrives
+  const playSosBeep = useCallback(() => {
+    try {
+      if (!audioCtxRef.current) audioCtxRef.current = new AudioContext()
+      const ctx = audioCtxRef.current
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.frequency.value = 880
+      osc.type = 'square'
+      gain.gain.value = 0.3
+      osc.start()
+      osc.stop(ctx.currentTime + 0.25)
+      // second beep
+      setTimeout(() => {
+        const osc2 = ctx.createOscillator()
+        const gain2 = ctx.createGain()
+        osc2.connect(gain2)
+        gain2.connect(ctx.destination)
+        osc2.frequency.value = 1100
+        osc2.type = 'square'
+        gain2.gain.value = 0.3
+        osc2.start()
+        osc2.stop(ctx.currentTime + 0.25)
+      }, 300)
+    } catch (e) { /* audio not supported */ }
+  }, [])
+
+  // Detect new SOS and beep
+  useEffect(() => {
+    if (sosAlerts.length > prevSosCountRef.current && prevSosCountRef.current >= 0) {
+      playSosBeep()
+    }
+    prevSosCountRef.current = sosAlerts.length
+  }, [sosAlerts.length, playSosBeep])
+
   useEffect(() => {
     fetchData()
-    const interval = setInterval(fetchData, 10000)
+    // Faster polling when SOS active
+    const interval = setInterval(fetchData, sosAlerts.length > 0 ? 5000 : 10000)
     return () => clearInterval(interval)
-  }, [])
+  }, [sosAlerts.length])
+
+  // Tick every second for elapsed timers
+  useEffect(() => {
+    if (sosAlerts.length === 0) return
+    const t = setInterval(() => setClockTick(c => c + 1), 1000)
+    return () => clearInterval(t)
+  }, [sosAlerts.length])
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -250,13 +298,24 @@ export default function CentraleOperativa() {
 
                 const closestPatrol = patrolsWithDistance[0];
 
+                const elapsedMs = Date.now() - new Date(alert.date).getTime()
+                const elapsedMin = Math.floor(elapsedMs / 60000)
+                const elapsedSec = Math.floor((elapsedMs % 60000) / 1000)
+                const elapsedStr = elapsedMin > 0 ? `${elapsedMin}m ${elapsedSec}s` : `${elapsedSec}s`
+
                 return (
-                  <div key={alert.id} className="p-3 bg-red-950/60 border border-red-500/40 rounded-xl shadow-lg text-sm text-white animate-pulse">
+                  <div key={alert.id} className="p-3 bg-red-950/60 border border-red-500/40 rounded-xl shadow-lg text-sm text-white">
                     <div className="flex justify-between items-start mb-1">
-                      <span className="font-black text-red-400 text-xs tracking-wide uppercase">SOS EMERGENZA</span>
-                      <span className="text-[9px] text-red-300 font-mono">
-                        {new Date(alert.date).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                      <span className="font-black text-red-400 text-xs tracking-wide uppercase flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                        SOS EMERGENZA
                       </span>
+                      <div className="flex flex-col items-end">
+                        <span className="text-[9px] text-red-300 font-mono">
+                          {new Date(alert.date).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span className="text-[8px] text-amber-400 font-mono font-bold">⏱ {elapsedStr} fa</span>
+                      </div>
                     </div>
                     <p className="font-bold text-white text-sm mb-1">{alert.admin?.name || 'Agente'}</p>
                     {alert.admin?.matricola && <p className="text-[10px] text-slate-400 font-semibold mb-2">Matr. {alert.admin.matricola}</p>}
@@ -387,12 +446,20 @@ export default function CentraleOperativa() {
               </div>
               
               <div className="space-y-2">
-                {g.members.map((m: any) => (
+                {g.members.map((m: any) => {
+                  const lastSeenMs = m.lastSeenAt ? Date.now() - new Date(m.lastSeenAt).getTime() : Infinity
+                  const isStale = m.lat && lastSeenMs > 30 * 60 * 1000 // >30 min
+                  const isActive = m.lat && !isStale
+                  return (
                   <div key={m.userId} className="flex justify-between items-center bg-slate-900 p-1.5 rounded">
                     <p className="text-slate-300 font-medium text-[11px]">{m.name} <span className="text-slate-500 font-normal">({m.matricola})</span></p>
-                    <div className={`w-2 h-2 rounded-full ${m.lat ? 'bg-green-500 animate-pulse' : 'bg-slate-600'}`} title={m.lat ? 'GPS Attivo' : 'GPS N/D'}/>
+                    <div className="flex items-center gap-1.5">
+                      {isStale && <span className="text-[8px] text-amber-400 font-mono">⚠ GPS obsoleto</span>}
+                      <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-500 animate-pulse' : isStale ? 'bg-amber-500' : 'bg-slate-600'}`} title={isActive ? 'GPS Attivo' : isStale ? 'GPS >30 min' : 'GPS N/D'}/>
+                    </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           ))}

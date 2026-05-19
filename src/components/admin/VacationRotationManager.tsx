@@ -1443,6 +1443,12 @@ export default function VacationRotationManager() {
           }
         `}} />
         
+        {/* Protocol number line */}
+        <div className="flex justify-between items-start text-[9px] text-slate-600 font-mono mb-4">
+          <span>Prot. N. ________ / {yearSim}</span>
+          <span>Altamura, lì {new Date().toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' })}</span>
+        </div>
+
         {/* Official institutional ODS Header */}
         <div className="flex flex-col items-center justify-center text-center border-b-4 border-double border-black pb-5 mb-8">
           {tenantInfo?.logoUrl && (
@@ -1582,6 +1588,12 @@ export default function VacationRotationManager() {
             <div className="h-14 border-b border-dashed border-black/40 w-3/4 mx-auto"></div>
             <p className="text-[9px] text-slate-600 font-bold uppercase tracking-wide">(Firma per Approvazione)</p>
           </div>
+        </div>
+
+        {/* Page footer */}
+        <div className="mt-12 pt-4 border-t border-black/20 flex justify-between text-[8px] text-slate-500 font-mono">
+          <span>Documento generato da Portale Gestione PL — {new Date().toLocaleString('it-IT')}</span>
+          <span>Pagina 1/1</span>
         </div>
       </div>
     </div>

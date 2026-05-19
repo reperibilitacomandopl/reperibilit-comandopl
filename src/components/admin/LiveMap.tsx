@@ -6,6 +6,28 @@ import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import { Shield, CarFront, RadioTower, AlertTriangle } from "lucide-react"
 
+// Inject global keyframes for SOS ping animation
+if (typeof document !== 'undefined') {
+  const styleId = 'sos-map-keyframes'
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement('style')
+    style.id = styleId
+    style.textContent = `
+      @keyframes sos-ping {
+        0% { transform: scale(1); opacity: 0.7; }
+        75% { transform: scale(2.2); opacity: 0; }
+        100% { transform: scale(2.2); opacity: 0; }
+      }
+      @keyframes sos-blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+      }
+      .custom-marker { background: none !important; border: none !important; }
+    `
+    document.head.appendChild(style)
+  }
+}
+
 // Fix icone leaflet default
 delete (L.Icon.Default.prototype as any)._getIconUrl
 L.Icon.Default.mergeOptions({
@@ -48,13 +70,32 @@ const greenInterventionIcon = createCustomIcon("#22c55e", "<svg width='16' heigh
 // Icona per pattuglia
 const patrolIcon = createCustomIcon("#3b82f6", "<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a2 2 0 0 0-1.6-.8H5a2 2 0 0 0-2 2v7.2a2 2 0 0 0 2 2h2m7-8H5'/><circle cx='7' cy='16.5' r='2.5'/><circle cx='17' cy='16.5' r='2.5'/></svg>")
 
-// Icona per SOS Allarme
-const sosIcon = createCustomIcon("#dc2626", `
-  <div style="position: relative; display: flex; align-items: center; justify-content: center;">
-    <div style="position: absolute; width: 32px; height: 32px; border-radius: 50%; background-color: #ef4444; opacity: 0.6; animation: ping 1.2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
-    <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' style="position: relative; z-index: 10;"><path d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/></svg>
-  </div>
-`)
+// Icona per SOS Allarme — con vera animazione ping radar
+const sosIcon = L.divIcon({
+  className: "custom-marker",
+  html: `
+    <div style="position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+      <div style="position: absolute; inset: 0; border-radius: 50%; background-color: #ef4444; animation: sos-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+      <div style="position: absolute; inset: 4px; border-radius: 50%; background-color: #ef4444; animation: sos-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite; animation-delay: 0.5s;"></div>
+      <div style="
+        position: relative; z-index: 10;
+        background-color: #dc2626;
+        width: 32px; height: 32px;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        color: white;
+        border: 2px solid white;
+        box-shadow: 0 0 12px rgba(239,68,68,0.8);
+        animation: sos-blink 1s ease-in-out infinite;
+      ">
+        <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z'/><line x1='12' y1='9' x2='12' y2='13'/><line x1='12' y1='17' x2='12.01' y2='17'/></svg>
+      </div>
+    </div>
+  `,
+  iconSize: [40, 40],
+  iconAnchor: [20, 20],
+  popupAnchor: [0, -20]
+})
 
 function ChangeView({ center }: { center: [number, number] }) {
   const map = useMap()
