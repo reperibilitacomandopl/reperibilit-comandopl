@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import dynamic from "next/dynamic"
 import { useSession } from "next-auth/react"
-import { Shield, Plus, Clock, MapPin, Phone, User, X, Send, CheckCircle, XCircle, Car, RadioTower, Crosshair } from "lucide-react"
+import { Shield, Plus, Clock, MapPin, Phone, User, X, Send, CheckCircle, XCircle, Car, RadioTower, Crosshair, AlertTriangle } from "lucide-react"
 import toast from "react-hot-toast"
 import { STRADE_ALTAMURA } from "@/data/strade-altamura"
 
@@ -27,10 +27,24 @@ const PRIORITY_LABELS: Record<string, string> = {
   GREEN: "🟢 Ordinario"
 }
 
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371 // km
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLon = (lon2 - lon1) * Math.PI / 180
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+  const d = R * c
+  return d // km
+}
+
 export default function CentraleOperativa() {
   const { data: session } = useSession()
   const [patrols, setPatrols] = useState<any[]>([])
   const [interventions, setInterventions] = useState<any[]>([])
+  const [sosAlerts, setSosAlerts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showNewModal, setShowNewModal] = useState(false)
   const [hqCenter, setHqCenter] = useState<[number, number]>([40.8286, 16.5518])
@@ -93,12 +107,31 @@ export default function CentraleOperativa() {
         const data = await res.json()
         setPatrols(data.patrols || [])
         setInterventions(data.interventions || [])
+        setSosAlerts(data.sosAlerts || [])
         if (data.hq?.lat && data.hq?.lng) setHqCenter([data.hq.lat, data.hq.lng])
       }
     } catch (error) {
       console.error("Fetch live map error", error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleResolveSos = async (alertId: string) => {
+    try {
+      const res = await fetch("/api/admin/alert-emergency", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ alertId, status: "RESOLVED" })
+      })
+      if (res.ok) {
+        toast.success("SOS risolto con successo")
+        fetchData()
+      } else {
+        toast.error("Impossibile risolvere SOS")
+      }
+    } catch {
+      toast.error("Errore di rete")
     }
   }
 
@@ -199,6 +232,87 @@ export default function CentraleOperativa() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-3 space-y-3">
+          {/* SOS ALLARMI ATTIVI */}
+          {sosAlerts.length > 0 && (
+            <div className="space-y-3 mb-4">
+              <h3 className="text-[10px] font-black text-red-500 uppercase tracking-widest flex items-center gap-1.5 animate-pulse">
+                <AlertTriangle className="w-4 h-4"/> 🚨 ALLERTI SOS ATTIVI ({sosAlerts.length})
+              </h3>
+              {sosAlerts.map(alert => {
+                // Calcoliamo la distanza tra questo SOS e tutte le pattuglie attive con GPS
+                const patrolsWithDistance = patrols
+                  .filter(p => p.lat && p.lng && p.userId !== alert.adminId)
+                  .map(p => {
+                    const dist = calculateDistance(alert.lat, alert.lng, p.lat, p.lng);
+                    return { ...p, distance: dist };
+                  })
+                  .sort((a, b) => a.distance - b.distance);
+
+                const closestPatrol = patrolsWithDistance[0];
+
+                return (
+                  <div key={alert.id} className="p-3 bg-red-950/60 border border-red-500/40 rounded-xl shadow-lg text-sm text-white animate-pulse">
+                    <div className="flex justify-between items-start mb-1">
+                      <span className="font-black text-red-400 text-xs tracking-wide uppercase">SOS EMERGENZA</span>
+                      <span className="text-[9px] text-red-300 font-mono">
+                        {new Date(alert.date).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <p className="font-bold text-white text-sm mb-1">{alert.admin?.name || 'Agente'}</p>
+                    {alert.admin?.matricola && <p className="text-[10px] text-slate-400 font-semibold mb-2">Matr. {alert.admin.matricola}</p>}
+                    <p className="text-red-100 text-xs bg-red-900/40 p-2 rounded-lg border border-red-900/30 mb-3 leading-relaxed font-medium">
+                      {alert.message}
+                    </p>
+
+                    {alert.lat && alert.lng && (
+                      <div className="flex gap-2 mb-3">
+                        <button
+                          onClick={() => setHqCenter([alert.lat, alert.lng])}
+                          className="flex-1 py-2 bg-red-600 hover:bg-red-550 text-white rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-all"
+                        >
+                          <MapPin className="w-3 h-3"/> Apri Posizione GPS Maps
+                        </button>
+                        <button
+                          onClick={() => handleResolveSos(alert.id)}
+                          className="px-3 py-2 bg-slate-800 hover:bg-slate-750 text-red-400 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all"
+                          title="Risolvi / Disattiva SOS"
+                        >
+                          Risolvi
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Pattuglie vicine raccomandate */}
+                    {patrolsWithDistance.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-red-900/40 space-y-1">
+                        <p className="text-[9px] font-bold text-red-400 uppercase tracking-widest">Pattuglie nelle vicinanze:</p>
+                        <div className="space-y-1.5">
+                          {patrolsWithDistance.slice(0, 3).map((p, idx) => {
+                            const isRecommended = idx === 0;
+                            const distanceStr = p.distance < 1 
+                              ? `${(p.distance * 1000).toFixed(0)} m` 
+                              : `${p.distance.toFixed(2)} km`;
+                            return (
+                              <div key={p.userId} className={`flex justify-between items-center bg-red-950/80 p-1.5 rounded-lg border ${isRecommended ? 'border-amber-500/80 animate-pulse' : 'border-red-900/20'}`}>
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] font-bold text-slate-200">
+                                    {p.name} {isRecommended && <span className="text-amber-400 text-[8px] font-black tracking-widest ml-1 bg-amber-500/10 px-1 py-0.5 rounded border border-amber-500/20 uppercase">Consigliata</span>}
+                                  </span>
+                                  {p.vehicle && <span className="text-[8px] text-slate-400">Veicolo: {p.vehicle}</span>}
+                                </div>
+                                <span className={`text-[10px] font-mono font-bold ${isRecommended ? 'text-amber-400' : 'text-slate-300'}`}>{distanceStr}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           {/* Interventi */}
           <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Interventi Attivi ({interventions.length})</h3>
           
@@ -277,7 +391,7 @@ export default function CentraleOperativa() {
 
       {/* === MAPPA === */}
       <div className="flex-1 relative">
-        {!loading && <LiveMap patrols={patrols} interventions={interventions} onAssign={handleAssign} center={hqCenter} />}
+        {!loading && <LiveMap patrols={patrols} interventions={interventions} sosAlerts={sosAlerts} onAssign={handleAssign} center={hqCenter} />}
       </div>
 
       {/* === MODALE NUOVO INTERVENTO === */}

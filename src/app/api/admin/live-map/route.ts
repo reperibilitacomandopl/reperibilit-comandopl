@@ -119,6 +119,21 @@ export async function GET(req: Request) {
       orderBy: { createdAt: 'desc' }
     })
 
+    // 3.5. Get Active SOS alerts
+    const activeSosAlerts = await prisma.emergencyAlert.findMany({
+      where: {
+        tenantId,
+        status: "PENDING",
+        deletedAt: null
+      },
+      include: {
+        admin: {
+          select: { id: true, name: true, matricola: true, lastLat: true, lastLng: true, lastSeenAt: true }
+        }
+      },
+      orderBy: { date: 'desc' }
+    })
+
     // 4. Get Tenant coordinates (HQ position for map center)
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
@@ -128,6 +143,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
        patrols: activePatrols,
        interventions: activeInterventions,
+       sosAlerts: activeSosAlerts,
        hq: tenant ? { lat: tenant.lat, lng: tenant.lng, name: tenant.name } : null
     })
 
