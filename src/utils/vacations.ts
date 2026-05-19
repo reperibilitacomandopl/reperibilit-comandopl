@@ -87,6 +87,16 @@ export function getDatesInRange(startDateInput: Date | string, endDateInput: Dat
   return dates
 }
 
+export async function getShiftIncludingDeleted(tx: any, tenantId: string, userId: string, date: Date) {
+  const rawShifts = await tx.$queryRawUnsafe(
+    `SELECT * FROM "Shift" WHERE "tenantId" = $1 AND "userId" = $2 AND date = $3 LIMIT 1`,
+    tenantId,
+    userId,
+    date
+  )
+  return rawShifts[0] || null
+}
+
 export async function syncVacationShifts(tenantId: string, userId: string, startDate: Date | string, endDate: Date | string, status: string) {
   const dates = getDatesInRange(startDate, endDate)
   
@@ -117,13 +127,7 @@ export async function syncVacationShifts(tenantId: string, userId: string, start
   if (status === "CONFIRMED") {
     const protectedTypes = ["MALATTIA", "MAL", "MALATT", "104", "CONGEDO", "ASPETTATIVA"]
     for (const date of dates) {
-      const existingShift = await prisma.shift.findFirst({
-        where: {
-          tenantId,
-          userId,
-          date
-        }
-      })
+      const existingShift = await getShiftIncludingDeleted(prisma, tenantId, userId, date)
       
       const targetType = getVacationShiftType(date)
       
@@ -131,7 +135,10 @@ export async function syncVacationShifts(tenantId: string, userId: string, start
         if (!protectedTypes.includes(existingShift.type)) {
           await prisma.shift.update({
             where: { id: existingShift.id },
-            data: { type: targetType }
+            data: {
+              type: targetType,
+              deletedAt: null
+            }
           })
         }
       } else {
@@ -147,4 +154,5 @@ export async function syncVacationShifts(tenantId: string, userId: string, start
     }
   }
 }
+
 

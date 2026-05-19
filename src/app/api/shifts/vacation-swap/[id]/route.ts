@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { getVacationShiftType } from "@/utils/vacations"
+import { getVacationShiftType, getShiftIncludingDeleted } from "@/utils/vacations"
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -175,9 +175,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           let loopDateB = new Date(startUTC_B)
           while (loopDateB <= endUTC_B) {
             const currentDate = new Date(loopDateB)
-            const existingShift = await tx.shift.findFirst({
-              where: { tenantId, userId: swapRequest.requesterId, date: currentDate }
-            })
+            const existingShift = await getShiftIncludingDeleted(tx, tenantId, swapRequest.requesterId, currentDate)
 
             const targetType = getVacationShiftType(currentDate)
 
@@ -185,7 +183,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
               if (!protectedTypes.includes(existingShift.type)) {
                 await tx.shift.update({
                   where: { id: existingShift.id },
-                  data: { type: targetType }
+                  data: {
+                    type: targetType,
+                    deletedAt: null
+                  }
                 })
               }
             } else {
@@ -205,9 +206,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           let loopDateA = new Date(startUTC_A)
           while (loopDateA <= endUTC_A) {
             const currentDate = new Date(loopDateA)
-            const existingShift = await tx.shift.findFirst({
-              where: { tenantId, userId: swapRequest.targetUserId!, date: currentDate }
-            })
+            const existingShift = await getShiftIncludingDeleted(tx, tenantId, swapRequest.targetUserId!, currentDate)
 
             const targetType = getVacationShiftType(currentDate)
 
@@ -215,7 +214,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
               if (!protectedTypes.includes(existingShift.type)) {
                 await tx.shift.update({
                   where: { id: existingShift.id },
-                  data: { type: targetType }
+                  data: {
+                    type: targetType,
+                    deletedAt: null
+                  }
                 })
               }
             } else {
