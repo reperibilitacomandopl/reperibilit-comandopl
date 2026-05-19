@@ -56,6 +56,48 @@ export function isHoliday(date: Date): boolean {
 /**
  * Ritorna true se il giorno è un sabato o il giorno prima di una festività sul calendario
  */
+const FIXED_HOLIDAYS: Array<{ name: string; m: number; d: number }> = [
+  { name: "Capodanno", m: 1, d: 1 },
+  { name: "Epifania", m: 1, d: 6 },
+  { name: "Liberazione", m: 4, d: 25 },
+  { name: "Festa del Lavoro", m: 5, d: 1 },
+  { name: "Festa Patronale", m: 5, d: 5 },
+  { name: "Festa della Repubblica", m: 6, d: 2 },
+  { name: "Ferragosto", m: 8, d: 15 },
+  { name: "Tutti i Santi", m: 11, d: 1 },
+  { name: "Immacolata", m: 12, d: 8 },
+  { name: "Natale", m: 12, d: 25 },
+  { name: "Santo Stefano", m: 12, d: 26 }
+]
+
+export function getMidweekHolidays(year: number): Array<{ name: string; date: Date }> {
+  const holidays: Array<{ name: string; date: Date }> = []
+  for (const item of FIXED_HOLIDAYS) {
+    const d = new Date(year, item.m - 1, item.d)
+    if (d.getDay() !== 0) holidays.push({ name: item.name, date: d })
+  }
+  const easter = getEaster(year)
+  const easterMonday = new Date(easter.getTime())
+  easterMonday.setDate(easter.getDate() + 1)
+  if (easterMonday.getDay() !== 0) {
+    holidays.push({ name: "Lunedì dell'Angelo (Pasquetta)", date: easterMonday })
+  }
+  return holidays.sort((a, b) => a.date.getTime() - b.date.getTime())
+}
+
+export function isCalendarHolidayUTC(date: Date): boolean {
+  const day = date.getUTCDate()
+  const month = date.getUTCMonth() + 1
+  const year = date.getUTCFullYear()
+  if (FIXED_HOLIDAYS.some(h => h.m === month && h.d === day)) return true
+  const easter = getEaster(year)
+  if (easter.getUTCDate() === day && easter.getUTCMonth() + 1 === month) return true
+  const easterMonday = new Date(easter.getTime())
+  easterMonday.setUTCDate(easterMonday.getUTCDate() + 1)
+  if (easterMonday.getUTCDate() === day && easterMonday.getUTCMonth() + 1 === month) return true
+  return false
+}
+
 export function isPreFestive(date: Date): boolean {
   const dow = date.getDay();
   if (dow === 6) return true; // Sabato è pre-festivo per definizione

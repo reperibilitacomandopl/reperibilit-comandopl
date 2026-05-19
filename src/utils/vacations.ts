@@ -1,47 +1,7 @@
 import { prisma } from "@/lib/prisma"
-import { getEaster } from "./holidays"
+import { isCalendarHolidayUTC } from "./holidays"
 
-// Safe timezone-independent holiday check using UTC Date methods
-export function isCalendarHolidayUTC(date: Date): boolean {
-  const day = date.getUTCDate()
-  const month = date.getUTCMonth() + 1
-  const year = date.getUTCFullYear()
-
-  // Fixed holidays in Italy
-  const fixed = [
-    [1, 1],   // Capodanno
-    [1, 6],   // Epifania
-    [4, 25],  // Liberazione
-    [5, 1],   // Lavoratori
-    [5, 5],   // Festa Patronale
-    [6, 2],   // Repubblica
-    [8, 15],  // Ferragosto
-    [11, 1],  // Tutti i Santi
-    [12, 8],  // Immacolata
-    [12, 25], // Natale
-    [12, 26]  // S. Stefano
-  ]
-  
-  if (fixed.some(([m, d]) => m === month && d === day)) {
-    return true
-  }
-
-  // Easter & Easter Monday
-  const easter = getEaster(year)
-  const easterDay = easter.getDate()
-  const easterMonth = easter.getMonth() + 1
-  if (easterDay === day && easterMonth === month) {
-    return true
-  }
-
-  const easterMonday = new Date(easter.getTime())
-  easterMonday.setDate(easter.getDate() + 1)
-  if (easterMonday.getDate() === day && easterMonday.getMonth() + 1 === month) {
-    return true
-  }
-
-  return false
-}
+export { isCalendarHolidayUTC }
 
 export function getVacationShiftType(date: Date): string {
   const day = date.getUTCDay()
@@ -88,13 +48,7 @@ export function getDatesInRange(startDateInput: Date | string, endDateInput: Dat
 }
 
 export async function getShiftIncludingDeleted(tx: any, tenantId: string, userId: string, date: Date) {
-  const rawShifts = await tx.$queryRawUnsafe(
-    `SELECT * FROM "Shift" WHERE "tenantId" = $1 AND "userId" = $2 AND date = $3 LIMIT 1`,
-    tenantId,
-    userId,
-    date
-  )
-  return rawShifts[0] || null
+  return tx.shift.findFirst({ where: { tenantId, userId, date } })
 }
 
 export async function syncVacationShifts(tenantId: string, userId: string, startDate: Date | string, endDate: Date | string, status: string) {
@@ -125,14 +79,14 @@ export async function syncVacationShifts(tenantId: string, userId: string, start
   
   // 2. Se lo stato è CONFIRMED, scrivi i turni con la tipologia corretta
   if (status === "CONFIRMED") {
-    const protectedTypes = ["MALATTIA", "MAL", "MALATT", "104", "CONGEDO", "ASPETTATIVA"]
+    const { isAssenzaProtetta } = await import("./shift-logic")
     for (const date of dates) {
       const existingShift = await getShiftIncludingDeleted(prisma, tenantId, userId, date)
       
       const targetType = getVacationShiftType(date)
       
       if (existingShift) {
-        if (!protectedTypes.includes(existingShift.type)) {
+        if (!isAssenzaProtetta(existingShift.type)) {
           await prisma.shift.update({
             where: { id: existingShift.id },
             data: {
