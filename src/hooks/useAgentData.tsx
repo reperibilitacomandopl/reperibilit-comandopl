@@ -47,6 +47,7 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
   const [isOfficerOnDuty, setIsOfficerOnDuty] = useState(false)
   const [loadingDutyTeam, setLoadingDutyTeam] = useState(false)
   const [swapRequests, setSwapRequests] = useState<SwapRequest[]>([])
+  const [vacationSwapRequests, setVacationSwapRequests] = useState<any[]>([])
   const [agendaEntries, setAgendaEntries] = useState<AgendaItem[]>([])
   const [requests, setRequests] = useState<any[]>([])
   const [myOds, setMyOds] = useState<OdsData | null>(null)
@@ -104,6 +105,16 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
       if (res.ok) {
         const data = await res.json()
         setSwapRequests(data)
+      }
+    } catch { /* silent */ }
+  }, [])
+
+  const fetchVacationSwaps = useCallback(async () => {
+    try {
+      const res = await fetch('/api/shifts/vacation-swap')
+      if (res.ok) {
+        const data = await res.json()
+        setVacationSwapRequests(data)
       }
     } catch { /* silent */ }
   }, [])
@@ -167,6 +178,7 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
     if (navigator.onLine) syncOfflineRequests()
     fetchDutyTeam()
     fetchSwaps()
+    fetchVacationSwaps()
     fetchBalances()
     fetchClockRecords()
     fetchOds()
@@ -178,7 +190,7 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
     }
     window.addEventListener('online', handleOnline)
     return () => window.removeEventListener('online', handleOnline)
-  }, [currentMonth, currentYear, fetchDutyTeam, fetchSwaps, fetchBalances, fetchClockRecords, fetchOds, fetchAgenda])
+  }, [currentMonth, currentYear, fetchDutyTeam, fetchSwaps, fetchVacationSwaps, fetchBalances, fetchClockRecords, fetchOds, fetchAgenda])
 
   // --- PROACTIVE REMINDERS ---
   useEffect(() => {
@@ -516,6 +528,53 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
     }
   }
 
+  const handleRespondVacationSwap = async (id: string, status: "ACCEPTED" | "REJECTED") => {
+    setSwapLoading(true)
+    try {
+      const res = await fetch(`/api/shifts/vacation-swap/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      })
+      const d = await res.json()
+      if (res.ok) {
+        toast.success(status === 'ACCEPTED' ? "Scambio ferie accettato!" : "Scambio ferie rifiutato.")
+        fetchVacationSwaps()
+      } else {
+        toast.error(d.error || "Errore")
+      }
+    } catch {
+      toast.error("Errore di connessione")
+    } finally {
+      setSwapLoading(false)
+    }
+  }
+
+  const handleProposeVacationSwap = async (vacationPlanId: string, targetUserId: string) => {
+    setSwapLoading(true)
+    try {
+      const res = await fetch("/api/shifts/vacation-swap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vacationPlanId, targetUserId })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success("Proposta di scambio ferie inviata con successo!")
+        fetchVacationSwaps()
+        return { success: true }
+      } else {
+        toast.error(data.error || "Errore")
+        return { error: data.error }
+      }
+    } catch {
+      toast.error("Errore di connessione")
+      return { error: "Errore di connessione" }
+    } finally {
+      setSwapLoading(false)
+    }
+  }
+
   const handleSaveAgenda = async (date: number, code: string, hours: string, note: string) => {
     const item = AGENDA_CATEGORIES.flatMap(c => c.items).find(i => i.code === code)
     if (!item) return false
@@ -641,13 +700,17 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
     telegramLoading,
     myShifts,
     requests,
+    vacationSwapRequests,
     handleClockAction,
     handleRespondSwap,
+    handleRespondVacationSwap,
+    handleProposeVacationSwap,
     handleSaveAgenda,
     handleDeleteAgenda,
     handleGenerateTelegramCode,
     handleSendFullSos,
     fetchSwaps,
+    fetchVacationSwaps,
     fetchBalances,
     fetchAgenda,
     fetchClockRecords

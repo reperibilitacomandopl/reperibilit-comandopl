@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react"
 import toast from "react-hot-toast"
-import { Calendar, Plus, Trash2, Save, Users, Sparkles, RefreshCw, Layers, CheckCircle2, AlertTriangle, Play, HelpCircle } from "lucide-react"
+import { Calendar, Plus, Trash2, Save, Users, Sparkles, RefreshCw, Layers, CheckCircle2, AlertTriangle, Play, HelpCircle, Printer } from "lucide-react"
 
 export default function VacationRotationManager() {
   const [activeTab, setActiveTab] = useState<"periods" | "groups" | "holidays" | "simulator">("periods")
   const [season, setSeason] = useState<"SUMMER" | "WINTER">("SUMMER")
   const [yearSim, setYearSim] = useState(new Date().getFullYear())
+  const [tenantInfo, setTenantInfo] = useState<any>(null)
 
   // Data states
   const [periods, setPeriods] = useState<any[]>([])
@@ -55,24 +56,29 @@ export default function VacationRotationManager() {
   const loadAllData = async () => {
     setLoading(true)
     try {
-      const [pRes, gRes, hgRes, uRes, cRes] = await Promise.all([
+      const [pRes, gRes, hgRes, uRes, cRes, sRes] = await Promise.all([
         fetch(`/api/admin/vacations/rotation/periods?season=${season}`),
         fetch(`/api/admin/vacations/rotation/groups?season=${season}`),
         fetch("/api/admin/vacations/rotation/holidays"),
         fetch("/api/admin/users"),
-        fetch(`/api/admin/vacations/rotation/holidays/custom?year=${yearSim}`)
+        fetch(`/api/admin/vacations/rotation/holidays/custom?year=${yearSim}`),
+        fetch("/api/admin/settings")
       ])
       const pData = await pRes.json()
       const gData = await gRes.json()
       const hgData = await hgRes.json()
       const uData = await uRes.json()
       const cData = await cRes.json()
+      const sData = await sRes.json()
 
       setPeriods(pData.periods || [])
       setGroups(gData.groups || [])
       setHolidayGroups(hgData.groups || [])
       setUsers(uData.users || [])
       setHolidays(cData.holidays || [])
+      if (sData.tenant) {
+        setTenantInfo(sData.tenant)
+      }
     } catch (e) {
       console.error("Error loading rotation data:", e)
       toast.error("Errore nel caricamento dei dati")
@@ -381,27 +387,37 @@ export default function VacationRotationManager() {
           </p>
         </div>
 
-        {/* Summer / Winter Switcher */}
-        <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+        {/* Summer / Winter Switcher & Printer */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+            <button
+              onClick={() => setSeason("SUMMER")}
+              className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+                season === "SUMMER"
+                  ? "bg-amber-500 text-white shadow-md shadow-amber-500/10"
+                  : "text-slate-650 dark:text-slate-455 hover:bg-slate-200/50 dark:hover:bg-slate-850"
+              }`}
+            >
+              ☀️ Estate
+            </button>
+            <button
+              onClick={() => setSeason("WINTER")}
+              className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+                season === "WINTER"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/10"
+                  : "text-slate-650 dark:text-slate-455 hover:bg-slate-200/50 dark:hover:bg-slate-850"
+              }`}
+            >
+              ❄️ Inverno
+            </button>
+          </div>
+
           <button
-            onClick={() => setSeason("SUMMER")}
-            className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
-              season === "SUMMER"
-                ? "bg-amber-500 text-white shadow-md shadow-amber-500/10"
-                : "text-slate-650 dark:text-slate-450 hover:bg-slate-200/50 dark:hover:bg-slate-850"
-            }`}
+            onClick={() => window.print()}
+            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-755 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-indigo-500/10 print:hidden border-none cursor-pointer"
+            title="Stampa foglio ufficiale intestato per bacheca"
           >
-            ☀️ Estate
-          </button>
-          <button
-            onClick={() => setSeason("WINTER")}
-            className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
-              season === "WINTER"
-                ? "bg-blue-600 text-white shadow-md shadow-blue-600/10"
-                : "text-slate-650 dark:text-slate-450 hover:bg-slate-200/50 dark:hover:bg-slate-850"
-            }`}
-          >
-            ❄️ Inverno
+            <Printer size={14} /> Stampa Ufficiale
           </button>
         </div>
       </div>
@@ -1393,6 +1409,179 @@ export default function VacationRotationManager() {
           </div>
         </div>
       )}
+
+      {/* PRINT-ONLY OFFICIAL DOCUMENT LAYOUT */}
+      <div className="hidden print:block bg-white text-black font-sans p-8 max-w-4xl mx-auto space-y-8 print-container">
+        <style dangerouslySetInnerHTML={{__html: `
+          @media print {
+            body * {
+              visibility: hidden !important;
+            }
+            .print-container, .print-container * {
+              visibility: visible !important;
+            }
+            .print-container {
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 100% !important;
+              background: white !important;
+              color: black !important;
+            }
+          }
+        `}} />
+        
+        {/* Official Header */}
+        <div className="flex items-center justify-between border-b-2 border-black pb-6">
+          <div className="flex items-center gap-4">
+            {tenantInfo?.logoUrl ? (
+              <img src={tenantInfo.logoUrl} alt="Logo" className="w-16 h-16 object-contain" />
+            ) : (
+              <div className="w-16 h-16 bg-slate-200 flex items-center justify-center font-bold text-xs">LOGO</div>
+            )}
+            <div>
+              <h1 className="text-lg font-black uppercase tracking-tight leading-none">{tenantInfo?.name || "Corpo di Polizia Locale"}</h1>
+              <p className="text-xs font-bold text-slate-700 mt-1 uppercase tracking-wide">Comando di Polizia Locale</p>
+              {tenantInfo?.address && <p className="text-[10px] text-slate-500 mt-0.5">{tenantInfo.address}</p>}
+              {tenantInfo?.partitaIva && <p className="text-[10px] text-slate-500">{tenantInfo.partitaIva}</p>}
+            </div>
+          </div>
+          <div className="text-right text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+            <p>Generato da Sentinel Pro</p>
+            <p className="mt-0.5">Data: {new Date().toLocaleDateString("it-IT")}</p>
+          </div>
+        </div>
+
+        {/* Title based on current state */}
+        <div className="text-center space-y-2">
+          <h2 className="text-xl font-black uppercase tracking-wider">
+            {activeTab === "holidays" 
+              ? `PROGETTAZIONE E ROTAZIONE FESTIVI INFRASETTIMANALI` 
+              : `PIANIFICAZIONE UFFICIALE DEI TURNI DI FERIE`
+            }
+          </h2>
+          <p className="text-sm font-black uppercase tracking-widest text-slate-750">
+            {activeTab === "holidays" 
+              ? `ANNO SOLARE ${yearSim}`
+              : `STAGIONE ${season === "SUMMER" ? "ESTIVA" : "INVERNALE"} - ANNO ${yearSim}`
+            }
+          </p>
+        </div>
+
+        {/* Body content based on current tab */}
+        {activeTab === "holidays" ? (
+          /* Midweek holidays table */
+          <div className="space-y-6">
+            <table className="w-full border-collapse border border-slate-350 text-xs">
+              <thead>
+                <tr className="bg-slate-100">
+                  <th className="border border-slate-350 p-2.5 text-left font-black uppercase">Festività</th>
+                  <th className="border border-slate-350 p-2.5 text-left font-black uppercase">Data</th>
+                  <th className="border border-slate-350 p-2.5 text-left font-black uppercase">Gruppo di Turno</th>
+                  <th className="border border-slate-350 p-2.5 text-left font-black uppercase">Operatori Assegnati</th>
+                </tr>
+              </thead>
+              <tbody>
+                {holidays.map((h, idx) => {
+                  const baseYear = holidayGroups[0]?.baseYear || 2026
+                  const yearsDiff = yearSim - baseYear
+                  const groupIndex = (((idx + yearsDiff) % holidayGroups.length) + holidayGroups.length) % holidayGroups.length
+                  const groupOnDuty = holidayGroups[groupIndex]
+                  const dateFormatted = new Date(h.date).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
+                  
+                  return (
+                    <tr key={h.id || idx}>
+                      <td className="border border-slate-300 p-2.5 font-bold uppercase">{h.name}</td>
+                      <td className="border border-slate-300 p-2.5 font-mono">{dateFormatted}</td>
+                      <td className="border border-slate-300 p-2.5 font-bold text-slate-800 uppercase">{groupOnDuty?.name || "—"}</td>
+                      <td className="border border-slate-300 p-2.5">
+                        <div className="flex flex-wrap gap-1">
+                          {(groupOnDuty?.members || []).map((m: any) => (
+                            <span key={m.id} className="bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded text-[10px] font-semibold text-slate-700">
+                              👮‍♂️ {m.name}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          /* Vacation rotation simulator table */
+          <div className="space-y-6">
+            <table className="w-full border-collapse border border-slate-350 text-xs">
+              <thead>
+                <tr className="bg-slate-100">
+                  <th className="border border-slate-350 p-2.5 text-left font-black uppercase">Gruppo Rotazione Ferie</th>
+                  <th className="border border-slate-350 p-2.5 text-left font-black uppercase">Membri del Gruppo</th>
+                  <th className="border border-slate-350 p-2.5 text-left font-black uppercase">Turno Assegnato</th>
+                  <th className="border border-slate-350 p-2.5 text-left font-black uppercase">Periodo Temporale</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groups.map(group => {
+                  const yearsDiff = yearSim - group.baseYear
+                  const baseIndex = periods.findIndex(p => p.id === group.basePeriodId)
+                  
+                  let currentPeriodName = "Non assegnato"
+                  let currentDates = "—"
+
+                  if (baseIndex !== -1) {
+                    const activeIndex = (((baseIndex + yearsDiff) % periods.length) + periods.length) % periods.length
+                    const activePeriod = periods[activeIndex]
+                    currentPeriodName = activePeriod.name
+                    currentDates = `${String(activePeriod.startDay).padStart(2, '0')}/${String(activePeriod.startMonth).padStart(2, '0')} al ${String(activePeriod.endDay).padStart(2, '0')}/${String(activePeriod.endMonth).padStart(2, '0')}`
+                  }
+
+                  return (
+                    <tr key={group.id}>
+                      <td className="border border-slate-300 p-2.5 font-bold uppercase">{group.name}</td>
+                      <td className="border border-slate-300 p-2.5">
+                        <div className="flex flex-wrap gap-1">
+                          {(group.members || []).map((m: any) => (
+                            <span key={m.id} className="bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded text-[10px] font-semibold text-slate-700">
+                              👮‍♂️ {m.name}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="border border-slate-300 p-2.5 font-black uppercase text-indigo-700">{currentPeriodName}</td>
+                      <td className="border border-slate-300 p-2.5 font-mono">{currentDates}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Informational notes */}
+        <div className="border border-slate-350 p-4 rounded-xl space-y-2 bg-slate-50">
+          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-700">Note di Servizio e Regolamento Scambi</h4>
+          <p className="text-[10px] text-slate-500 leading-relaxed">
+            1. I turni indicati sono calcolati tramite algoritmo di rotazione ciclica annuale a garanzia della massima equità di servizio.<br />
+            2. Eventuali scambi tra operatori dovranno essere proposti esclusivamente tramite Bacheca Scambi **entro e non oltre 1 mese prima** dall'inizio del turno ferie/festivo richiesto.<br />
+            3. Gli scambi concordati tra agenti diventano effettivi solo a seguito di formale **Visto di Approvazione** del Comandante e della Segreteria.
+          </p>
+        </div>
+
+        {/* Official Signatures */}
+        <div className="grid grid-cols-2 gap-12 pt-16 text-center text-xs">
+          <div className="space-y-12">
+            <p className="font-bold uppercase tracking-wider border-b border-black pb-1.5">Visto della Segreteria</p>
+            <div className="h-10"></div>
+            <p className="text-[10px] text-slate-400 font-bold">Firma per Visto e Sottoscrizione</p>
+          </div>
+          <div className="space-y-12">
+            <p className="font-bold uppercase tracking-wider border-b border-black pb-1.5">Il Comandante del Corpo</p>
+            <div className="h-10"></div>
+            <p className="text-[10px] text-slate-400 font-bold">Firma per Approvazione</p>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

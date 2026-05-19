@@ -51,6 +51,7 @@ model Tenant {
   shifts             Shift[]
   ShiftRule          ShiftRule[]
   shiftSwapRequests  ShiftSwapRequest[]
+  vacationSwapRequests VacationSwapRequest[]
   trainingRecords    TrainingRecord[]
   users              User[]
   userDocuments      UserDocument[]
@@ -138,6 +139,8 @@ model User {
   shifts                   Shift[]
   sentSwaps                ShiftSwapRequest[] @relation("SentSwaps")
   receivedSwaps            ShiftSwapRequest[] @relation("ReceivedSwaps")
+  sentVacationSwaps        VacationSwapRequest[] @relation("SentVacationSwaps")
+  receivedVacationSwaps    VacationSwapRequest[] @relation("ReceivedVacationSwaps")
   trainingRecords          TrainingRecord[]
   defaultServiceCategory   ServiceCategory?   @relation("DefaultCategory", fields: [defaultServiceCategoryId], references: [id])
   defaultServiceType       ServiceType?       @relation("DefaultType", fields: [defaultServiceTypeId], references: [id])
@@ -516,9 +519,35 @@ model VacationPlan {
   updatedAt DateTime  @updatedAt
   tenant    Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vacationSwaps       VacationSwapRequest[] @relation("VacationSwapPlans")
+  targetVacationSwaps VacationSwapRequest[] @relation("TargetVacationSwapPlans")
 
   @@unique([userId, period, year])
   @@index([tenantId, year])
+}
+
+model VacationSwapRequest {
+  id                    String        @id @default(uuid())
+  tenantId              String?
+  requesterId           String
+  targetUserId          String?       // Collega destinatario diretto
+  acceptedById          String?       // Collega che ha accettato (offerta aperta in bacheca)
+  vacationPlanId        String        // Piano ferie del richiedente
+  targetVacationPlanId  String?       // Piano ferie del collega da scambiare
+  status                String        @default("PENDING") // PENDING | ACCEPTED | REJECTED | COMPLETED
+  message               String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  requester             User          @relation("SentVacationSwaps", fields: [requesterId], references: [id])
+  targetUser            User?         @relation("ReceivedVacationSwaps", fields: [targetUserId], references: [id])
+  vacationPlan          VacationPlan  @relation("VacationSwapPlans", fields: [vacationPlanId], references: [id], onDelete: Cascade)
+  targetVacationPlan    VacationPlan? @relation("TargetVacationSwapPlans", fields: [targetVacationPlanId], references: [id], onDelete: Cascade)
+  tenant                Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([requesterId])
+  @@index([targetUserId])
+  @@index([tenantId, status])
 }
 
 model VacationRotationPeriod {
