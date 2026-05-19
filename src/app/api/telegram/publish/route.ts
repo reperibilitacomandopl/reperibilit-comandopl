@@ -19,9 +19,15 @@ export async function POST(req: Request) {
     const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
     const monthName = monthNames[month - 1]
 
-    // Find all users with a Telegram Chat ID
+    // C5 FIX: Filtrare per tenantId per evitare notifiche cross-tenant
+    const tenantId = session.user.tenantId
+    if (!tenantId) {
+      return NextResponse.json({ error: "Tenant non trovato" }, { status: 400 })
+    }
+
     const users = await prisma.user.findMany({
       where: {
+        tenantId,
         telegramChatId: { not: null },
         telegramOptIn: true
       }

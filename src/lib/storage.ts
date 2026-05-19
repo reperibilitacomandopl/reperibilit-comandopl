@@ -1,4 +1,5 @@
 import crypto from "crypto"
+import path from "path"
 
 /**
  * Storage Service — Signed URL per file con isolamento tenant.
@@ -11,7 +12,14 @@ import crypto from "crypto"
  */
 
 const STORAGE_ROOT = process.env.STORAGE_PATH || "/data/storage"
-const SIGNING_SECRET = process.env.STORAGE_SIGNING_SECRET || process.env.AUTH_SECRET || "default-secret"
+
+// H13 FIX: Non usare "default-secret" — richiedere esplicitamente un segreto
+const SIGNING_SECRET = process.env.STORAGE_SIGNING_SECRET || process.env.AUTH_SECRET
+if (!SIGNING_SECRET) {
+  console.error("CRITICAL: STORAGE_SIGNING_SECRET or AUTH_SECRET must be set for secure storage!")
+}
+const EFFECTIVE_SECRET = SIGNING_SECRET || crypto.randomBytes(32).toString("hex") // Fallback non persistente
+
 const DEFAULT_TTL = 15 * 60 // 15 minuti
 
 interface SignedUrlPayload {
@@ -31,7 +39,7 @@ export function generateSignedUrl(
   const payload: SignedUrlPayload = { path: filePath, exp }
   const data = Buffer.from(JSON.stringify(payload)).toString("base64url")
   const signature = crypto
-    .createHmac("sha256", SIGNING_SECRET)
+    .createHmac("sha256", EFFECTIVE_SECRET)
     .update(data)
     .digest("base64url")
 
@@ -44,7 +52,7 @@ export function verifySignedUrl(token: string): SignedUrlPayload | null {
     if (!data || !signature) return null
 
     const expectedSig = crypto
-      .createHmac("sha256", SIGNING_SECRET)
+      .createHmac("sha256", EFFECTIVE_SECRET)
       .update(data)
       .digest("base64url")
 
@@ -76,7 +84,14 @@ export function getStoragePath(tenantId: string, context: string): string {
 }
 
 export function getAbsolutePath(relativePath: string): string {
-  // Previene directory traversal
-  const normalized = relativePath.replace(/\.\./g, "").replace(/\/\//g, "/")
-  return `${STORAGE_ROOT}/${normalized}`
+  // H14 FIX: Usare path.resolve + startsWith per prevenire directory traversal
+  // La semplice sostituzione di ".." con regex è bypassabile (es. "....//", encoding, etc.)
+  const resolved = path.resolve(STORAGE_ROOT, relativePath)
+  const normalizedRoot = path.resolve(STORAGE_ROOT)
+  
+  if (!resolved.startsWith(normalizedRoot + path.sep) && resolved !== normalizedRoot) {
+    throw new Error("Path traversal detected — access denied")
+  }
+  
+  return resolved
 }

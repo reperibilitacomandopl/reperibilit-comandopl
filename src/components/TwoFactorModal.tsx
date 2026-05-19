@@ -39,8 +39,8 @@ export default function TwoFactorModal() {
       const data = await res.json()
 
       if (res.ok && data.success) {
-        // Update session with twoFactorVerified: true
-        await update({ twoFactorVerified: true })
+        // C2 FIX: Passare il proof token firmato server-side per la validazione nel JWT callback
+        await update({ twoFactorVerified: true, twoFactorProof: data.proof })
         setIsOpen(false)
       } else {
         setError(data.error || "Codice non valido")

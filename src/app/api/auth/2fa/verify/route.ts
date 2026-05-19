@@ -1,4 +1,4 @@
-import { auth } from "@/auth"
+import { auth, generate2FAProof } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import { OTP } from "otplib"
@@ -93,7 +93,10 @@ export async function POST(req: Request) {
       })
     } catch (_) { /* non bloccare per log */ }
 
-    return NextResponse.json({ success: true })
+    // C2 FIX: Generare un proof token firmato server-side
+    const proof = generate2FAProof(user.id)
+
+    return NextResponse.json({ success: true, proof })
   } catch (error) {
     console.error("[2FA VERIFY ERROR]", error)
     return NextResponse.json({ error: "Internal Error" }, { status: 500 })

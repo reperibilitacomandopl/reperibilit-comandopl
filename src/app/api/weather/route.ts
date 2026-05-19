@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server"
+import { auth } from "@/auth"
 
+// H15 FIX: Aggiunta autenticazione all'endpoint meteo
 export async function GET(req: Request) {
   try {
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
+    }
+
     const { searchParams } = new URL(req.url)
     const lat = searchParams.get("lat") || "41.9028" // Default Rome
     const lon = searchParams.get("lon") || "12.4964"

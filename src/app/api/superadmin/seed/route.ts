@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
+import crypto from "crypto"
 
 export async function POST(req: Request) {
   const session = await auth()
@@ -107,7 +108,9 @@ export async function POST(req: Request) {
       })
 
       // 5. Agenti (Template Istituzionale)
-      const hashedPassword = await bcrypt.hash("password123", 10)
+      // C7 FIX: Generare password random sicura
+      const randomPassword = crypto.randomBytes(16).toString("base64url")
+      const hashedPassword = await bcrypt.hash(randomPassword, 12)
       
       const officersRaw = [
         { name: "Commissario Capo Bianchi Mario", matricola: "UFF001", qualifica: "Commissario Capo" },
@@ -135,7 +138,7 @@ export async function POST(req: Request) {
             password: hashedPassword, 
             role: "AGENTE", 
             isUfficiale: true, 
-            forcePasswordChange: false,
+            forcePasswordChange: true,
             rotationGroupId: i % 2 === 0 ? groupA.id : groupB.id
           }
         })
@@ -150,7 +153,7 @@ export async function POST(req: Request) {
             password: hashedPassword, 
             role: "AGENTE", 
             isUfficiale: false, 
-            forcePasswordChange: false,
+            forcePasswordChange: true,
             rotationGroupId: i % 2 === 0 ? groupA.id : groupB.id
           }
         })

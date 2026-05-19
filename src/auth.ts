@@ -1,10 +1,36 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
+import crypto from "crypto"
 import { prisma } from "@/lib/prisma"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { logAudit, AUDIT_ACTIONS } from "@/lib/audit"
 import { cookies } from "next/headers"
+
+// C2 FIX: Funzione per generare e verificare il token di prova 2FA
+const TWO_FA_HMAC_KEY = process.env.AUTH_SECRET || "fallback-secret"
+
+export function generate2FAProof(userId: string): string {
+  const payload = `${userId}:${Math.floor(Date.now() / 1000)}`
+  const sig = crypto.createHmac("sha256", TWO_FA_HMAC_KEY).update(payload).digest("hex")
+  return `${payload}:${sig}`
+}
+
+export function verify2FAProof(proof: string, userId: string): boolean {
+  try {
+    const parts = proof.split(":")
+    if (parts.length !== 3) return false
+    const [proofUserId, timestampStr, signature] = parts
+    if (proofUserId !== userId) return false
+    // Proof valida per max 5 minuti
+    const timestamp = parseInt(timestampStr)
+    if (Math.floor(Date.now() / 1000) - timestamp > 300) return false
+    const expectedSig = crypto.createHmac("sha256", TWO_FA_HMAC_KEY).update(`${proofUserId}:${timestampStr}`).digest("hex")
+    return crypto.timingSafeEqual(Buffer.from(signature, "hex"), Buffer.from(expectedSig, "hex"))
+  } catch {
+    return false
+  }
+}
 
 const HCAPTCHA_SECRET = process.env.HCAPTCHA_SECRET_KEY
 const HCAPTCHA_VERIFY_URL = "https://hcaptcha.com/siteverify"
@@ -244,7 +270,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       if (trigger === "update") {
         if (session?.twoFactorEnabled !== undefined) token.twoFactorEnabled = session.twoFactorEnabled
-        if (session?.twoFactorVerified) token.twoFactorVerified = true
+        // C2 FIX: Non fidarsi di twoFactorVerified dal client — verificare la prova HMAC firmata server-side
+        if (session?.twoFactorVerified && session?.twoFactorProof) {
+          const isProofValid = verify2FAProof(session.twoFactorProof as string, token.id as string)
+          if (isProofValid) {
+            token.twoFactorVerified = true
+          }
+          // Se la prova non è valida, ignoriamo silenziosamente la richiesta di bypass
+        }
         if (session?.privacyAcceptedAt) token.privacyAcceptedAt = session.privacyAcceptedAt
         if (session?.gpsAcceptedAt) token.gpsAcceptedAt = session.gpsAcceptedAt
         if (session?.gpsConsent !== undefined) token.gpsConsent = session.gpsConsent

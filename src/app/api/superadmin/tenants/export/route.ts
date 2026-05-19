@@ -31,7 +31,16 @@ export async function GET(req: Request) {
       emergencyAlerts
     ] = await Promise.all([
       prisma.tenant.findUnique({ where: { id: tenantId } }),
-      prisma.user.findMany({ where: { tenantId } }),
+      // H7 FIX: Escludere password, 2FA secrets e dati sensibili dall'export
+      prisma.user.findMany({ 
+        where: { tenantId },
+        select: {
+          id: true, matricola: true, name: true, role: true, email: true,
+          isUfficiale: true, qualifica: true, gradoLivello: true, squadra: true,
+          servizio: true, isActive: true, createdAt: true, updatedAt: true,
+          // ESCLUSI: password, twoFactorSecret, twoFactorBackupCodes, trustedIps
+        }
+      }),
       prisma.shift.findMany({ where: { tenantId } }),
       prisma.globalSettings.findFirst({ where: { tenantId } }),
       prisma.clockRecord.findMany({ where: { tenantId } }),

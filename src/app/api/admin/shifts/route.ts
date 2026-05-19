@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
+import crypto from "crypto"
 
 export async function POST(req: Request) {
   const session = await auth()
@@ -32,7 +33,9 @@ export async function POST(req: Request) {
     const userByName = new Map(existingUsers.map((u: any) => [u.name.toUpperCase(), u.id]))
 
     // 3. Ensure all agents exist
-    const defaultHashedPassword = await bcrypt.hash("password123", 10)
+    // C7 FIX: Generare password random sicura anziché hardcoded
+    const randomPassword = crypto.randomBytes(16).toString("base64url")
+    const defaultHashedPassword = await bcrypt.hash(randomPassword, 12)
     for (const [key, info] of agentMap.entries()) {
       let userId = info.matricola ? userByMatricola.get(info.matricola) : userByName.get(info.name.toUpperCase())
       
@@ -46,6 +49,7 @@ export async function POST(req: Request) {
             matricola: newMatricola,
             password: defaultHashedPassword,
             role: "AGENTE",
+            forcePasswordChange: true,
             isUfficiale: false
           }
         })

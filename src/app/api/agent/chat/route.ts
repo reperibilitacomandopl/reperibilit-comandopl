@@ -17,7 +17,11 @@ export async function GET(req: Request) {
     }
 
     const messages = await prisma.chatMessage.findMany({
-      where: { patrolGroupId },
+      where: { 
+        patrolGroupId,
+        // H10 FIX: Isolamento tenant — solo messaggi del proprio tenant
+        tenantId: session.user.tenantId || undefined
+      },
       orderBy: { createdAt: 'asc' },
       include: {
         sender: {

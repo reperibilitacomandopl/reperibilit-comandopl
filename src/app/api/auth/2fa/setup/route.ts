@@ -44,9 +44,9 @@ export async function GET() {
 
     const qrCodeUrl = await QRCode.toDataURL(otpauth)
 
+    // H4 FIX: Non esporre il segreto TOTP nella risposta — solo il QR code
     return NextResponse.json({ 
       qrCode: qrCodeUrl,
-      secret: secret,
       enabled: user.twoFactorEnabled 
     })
   } catch (error) {

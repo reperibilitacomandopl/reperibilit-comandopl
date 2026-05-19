@@ -187,6 +187,11 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Piano non trovato" }, { status: 444 })
     }
 
+    // H12 FIX: Verificare che il piano appartenga al tenant dell'utente
+    if (plan.tenantId && plan.tenantId !== session.user.tenantId) {
+      return NextResponse.json({ error: "Non autorizzato" }, { status: 403 })
+    }
+
     // Pulisci i turni legati a questo piano
     try {
       await syncVacationShifts(session.user.tenantId || "", plan.userId, plan.startDate, plan.endDate, "CLEANUP")

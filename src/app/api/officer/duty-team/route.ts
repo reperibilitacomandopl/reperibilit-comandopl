@@ -84,14 +84,21 @@ export async function GET() {
       }
     }
 
-    // Ordina la squadra da restituire per grado
-    dutyTeamShifts.sort((a,b) => (a.user.gradoLivello ?? 99) - (b.user.gradoLivello ?? 99))
+    // H6 FIX: Per agenti non-admin/ufficiali, mascherare i numeri di telefono
+    const shouldExposePhone = isAdmin || isOfficer
 
     return NextResponse.json({ 
       date: today,
       team: dutyTeamShifts.map(s => ({
-        ...s.user,
-        repType: s.repType
+        id: s.user.id,
+        name: s.user.name,
+        matricola: s.user.matricola,
+        qualifica: s.user.qualifica,
+        gradoLivello: s.user.gradoLivello,
+        isUfficiale: s.user.isUfficiale,
+        repType: s.repType,
+        // H6 FIX: Esporre phone e telegramChatId solo ad admin/ufficiali
+        ...(shouldExposePhone && { phone: s.user.phone, telegramChatId: s.user.telegramChatId })
       }))
     })
 

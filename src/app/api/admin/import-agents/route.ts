@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
+import crypto from "crypto"
 
 // POST /api/admin/import-agents — Import massivo agenti da CSV/Excel
 export async function POST(request: Request) {
@@ -39,7 +40,9 @@ export async function POST(request: Request) {
     const errors: string[] = []
 
     // Default password for all new agents
-    const defaultPassword = await bcrypt.hash("password123", 10)
+    // C7 FIX: Generare password random sicura anziché hardcoded
+    const randomPassword = crypto.randomBytes(16).toString("base64url")
+    const defaultPassword = await bcrypt.hash(randomPassword, 12)
 
     for (const agent of agents) {
       try {

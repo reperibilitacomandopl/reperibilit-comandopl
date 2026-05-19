@@ -36,8 +36,7 @@ export async function GET(req: Request) {
           id: true,
           matricola: true,
           name: true,
-          email: true,
-          phone: true,
+          // H5 FIX: Non esportare email e phone (PII) nel backup
           role: true,
           isUfficiale: true,
           qualifica: true,
