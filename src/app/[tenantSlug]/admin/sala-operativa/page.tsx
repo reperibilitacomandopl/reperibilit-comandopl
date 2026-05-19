@@ -264,23 +264,33 @@ export default function CentraleOperativa() {
                       {alert.message}
                     </p>
 
-                    {alert.lat && alert.lng && (
-                      <div className="flex gap-2 mb-3">
-                        <button
-                          onClick={() => setHqCenter([alert.lat, alert.lng])}
-                          className="flex-1 py-2 bg-red-600 hover:bg-red-550 text-white rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-all"
-                        >
-                          <MapPin className="w-3 h-3"/> Apri Posizione GPS Maps
-                        </button>
+                    <div className="flex gap-2 mb-3">
+                      {alert.lat && alert.lng ? (
+                        <>
+                          <button
+                            onClick={() => setHqCenter([alert.lat, alert.lng])}
+                            className="flex-1 py-2 bg-red-600 hover:bg-red-550 text-white rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-all"
+                          >
+                            <MapPin className="w-3 h-3"/> Apri Posizione GPS Maps
+                          </button>
+                          <button
+                            onClick={() => handleResolveSos(alert.id)}
+                            className="px-3 py-2 bg-slate-800 hover:bg-slate-750 text-red-400 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all"
+                            title="Risolvi / Disattiva SOS"
+                          >
+                            Risolvi
+                          </button>
+                        </>
+                      ) : (
                         <button
                           onClick={() => handleResolveSos(alert.id)}
-                          className="px-3 py-2 bg-slate-800 hover:bg-slate-750 text-red-400 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all"
+                          className="w-full py-2 bg-slate-800 hover:bg-slate-750 text-red-400 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all"
                           title="Risolvi / Disattiva SOS"
                         >
-                          Risolvi
+                          Risolvi / Archivia Emergenza
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
 
                     {/* Pattuglie vicine raccomandate */}
                     {patrolsWithDistance.length > 0 && (

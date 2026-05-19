@@ -1411,7 +1411,7 @@ export default function VacationRotationManager() {
       )}
 
       {/* PRINT-ONLY OFFICIAL DOCUMENT LAYOUT */}
-      <div className="hidden print:block bg-white text-black font-sans p-8 max-w-4xl mx-auto space-y-8 print-container">
+      <div className="hidden print:block bg-white text-black font-sans print-container">
         <style dangerouslySetInnerHTML={{__html: `
           @media print {
             body * {
@@ -1423,36 +1423,46 @@ export default function VacationRotationManager() {
             .print-container {
               position: absolute !important;
               left: 0 !important;
+              right: 0 !important;
               top: 0 !important;
               width: 100% !important;
+              max-width: 100% !important;
+              margin: 0 !important;
+              padding: 30px !important;
               background: white !important;
               color: black !important;
+              box-sizing: border-box !important;
+            }
+            table {
+              width: 100% !important;
+              border-collapse: collapse !important;
+            }
+            th, td {
+              border: 1px solid black !important;
             }
           }
         `}} />
         
         {/* Official institutional ODS Header */}
-        <div className="flex flex-col items-center justify-center text-center border-b-4 border-double border-black pb-5">
-          {tenantInfo?.logoUrl ? (
+        <div className="flex flex-col items-center justify-center text-center border-b-4 border-double border-black pb-5 mb-8">
+          {tenantInfo?.logoUrl && (
             <img src={tenantInfo.logoUrl} alt="Logo" className="w-20 h-20 object-contain mb-3" />
-          ) : (
-            <div className="w-20 h-20 bg-slate-200 border-2 border-dashed border-black flex items-center justify-center font-bold text-xs mb-3">LOGO</div>
           )}
           <h1 className="text-xl font-extrabold uppercase tracking-widest leading-none text-black">{tenantInfo?.name || "Comune di Altamura"}</h1>
-          <h2 className="text-xs font-bold text-black uppercase tracking-wider mt-1.5">Corpo di Polizia Locale</h2>
-          {tenantInfo?.address && <p className="text-[10px] font-medium text-slate-700 mt-1">{tenantInfo.address}</p>}
-          {tenantInfo?.partitaIva && <p className="text-[10px] font-medium text-slate-700">{tenantInfo.partitaIva}</p>}
+          <h2 className="text-xs font-black text-black uppercase tracking-wider mt-1.5">Corpo di Polizia Locale</h2>
+          {tenantInfo?.address && <p className="text-[9px] font-semibold text-slate-700 mt-1">{tenantInfo.address}</p>}
+          {tenantInfo?.partitaIva && <p className="text-[9px] font-semibold text-slate-700">Partita IVA: {tenantInfo.partitaIva}</p>}
         </div>
 
         {/* Title based on current state */}
-        <div className="text-center space-y-1">
+        <div className="text-center space-y-1 mb-8">
           <h2 className="text-lg font-black uppercase tracking-widest text-black border-b-2 border-black pb-2 inline-block">
             {activeTab === "holidays" 
               ? `ORDINE DI SERVIZIO SPECIALE - ROTAZIONE FESTIVI INFRASETTIMANALI` 
               : `ORDINE DI SERVIZIO SPECIALE - PIANIFICAZIONE TURNI DI FERIE`
             }
           </h2>
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-800 pt-1.5">
+          <p className="text-xs font-black uppercase tracking-widest text-slate-800 pt-1.5">
             {activeTab === "holidays" 
               ? `ANNO SOLARE ${yearSim}`
               : `STAGIONE ${season === "SUMMER" ? "ESTIVA" : "INVERNALE"} - ANNO ${yearSim}`
@@ -1463,14 +1473,14 @@ export default function VacationRotationManager() {
         {/* Body content based on current tab */}
         {activeTab === "holidays" ? (
           /* Midweek holidays table */
-          <div className="space-y-6">
+          <div className="space-y-6 mb-8">
             <table className="w-full border-collapse border-2 border-black text-[11px]">
               <thead>
-                <tr className="bg-[#001736] text-white">
-                  <th className="border-2 border-black p-3 text-left font-black uppercase tracking-wider">Festività</th>
-                  <th className="border-2 border-black p-3 text-left font-black uppercase tracking-wider">Data</th>
-                  <th className="border-2 border-black p-3 text-left font-black uppercase tracking-wider">Gruppo di Turno</th>
-                  <th className="border-2 border-black p-3 text-left font-black uppercase tracking-wider">Operatori Assegnati</th>
+                <tr className="bg-slate-100 text-black border-b-2 border-black">
+                  <th className="border border-black p-3 text-left font-black uppercase tracking-wider text-[10px]">Festività</th>
+                  <th className="border border-black p-3 text-left font-black uppercase tracking-wider text-[10px] w-24">Data</th>
+                  <th className="border border-black p-3 text-left font-black uppercase tracking-wider text-[10px] w-36">Gruppo di Turno</th>
+                  <th className="border border-black p-3 text-left font-black uppercase tracking-wider text-[10px]">Operatori Assegnati</th>
                 </tr>
               </thead>
               <tbody>
@@ -1483,15 +1493,15 @@ export default function VacationRotationManager() {
                   
                   return (
                     <tr key={h.id || idx} className="hover:bg-slate-50">
-                      <td className="border border-black p-3 font-bold uppercase tracking-wide">{h.name}</td>
-                      <td className="border border-black p-3 font-mono font-semibold">{dateFormatted}</td>
+                      <td className="border border-black p-3 font-bold uppercase tracking-wide text-black">{h.name}</td>
+                      <td className="border border-black p-3 font-mono font-bold text-black">{dateFormatted}</td>
                       <td className="border border-black p-3 font-black text-black uppercase tracking-wide">{groupOnDuty?.name || "—"}</td>
                       <td className="border border-black p-3">
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-col gap-1 text-[10px] font-bold text-black">
                           {(groupOnDuty?.members || []).map((m: any) => (
-                            <span key={m.id} className="border border-black px-2 py-0.5 rounded text-[10px] font-semibold text-black bg-white">
-                              👮‍♂️ {m.name}
-                            </span>
+                            <div key={m.id} className="uppercase font-bold">
+                              {m.name}
+                            </div>
                           ))}
                         </div>
                       </td>
@@ -1503,14 +1513,14 @@ export default function VacationRotationManager() {
           </div>
         ) : (
           /* Vacation rotation simulator table */
-          <div className="space-y-6">
+          <div className="space-y-6 mb-8">
             <table className="w-full border-collapse border-2 border-black text-[11px]">
               <thead>
-                <tr className="bg-[#001736] text-white">
-                  <th className="border-2 border-black p-3 text-left font-black uppercase tracking-wider">Gruppo Rotazione Ferie</th>
-                  <th className="border-2 border-black p-3 text-left font-black uppercase tracking-wider">Membri del Gruppo</th>
-                  <th className="border-2 border-black p-3 text-left font-black uppercase tracking-wider">Turno Assegnato</th>
-                  <th className="border-2 border-black p-3 text-left font-black uppercase tracking-wider">Periodo Temporale</th>
+                <tr className="bg-slate-100 text-black border-b-2 border-black">
+                  <th className="border border-black p-3 text-left font-black uppercase tracking-wider text-[10px]">Gruppo Rotazione Ferie</th>
+                  <th className="border border-black p-3 text-left font-black uppercase tracking-wider text-[10px]">Membri del Gruppo</th>
+                  <th className="border border-black p-3 text-left font-black uppercase tracking-wider text-[10px] w-48">Turno Assegnato</th>
+                  <th className="border border-black p-3 text-left font-black uppercase tracking-wider text-[10px] w-36">Periodo Temporale</th>
                 </tr>
               </thead>
               <tbody>
@@ -1530,18 +1540,18 @@ export default function VacationRotationManager() {
  
                   return (
                     <tr key={group.id} className="hover:bg-slate-50">
-                      <td className="border border-black p-3 font-bold uppercase tracking-wide">{group.name}</td>
+                      <td className="border border-black p-3 font-bold uppercase tracking-wide text-black">{group.name}</td>
                       <td className="border border-black p-3">
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-col gap-1 text-[10px] font-bold text-black">
                           {(group.members || []).map((m: any) => (
-                            <span key={m.id} className="border border-black px-2 py-0.5 rounded text-[10px] font-semibold text-black bg-white">
-                              👮‍♂️ {m.name}
-                            </span>
+                            <div key={m.id} className="uppercase font-bold">
+                              {m.name}
+                            </div>
                           ))}
                         </div>
                       </td>
-                      <td className="border border-black p-3 font-extrabold uppercase text-black">{currentPeriodName}</td>
-                      <td className="border border-black p-3 font-mono font-semibold">{currentDates}</td>
+                      <td className="border border-black p-3 font-black uppercase text-black">{currentPeriodName}</td>
+                      <td className="border border-black p-3 font-mono font-bold text-black">{currentDates}</td>
                     </tr>
                   )
                 })}
@@ -1551,17 +1561,17 @@ export default function VacationRotationManager() {
         )}
  
         {/* Informational notes styled exactly like ODS general provisions */}
-        <div className="border-2 border-black p-5 bg-yellow-50/20 space-y-2">
+        <div className="border-2 border-black p-5 bg-slate-50 space-y-2 mb-12">
           <h4 className="text-[10px] font-black uppercase tracking-widest text-black border-b border-black pb-1">Disposizioni e Note Generali del Comando</h4>
-          <p className="text-[10px] text-black leading-relaxed font-medium">
+          <p className="text-[10px] text-black leading-relaxed font-bold">
             1. I turni e le rotazioni indicati sono stati formalizzati tramite algoritmo ciclico annuale a garanzia dell'equità del servizio.<br />
-            2. Eventuali proposte di scambio dovranno essere inserite esclusivamente via PWA **con un anticipo minimo di 1 mese (30 giorni)** rispetto alla decorrenza del turno.<br />
-            3. Gli scambi concordati diventano esecutivi solo in presenza di **Visto Favorevole** della Segreteria e **Approvazione Finale** del Comandante.
+            2. Eventuali proposte di scambio dovranno essere inserite esclusivamente via PWA con un anticipo minimo di 1 mese (30 giorni) rispetto alla decorrenza del turno.<br />
+            3. Gli scambi concordati diventano esecutivi solo in presenza di Visto Favorevole della Segreteria e Approvazione Finale del Comandante.
           </p>
         </div>
  
         {/* Official ODS double-line signatures */}
-        <div className="grid grid-cols-2 gap-16 pt-16 text-center text-xs">
+        <div className="grid grid-cols-2 gap-16 pt-8 text-center text-xs">
           <div className="space-y-16">
             <p className="font-extrabold uppercase tracking-wider text-black">Visto della Segreteria</p>
             <div className="h-14 border-b border-dashed border-black/40 w-3/4 mx-auto"></div>
