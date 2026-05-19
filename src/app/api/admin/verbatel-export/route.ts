@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { logAudit } from '@/lib/audit';
+import { generateVerbatelToken } from '@/lib/verbatel-token';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -113,7 +114,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ 
       data: result,
-      syncToken: "INTERNAL_SYNC_" + tenantId 
+      syncToken: tenantId + ":" + generateVerbatelToken(tenantId || "default")
     }, { headers: corsHeaders });
 
   } catch (error) {

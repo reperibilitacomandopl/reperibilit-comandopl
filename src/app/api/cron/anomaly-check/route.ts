@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null
   const expected = process.env.CRON_SECRET
 
-  if (expected && token !== expected) {
+  if (!expected || token !== expected) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
   }
 

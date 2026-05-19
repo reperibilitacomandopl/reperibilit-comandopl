@@ -47,7 +47,11 @@ export async function POST(req: Request) {
         },
         repType: { not: null } // Solo Reperibilità
       },
-      include: { user: true }
+      include: { 
+        user: { 
+          select: { id: true, name: true, email: true, isUfficiale: true } 
+        } 
+      }
     })
 
     // 4. Configurazione Transporter (PEC) leggendo dal DB (filtrato per tenant)

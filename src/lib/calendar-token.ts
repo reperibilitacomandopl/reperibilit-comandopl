@@ -6,10 +6,14 @@ import crypto from "crypto"
  * Il token è legato all'userId e al AUTH_SECRET del server.
  */
 
-const SECRET = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || ""
+const SECRET = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET
+if (!SECRET) {
+  console.error("CRITICAL: AUTH_SECRET must be set for secure calendar tokens!")
+}
+const EFFECTIVE_SECRET = SECRET || crypto.randomBytes(32).toString("hex")
 
 export function generateCalendarToken(userId: string): string {
-  return crypto.createHmac("sha256", SECRET).update(userId).digest("hex")
+  return crypto.createHmac("sha256", EFFECTIVE_SECRET).update(userId).digest("hex")
 }
 
 export function verifyCalendarToken(userId: string, token: string): boolean {

@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { logAudit } from '@/lib/audit';
+import { verifyVerbatelToken } from '@/lib/verbatel-token';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -32,9 +33,16 @@ export async function POST(request: Request) {
       tenantId = session.user.tenantId || tenantId;
     } else if (providedKey === process.env.AUTH_SECRET) {
       isAdmin = true;
-    } else if (providedKey?.startsWith('INTERNAL_SYNC_')) {
-      isAdmin = true;
-      tenantId = providedKey.replace('INTERNAL_SYNC_', '');
+    } else if (providedKey && providedKey.includes(':')) {
+      const parts = providedKey.split(':');
+      if (parts.length === 2) {
+        const potentialTenantId = parts[0];
+        const token = parts[1];
+        if (verifyVerbatelToken(potentialTenantId || "default", token)) {
+          isAdmin = true;
+          tenantId = potentialTenantId === "default" ? null : potentialTenantId;
+        }
+      }
     }
 
     if (!isAdmin) {
