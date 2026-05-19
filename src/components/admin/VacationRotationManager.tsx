@@ -1414,6 +1414,14 @@ export default function VacationRotationManager() {
       <div className="hidden print:block bg-white text-black font-sans print-container">
         <style dangerouslySetInnerHTML={{__html: `
           @media print {
+            @page {
+              size: A4;
+              margin: 15mm 15mm 15mm 15mm;
+            }
+            body {
+              margin: 0 !important;
+              padding: 0 !important;
+            }
             body * {
               visibility: hidden !important;
             }
@@ -1421,24 +1429,27 @@ export default function VacationRotationManager() {
               visibility: visible !important;
             }
             .print-container {
-              position: absolute !important;
+              position: fixed !important;
               left: 0 !important;
-              right: 0 !important;
               top: 0 !important;
               width: 100% !important;
-              max-width: 100% !important;
               margin: 0 !important;
-              padding: 30px !important;
+              padding: 0 !important;
               background: white !important;
               color: black !important;
               box-sizing: border-box !important;
+              font-size: 11px !important;
             }
-            table {
+            .print-container table {
               width: 100% !important;
               border-collapse: collapse !important;
+              table-layout: fixed !important;
             }
-            th, td {
+            .print-container th,
+            .print-container td {
               border: 1px solid black !important;
+              word-wrap: break-word !important;
+              overflow-wrap: break-word !important;
             }
           }
         `}} />
@@ -1502,14 +1513,8 @@ export default function VacationRotationManager() {
                       <td className="border border-black p-3 font-bold uppercase tracking-wide text-black">{h.name}</td>
                       <td className="border border-black p-3 font-mono font-bold text-black">{dateFormatted}</td>
                       <td className="border border-black p-3 font-black text-black uppercase tracking-wide">{groupOnDuty?.name || "—"}</td>
-                      <td className="border border-black p-3">
-                        <div className="flex flex-col gap-1 text-[10px] font-bold text-black">
-                          {(groupOnDuty?.members || []).map((m: any) => (
-                            <div key={m.id} className="uppercase font-bold">
-                              {m.name}
-                            </div>
-                          ))}
-                        </div>
+                      <td className="border border-black p-2 text-[10px] font-bold text-black leading-snug">
+                        {(groupOnDuty?.members || []).map((m: any) => m.name.toUpperCase()).join(', ')}
                       </td>
                     </tr>
                   )
@@ -1523,10 +1528,10 @@ export default function VacationRotationManager() {
             <table className="w-full border-collapse border-2 border-black text-[11px]">
               <thead>
                 <tr className="bg-slate-100 text-black border-b-2 border-black">
-                  <th className="border border-black p-3 text-left font-black uppercase tracking-wider text-[10px]">Gruppo Rotazione Ferie</th>
-                  <th className="border border-black p-3 text-left font-black uppercase tracking-wider text-[10px]">Membri del Gruppo</th>
-                  <th className="border border-black p-3 text-left font-black uppercase tracking-wider text-[10px] w-48">Turno Assegnato</th>
-                  <th className="border border-black p-3 text-left font-black uppercase tracking-wider text-[10px] w-36">Periodo Temporale</th>
+                  <th className="border border-black p-2 text-left font-black uppercase tracking-wider text-[10px]" style={{width:'18%'}}>Gruppo Rotazione Ferie</th>
+                  <th className="border border-black p-2 text-left font-black uppercase tracking-wider text-[10px]" style={{width:'42%'}}>Membri del Gruppo</th>
+                  <th className="border border-black p-2 text-center font-black uppercase tracking-wider text-[10px]" style={{width:'22%'}}>Turno Assegnato</th>
+                  <th className="border border-black p-2 text-center font-black uppercase tracking-wider text-[10px]" style={{width:'18%'}}>Periodo Temporale</th>
                 </tr>
               </thead>
               <tbody>
@@ -1545,19 +1550,13 @@ export default function VacationRotationManager() {
                   }
  
                   return (
-                    <tr key={group.id} className="hover:bg-slate-50">
-                      <td className="border border-black p-3 font-bold uppercase tracking-wide text-black">{group.name}</td>
-                      <td className="border border-black p-3">
-                        <div className="flex flex-col gap-1 text-[10px] font-bold text-black">
-                          {(group.members || []).map((m: any) => (
-                            <div key={m.id} className="uppercase font-bold">
-                              {m.name}
-                            </div>
-                          ))}
-                        </div>
+                    <tr key={group.id}>
+                      <td className="border border-black p-2 font-bold uppercase tracking-wide text-black text-[10px]">{group.name}</td>
+                      <td className="border border-black p-2 text-[10px] font-bold text-black leading-snug">
+                        {(group.members || []).map((m: any) => m.name.toUpperCase()).join(', ')}
                       </td>
-                      <td className="border border-black p-3 font-black uppercase text-black">{currentPeriodName}</td>
-                      <td className="border border-black p-3 font-mono font-bold text-black">{currentDates}</td>
+                      <td className="border border-black p-2 font-black uppercase text-black text-center text-[10px]">{currentPeriodName}</td>
+                      <td className="border border-black p-2 font-mono font-bold text-black text-center text-[10px]">{currentDates}</td>
                     </tr>
                   )
                 })}
