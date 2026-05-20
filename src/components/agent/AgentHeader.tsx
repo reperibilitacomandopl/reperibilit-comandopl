@@ -333,26 +333,26 @@ export default function AgentHeader({
               {(userRole === "ADMIN" || canManageShifts) && (
                 <Link
                   href={`/${tenantSlug || "admin"}/admin/pannello`}
-                  className="w-full flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-500 text-white py-5 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-indigo-900/40 transition-all active:scale-95 border-b-4 border-indigo-800"
+                  className="w-full flex items-center justify-center gap-2 sm:gap-3 bg-indigo-600 hover:bg-indigo-500 text-white py-4 sm:py-5 rounded-[1.5rem] sm:rounded-[2rem] font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] shadow-xl shadow-indigo-900/40 transition-all active:scale-95 border-b-4 border-indigo-800"
                 >
-                  <ShieldCheck size={20} />
-                  Area Commando
+                  <ShieldCheck size={18} className="sm:w-5 sm:h-5" />
+                  Area Comando
                 </Link>
               )}
-              <div className="flex gap-4">
+              <div className="flex gap-3 sm:gap-4">
                 <button 
                   onClick={() => setShowSwapModal(true)}
-                  className="flex-1 flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 text-white py-5 rounded-[2rem] font-black text-[10px] uppercase tracking-widest border border-white/10 transition-all active:scale-95 backdrop-blur-sm"
+                  className="flex-1 flex items-center justify-center gap-2 sm:gap-3 bg-white/5 hover:bg-white/10 text-white py-4 sm:py-5 rounded-[1.5rem] sm:rounded-[2rem] font-black text-[9px] sm:text-[10px] uppercase tracking-widest border border-white/10 transition-all active:scale-95 backdrop-blur-sm"
                   aria-label="Gestione Scambi Turni"
                 >
-                  <RefreshCw size={18} /> Scambi
+                  <RefreshCw size={16} className="sm:w-[18px] sm:h-[18px]" /> Scambi
                 </button>
                 <button 
                   onClick={() => setShowSyncModal(true)}
-                  className="flex-1 flex items-center justify-center gap-3 bg-white text-[#0f172a] py-5 rounded-[2rem] font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 shadow-2xl"
+                  className="flex-1 flex items-center justify-center gap-2 sm:gap-3 bg-white text-[#0f172a] py-4 sm:py-5 rounded-[1.5rem] sm:rounded-[2rem] font-black text-[9px] sm:text-[10px] uppercase tracking-widest transition-all active:scale-95 shadow-2xl"
                   aria-label="Sincronizza Calendario"
                 >
-                  <CalendarDays size={18} className="text-blue-600" /> Sincronizza
+                  <CalendarDays size={16} className="text-blue-600 sm:w-[18px] sm:h-[18px]" /> Sincro
                 </button>
               </div>
             </div>
