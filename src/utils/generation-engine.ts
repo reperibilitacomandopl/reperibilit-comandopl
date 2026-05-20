@@ -99,19 +99,19 @@ export function generateMonthShifts(
     const shift = (baseShifts[agentId]?.[key] || "").toUpperCase().trim()
 
     // Regola 1: Assenza dell'agente (INFR, FERIE, RIPOSO, MALATTIA, BR, ecc.)
-    // Se l'agente ha un turno normale (M7, P14) anche su un festivo, è OK
-    if (isAssenza(shift)) return true;
+    // Il cliente richiede che il turno odierno sia SOLO M o P (es. M7, P14)
+    if (!shift.startsWith('M') && !shift.startsWith('P')) return true;
     
     // Regola Dinamica: Divieti Assoluti (FORBIDDEN_BASE_SHIFT)
     if (forbiddenBaseShifts.has(shift)) return true;
     
-    // Regola 2: Se DOMANI l'agente ha un'assenza → no rep oggi (tutela stacco)
+    // Regola 2: Se DOMANI l'agente non ha M o P → no rep oggi (tutela stacco)
     const nextDate = new Date(Date.UTC(year, month0, d + 1))
     const nextKey = `${nextDate.getUTCDate()}-${nextDate.getUTCMonth()}`
     const nextShift = (baseShifts[agentId]?.[nextKey] || "").toUpperCase().trim()
-    if (isAssenza(nextShift)) return true;
+    if (!nextShift.startsWith('M') && !nextShift.startsWith('P')) return true;
     
-    // Regola 3: Stacco di 11 ore se attivo
+    // Regola 3: Stacco di 11 ore se attivo (ridondante se forziamo M/P, ma mantenuto per sicurezza)
     if (checkRestHours && shift) {
       if (shift.includes("N") || nextShift.includes("N")) return true
     }
