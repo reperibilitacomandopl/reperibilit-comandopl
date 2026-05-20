@@ -158,36 +158,36 @@ export default function AgentSosModal({ onClose, onSendSos }: AgentSosModalProps
 
   return (
     <div className="fixed inset-0 bg-red-950/70 backdrop-blur-xl z-[150] flex items-center justify-center p-4 sm:p-6" onClick={onClose}>
-      <div className="bg-white rounded-[3.5rem] shadow-[0_35px_60px_-15px_rgba(220,38,38,0.3)] w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300 border border-red-100" onClick={e => e.stopPropagation()}>
-        <div className="bg-gradient-to-br from-red-600 via-red-700 to-rose-800 p-10 text-white relative">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-          <div className="flex justify-between items-start relative z-10 mb-6">
-            <div className="p-5 bg-white/20 rounded-[2rem] backdrop-blur-md border border-white/30 shadow-2xl">
+      <div className="bg-white rounded-[2rem] sm:rounded-[3.5rem] shadow-[0_35px_60px_-15px_rgba(220,38,38,0.3)] w-full max-w-lg max-h-[90vh] overflow-y-auto no-scrollbar animate-in zoom-in-95 duration-300 border border-red-100" onClick={e => e.stopPropagation()}>
+        <div className="bg-gradient-to-br from-red-600 via-red-700 to-rose-800 p-6 sm:p-10 text-white relative">
+          <div className="absolute top-0 right-0 w-48 sm:w-64 h-48 sm:h-64 bg-white/10 rounded-full -mr-24 sm:-mr-32 -mt-24 sm:-mt-32 blur-3xl"></div>
+          <div className="flex justify-between items-start relative z-10 mb-4 sm:mb-6">
+            <div className="p-4 sm:p-5 bg-white/20 rounded-[1.5rem] sm:rounded-[2rem] backdrop-blur-md border border-white/30 shadow-2xl">
               <AlertTriangle size={42} className="text-white animate-pulse" />
             </div>
-            <button onClick={onClose} className="p-3 bg-black/10 hover:bg-black/20 rounded-2xl transition-all border border-white/10">
-              <X size={28} />
+            <button onClick={onClose} className="p-2 sm:p-3 bg-black/10 hover:bg-black/20 rounded-[1rem] sm:rounded-2xl transition-all border border-white/10">
+              <X size={24} className="sm:w-7 sm:h-7" />
             </button>
           </div>
-          <h3 className="text-4xl font-black tracking-tighter leading-none mb-4 uppercase">SOS Emergenza</h3>
-          <p className="text-red-100 text-lg font-bold opacity-90 leading-tight">
+          <h3 className="text-2xl sm:text-4xl font-black tracking-tighter leading-none mb-2 sm:mb-4 uppercase">SOS Emergenza</h3>
+          <p className="text-red-100 text-sm sm:text-lg font-bold opacity-90 leading-tight">
             Tocca il microfono per registrare un messaggio vocale. L'allerta verrà inviata automaticamente allo stop.
           </p>
         </div>
 
-        <div className="p-8 sm:p-10 space-y-8">
+        <div className="p-6 sm:p-10 space-y-6 sm:space-y-8">
           <div>
             <textarea 
               placeholder="Inserisci una nota rapida (opzionale)..."
               value={sosNote}
               onChange={(e) => setSosNote(e.target.value)}
-              className="w-full bg-slate-50 border-2 border-slate-100 rounded-[2.5rem] px-8 py-6 text-base font-bold text-slate-800 placeholder:text-slate-300 focus:border-red-400 focus:ring-4 focus:ring-red-50/50 focus:outline-none transition-all resize-none h-28 shadow-inner"
+              className="w-full bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] sm:rounded-[2.5rem] px-5 sm:px-8 py-4 sm:py-6 text-sm sm:text-base font-bold text-slate-800 placeholder:text-slate-300 focus:border-red-400 focus:ring-4 focus:ring-red-50/50 focus:outline-none transition-all resize-none h-20 sm:h-28 shadow-inner"
             />
           </div>
 
-          <div className="flex flex-col items-center gap-6 py-2">
+          <div className="flex flex-col items-center gap-4 sm:gap-6 py-1 sm:py-2">
             <div className="relative w-full flex flex-col items-center">
-              <div className="w-full h-20 bg-slate-50/50 rounded-3xl mb-6 flex items-center justify-center overflow-hidden border border-slate-100 shadow-inner">
+              <div className="w-full h-16 sm:h-20 bg-slate-50/50 rounded-2xl sm:rounded-3xl mb-4 sm:mb-6 flex items-center justify-center overflow-hidden border border-slate-100 shadow-inner">
                 <canvas 
                   ref={canvasRef} 
                   width={400} 
@@ -208,22 +208,22 @@ export default function AgentSosModal({ onClose, onSendSos }: AgentSosModalProps
               <button 
                 disabled={isSending}
                 onClick={isRecording ? stopRecording : startRecording}
-                className={`group relative w-36 h-36 rounded-full flex flex-col items-center justify-center gap-2 transition-all shadow-2xl active:scale-95 disabled:opacity-50 ${
+                className={`group relative w-28 h-28 sm:w-36 sm:h-36 rounded-full flex flex-col items-center justify-center gap-1 sm:gap-2 transition-all shadow-2xl active:scale-95 disabled:opacity-50 ${
                   isRecording 
-                    ? 'bg-red-600 scale-110 shadow-red-200 ring-[12px] ring-red-50' 
-                    : 'bg-white text-slate-400 hover:bg-slate-50 border-[6px] border-slate-100'
+                    ? 'bg-red-600 scale-110 shadow-red-200 ring-[8px] sm:ring-[12px] ring-red-50' 
+                    : 'bg-white text-slate-400 hover:bg-slate-50 border-[4px] sm:border-[6px] border-slate-100'
                 }`}
               >
                 {isRecording ? (
                   <>
-                    <div className="w-10 h-10 bg-white rounded-2xl animate-pulse shadow-lg" />
-                    <span className="text-sm font-black text-white mt-3 bg-black/20 px-3 py-1 rounded-full">{recordingDuration}s</span>
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-xl sm:rounded-2xl animate-pulse shadow-lg" />
+                    <span className="text-xs sm:text-sm font-black text-white mt-2 sm:mt-3 bg-black/20 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full">{recordingDuration}s</span>
                   </>
                 ) : (
                   <>
                     <div className={`absolute inset-0 rounded-full bg-red-500/10 ${isSending ? '' : 'group-hover:animate-ping'}`}></div>
-                    <Mic size={48} className={`relative z-10 transition-colors ${isSending ? 'text-slate-200' : 'text-slate-400 group-hover:text-red-500'}`} />
-                    <span className="relative z-10 text-[9px] font-black uppercase tracking-[0.2em] text-center px-4 mt-1">Avvia</span>
+                    <Mic className={`relative z-10 w-8 h-8 sm:w-12 sm:h-12 transition-colors ${isSending ? 'text-slate-200' : 'text-slate-400 group-hover:text-red-500'}`} />
+                    <span className="relative z-10 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-center px-4 mt-1">Avvia</span>
                   </>
                 )}
               </button>
@@ -236,19 +236,19 @@ export default function AgentSosModal({ onClose, onSendSos }: AgentSosModalProps
             </div>
           </div>
 
-          <div className="flex gap-4 pt-2">
+          <div className="flex gap-3 sm:gap-4 pt-1 sm:pt-2">
             <button 
               onClick={onClose}
-              className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black text-xs uppercase tracking-widest py-6 rounded-[2rem] transition-all border-b-4 border-slate-200"
+              className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black text-[10px] sm:text-xs uppercase tracking-widest py-4 sm:py-6 rounded-[1.5rem] sm:rounded-[2rem] transition-all border-b-4 border-slate-200"
             >
               Chiudi
             </button>
             <button 
               disabled={isSending || isRecording}
               onClick={handleSendOnlyText}
-              className="flex-[1.5] bg-slate-900 hover:bg-slate-800 text-white font-black text-xs uppercase tracking-[0.2em] py-6 rounded-[2rem] shadow-xl transition-all hover:-translate-y-1 active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 border-b-4 border-slate-950"
+              className="flex-[1.5] bg-slate-900 hover:bg-slate-800 text-white font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] py-4 sm:py-6 rounded-[1.5rem] sm:rounded-[2rem] shadow-xl transition-all hover:-translate-y-1 active:scale-[0.98] flex items-center justify-center gap-2 sm:gap-3 disabled:opacity-50 border-b-4 border-slate-950"
             >
-               <Send size={18} />
+               <Send className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
                Senza Vocale
             </button>
           </div>

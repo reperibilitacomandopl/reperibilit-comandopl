@@ -10,8 +10,18 @@ export default function InstitutionalFooter() {
 
   return (
     <>
-      {/* Floating Toggle Button */}
-      <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-3">
+      {/* Mobile Static Link (bottom of page flow) */}
+      <div className="md:hidden flex justify-center pb-6">
+        <button 
+          onClick={() => setIsExpanded(true)}
+          className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 bg-white/5 border border-slate-200 px-4 py-2 rounded-full"
+        >
+          <Shield className="w-3 h-3 text-indigo-400" /> Compliance PA
+        </button>
+      </div>
+
+      {/* Floating Toggle Button (Desktop only) */}
+      <div className="hidden md:flex fixed bottom-6 right-6 z-[100] items-center gap-3">
         {!isExpanded && (
           <div className="bg-slate-900/80 backdrop-blur-md border border-white/10 rounded-full py-2 px-4 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <span className="text-[10px] font-black text-white/50 uppercase tracking-widest hidden md:block">Compliance PA</span>
