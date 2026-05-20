@@ -201,7 +201,7 @@ export default function AdminSidebar({
         </button>
 
       {/* Brand Header Premium */}
-      <div className="px-5 py-8 border-b border-white/5 flex items-center gap-3 shrink-0 relative overflow-hidden">
+      <div className={`py-8 border-b border-white/5 flex items-center shrink-0 relative overflow-hidden ${collapsed ? "justify-center px-0" : "px-5 gap-3"}`}>
         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-600/5 to-transparent pointer-events-none"></div>
         {logoUrl ? (
           <div className="w-11 h-11 bg-white rounded-2xl flex items-center justify-center p-1 shadow-lg shadow-blue-500/10 shrink-0 ring-1 ring-white/10 relative z-10 transition-transform hover:scale-110 overflow-hidden">
@@ -239,7 +239,7 @@ export default function AdminSidebar({
       )}
 
       {/* Navigation Items Premium */}
-      <nav aria-label="Menu Principale" className="flex-1 py-10 px-4 space-y-10 overflow-y-auto custom-scrollbar-dark pb-6">
+      <nav aria-label="Menu Principale" className={`flex-1 py-10 ${collapsed ? "px-2" : "px-4"} space-y-10 overflow-y-auto custom-scrollbar-dark pb-6`}>
         {NAV_SECTIONS.map((section) => {
           const filteredItems = section.items.filter(item => {
             if (userRole === "ADMIN") return true;
@@ -279,7 +279,7 @@ export default function AdminSidebar({
                       aria-label={item.label}
                       aria-current={isActive ? "page" : undefined}
                       title={collapsed ? item.label : undefined}
-                      className={`group flex items-center gap-5 px-5 py-4 rounded-2xl transition-all duration-500 relative overflow-hidden ${
+                      className={`group flex items-center ${collapsed ? "justify-center p-3" : "gap-5 px-5 py-4"} rounded-2xl transition-all duration-500 relative overflow-hidden ${
                         isActive
                           ? "bg-blue-600 text-white shadow-xl shadow-blue-900/40"
                           : "text-white/40 hover:text-white hover:bg-white/5"
@@ -320,10 +320,10 @@ export default function AdminSidebar({
       </nav>
 
       {/* Fixed Footer Premium */}
-      <div className="shrink-0 w-full bg-[#050914] border-t border-white/5 p-6 space-y-4 relative z-20">
+      <div className={`shrink-0 w-full bg-[#050914] border-t border-white/5 ${collapsed ? "p-3" : "p-6"} space-y-4 relative z-20`}>
         
         {/* User Card */}
-        <div className="flex items-center gap-4 bg-white/5 p-4 rounded-3xl border border-white/5 group hover:bg-white/10 transition-colors">
+        <div className={`flex ${collapsed ? "flex-col justify-center p-2 gap-3" : "items-center gap-4 p-4"} bg-white/5 rounded-3xl border border-white/5 group hover:bg-white/10 transition-colors`}>
           <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-blue-700 rounded-xl flex items-center justify-center text-white text-[12px] font-black shrink-0 shadow-lg shadow-blue-500/20">
             {userName.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase()}
           </div>
@@ -372,14 +372,16 @@ export default function AdminSidebar({
         )}
 
         {!collapsed && <ThemeToggleButton />}
-        <button
-           onClick={() => setCollapsed(!collapsed)}
-           aria-expanded={!collapsed}
-           aria-label={collapsed ? "Espandi menu laterale" : "Riduci menu laterale"}
-           className="w-full py-4 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl text-white/20 hover:text-white transition-all"
-        >
-           <ChevronRight size={16} />
-        </button>
+        {collapsed && (
+          <button
+             onClick={() => setCollapsed(!collapsed)}
+             aria-expanded={!collapsed}
+             aria-label="Espandi menu laterale"
+             className="w-full py-4 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl text-white/20 hover:text-white transition-all"
+          >
+             <ChevronRight size={16} />
+          </button>
+        )}
       </div>
       </aside>
     </>
