@@ -25,6 +25,9 @@ interface PayrollData {
   oreFestive: number
   oreFestiveNotturne: number
   buoniPasto: number
+  indennitaTurno: number
+  indennitaOP: number
+  indennitaTotale: number
 }
 
 // Colonne fisse calcolate (sempre visibili)
@@ -36,6 +39,7 @@ const FIXED_COLUMNS = [
   { key: "buoniPasto", label: "Buoni Pasto", icon: Coffee, color: "emerald" },
   { key: "repFeriale", label: "REP Feriale", icon: Shield, color: "blue" },
   { key: "repFestiva", label: "REP Festiva", icon: Shield, color: "rose" },
+  { key: "indennitaTotale", label: "Indennità Stima (€)", icon: TrendingUp, color: "purple" },
 ]
 
 export default function ExportPaghePanel() {
@@ -116,6 +120,9 @@ export default function ExportPaghePanel() {
         "Buoni Pasto": d.buoniPasto,
         "REP Feriale (h)": d.repFeriale,
         "REP Festiva (h)": d.repFestiva,
+        "Indennità Turno (€)": d.indennitaTurno,
+        "Indennità OP (€)": d.indennitaOP,
+        "Indennità Totale (€)": d.indennitaTotale,
       }
       // Colonne dinamiche assenze/codici
       columnsToShow.forEach(({ code, label }) => {
@@ -140,14 +147,14 @@ export default function ExportPaghePanel() {
     const header = [
       "MATRICOLA", "NOMINATIVO", "QUALIFICA",
       "ORE DIURNE", "ORE NOTTURNE", "ORE FESTIVE", "ORE FESTIVE NOTT.", "BUONI PASTO", 
-      "REP FERIALE (h)", "REP FESTIVA (h)",
+      "REP FERIALE (h)", "REP FESTIVA (h)", "INDENNITÀ TURNO (€)", "INDENNITÀ OP (€)", "INDENNITÀ TOTALE (€)",
       ...columnsToShow.map(({ code, label }) => `${code} - ${label}`)
     ]
 
     const rows = filteredData.map(d => [
       d.matricola, d.nome, d.qualifica,
       d.oreDiurne.toString(), d.oreNotturne.toString(), d.oreFestive.toString(), d.oreFestiveNotturne.toString(), d.buoniPasto.toString(),
-      d.repFeriale.toString(), d.repFestiva.toString(),
+      d.repFeriale.toString(), d.repFestiva.toString(), d.indennitaTurno.toString(), d.indennitaOP.toString(), d.indennitaTotale.toString(),
       ...columnsToShow.map(({ code }) => (d.codici[code]?.value || 0).toString())
     ])
 
@@ -172,6 +179,7 @@ export default function ExportPaghePanel() {
     buoniPasto: filteredData.reduce((s, d) => s + d.buoniPasto, 0),
     repFeriale: Math.round(filteredData.reduce((s, d) => s + d.repFeriale, 0) * 100) / 100,
     repFestiva: Math.round(filteredData.reduce((s, d) => s + d.repFestiva, 0) * 100) / 100,
+    indennitaTotale: Math.round(filteredData.reduce((s, d) => s + d.indennitaTotale, 0) * 100) / 100,
   }
 
   return (

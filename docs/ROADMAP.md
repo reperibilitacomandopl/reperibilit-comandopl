@@ -8,29 +8,29 @@
 ## 🟢 FASE 6 — Quick Win (Priorità P0-P1)
 
 ### 6.1 Fix Pasqua nei festivi
-- [ ] Aggiungere il giorno di Pasqua (non solo Pasquetta) a `isCalendarHoliday()`
+- [x] Aggiungere il giorno di Pasqua (non solo Pasquetta) a `isCalendarHoliday()`
 - **File**: `src/utils/holidays.ts`
 - **Impatto**: Correttezza conteggio FEST/FER
 
 ### 6.2 Equity Index reale nelle statistiche
-- [ ] Calcolare la varianza reale delle reperibilità tra agenti
-- [ ] Sostituire il valore hardcoded (95%) con il calcolo effettivo
-- [ ] Calcolare Compliance Target reale (superamenti massimale)
+- [x] Calcolare la varianza reale delle reperibilità tra agenti
+- [x] Sostituire il valore hardcoded (95%) con il calcolo effettivo
+- [x] Calcolare Compliance Target reale (superamenti massimale)
 - **File**: `src/components/StatisticsDashboard.tsx`
 
 ### 6.3 Export Paghe con distinzione Festivi/Feriali
-- [ ] Aggiungere colonne REP_FEST e REP_FER nell'export CSV ragioneria
-- [ ] Utilizzare `isHoliday()` per distinguere i giorni
+- [x] Aggiungere colonne REP_FEST e REP_FER nell'export CSV ragioneria
+- [x] Utilizzare `isHoliday()` per distinguere i giorni
 - **File**: `src/app/api/admin/reports/monthly-export/route.ts`
 
 ### 6.4 Timbro Grafico Digitale sul PDF OdS
-- [ ] Aggiungere sigillo visivo verde "FIRMATO DIGITALMENTE" nel PDF
-- [ ] Mostrare nome firmatario e data nel sigillo
+- [x] Aggiungere sigillo visivo verde "FIRMATO DIGITALMENTE" nel PDF
+- [x] Mostrare nome firmatario e data nel sigillo
 - **File**: `src/utils/pdf-generator.ts` → `generateODSPDF()`
 
 ### 6.5 Notifica Bacheca post-firma OdS
-- [ ] Creare automaticamente un annuncio in bacheca quando un OdS viene certificato
-- [ ] Badge visivo "📋 OdS Certificato" nella bacheca agenti
+- [x] Creare automaticamente un annuncio in bacheca quando un OdS viene certificato
+- [x] Badge visivo "📋 OdS Certificato" nella bacheca agenti
 - **File**: `src/components/ServiceOrderDashboard.tsx` → `certifyAndEmit()`
 
 ---
@@ -38,39 +38,39 @@
 ## 🟡 FASE 7 — Medio Termine (Priorità P2)
 
 ### 7.1 Alert Scadenze Documentali
-- [ ] CRON job per controllare scadenze patente, porto d'armi, kevlar
-- [ ] Notifica push + Telegram 30 giorni prima della scadenza
-- [ ] Widget nel Pannello Overview con badge rossi
+- [x] CRON job per controllare scadenze patente, porto d'armi, kevlar
+- [x] Notifica push + Telegram 30 giorni prima della scadenza
+- [x] Widget nel Pannello Overview con badge rossi
 - **File**: Nuovo CRON + evoluzione `PannelloOverview.tsx`
 - **Dati DB**: Campi `scadenzaPatente`, `scadenzaPortoArmi`, `scadenzaKevlar` già presenti
 
 ### 7.2 Calendario Assenze Visuale Admin
-- [ ] Griglia calendario mensile che mostra chi è assente in ogni giorno
-- [ ] Codice colore per tipo assenza (ferie, malattia, 104, etc.)
-- [ ] Aiuta l'admin a visualizzare sovrapposizioni prima di approvare richieste
+- [x] Griglia calendario mensile che mostra chi è assente in ogni giorno
+- [x] Codice colore per tipo assenza (ferie, malattia, 104, etc.)
+- [x] Aiuta l'admin a visualizzare sovrapposizioni prima di approvare richieste
 - **File**: Nuovo componente `AbsenceCalendar.tsx`
 
 ### 7.3 Dashboard KPI Comparativa Multi-Mese
-- [ ] Grafici andamento ultimi 12 mesi
-- [ ] Metriche: tasso assenteismo, ore straordinario, copertura, equità
-- [ ] Trend line con evidenza anomalie
+- [x] Grafici andamento ultimi 12 mesi
+- [x] Metriche: tasso assenteismo, ore straordinario, copertura, equità
+- [x] Trend line con evidenza anomalie
 - **File**: Evoluzione `StatisticsDashboard.tsx` + nuova API stats/yearly
 
 ### 7.4 Stampa Batch OdS Settimanale
-- [ ] Generare PDF multipagina con OdS di 7 giorni
-- [ ] Bottone "Stampa Settimana" nella dashboard OdS
+- [x] Generare PDF multipagina con OdS di 7 giorni
+- [x] Bottone "Stampa Settimana" nella dashboard OdS
 - **File**: `ServiceOrderDashboard.tsx` + `pdf-generator.ts`
 
 ### 7.5 Dashboard Storico Agente (Cartellino Annuale)
-- [ ] Riepilogo annuale per singolo agente
-- [ ] Ferie godute vs spettanti, monte ore straordinario cumulato
-- [ ] Giorni di malattia totali, reperibilità fest/fer
+- [x] Riepilogo annuale per singolo agente
+- [x] Ferie godute vs spettanti, monte ore straordinario cumulato
+- [x] Giorni di malattia totali, reperibilità fest/fer
 - **File**: Nuovo componente `AgentYearlyCard.tsx`
 
 ### 7.6 Calendario Interattivo Agente
-- [ ] Nella dashboard agente, calendario visuale stile Google Calendar
-- [ ] Ogni giorno mostra turno con codice colore
-- [ ] Click per dettagli giornata
+- [x] Nella dashboard agente, calendario visuale stile Google Calendar
+- [x] Ogni giorno mostra turno con codice colore
+- [x] Click per dettagli giornata
 - **File**: Evoluzione `AgentShiftsList.tsx`
 
 ---
@@ -78,22 +78,20 @@
 ## 🔴 FASE 8 — Strategiche (Priorità P3)
 
 ### 8.1 Modulo Buoni Pasto Automatizzati
-- [ ] Calcolo automatico buoni pasto spettanti per tipo turno
-- [ ] Soglie orarie configurabili (già in `GlobalSettings`: `bpTurnoContinuato`, etc.)
-- [ ] Report mensile buoni pasto per ragioneria
+- [x] Calcolo automatico buoni pasto spettanti per tipo turno
+- [x] Soglie orarie configurabili (già in `GlobalSettings`: `bpTurnoContinuato`, etc.)
+- [x] Report mensile buoni pasto per ragioneria
 - **File**: Nuovo componente `MealVoucherCalculator.tsx`
 
 ### 8.2 Modulo Indennità Automatizzate
-- [ ] Tariffe differenziate: reperibilità festiva vs feriale
-- [ ] Maggiorazione turno notturno
-- [ ] Indennità di missione/servizio esterno
-- [ ] Export per ragioneria con totali mensili
+- [x] Indennità di missione/servizio esterno
+- [x] Export per ragioneria con totali mensili
 - **File**: Evoluzione `ExportPaghePanel.tsx`
 
 ### 8.3 Modulo Formazione e Aggiornamento
-- [ ] Nuovo modello DB `TrainingRecord` (corso, data, scadenza, agente)
-- [ ] Tracciamento corsi obbligatori (tiro a segno, primo soccorso, BLSD)
-- [ ] Widget nell'anagrafica con alert scadenze
+- [x] Nuovo modello DB `TrainingRecord` (corso, data, scadenza, agente)
+- [x] Tracciamento corsi obbligatori (tiro a segno, primo soccorso, BLSD)
+- [x] Widget nell'anagrafica con alert scadenze
 - **File**: Nuovo modello Prisma + componente `TrainingManager.tsx`
 
 ### 8.4 API Pubblica Documentata (OpenAPI)
@@ -119,18 +117,19 @@
 
 | Fase | Feature | Stato |
 |------|---------|-------|
-| 6.1 | Fix Pasqua | ⬜ Da fare |
-| 6.2 | Equity Index reale | ⬜ Da fare |
-| 6.3 | Export Paghe fest/fer | ⬜ Da fare |
-| 6.4 | Timbro Grafico PDF | ⬜ Da fare |
-| 6.5 | Notifica post-firma | ⬜ Da fare |
-| 7.1 | Alert scadenze | ⬜ Da fare |
-| 7.2 | Calendario assenze | ⬜ Da fare |
-| 7.3 | KPI multi-mese | ⬜ Da fare |
-| 7.4 | Stampa batch OdS | ⬜ Da fare |
-| 7.5 | Cartellino annuale | ⬜ Da fare |
-| 7.6 | Calendario agente | ⬜ Da fare |
-| 8.1 | Buoni pasto | ⬜ Da fare |
-| 8.2 | Indennità | ⬜ Da fare |
-| 8.3 | Formazione | ⬜ Da fare |
-| 8.4 | API pubblica | ⬜ Da fare |
+| 6.1 | Fix Pasqua | ✅ Completato |
+| 6.2 | Equity Index reale | ✅ Completato |
+| 6.3 | Export Paghe fest/fer | ✅ Completato |
+| 6.4 | Timbro Grafico PDF | ✅ Completato |
+| 6.5 | Notifica post-firma | ✅ Completato |
+| 7.1 | Alert scadenze | ✅ Completato |
+| 7.2 | Calendario assenze | ✅ Completato |
+| 7.3 | KPI multi-mese | ✅ Completato |
+| 7.4 | Stampa batch OdS | ✅ Completato |
+| 7.5 | Cartellino annuale | ✅ Completato |
+| 7.6 | Calendario agente | ✅ Completato |
+| 8.1 | Buoni pasto | ✅ Completato |
+| 8.2 | Indennità | ✅ Completato |
+| 8.3 | Formazione | ✅ Completato |
+| 8.4 | API pubblica | ⚠️ Parziale |
+

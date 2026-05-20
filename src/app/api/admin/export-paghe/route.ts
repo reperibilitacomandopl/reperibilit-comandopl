@@ -368,6 +368,16 @@ export async function GET(request: Request) {
          codiciMap["2003"].value += straordinarioNotturnoFestivo
       }
 
+      // --- INDENNITÀ ---
+      // Calcolo stimato Indennità Turnazione (es. Notturno 4€/h, Festivo 5€/h, FestivoNotturno 7€/h)
+      const stimaIndennitaTurno = (oreNotturne * 4) + (oreFestive * 5) + (oreFestiveNotturne * 7)
+      
+      // Calcolo stimato Indennità Ordine Pubblico (OP) (es. 10€/h per codice 2050 e 2020)
+      const oreOP = (codiciMap["2050"]?.value || 0) + (codiciMap["2020"]?.value || 0) + (codiciMap["2021"]?.value || 0)
+      const stimaIndennitaOP = oreOP * 10
+      
+      const stimaIndennitaTotale = stimaIndennitaTurno + stimaIndennitaOP
+
       return {
         id: agent.id,
         nome: agent.name,
@@ -381,6 +391,9 @@ export async function GET(request: Request) {
         oreFestive: Math.round(oreFestive * 100) / 100,
         oreFestiveNotturne: Math.round(oreFestiveNotturne * 100) / 100,
         buoniPasto,
+        indennitaTurno: Math.round(stimaIndennitaTurno * 100) / 100,
+        indennitaOP: Math.round(stimaIndennitaOP * 100) / 100,
+        indennitaTotale: Math.round(stimaIndennitaTotale * 100) / 100,
       }
     })
 

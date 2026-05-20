@@ -31,21 +31,30 @@ const COLORS = {
 
 export default function StatisticsDashboard({ month, year }: { month: number; year: number }) {
   const [data, setData] = useState<StatData[]>([])
+  const [yearlyData, setYearlyData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [yearlyLoading, setYearlyLoading] = useState(true)
   const [filter, setFilter] = useState("all")
   const [activeMetric, setActiveMetric] = useState("total")
 
   useEffect(() => {
     async function fetchStats() {
       setLoading(true)
+      setYearlyLoading(true)
       try {
-        const res = await fetch(`/api/admin/stats?month=${month}&year=${year}`)
-        const d = await res.json()
+        const [resMonth, resYear] = await Promise.all([
+          fetch(`/api/admin/stats?month=${month}&year=${year}`),
+          fetch(`/api/admin/stats/yearly?year=${year}`)
+        ])
+        const d = await resMonth.json()
+        const yData = await resYear.json()
         if (d.chartData) setData(d.chartData)
+        if (yData.yearlyData) setYearlyData(yData.yearlyData)
       } catch (err) {
         console.error(err)
       } finally {
         setLoading(false)
+        setYearlyLoading(false)
       }
     }
     fetchStats()
@@ -338,38 +347,94 @@ export default function StatisticsDashboard({ month, year }: { month: number; ye
            </div>
 
            <div className="space-y-6">
-              <div className="flex gap-6 p-6 bg-white rounded-3xl border border-slate-200 shadow-sm group hover:border-indigo-200 transition-all">
-                 <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                    <Target size={24} />
-                 </div>
-                 <div>
-                    <h5 className="font-black text-slate-900 uppercase text-xs tracking-wide">Analisi Equità Weekend</h5>
-                    <p className="text-sm text-slate-500 font-medium mt-1">Nessun operatore ha sforato il target di 1 sabato e 1 domenica. L&apos;algoritmo ha distribuito i carichi con una varianza interna infinitesima (0.12).</p>
-                 </div>
-              </div>
+               <div className="flex gap-6 p-6 bg-white rounded-3xl border border-slate-200 shadow-sm group hover:border-indigo-200 transition-all">
+                  <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                     <Target size={24} />
+                  </div>
+                  <div>
+                     <h5 className="font-black text-slate-900 uppercase text-xs tracking-wide">Analisi Equità Weekend</h5>
+                     <p className="text-sm text-slate-500 font-medium mt-1">
+                       {stats.equityIndex >= 80
+                         ? `Distribuzione eccellente (Indice: ${stats.equityIndex}%). I carichi sono bilanciati in modo equo tra tutti gli operatori del comando.`
+                         : stats.equityIndex >= 50
+                         ? `Distribuzione accettabile (Indice: ${stats.equityIndex}%). Alcuni operatori hanno carichi leggermente superiori alla media. Valutare un riequilibrio.`
+                         : `Distribuzione sbilanciata (Indice: ${stats.equityIndex}%). È necessario intervenire per riequilibrare i carichi weekend tra gli operatori.`
+                       }
+                       {` Media per operatore: ${(stats.total / (data.length || 1)).toFixed(1)} reperibilità.`}
+                     </p>
+                  </div>
+               </div>
 
-              <div className="flex gap-6 p-6 bg-white rounded-3xl border border-slate-200 shadow-sm group hover:border-rose-200 transition-all">
-                 <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                    <AlertCircle size={24} />
-                 </div>
-                 <div>
-                    <h5 className="font-black text-slate-900 uppercase text-xs tracking-wide">Controllo Massimali</h5>
-                    <p className="text-sm text-slate-500 font-medium mt-1">Conformità al 100% con le impostazioni globali (Massimale Uff: {month > 0 ? 6 : 5}, Agenti: 5). Non sono state rilevate forzature manuali nel mese in corso.</p>
-                 </div>
-              </div>
+               <div className="flex gap-6 p-6 bg-white rounded-3xl border border-slate-200 shadow-sm group hover:border-rose-200 transition-all">
+                  <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                     <AlertCircle size={24} />
+                  </div>
+                  <div>
+                     <h5 className="font-black text-slate-900 uppercase text-xs tracking-wide">Controllo Massimali</h5>
+                     <p className="text-sm text-slate-500 font-medium mt-1">
+                       {stats.compliancePercent === 100
+                         ? `Conformità al 100%. Nessun operatore ha superato il massimale mensile di reperibilità. Nessuna forzatura rilevata.`
+                         : `Conformità al ${stats.compliancePercent}%. ${stats.violazioni} operatore/i hanno superato il massimale mensile (8 reperibilità). Verificare le assegnazioni.`
+                       }
+                     </p>
+                  </div>
+               </div>
 
-              <div className="flex gap-6 p-6 bg-white rounded-3xl border border-slate-200 shadow-sm group hover:border-emerald-200 transition-all">
-                 <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                    <ShieldCheck size={24} />
-                 </div>
-                 <div>
-                    <h5 className="font-black text-slate-900 uppercase text-xs tracking-wide">Efficienza Copertura</h5>
-                    <p className="text-sm text-slate-500 font-medium mt-1">Copertura garantita su h24 per tutti i giorni del mese. L&apos;automazione ha risolto in autonomia 4 potenziali conflitti di turnazione notturna.</p>
-                 </div>
-              </div>
+               <div className="flex gap-6 p-6 bg-white rounded-3xl border border-slate-200 shadow-sm group hover:border-emerald-200 transition-all">
+                  <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                     <ShieldCheck size={24} />
+                  </div>
+                  <div>
+                     <h5 className="font-black text-slate-900 uppercase text-xs tracking-wide">Riepilogo Organico</h5>
+                     <p className="text-sm text-slate-500 font-medium mt-1">
+                       {`Organico analizzato: ${data.length} operatori (${stats.uffCount} ufficiali, ${stats.agtCount} agenti). Totale reperibilità assegnate: ${stats.total}, di cui ${stats.weekend} nel weekend (${((stats.weekend / (stats.total || 1)) * 100).toFixed(0)}% del carico totale).`}
+                     </p>
+                  </div>
+               </div>
            </div>
         </div>
 
+      </div>
+
+      {/* YEARLY TREND CHART */}
+      <div className="bg-white rounded-[3rem] border border-slate-100 p-10 shadow-2xl shadow-slate-200/80 relative overflow-hidden mt-8">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500"></div>
+        
+        <div className="mb-8">
+          <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Trend Annuale Operatività</h3>
+          <p className="text-sm text-slate-400 font-medium">Andamento presenze, assenze e reperibilità (Anno {year})</p>
+        </div>
+
+        {yearlyLoading ? (
+          <div className="flex justify-center items-center h-[400px]">
+             <Loader2 className="animate-spin text-purple-600" size={40} />
+          </div>
+        ) : (
+          <div className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={yearlyData} margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
+                <defs>
+                  <linearGradient id="colorTurni" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="month" stroke="#94a3b8" fontSize={10} fontWeight={800} axisLine={false} tickLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={10} fontWeight={800} axisLine={false} tickLine={false} />
+                <Tooltip 
+                  cursor={{ stroke: 'rgba(139, 92, 246, 0.2)', strokeWidth: 2, strokeDasharray: '4 4' }}
+                  contentStyle={{ backgroundColor: '#0f172a', borderRadius: '16px', border: 'none', color: '#fff' }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: 20 }} />
+                
+                <Area type="monotone" dataKey="turni" name="Turni Lavorati" stroke="#8b5cf6" strokeWidth={3} fillOpacity={1} fill="url(#colorTurni)" />
+                <Line type="monotone" dataKey="reperibilita" name="Reperibilità" stroke="#10b981" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} />
+                <Bar dataKey="assenze" name="Assenze Totali" fill="#f43f5e" radius={[4, 4, 0, 0]} barSize={20} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
     </div>
   )
