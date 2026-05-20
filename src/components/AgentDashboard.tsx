@@ -158,7 +158,7 @@ export default function AgentDashboard({
   const repCount = admin.myShifts.filter((s: any) => s.repType?.toUpperCase().includes("REP")).length
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-8 space-y-8 pb-32">
+    <div className="min-h-screen bg-[#F8FAFC] px-3 py-4 md:p-8 space-y-5 md:space-y-8 pb-28">
       <NotificationManager />
       
       <AgentHeader 
@@ -195,7 +195,7 @@ export default function AgentDashboard({
         telegramLoading={admin.telegramLoading}
       />
 
-      <div className="mb-6">
+      <div className="mb-3 md:mb-6">
         <WeatherWidget 
           city={coords ? "Posizione Attuale" : "Altamura"} 
           lat={coords?.lat?.toString() || "40.8286"} 
@@ -262,7 +262,7 @@ export default function AgentDashboard({
         )
       })()}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
         <div className="lg:col-span-1 space-y-6">
             {/* Section Chat Button - Always visible if user has a squad or service category */}
             {(() => {
@@ -306,7 +306,7 @@ export default function AgentDashboard({
             
             <button 
                onClick={() => setShowAbsenceModal(true)}
-               className="relative bg-gradient-to-r from-amber-500 to-orange-500 rounded-[2rem] p-8 overflow-hidden shadow-xl shadow-amber-200 hover:shadow-2xl hover:-translate-y-1 transition-all group text-left w-full border-none"
+               className="relative bg-gradient-to-r from-amber-500 to-orange-500 rounded-[1.5rem] md:rounded-[2rem] p-5 md:p-8 overflow-hidden shadow-xl shadow-amber-200 hover:shadow-2xl hover:-translate-y-1 transition-all group text-left w-full border-none"
             >
                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl group-hover:bg-white/20 transition-all"></div>
                <div className="relative z-10 flex items-center justify-between">
@@ -330,36 +330,36 @@ export default function AgentDashboard({
 
       {/* NEXT SHIFT PROACTIVE WIDGET REMOVED BECAUSE INTEGRATED IN CAROUSEL */}
 
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-           <div className="flex bg-slate-200/50 p-1 rounded-2xl border border-slate-200">
+      <div className="flex flex-col gap-4 md:gap-6">
+        <div className="-mx-3 md:mx-0">
+           <div className="flex bg-slate-200/50 p-1 rounded-2xl border border-slate-200 overflow-x-auto no-scrollbar mx-3 md:mx-0 md:w-fit">
               <button 
                 onClick={() => setViewMode('calendar')}
-                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'calendar' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`px-4 md:px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider md:tracking-widest transition-all whitespace-nowrap shrink-0 ${viewMode === 'calendar' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
               >
                 Calendario
               </button>
               <button 
                 onClick={() => setViewMode('list')}
-                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'list' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`px-4 md:px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider md:tracking-widest transition-all whitespace-nowrap shrink-0 ${viewMode === 'list' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
               >
                 Griglia
               </button>
               <button 
                 onClick={() => setViewMode('yearly')}
-                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'yearly' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`px-4 md:px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider md:tracking-widest transition-all whitespace-nowrap shrink-0 ${viewMode === 'yearly' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
               >
                 Annuale
               </button>
               <button 
                 onClick={() => setViewMode('timecard')}
-                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'timecard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`px-4 md:px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider md:tracking-widest transition-all whitespace-nowrap shrink-0 ${viewMode === 'timecard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
               >
                 Cartellino
               </button>
               <button 
                 onClick={() => setViewMode('rotazione')}
-                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'rotazione' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`px-4 md:px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider md:tracking-widest transition-all whitespace-nowrap shrink-0 ${viewMode === 'rotazione' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
               >
                 Rotazioni
               </button>
@@ -443,7 +443,7 @@ export default function AgentDashboard({
 
       {/* OLD BALANCES SECTION REMOVED FOR CLEANLINESS - NOW IN TIMECARD VIEW */}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
         <AgentSwapBoard 
              swapRequests={admin.swapRequests} 
              currentUserId={currentUser.id} 

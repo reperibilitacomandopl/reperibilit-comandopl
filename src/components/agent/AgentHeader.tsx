@@ -104,13 +104,13 @@ export default function AgentHeader({
       )}
 
       {/* Main Premium Hub Card */}
-      <div className="bg-[#0f172a] text-white rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-10 shadow-2xl relative overflow-hidden border border-white/5 mx-2 sm:mx-0">
+      <div className="bg-[#0f172a] text-white rounded-[1.5rem] sm:rounded-[3rem] p-4 sm:p-10 shadow-2xl relative overflow-hidden border border-white/5 mx-0 sm:mx-0">
         {/* Background Decorative Effects */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px] -mr-64 -mt-64 pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-[100px] -ml-48 -mb-48 pointer-events-none"></div>
         
         <div className="relative z-10 flex flex-col xl:flex-row gap-12 items-start justify-between">
-          <div className="flex-1 space-y-12 w-full">
+          <div className="flex-1 space-y-6 sm:space-y-12 w-full">
             {/* 1. Header Identity */}
             <div className="space-y-4">
               <div className="flex items-center gap-4">
@@ -125,7 +125,7 @@ export default function AgentHeader({
                   </div>
                 )}
               </div>
-              <h2 className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tighter leading-none">
+              <h2 className="text-2xl sm:text-4xl md:text-6xl font-black tracking-tighter leading-none">
                 Ciao, {currentUser?.name?.split(" ")[0]}! 👋
               </h2>
               <p className="text-slate-400 font-bold uppercase tracking-widest text-[11px] opacity-70">Postazione operativa digitale &middot; Sentinel Hub</p>
@@ -215,19 +215,19 @@ export default function AgentHeader({
             </div>
 
             {/* 3. Status Bar: Profile & Telegram */}
-            <div className="flex flex-col sm:flex-row items-center gap-8 pt-8 border-t border-white/5">
+            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-8 pt-4 sm:pt-8 border-t border-white/5">
               <div className="flex items-center gap-5">
                 <div className="relative group">
-                  <div className="w-20 h-20 rounded-[2rem] bg-gradient-to-br from-blue-600 to-cyan-400 p-0.5 shadow-2xl group-hover:rotate-6 transition-transform">
-                    <div className="w-full h-full rounded-[1.9rem] bg-[#0f172a] flex items-center justify-center text-3xl font-black text-white">
+                  <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-[1.5rem] sm:rounded-[2rem] bg-gradient-to-br from-blue-600 to-cyan-400 p-0.5 shadow-2xl group-hover:rotate-6 transition-transform">
+                    <div className="w-full h-full rounded-[1.4rem] sm:rounded-[1.9rem] bg-[#0f172a] flex items-center justify-center text-xl sm:text-3xl font-black text-white">
                       {currentUser.name?.charAt(0)}
                     </div>
                   </div>
                   <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-4 border-[#0f172a] shadow-lg ${isClockedIn === 'IN' ? 'bg-emerald-500' : 'bg-slate-700'}`}></div>
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black text-white tracking-tight leading-none mb-2">{currentUser.name}</h3>
-                  <div className="flex gap-3">
+                  <h3 className="text-lg sm:text-2xl font-black text-white tracking-tight leading-none mb-1 sm:mb-2">{currentUser.name}</h3>
+                  <div className="flex flex-wrap gap-2 sm:gap-3">
                     <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest bg-cyan-400/10 px-3 py-1 rounded-lg">Matr. {currentUser.matricola}</span>
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{currentUser.qualifica || "Agente Scelto"}</span>
                   </div>
@@ -241,7 +241,7 @@ export default function AgentHeader({
                     const isHC = html.classList.toggle('theme-high-contrast');
                     localStorage.setItem('high-contrast', isHC ? 'true' : 'false');
                   }}
-                  className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white px-6 py-4 rounded-[2rem] text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 border border-white/5"
+                  className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-[1.5rem] sm:rounded-[2rem] text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 border border-white/5"
                   title="Attiva/Disattiva Tema Scuro / Alto Contrasto"
                 >
                   <Eye size={16} /> Tema Scuro
@@ -250,7 +250,7 @@ export default function AgentHeader({
                 {!currentUser.twoFactorEnabled && (
                   <button 
                     onClick={() => setShow2faSetup(true)}
-                    className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-300 px-6 py-4 rounded-[2rem] text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 border border-white/5"
+                    className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 sm:px-6 py-3 sm:py-4 rounded-[1.5rem] sm:rounded-[2rem] text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 border border-white/5"
                   >
                     <Lock size={16} /> Proteggi Account (2FA)
                   </button>
@@ -260,7 +260,7 @@ export default function AgentHeader({
                   <button 
                     onClick={onGenerateTelegramCode}
                     disabled={telegramLoading}
-                    className="w-full sm:w-auto bg-[#0088cc] hover:bg-[#0077b5] text-white px-8 py-4 rounded-[2rem] text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-blue-500/20 border-b-4 border-blue-800"
+                    className="w-full sm:w-auto bg-[#0088cc] hover:bg-[#0077b5] text-white px-6 sm:px-8 py-3 sm:py-4 rounded-[1.5rem] sm:rounded-[2rem] text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-blue-500/20 border-b-4 border-blue-800"
                     aria-label="Attiva Notifiche Telegram"
                   >
                     {telegramLoading ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
@@ -292,7 +292,7 @@ export default function AgentHeader({
           {/* 4. Secondary Side Widgets (Always Aligned Properly) */}
           <div className="flex flex-col gap-6 w-full xl:w-[320px] shrink-0">
             <div className="grid grid-cols-2 xl:grid-cols-1 gap-4">
-              <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-6 rounded-[2.5rem] flex flex-col justify-between h-40 group hover:bg-white/10 transition-colors">
+              <div className="bg-white/5 backdrop-blur-2xl border border-white/10 p-4 sm:p-6 rounded-[2rem] sm:rounded-[2.5rem] flex flex-col justify-between h-32 sm:h-40 group hover:bg-white/10 transition-colors">
                 <div className="p-4 bg-emerald-500/20 border border-emerald-400/30 rounded-2xl w-fit group-hover:scale-110 transition-transform">
                   <ShieldCheck className="text-emerald-400" size={24} />
                 </div>
@@ -304,7 +304,7 @@ export default function AgentHeader({
 
               <HoldButton 
                 onHoldComplete={() => setShowSosModal(true)}
-                className="bg-rose-600 hover:bg-rose-500 p-6 rounded-[2.5rem] flex flex-col justify-between h-40 shadow-2xl shadow-rose-900/40 transition-all active:scale-95 group border border-rose-400/20 relative overflow-hidden"
+                className="bg-rose-600 hover:bg-rose-500 p-4 sm:p-6 rounded-[2rem] sm:rounded-[2.5rem] flex flex-col justify-between h-32 sm:h-40 shadow-2xl shadow-rose-900/40 transition-all active:scale-95 group border border-rose-400/20 relative overflow-hidden"
                 aria-label="Invia SOS Emergenza (Tieni premuto)"
               >
                 {(pressing, progress) => (
