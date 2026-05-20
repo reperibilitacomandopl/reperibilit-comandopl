@@ -167,32 +167,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ====== COME FUNZIONA ====== */}
-      <section className="py-20 px-6 border-b border-white/5">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-4">Attiva il Tuo Comando in 3 Passi</h2>
-            <p className="text-white/40 text-lg font-medium max-w-xl mx-auto">Nessuna installazione. Nessun server da mantenere. Solo un browser.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { step: "1", icon: Zap, title: "Configura", desc: "Ti attiviamo il portale in 24 ore. Carichi gli agenti, imposti i pattern turni e le regole. Pronto in 30 minuti." },
-              { step: "2", icon: Calendar, title: "Pianifica", desc: "Genera i turni del mese con un click. Assegna ferie, gestisci le reperibilità. L'OdS si compila da solo." },
-              { step: "3", icon: Smartphone, title: "Opera", desc: "Gli agenti ricevono turni su Telegram. Timbrature GPS, interventi in tempo reale, SOS. Tutto dal telefono." }
-            ].map((item) => (
-              <div key={item.step} className="relative bg-white/[0.02] border border-white/[0.06] rounded-3xl p-8 hover:bg-white/[0.04] transition-all group">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500/20 to-indigo-500/20 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                  <item.icon className="w-6 h-6 text-blue-400" />
-                </div>
-                <div className="absolute top-6 right-6 text-6xl font-black text-white/[0.03] select-none">{item.step}</div>
-                <h3 className="text-lg font-black mb-2">{item.title}</h3>
-                <p className="text-sm text-white/40 leading-relaxed font-medium">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ====== SOCIAL PROOF BAR ====== */}
       <section className="border-y border-white/5 bg-white/[0.02] py-12 px-6">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16">
@@ -344,8 +318,47 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ====== HOW IT WORKS ====== */}
+      {/* ====== WHY SENTINEL vs TRADIZIONALE ====== */}
       <section className="py-24 px-6 border-t border-white/5 bg-gradient-to-b from-transparent to-blue-950/20">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-rose-500/10 border border-rose-500/20 rounded-full text-[11px] font-bold text-rose-400 mb-4 uppercase tracking-widest">
+              Perché Cambiare
+            </div>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-4">Stop a Carta, Excel e WhatsApp</h2>
+            <p className="text-white/40 text-lg max-w-2xl mx-auto font-medium">Il 90% dei Comandi PL italiani gestisce ancora i turni con metodi manuali. Ecco cosa cambia.</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {[
+              { before: "Fogli Excel condivisi via email", after: "Griglia turni drag & drop con generatore automatico", icon: Calendar },
+              { before: "OdS stampato, firmato a mano, scannerizzato", after: "PDF certificato con firma SHA-256 e QR code pubblico", icon: FileText },
+              { before: "Nessuna tracciabilità: chi ha modificato cosa?", after: "Audit trail immutabile: ogni azione è registrata e tracciata", icon: Shield },
+              { before: "Chiamate e messaggi per le emergenze", after: "SOS geolocalizzato con nota vocale e notifica a tutta la centrale", icon: MapPin },
+              { before: "Fogli firma cartacei per le presenze", after: "Timbratura GPS con rilevazione automatica straordinario", icon: Clock },
+              { before: "Richieste ferie su carta, approvazioni a voce", after: "Workflow digitale a 2 livelli con notifiche Telegram", icon: Bell }
+            ].map((row, i) => (
+              <div key={i} className="flex items-start gap-4 bg-white/[0.02] border border-white/[0.06] rounded-2xl p-5 hover:bg-white/[0.04] transition-all group">
+                <div className="flex flex-col items-center gap-2 shrink-0">
+                  <div className="w-10 h-10 bg-rose-500/10 rounded-xl flex items-center justify-center text-rose-400/60 text-xs font-black">PRIMA</div>
+                  <div className="w-px h-4 bg-white/5" />
+                  <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400/60 text-xs font-black">DOPO</div>
+                </div>
+                <div className="flex-1 space-y-3 pt-1.5">
+                  <p className="text-sm text-white/40 leading-relaxed line-through decoration-rose-500/30">{row.before}</p>
+                  <p className="text-sm text-white/80 font-semibold leading-relaxed flex items-center gap-2">
+                    <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                    {row.after}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ====== COME FUNZIONA ====== */}
+      <section className="py-24 px-6 border-t border-white/5">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-4">Attivo in 10 Minuti</h2>
@@ -353,15 +366,19 @@ export default function LandingPage() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {steps.map((s, i) => (
-              <div key={i} className="relative text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-600/20 to-indigo-600/20 border border-blue-500/20 rounded-2xl flex items-center justify-center mx-auto mb-5">
-                  <span className="text-2xl font-black text-blue-400">{i + 1}</span>
+            {[
+              { step: "1", title: "Registra il Comando", desc: "Inserisci il nome e il codice univoco. Ti attiviamo l'ambiente in pochi minuti." },
+              { step: "2", title: "Importa il Personale", desc: "Carica l'elenco agenti da Excel. Configura squadre e pattern di turno." },
+              { step: "3", title: "Sei Operativo", desc: "Genera i turni del mese, pubblica l'OdS, ricevi le richieste. Tutto dal browser." }
+            ].map((s, i) => (
+              <div key={i} className="relative text-center group">
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-600/20 to-indigo-600/20 border-2 border-blue-500/20 rounded-3xl flex items-center justify-center mx-auto mb-5 group-hover:border-blue-500/40 group-hover:scale-105 transition-all">
+                  <span className="text-3xl font-black bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">{s.step}</span>
                 </div>
-                <h3 className="text-lg font-bold mb-2">{s.title}</h3>
-                <p className="text-sm text-white/40 leading-relaxed font-medium">{s.description}</p>
+                <h3 className="text-lg font-black mb-2">{s.title}</h3>
+                <p className="text-sm text-white/40 leading-relaxed font-medium">{s.desc}</p>
                 {i < 2 && (
-                  <ChevronRight className="hidden md:block absolute top-8 -right-4 w-6 h-6 text-white/10" />
+                  <ChevronRight className="hidden md:block absolute top-10 -right-4 w-6 h-6 text-white/10" />
                 )}
               </div>
             ))}
