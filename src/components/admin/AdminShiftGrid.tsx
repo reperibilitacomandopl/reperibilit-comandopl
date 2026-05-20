@@ -685,8 +685,19 @@ export default function AdminShiftGrid({
 
                 {/* Celle giornaliere */}
                 {filteredDayInfo.map(di => {
-                  const targetYearStr = currentYear;
-                  const targetMonthStr = String(di.isNextMonth ? currentMonth : currentMonth - 1 + 1).padStart(2, '0');
+                  let targetYear = currentYear;
+                  let targetMonth = currentMonth;
+                  if (di.isNextMonth) {
+                    if (currentMonth === 12) {
+                      targetMonth = 1;
+                      targetYear = currentYear + 1;
+                    } else {
+                      targetMonth = currentMonth + 1;
+                    }
+                  }
+                  
+                  const targetYearStr = targetYear;
+                  const targetMonthStr = String(targetMonth).padStart(2, '0');
                   const targetDayStr = String(di.day).padStart(2, '0');
                   const targetDateStr = `${targetYearStr}-${targetMonthStr}-${targetDayStr}`;
 
