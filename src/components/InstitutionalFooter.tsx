@@ -10,31 +10,14 @@ export default function InstitutionalFooter() {
 
   return (
     <>
-      {/* Mobile Static Link (bottom of page flow) */}
-      <div className="md:hidden flex justify-center pb-6">
+      {/* Static Link (bottom of page flow) */}
+      <div className="flex justify-center pb-6">
         <button 
           onClick={() => setIsExpanded(true)}
-          className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 bg-white/5 border border-slate-200 px-4 py-2 rounded-full"
+          className="text-[10px] md:text-xs font-black text-slate-400 hover:text-indigo-400 uppercase tracking-widest flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-slate-200/50 hover:border-indigo-400/50 px-5 py-2.5 rounded-full transition-all duration-300"
         >
-          <Shield className="w-3 h-3 text-indigo-400" /> Compliance PA
+          <Shield className="w-3 h-3 md:w-4 md:h-4 text-indigo-400" /> Compliance & Trasparenza PA
         </button>
-      </div>
-
-      {/* Floating Toggle Button (Desktop only) */}
-      <div className="hidden md:flex fixed bottom-6 right-6 z-[100] items-center gap-3">
-        {!isExpanded && (
-          <div className="bg-slate-900/80 backdrop-blur-md border border-white/10 rounded-full py-2 px-4 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <span className="text-[10px] font-black text-white/50 uppercase tracking-widest hidden md:block">Compliance PA</span>
-            <div className="w-px h-4 bg-white/10 hidden md:block"></div>
-            <button 
-              onClick={() => setIsExpanded(true)}
-              className="w-10 h-10 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110 active:scale-95 group"
-              aria-label="Apri informazioni istituzionali"
-            >
-              <Shield className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Expanded Overlay / Modal */}

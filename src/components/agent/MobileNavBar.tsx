@@ -45,19 +45,6 @@ export default function MobileNavBar({ activeTab, setActiveTab, onSOS, loadingSO
           )
         })}
 
-        {/* SOS Button inside Nav bar (Optional, or separate) */}
-        <button
-          onClick={onSOS}
-          disabled={loadingSOS}
-          className={`flex flex-col items-center gap-1 transition-all ${loadingSOS ? 'opacity-50' : 'text-red-500'}`}
-        >
-          <div className={`p-2 rounded-xl bg-red-50 text-red-600 transition-all active:scale-90 ${loadingSOS ? 'animate-pulse' : ''}`}>
-            {loadingSOS ? <RefreshCw size={24} className="animate-spin" /> : <AlertCircle size={24} />}
-          </div>
-          <span className="text-[10px] font-black uppercase tracking-tighter opacity-100">
-            SOS
-          </span>
-        </button>
       </div>
     </nav>
   )

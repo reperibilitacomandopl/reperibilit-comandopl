@@ -486,22 +486,24 @@ export default function CentraleOperativa() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Tipologia</label>
-                  <select value={form.type} onChange={e => setForm({...form, type: e.target.value})} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                  <input list="tipologia-list" value={form.type} onChange={e => setForm({...form, type: e.target.value})} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Es. INCIDENTE o scrivi..." />
+                  <datalist id="tipologia-list">
                     <option value="INCIDENTE">🚗 Incidente Stradale</option>
                     <option value="VIABILITA">🚧 Viabilità</option>
                     <option value="LITE">⚠️ Lite / Rissa</option>
                     <option value="CONTROLLO">🔍 Controllo Territorio</option>
                     <option value="SEGNALAZIONE">📞 Segnalazione Cittadino</option>
                     <option value="ALTRO">📋 Altro</option>
-                  </select>
+                  </datalist>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Priorità</label>
-                  <select value={form.priority} onChange={e => setForm({...form, priority: e.target.value})} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                  <input list="priorita-list" value={form.priority} onChange={e => setForm({...form, priority: e.target.value})} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Es. RED o scrivi..." />
+                  <datalist id="priorita-list">
                     <option value="RED">🔴 Codice Rosso (Emergenza)</option>
                     <option value="YELLOW">🟡 Codice Giallo (Urgente)</option>
                     <option value="GREEN">🟢 Codice Verde (Differibile)</option>
-                  </select>
+                  </datalist>
                 </div>
               </div>
               <div>

@@ -75,7 +75,7 @@ export default function NotificationManager() {
     }
   }
 
-  if (!isSupported) return null
+  if (!isSupported || subscription) return null
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm mb-6 overflow-hidden relative group">
@@ -85,11 +85,11 @@ export default function NotificationManager() {
       
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
         <div>
-          <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
-            <Smartphone className="text-blue-600" size={24} />
+          <h3 className="text-lg md:text-xl font-black text-slate-800 flex items-center gap-2">
+            <Smartphone className="text-blue-600 w-5 h-5 md:w-6 md:h-6" />
             Notifiche Push Sentinel
           </h3>
-          <p className="text-sm text-slate-500 font-medium mt-1 max-w-lg">
+          <p className="text-xs md:text-sm text-slate-500 font-medium mt-1 max-w-lg">
             Ricevi avvisi in tempo reale per allarmi SOS, variazioni turni e messaggi della Centrale direttamente sul tuo dispositivo, anche ad app chiusa.
           </p>
         </div>

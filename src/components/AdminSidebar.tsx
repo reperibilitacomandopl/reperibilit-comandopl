@@ -45,7 +45,6 @@ const NAV_SECTIONS: NavSection[] = [
     accent: "text-blue-400",
     items: [
       { label: "Sala Operativa GPS", href: "/admin/sala-operativa", icon: Navigation, description: "Mappa agenti in tempo reale" },
-      { label: "Centrale Interventi", href: "/admin/centrale", icon: Shield, description: "Gestione interventi sul campo" },
       { label: "Registro Interventi", href: "/admin/registro-interventi", icon: FileText, description: "Storico e accesso atti" },
       { label: "Timbrature GPS", href: "/admin/timbrature", icon: Clock, description: "Registro ingressi e uscite" },
     ],
