@@ -129,8 +129,8 @@ export async function POST(req: Request) {
           serviceDetails: s.serviceDetails || s.user.servizio || null
         })
         processedShiftIds.add(s.id)
+      }
     }
-
     // --- PRIORITÀ 3: Matching Compagni Preferiti (defaultPartnerIds) ---
     const quadrants = ["M", "P"]
     for (const q of quadrants) {
