@@ -41,11 +41,19 @@ type NavSection = {
 
 const NAV_SECTIONS: NavSection[] = [
   {
-    title: "Centro Operativo",
+    title: "Centrale Operativa",
     accent: "text-blue-400",
     items: [
-      { label: "Centrale Operativa", href: "/admin/sala-operativa", icon: Navigation, description: "Mappa GPS in Tempo Reale" },
-      { label: "Registro Interventi", href: "/admin/registro-interventi", icon: FileText, description: "Storico Interventi e Accesso Atti" },
+      { label: "Sala Operativa GPS", href: "/admin/sala-operativa", icon: Navigation, description: "Mappa agenti in tempo reale" },
+      { label: "Centrale Interventi", href: "/admin/centrale", icon: Shield, description: "Gestione interventi sul campo" },
+      { label: "Registro Interventi", href: "/admin/registro-interventi", icon: FileText, description: "Storico e accesso atti" },
+      { label: "Timbrature GPS", href: "/admin/timbrature", icon: Clock, description: "Registro ingressi e uscite" },
+    ],
+  },
+  {
+    title: "Pianificazione",
+    accent: "text-cyan-400",
+    items: [
       { label: "Overview & KPI", href: "/admin/pannello", icon: LayoutDashboard, description: "Pannello di controllo globale" },
       { label: "Pianificazione Mensile", href: "/admin/pianificazione", icon: CalendarDays, description: "Griglia Turni e Reperibilità" },
       { label: "Ordine di Servizio", href: "/admin/ods", icon: FileText, description: "Gestione Assegnazioni Giornaliere" },
@@ -55,35 +63,44 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    title: "Risorse Umane",
+    title: "Personale",
     accent: "text-emerald-400",
     items: [
       { label: "Anagrafica & Squadre", href: "/admin/risorse", icon: Users, description: "Gestione Agenti e Composizione Ufficio" },
-      { label: "Gestione Cartellino", href: "/admin/cartellino", icon: CalendarDays, description: "Presenze, Straordinari e Saldi HR" },
       { label: "Richieste Agenti", href: "/admin/richieste", icon: FileText, description: "Inbox Ferie e Permessi" },
-      { label: "Timbrature GPS", href: "/admin/timbrature", icon: Clock, description: "Registro Ingressi e Uscite" },
+      { label: "Gestione Cartellino", href: "/admin/cartellino", icon: CalendarDays, description: "Presenze e Saldi HR" },
+      { label: "Gestione Straordinari", href: "/admin/straordinari", icon: Clock, description: "Budget mensili ed elettorali" },
+      { label: "Pianificazione Ferie", href: "/admin/ferie", icon: CalendarDays, description: "Assegnazione periodi ferie annuali" },
     ],
   },
   {
-    title: "Logistica & Mezzi",
+    title: "Risorse e Mezzi",
     accent: "text-amber-400",
     items: [
+      { label: "Parco Auto", href: "/admin/parco-auto", icon: Car, description: "Gestione Veicoli e Scadenze" },
+      { label: "Armeria", href: "/admin/armeria", icon: Shield, description: "Armi e giubbotti balistici" },
+      { label: "Radio", href: "/admin/radio", icon: Navigation, description: "Apparati e assegnazioni" },
+      { label: "Buoni Pasto", href: "/admin/buoni-pasto", icon: FileText, description: "Calcolo automatico ticket" },
       { label: "Setup Caserma", href: "/admin/sezioni", icon: Shield, description: "Configurazione Sezioni e Servizi" },
       { label: "Anagrafica Scuole", href: "/admin/impostazioni?tab=schools", icon: GraduationCap, description: "Gestione plessi e orari scolastici" },
-      { label: "Parco Auto", href: "/admin/parco-auto", icon: Car, description: "Gestione Veicoli e Scadenze" },
     ],
   },
   {
-    title: "Amministrazione",
+    title: "Report e Analisi",
     accent: "text-purple-400",
     items: [
-      { label: "Configurazione Sistema", href: "/admin/impostazioni", icon: Settings, description: "Saldi Ore, Impostazioni Globali" },
-      { label: "Registri di Audit", href: "/admin/audit-logs", icon: Activity, description: "Tracciabilità completa azioni" },
-      { label: "Gestione Straordinari", href: "/admin/straordinari", icon: Clock, description: "Budget mensili ed elettorali" },
-      { label: "Export & Report", href: "/admin/export-paghe", icon: FileText, description: "Excel Paghe e Riepiloghi Mensili" },
       { label: "Dashboard Comandante", href: "/admin/comandante", icon: Target, description: "Visione strategica del comando" },
-      { label: "Pianificazione Ferie", href: "/admin/ferie", icon: CalendarDays, description: "Assegnazione periodi ferie annuali" },
       { label: "Report Mensile", href: "/admin/report", icon: BarChart3, description: "Grafici, KPI e statistiche mensili" },
+      { label: "Export & Report", href: "/admin/export-paghe", icon: FileText, description: "Excel Paghe e Riepiloghi Mensili" },
+      { label: "Registri di Audit", href: "/admin/audit-logs", icon: Activity, description: "Tracciabilità completa azioni" },
+    ],
+  },
+  {
+    title: "Sistema",
+    accent: "text-slate-400",
+    items: [
+      { label: "Configurazione Sistema", href: "/admin/impostazioni", icon: Settings, description: "Saldi Ore, Impostazioni Globali" },
+      { label: "Sicurezza", href: "/admin/sicurezza", icon: Shield, description: "2FA e gestione credenziali" },
       { label: "Compliance & Salute", href: "/admin/compliance", icon: Shield, description: "Verifica scadenze e consensi GDPR" },
       { label: "API REST & Integrazioni", href: "/admin/api", icon: Server, description: "Documentazione Endpoint" },
     ],
