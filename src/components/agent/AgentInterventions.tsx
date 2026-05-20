@@ -15,14 +15,15 @@ const NAV_APPS: { id: NavApp; label: string; icon: string; description: string }
   { id: "waze", label: "Waze", icon: "📍", description: "Navigazione con traffico in tempo reale" },
 ]
 
-function getNavUrl(app: NavApp, lat: number, lng: number): string {
+function getNavUrl(app: NavApp, address: string): string {
+  const encoded = encodeURIComponent(address)
   switch (app) {
     case "google":
-      return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
+      return `https://www.google.com/maps/dir/?api=1&destination=${encoded}`
     case "apple":
-      return `https://maps.apple.com/?daddr=${lat},${lng}`
+      return `https://maps.apple.com/?daddr=${encoded}`
     case "waze":
-      return `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`
+      return `https://waze.com/ul?q=${encoded}&navigate=yes`
   }
 }
 
@@ -32,7 +33,7 @@ export default function AgentInterventions() {
   const [loading, setLoading] = useState(true)
   const [showOutcomeFor, setShowOutcomeFor] = useState<string | null>(null)
   const [outcomeNotes, setOutcomeNotes] = useState("")
-  const [showNavPicker, setShowNavPicker] = useState<{ lat: number; lng: number } | null>(null)
+  const [showNavPicker, setShowNavPicker] = useState<{ address: string } | null>(null)
   const [preferredNav, setPreferredNav] = useState<NavApp | null>(null)
 
   // Load saved preference on mount
@@ -73,16 +74,16 @@ export default function AgentInterventions() {
     } catch { toast.error("Errore di rete") }
   }
 
-  const openNavigation = useCallback((app: NavApp, lat: number, lng: number) => {
-    const url = getNavUrl(app, lat, lng)
+  const openNavigation = useCallback((app: NavApp, address: string) => {
+    const url = getNavUrl(app, address)
     window.open(url, "_blank")
   }, [])
 
-  const handleNavigate = useCallback((lat: number, lng: number) => {
+  const handleNavigate = useCallback((address: string) => {
     if (preferredNav) {
-      openNavigation(preferredNav, lat, lng)
+      openNavigation(preferredNav, address)
     } else {
-      setShowNavPicker({ lat, lng })
+      setShowNavPicker({ address })
     }
   }, [preferredNav, openNavigation])
 
@@ -92,7 +93,7 @@ export default function AgentInterventions() {
       setPreferredNav(app)
     }
     if (showNavPicker) {
-      openNavigation(app, showNavPicker.lat, showNavPicker.lng)
+      openNavigation(app, showNavPicker.address)
     }
     setShowNavPicker(null)
   }, [showNavPicker, openNavigation])
@@ -158,7 +159,7 @@ export default function AgentInterventions() {
                 {i.status === 'ACCEPTED' && (
                   <>
                     <div className="grid grid-cols-2 gap-2">
-                      <button onClick={() => i.lat && handleNavigate(i.lat, i.lng)} className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold flex items-center justify-center gap-2">
+                      <button onClick={() => i.address && handleNavigate(i.address)} className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold flex items-center justify-center gap-2">
                         <NavIcon className="w-5 h-5" /> Naviga
                       </button>
                       <button onClick={() => updateStatus(i.id, 'ARRIVE')} className="w-full py-3 bg-yellow-500 text-white rounded-xl font-bold flex items-center justify-center gap-2">
