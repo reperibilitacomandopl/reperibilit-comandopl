@@ -96,30 +96,29 @@ self.addEventListener('notificationclick', (event: NotificationEvent) => {
   const notification = event.notification;
   notification.close();
   
-  // URL base dalla notifica o default
-  const baseUrl = notification.data?.url || '/';
-  
-  // Se l'utente ha cliccato un'azione rapida, accodiamo il comando nell'URL
-  // Sarà l'applicazione (una volta aperta in primo piano) a processare la timbratura.
-  // Questo aggira i limiti di background fetch di iOS Safari che spesso uccide il processo.
-  let targetUrl = baseUrl;
-  if (action === 'CLOCK_IN' || action === 'CLOCK_OUT') {
-    const separator = baseUrl.includes('?') ? '&' : '?';
-    targetUrl = `${baseUrl}${separator}action=${action}&fromPush=true`;
-  }
+  const baseUrl = notification.data?.url;
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
-      // Se c'è già una finestra aperta, portala in primo piano e naviga
       for (let i = 0; i < windowClients.length; i++) {
         const client = windowClients[i];
-        if (client.url.includes(new URL(baseUrl, self.location.origin).origin) && 'focus' in client) {
-          client.navigate(targetUrl);
+        if ('focus' in client) {
+          if (action === 'CLOCK_IN' || action === 'CLOCK_OUT') {
+            const separator = client.url.includes('?') ? '&' : '?';
+            client.navigate(`${client.url}${separator}action=${action}&fromPush=true`);
+          } else if (baseUrl && baseUrl !== '/') {
+            client.navigate(baseUrl);
+          }
           return client.focus();
         }
       }
-      // Altrimenti apri una nuova finestra con l'URL e l'azione
+      
       if (self.clients.openWindow) {
+        let targetUrl = baseUrl || '/';
+        if (action === 'CLOCK_IN' || action === 'CLOCK_OUT') {
+          const separator = targetUrl.includes('?') ? '&' : '?';
+          targetUrl = `${targetUrl}${separator}action=${action}&fromPush=true`;
+        }
         return self.clients.openWindow(targetUrl);
       }
     })
