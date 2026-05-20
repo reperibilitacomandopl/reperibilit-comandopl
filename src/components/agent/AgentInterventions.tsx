@@ -76,7 +76,7 @@ export default function AgentInterventions() {
 
   const openNavigation = useCallback((app: NavApp, address: string) => {
     const url = getNavUrl(app, address)
-    window.open(url, "_blank")
+    window.location.href = url
   }, [])
 
   const handleNavigate = useCallback((address: string) => {
