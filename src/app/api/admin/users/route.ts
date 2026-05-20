@@ -96,7 +96,7 @@ export async function PUT(req: Request) {
     const { 
       userId, email, phone, name, matricola, squadra, servizio, 
       massimale, action, newPassword, defaultServiceCategoryId, 
-      defaultServiceTypeId, rotationGroupId, qualifica,
+      defaultServiceTypeId, fallbackServiceCategoryId, rotationGroupId, qualifica,
       dataAssunzione, scadenzaPatente, scadenzaPortoArmi, noteInterne,
       dataDiNascita, tipoContratto, defaultPartnerIds, fixedServiceDays,
       hasL104, l104Assistiti, hasStudyLeave, hasParentalLeave, hasChildSicknessLeave,
@@ -123,6 +123,7 @@ export async function PUT(req: Request) {
       massimale: massimale !== undefined ? parseInt(massimale, 10) : undefined,
       defaultServiceCategoryId: defaultServiceCategoryId === undefined ? undefined : (defaultServiceCategoryId || null),
       defaultServiceTypeId: defaultServiceTypeId === undefined ? undefined : (defaultServiceTypeId || null),
+      fallbackServiceCategoryId: fallbackServiceCategoryId === undefined ? undefined : (fallbackServiceCategoryId || null),
       rotationGroupId: rotationGroupId === undefined ? undefined : (rotationGroupId || null),
       qualifica: qualifica === undefined ? undefined : (qualifica || null),
       dataAssunzione: dataAssunzione ? new Date(dataAssunzione) : (dataAssunzione === null ? null : undefined),
@@ -241,6 +242,7 @@ export async function POST(req: Request) {
       matricola, name, password, isUfficiale, squadra, massimale,
       qualifica, dataAssunzione, scadenzaPatente, scadenzaPortoArmi,
       dataDiNascita, tipoContratto, defaultPartnerIds, fixedServiceDays,
+      fallbackServiceCategoryId,
       hasL104, l104Assistiti, hasStudyLeave, hasParentalLeave, hasChildSicknessLeave,
       canConfigureSystem, canManageShifts, canManageUsers, canVerifyClockIns
     } = validation.data
@@ -287,6 +289,7 @@ export async function POST(req: Request) {
         tipoContratto: tipoContratto || null,
         defaultPartnerIds: defaultPartnerIds || [],
         fixedServiceDays: fixedServiceDays || [],
+        fallbackServiceCategoryId: fallbackServiceCategoryId || null,
         hasL104: hasL104 || false,
         l104Assistiti: l104Assistiti ? parseInt(l104Assistiti, 10) : 1,
         hasStudyLeave: hasStudyLeave || false,

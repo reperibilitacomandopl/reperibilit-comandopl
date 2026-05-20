@@ -55,6 +55,7 @@ export const userCreateSchema = z.object({
   noteInterne: z.string().optional().nullable(),
   defaultServiceCategoryId: z.string().optional().nullable(),
   defaultServiceTypeId: z.string().optional().nullable(),
+  fallbackServiceCategoryId: z.string().optional().nullable(),
   rotationGroupId: z.string().optional().nullable(),
   defaultPartnerIds: z.array(z.string()).optional(),
   fixedServiceDays: z.array(z.string()).optional(),

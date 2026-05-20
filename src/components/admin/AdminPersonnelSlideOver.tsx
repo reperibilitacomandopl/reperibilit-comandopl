@@ -41,6 +41,7 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
   const [tempRotationGroupId, setTempRotationGroupId] = useState("")
   const [tempDefaultCategoryId, setTempDefaultCategoryId] = useState("")
   const [tempDefaultTypeId, setTempDefaultTypeId] = useState("")
+  const [tempFallbackServiceCategoryId, setTempFallbackServiceCategoryId] = useState("")
   const [tempIsUfficiale, setTempIsUfficiale] = useState(false)
   const [tempIsSuperAdmin, setTempIsSuperAdmin] = useState(false)
   const [tempHasL104, setTempHasL104] = useState(false)
@@ -80,6 +81,7 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
       setTempRotationGroupId(editingAgent.rotationGroupId || "")
       setTempDefaultCategoryId(editingAgent.defaultServiceCategoryId || "")
       setTempDefaultTypeId(editingAgent.defaultServiceTypeId || "")
+      setTempFallbackServiceCategoryId(editingAgent.fallbackServiceCategoryId || "")
       setTempIsUfficiale(editingAgent.isUfficiale || false)
       setTempIsSuperAdmin(editingAgent.isSuperAdmin || false)
       setTempHasL104(editingAgent.hasL104 || false)
@@ -123,6 +125,7 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
       rotationGroupId: tempRotationGroupId || null,
       defaultServiceCategoryId: tempDefaultCategoryId || null,
       defaultServiceTypeId: tempDefaultTypeId || null,
+      fallbackServiceCategoryId: tempFallbackServiceCategoryId || null,
       isUfficiale: tempIsUfficiale,
       isSuperAdmin: tempIsSuperAdmin,
       hasL104: tempHasL104,
@@ -361,6 +364,17 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
                          })}
                       </div>
                    </div>
+
+                    <div className="pt-4 border-t border-emerald-100/50">
+                       <label className="text-[10px] font-black text-emerald-600 uppercase mb-2 block">Sezione di Fallback (Fuori dai Giorni Fissi)</label>
+                       <p className="text-[9px] text-emerald-600 mb-2 font-semibold">
+                          Se l'operatore lavora in un giorno non spuntato qui sopra, verrà assegnato automaticamente a questa sezione (es. Viabilità di Domenica).
+                       </p>
+                       <select value={tempFallbackServiceCategoryId} onChange={e => setTempFallbackServiceCategoryId(e.target.value)} className="w-full border-2 border-emerald-100 rounded-xl px-4 py-3 text-xs font-black bg-white hover:bg-emerald-50 focus:border-emerald-400 outline-none transition-all cursor-pointer shadow-sm text-slate-800">
+                         <option value="">Nessun fallback (assegnazione generica)</option>
+                         {categories.map((c:any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                       </select>
+                    </div>
                 </div>
              </div>
            )}

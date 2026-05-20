@@ -103,8 +103,23 @@ export async function POST(req: Request) {
       if (processedShiftIds.has(s.id)) continue
       if (classifyShift(s.type) === "OFF") continue
 
-      const isFixedDay = s.user.fixedServiceDays?.includes(currentDayAbr)
-      if (isFixedDay && s.user.defaultServiceCategoryId) {
+      const userFixedDays = s.user.fixedServiceDays || []
+      const hasFixedDaysConfigured = userFixedDays.length > 0
+      const isFixedDay = userFixedDays.includes(currentDayAbr)
+
+      if (hasFixedDaysConfigured && !isFixedDay && s.user.fallbackServiceCategoryId) {
+        // Assegna alla sezione di Fallback (es. Viabilità la domenica)
+        updates.push({
+          id: s.id,
+          serviceCategoryId: s.user.fallbackServiceCategoryId,
+          serviceTypeId: getDefaultType(s.user.fallbackServiceCategoryId),
+          timeRange: inferTimeRangeFromMacro(s.type) || s.timeRange,
+          patrolGroupId: null,
+          serviceDetails: s.serviceDetails || "Fallback (Fuori giorni fissi)"
+        })
+        processedShiftIds.add(s.id)
+      } else if (isFixedDay && s.user.defaultServiceCategoryId) {
+        // Assegna regolarmente alla sua sezione
         updates.push({
           id: s.id,
           serviceCategoryId: s.user.defaultServiceCategoryId,
@@ -114,7 +129,6 @@ export async function POST(req: Request) {
           serviceDetails: s.serviceDetails || s.user.servizio || null
         })
         processedShiftIds.add(s.id)
-      }
     }
 
     // --- PRIORITÀ 3: Matching Compagni Preferiti (defaultPartnerIds) ---

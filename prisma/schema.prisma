@@ -86,6 +86,7 @@ model User {
   rotationGroupId          String?
   defaultServiceCategoryId String?
   defaultServiceTypeId     String?
+  fallbackServiceCategoryId String?
   fixedRestDay             Int?
   forcePasswordChange      Boolean            @default(true)
   telegramChatId           String?
