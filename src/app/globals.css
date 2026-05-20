@@ -246,3 +246,9 @@ input:-webkit-autofill:active{
     border-radius: 0.75rem;
     transition: background-color 5000s ease-in-out 0s;
 }
+
+/* Navigation app picker slide-up animation */
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}

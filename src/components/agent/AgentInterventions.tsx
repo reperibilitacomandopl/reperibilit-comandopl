@@ -1,9 +1,30 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useSession } from "next-auth/react"
-import { Shield, MapPin, CheckCircle, Navigation as NavIcon, Clock, ThumbsUp, ThumbsDown, HelpCircle } from "lucide-react"
+import { Shield, MapPin, CheckCircle, Navigation as NavIcon, Clock, ThumbsUp, ThumbsDown, HelpCircle, X, Map } from "lucide-react"
 import toast from "react-hot-toast"
+
+const NAV_STORAGE_KEY = "preferred_nav_app"
+
+type NavApp = "google" | "apple" | "waze"
+
+const NAV_APPS: { id: NavApp; label: string; icon: string; description: string }[] = [
+  { id: "google", label: "Google Maps", icon: "🗺️", description: "Disponibile su tutti i dispositivi" },
+  { id: "apple", label: "Mappe Apple", icon: "🍎", description: "Per dispositivi iPhone / iPad" },
+  { id: "waze", label: "Waze", icon: "📍", description: "Navigazione con traffico in tempo reale" },
+]
+
+function getNavUrl(app: NavApp, lat: number, lng: number): string {
+  switch (app) {
+    case "google":
+      return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
+    case "apple":
+      return `https://maps.apple.com/?daddr=${lat},${lng}`
+    case "waze":
+      return `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`
+  }
+}
 
 export default function AgentInterventions() {
   const { data: session } = useSession()
@@ -11,6 +32,16 @@ export default function AgentInterventions() {
   const [loading, setLoading] = useState(true)
   const [showOutcomeFor, setShowOutcomeFor] = useState<string | null>(null)
   const [outcomeNotes, setOutcomeNotes] = useState("")
+  const [showNavPicker, setShowNavPicker] = useState<{ lat: number; lng: number } | null>(null)
+  const [preferredNav, setPreferredNav] = useState<NavApp | null>(null)
+
+  // Load saved preference on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(NAV_STORAGE_KEY) as NavApp | null
+    if (saved && ["google", "apple", "waze"].includes(saved)) {
+      setPreferredNav(saved)
+    }
+  }, [])
 
   const fetchInterventions = async () => {
     try {
@@ -42,9 +73,35 @@ export default function AgentInterventions() {
     } catch { toast.error("Errore di rete") }
   }
 
-  const handleNavigate = (lat: number, lng: number) => {
-    window.open(`geo:${lat},${lng}?q=${lat},${lng}`, '_system')
-  }
+  const openNavigation = useCallback((app: NavApp, lat: number, lng: number) => {
+    const url = getNavUrl(app, lat, lng)
+    window.open(url, "_blank")
+  }, [])
+
+  const handleNavigate = useCallback((lat: number, lng: number) => {
+    if (preferredNav) {
+      openNavigation(preferredNav, lat, lng)
+    } else {
+      setShowNavPicker({ lat, lng })
+    }
+  }, [preferredNav, openNavigation])
+
+  const selectNavApp = useCallback((app: NavApp, remember: boolean) => {
+    if (remember) {
+      localStorage.setItem(NAV_STORAGE_KEY, app)
+      setPreferredNav(app)
+    }
+    if (showNavPicker) {
+      openNavigation(app, showNavPicker.lat, showNavPicker.lng)
+    }
+    setShowNavPicker(null)
+  }, [showNavPicker, openNavigation])
+
+  const resetNavPreference = useCallback(() => {
+    localStorage.removeItem(NAV_STORAGE_KEY)
+    setPreferredNav(null)
+    toast.success("Preferenza navigazione rimossa")
+  }, [])
 
   if (loading) return <div className="p-4 text-center">Caricamento...</div>
 
@@ -99,14 +156,21 @@ export default function AgentInterventions() {
                 )}
 
                 {i.status === 'ACCEPTED' && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <button onClick={() => i.lat && handleNavigate(i.lat, i.lng)} className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold flex items-center justify-center gap-2">
-                      <NavIcon className="w-5 h-5" /> Naviga
-                    </button>
-                    <button onClick={() => updateStatus(i.id, 'ARRIVE')} className="w-full py-3 bg-yellow-500 text-white rounded-xl font-bold flex items-center justify-center gap-2">
-                      <MapPin className="w-5 h-5" /> Sul Posto
-                    </button>
-                  </div>
+                  <>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button onClick={() => i.lat && handleNavigate(i.lat, i.lng)} className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold flex items-center justify-center gap-2">
+                        <NavIcon className="w-5 h-5" /> Naviga
+                      </button>
+                      <button onClick={() => updateStatus(i.id, 'ARRIVE')} className="w-full py-3 bg-yellow-500 text-white rounded-xl font-bold flex items-center justify-center gap-2">
+                        <MapPin className="w-5 h-5" /> Sul Posto
+                      </button>
+                    </div>
+                    {preferredNav && (
+                      <button onClick={resetNavPreference} className="text-[10px] text-blue-500 underline text-center mt-1">
+                        Navigazione: {NAV_APPS.find(a => a.id === preferredNav)?.label} — cambia app
+                      </button>
+                    )}
+                  </>
                 )}
 
                 {i.status === 'ON_SITE' && showOutcomeFor !== i.id && (
@@ -178,6 +242,37 @@ export default function AgentInterventions() {
                 </p>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Navigation App Picker Modal */}
+      {showNavPicker && (
+        <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowNavPicker(null)}>
+          <div className="w-full max-w-md bg-white rounded-t-3xl p-6 pb-10 shadow-2xl animate-[slideUp_0.3s_ease-out]" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <Map className="w-5 h-5 text-blue-600" />
+                <h3 className="text-lg font-bold text-slate-800">Apri con...</h3>
+              </div>
+              <button onClick={() => setShowNavPicker(null)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              {NAV_APPS.map(app => (
+                <button key={app.id} onClick={() => selectNavApp(app.id, true)}
+                  className="w-full flex items-center gap-4 p-4 bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-2xl transition-all active:scale-[0.98]">
+                  <span className="text-3xl">{app.icon}</span>
+                  <div className="text-left">
+                    <p className="font-bold text-slate-800">{app.label}</p>
+                    <p className="text-xs text-gray-500">{app.description}</p>
+                  </div>
+                  <NavIcon className="w-5 h-5 text-gray-400 ml-auto" />
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-gray-400 text-center mt-4">La tua scelta verrà memorizzata per le prossime volte</p>
           </div>
         </div>
       )}
