@@ -32,6 +32,8 @@ export default async function RisorsePage({ params }: { params: Promise<{ tenant
         matricola: true,
         role: true,
         isUfficiale: true,
+        isSuperAdmin: true,
+        isActive: true,
         canManageShifts: true,
         canManageUsers: true,
         canVerifyClockIns: true,
@@ -53,6 +55,7 @@ export default async function RisorsePage({ params }: { params: Promise<{ tenant
         fixedServiceDays: true,
         defaultServiceCategoryId: true,
         defaultServiceTypeId: true,
+        fallbackServiceCategoryId: true,
         rotationGroupId: true,
         rotationGroup: { select: { id: true, name: true } },
         twoFactorEnabled: true,
@@ -60,7 +63,11 @@ export default async function RisorsePage({ params }: { params: Promise<{ tenant
         l104Assistiti: true,
         hasStudyLeave: true,
         hasParentalLeave: true,
-        hasChildSicknessLeave: true
+        hasChildSicknessLeave: true,
+        failedLoginAttempts: true,
+        lockoutUntil: true,
+        lockoutReason: true,
+        unlockedBy: true
       },
     }).catch(() => []),
     prisma.rotationGroup.findMany({ 
