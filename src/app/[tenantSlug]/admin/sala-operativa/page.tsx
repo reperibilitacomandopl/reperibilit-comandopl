@@ -60,6 +60,8 @@ export default function CentraleOperativa() {
     type: "INCIDENTE", priority: "YELLOW", address: "",
     description: "", callerName: "", callerPhone: "", assignedToId: ""
   })
+  const [customType, setCustomType] = useState("")
+  const [customPriority, setCustomPriority] = useState("")
 
   // Raggruppa pattuglie per veicolo o servizio
   const groupedPatrols = useMemo(() => {
@@ -194,16 +196,21 @@ export default function CentraleOperativa() {
     setSubmitting(true)
     const lat = 40.8286 + (Math.random() - 0.5) * 0.02
     const lng = 16.5518 + (Math.random() - 0.5) * 0.02
+    const finalType = form.type === "ALTRO_CUSTOM" ? customType : form.type
+    const finalPriority = form.priority === "ALTRO_CUSTOM" ? customPriority : form.priority
+    
     try {
       const res = await fetch("/api/admin/interventions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, lat, lng, assignedToId: form.assignedToId || undefined })
+        body: JSON.stringify({ ...form, type: finalType, priority: finalPriority, lat, lng, assignedToId: form.assignedToId || undefined })
       })
       if (res.ok) {
         toast.success("Intervento creato con successo")
         setShowNewModal(false)
         setForm({ type: "INCIDENTE", priority: "YELLOW", address: "", description: "", callerName: "", callerPhone: "", assignedToId: "" })
+        setCustomType("")
+        setCustomPriority("")
         fetchData()
       } else { toast.error("Errore creazione") }
     } catch { toast.error("Errore di rete") }
@@ -486,24 +493,37 @@ export default function CentraleOperativa() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Tipologia</label>
-                  <input list="tipologia-list" value={form.type} onChange={e => setForm({...form, type: e.target.value})} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Es. INCIDENTE o scrivi..." />
-                  <datalist id="tipologia-list">
+                  <select value={form.type} onChange={e => setForm({...form, type: e.target.value})} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     <option value="INCIDENTE">🚗 Incidente Stradale</option>
-                    <option value="VIABILITA">🚧 Viabilità</option>
-                    <option value="LITE">⚠️ Lite / Rissa</option>
+                    <option value="INCIDENTE_FERITI">🚑 Incidente con Feriti</option>
+                    <option value="VIABILITA">🚧 Viabilità / Traffico</option>
+                    <option value="SOSTA_VIETATA">🅿️ Sosta Vietata / Intralcio</option>
+                    <option value="PASSO_CARRABILE">🚫 Passo Carrabile</option>
+                    <option value="LITE">⚠️ Lite / Disturbo Quiete</option>
                     <option value="CONTROLLO">🔍 Controllo Territorio</option>
+                    <option value="COMMERCIALE">🏪 Controllo Commerciale</option>
+                    <option value="EDILIZIA">🏗️ Abuso Edilizio</option>
+                    <option value="TSO">🏥 T.S.O. / A.S.O.</option>
+                    <option value="RANDAGISMO">🐕 Randagismo</option>
                     <option value="SEGNALAZIONE">📞 Segnalazione Cittadino</option>
-                    <option value="ALTRO">📋 Altro</option>
-                  </datalist>
+                    <option value="ALTRO_CUSTOM">✏️ Altro (Personalizzato...)</option>
+                  </select>
+                  {form.type === "ALTRO_CUSTOM" && (
+                    <input autoFocus required type="text" value={customType} onChange={e => setCustomType(e.target.value)} placeholder="Scrivi tipologia personalizzata..." className="mt-2 w-full border border-gray-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500" />
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Priorità</label>
-                  <input list="priorita-list" value={form.priority} onChange={e => setForm({...form, priority: e.target.value})} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Es. RED o scrivi..." />
-                  <datalist id="priorita-list">
+                  <select value={form.priority} onChange={e => setForm({...form, priority: e.target.value})} className="w-full border border-gray-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                     <option value="RED">🔴 Codice Rosso (Emergenza)</option>
                     <option value="YELLOW">🟡 Codice Giallo (Urgente)</option>
                     <option value="GREEN">🟢 Codice Verde (Differibile)</option>
-                  </datalist>
+                    <option value="WHITE">⚪ Codice Bianco (Non Critico)</option>
+                    <option value="ALTRO_CUSTOM">✏️ Altra Priorità (Personalizzata...)</option>
+                  </select>
+                  {form.priority === "ALTRO_CUSTOM" && (
+                    <input autoFocus required type="text" value={customPriority} onChange={e => setCustomPriority(e.target.value)} placeholder="Scrivi priorità personalizzata..." className="mt-2 w-full border border-gray-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500" />
+                  )}
                 </div>
               </div>
               <div>
