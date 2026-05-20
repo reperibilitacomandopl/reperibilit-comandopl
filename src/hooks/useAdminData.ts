@@ -339,6 +339,7 @@ export function useAdminData(
       setEditingCell(null)
       const hoursMsg = hours ? ` (${hours}h)` : ''
       toast.success(`Turno aggiornato${hoursMsg}`)
+      router.refresh()
     } catch {
       toast.error("Errore nel salvataggio")
     } finally {

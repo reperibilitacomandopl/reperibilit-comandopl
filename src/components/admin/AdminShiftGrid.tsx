@@ -271,8 +271,8 @@ export default function AdminShiftGrid({
     return false
   }
 
-  const openCellEditor = (agentId: string, agentName: string, day: number, currentType: string) => {
-    setEditingCell({ agentId, agentName, day, currentType })
+  const openCellEditor = (agentId: string, agentName: string, day: number, currentType: string, baseType?: string, canBeRep?: boolean) => {
+    setEditingCell({ agentId, agentName, day, currentType, baseType, canBeRep })
     setEditValue(currentType)
     setEditHours("")
   }
@@ -413,7 +413,20 @@ export default function AdminShiftGrid({
       setIsDragging(false)
       // Apri l'editor appropriato in base a quante celle sono state selezionate
       if (selectedCells.size === 1) {
-        openCellEditor(agentId, agentName, day, rType || sType)
+        const nextDateObj = new Date(Date.UTC(currentYear, currentMonth - 1, day + 1))
+        const nextDateStr = `${nextDateObj.getUTCFullYear()}-${String(nextDateObj.getUTCMonth() + 1).padStart(2, '0')}-${String(nextDateObj.getUTCDate()).padStart(2, '0')}`
+        const nextDayShift = shifts.find(s => {
+          if (!s || !s.date) return false
+          const d = new Date(s.date)
+          const sDateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+          return s.userId === agentId && sDateStr === nextDateStr
+        })
+        const nextSType = (nextDayShift?.type || "").toUpperCase()
+        const isTodayMOrP = sType.startsWith('M') || sType.startsWith('P')
+        const isTomorrowMOrP = nextSType.startsWith('M') || nextSType.startsWith('P')
+        const canBeRep = isTodayMOrP && isTomorrowMOrP
+
+        openCellEditor(agentId, agentName, day, rType || sType, sType, canBeRep)
       } else if (selectedCells.size > 1) {
         openBulkEditor()
       }
@@ -824,9 +837,22 @@ export default function AdminShiftGrid({
                     {editingCell.isBulk ? `Modifica ${selectedCells.size} Celle` : editingCell.agentName}
                   </h3>
                 </div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase">
-                  {editingCell.isBulk ? "Azione Massiva" : `Giorno ${editingCell.day}`}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">
+                    {editingCell.isBulk ? "Azione Massiva" : `Giorno ${editingCell.day}`}
+                  </p>
+                  {!editingCell.isBulk && (
+                    <div className="flex flex-col items-end">
+                      <p className="text-[10px] text-slate-300">Turno base: <span className="font-bold text-white">{editingCell.baseType || "Nessuno"}</span></p>
+                      {editingCell.canBeRep === false && (
+                        <p className="text-[9px] text-rose-400 font-bold">🚫 Non reperibile (Turni M/P richiesti oggi e domani)</p>
+                      )}
+                      {editingCell.canBeRep === true && (
+                        <p className="text-[9px] text-emerald-400 font-bold">✅ Reperibilità consentita</p>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {/* Warning Massimali */}
                 {massimaliWarnings.length > 0 && (
@@ -856,7 +882,10 @@ export default function AdminShiftGrid({
                   autoFocus>
                   <option value="">Seleziona codice...</option>
                   <optgroup label="Tipi di Turno e Riposo">
-                    {["M7", "M8", "P12", "P14", "P15", "P16", "R", "RR", "REP", "REP_I"].map(c => <option key={c} value={c}>{c}</option>)}
+                    {["M7", "M8", "P12", "P14", "P15", "P16", "R", "RR", "REP", "REP_I"].map(c => {
+                      const isDisabled = (c === "REP" || c === "REP_I") && editingCell?.canBeRep === false;
+                      return <option key={c} value={c} disabled={isDisabled}>{c}{isDisabled ? " 🚫 (Bloccato)" : ""}</option>
+                    })}
                   </optgroup>
                   {AGENDA_CATEGORIES.map(cat => (
                     <optgroup key={cat.group} label={`${cat.emoji} ${cat.group}`}>
@@ -895,17 +924,20 @@ export default function AdminShiftGrid({
             <div className="px-5 pb-2">
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Turni Rapidi</p>
               <div className="grid grid-cols-6 gap-1.5">
-                {["M7", "M8", "P12", "P14", "P15", "REP"].map(code => (
-                  <button key={code} onClick={() => handleSave(code)}
-                    className={`py-2 rounded-lg text-[10px] font-black transition-all border ${code === "REP"
-                      ? "bg-violet-600 text-white border-violet-700 hover:bg-violet-700"
-                      : code.startsWith("M")
-                        ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-500 hover:text-white"
-                        : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-500 hover:text-white"
-                    }`}>
-                    {code}
-                  </button>
-                ))}
+                {["M7", "M8", "P12", "P14", "P15", "REP"].map(code => {
+                  const isDisabled = code === "REP" && editingCell?.canBeRep === false;
+                  return (
+                    <button key={code} onClick={() => handleSave(code)} disabled={isDisabled}
+                      className={`py-2 rounded-lg text-[10px] font-black transition-all border ${code === "REP"
+                        ? (isDisabled ? "bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed" : "bg-violet-600 text-white border-violet-700 hover:bg-violet-700")
+                        : code.startsWith("M")
+                          ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-500 hover:text-white"
+                          : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-500 hover:text-white"
+                      }`}>
+                      {code}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
