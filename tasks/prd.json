@@ -1,0 +1,436 @@
+{
+  "project": "Sentinel Security Suite",
+  "branchName": "ralph/sentinel-saas-pa",
+  "description": "Piattaforma SaaS multi-tenant per la gestione operativa dei Comandi di Polizia Locale italiani — turni, OdS con firma digitale, timbrature GPS, ferie, interventi, compliance GDPR, PWA mobile.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Onboarding rapido nuovo Comando",
+      "description": "As a SuperAdmin, I want to create a new tenant in under 5 minuti so that posso attivare rapidamente nuovi comandi pilota.",
+      "acceptanceCriteria": [
+        "Form creazione tenant con: nome, slug, coordinate GPS sede, logo, piano TRIAL/ACTIVE",
+        "Seed automatico utente ADMIN con credenziali temporanee crypto-random",
+        "Wizard onboarding primo accesso per configurazione iniziale",
+        "Invio automatico link accesso via email",
+        "Typecheck passes",
+        "Verify in browser"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Infrastruttura multi-tenant già esistente. Estendere con wizard onboarding."
+    },
+    {
+      "id": "US-002",
+      "title": "Piani abbonamento TRIAL → ACTIVE → ENTERPRISE",
+      "description": "As a SuperAdmin, I want to gestire piani di abbonamento con limiti e upgrade so that il modello SaaS è scalabile.",
+      "acceptanceCriteria": [
+        "Trial automatico 30 giorni con limiti (max 20 agenti)",
+        "Upgrade a ACTIVE con cambio stato tenant",
+        "Notifica scadenza trial a 7, 3, 1 giorno via Telegram al SuperAdmin",
+        "Badge TRIAL visibile nell'interfaccia admin",
+        "Typecheck passes",
+        "Verify in browser"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Modello Tenant ha già planType e trialEndsAt. Aggiungere logica scadenza e notifiche."
+    },
+    {
+      "id": "US-003",
+      "title": "Cambio password richiede verifica password attuale",
+      "description": "As a Sistema, I must richiedere la password attuale prima di permettere il cambio password per prevenire account takeover via session hijack.",
+      "acceptanceCriteria": [
+        "API /api/auth/change-password accetta currentPassword + newPassword",
+        "bcrypt.compare() verifica password attuale prima di aggiornare",
+        "Errore se currentPassword non corrisponde",
+        "Mantenere eccezione per forcePasswordChange al primo accesso",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Hardening sicurezza: C1 già fixato. Verificare che il fix sia completo e non abbia regressioni."
+    },
+    {
+      "id": "US-004",
+      "title": "2FA proof token firmato server-side",
+      "description": "As a Sistema, I must prevenire il bypass 2FA client-side generando un proof token HMAC firmato dopo verifica TOTP riuscita.",
+      "acceptanceCriteria": [
+        "generate2FAProof(userId) crea token HMAC-SHA256 con scadenza",
+        "La verify route restituisce proof token dopo TOTP valido",
+        "Il middleware verifica il proof token invece di fidarsi di twoFactorVerified dal client",
+        "Il client non può più forzare twoFactorVerified=true nella sessione",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Hardening sicurezza: C2 già fixato. Verificare integrazione completa middleware + verify route."
+    },
+    {
+      "id": "US-005",
+      "title": "Griglia turni mensile con editing diretto",
+      "description": "As an Admin, I want to visualizzare e modificare turni in una griglia N×31 con click su cella e selezione rapida codice.",
+      "acceptanceCriteria": [
+        "Click cella apre popup con select dropdown + 6 pulsanti rapidi (M7, M8, P12, P14, P15, REP)",
+        "Salvataggio immediato con feedback visivo e toast",
+        "Cell color-coded per tipo turno (blu=mattina, verde=pomeriggio, viola=rep, rosso=ferie)",
+        "Sticky header con giorni e nomi agenti durante scroll",
+        "Confronto date indipendente da timezone (UTC vs Europe/Rome)",
+        "Typecheck passes",
+        "Verify in browser"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Già implementato. Fix recente: timezone nel confronto date + rimozione router.refresh() che sovrascriveva aggiornamento ottimistico."
+    },
+    {
+      "id": "US-006",
+      "title": "Generatore ciclico automatico turni",
+      "description": "As an Admin, I want to generare automaticamente i turni del mese basati su gruppi di rotazione configurabili.",
+      "acceptanceCriteria": [
+        "Pattern di rotazione configurabile per gruppo (ciclo 7/14/28 giorni)",
+        "Generazione rispetta massimali, riposi obbligatori, festivi",
+        "AI Resolver riempie automaticamente i buchi turno",
+        "Copia turni da mese precedente come base",
+        "Import/esportazione Excel turni",
+        "Typecheck passes",
+        "Verify in browser"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Generatore già implementato in generation-engine.ts. Da migliorare con AI resolver più robusto."
+    },
+    {
+      "id": "US-007",
+      "title": "Ordine di Servizio con firma digitale e QR code",
+      "description": "As an Admin, I want to generare l'OdS giornaliero in PDF con firma SHA-256 e QR code di verifica pubblica.",
+      "acceptanceCriteria": [
+        "Drag & drop agenti nei servizi Mattina/Pomeriggio",
+        "Stampa PDF con logo comando, layout professionale A4",
+        "Certificazione con hash SHA-256 + timestamp RFC 3161",
+        "QR code punta a URL pubblico /verify/:hash",
+        "Watermark BOZZA su mesi non pubblicati",
+        "Revoca certificazione con tracciamento audit",
+        "Invio Telegram automatico agli agenti del giorno",
+        "Typecheck passes",
+        "Verify in browser"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Già implementato. Verificare integrazione timestamp FreeTSA e firma X.509."
+    },
+    {
+      "id": "US-008",
+      "title": "Timbratura GPS con rilevazione straordinario",
+      "description": "As an Agente, I want to timbrare entrata/uscita con GPS e rilevazione automatica di straordinario o ritardo.",
+      "acceptanceCriteria": [
+        "Clock-IN/OUT con coordinate GPS e accuratezza",
+        "Verifica raggio dalla sede (configurabile per tenant)",
+        "Rilevazione automatica straordinario (>15 min oltre orario turno)",
+        "Causale obbligatoria per straordinario (ordinario, elettorale, OP, etc.)",
+        "Giustificativo automatico per ritardo entrata con causale",
+        "Timbratura offline con sync IndexedDB quando torna connessione",
+        "Typecheck passes",
+        "Verify in browser (mobile viewport)"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Clock-in già implementato. Migliorare offline sync con Background Sync API."
+    },
+    {
+      "id": "US-009",
+      "title": "SOS emergenza geolocalizzato con nota vocale",
+      "description": "As an Agente in pericolo, I want to attivare un SOS con long-press 2.5s che invia la mia posizione GPS e una nota vocale alla centrale.",
+      "acceptanceCriteria": [
+        "Pulsante SOS flottante con long-press 2.5 secondi e progress ring SVG",
+        "Invio coordinate GPS + nota vocale registrabile",
+        "Broadcast Telegram a tutti gli admin e ufficiali del comando",
+        "Marker SOS lampeggiante sulla mappa centrale operativa",
+        "Notifica push a tutti i dispositivi del tenant",
+        "Pattern vibrazione SOS: corto-corto-lungo (···---···)",
+        "Typecheck passes",
+        "Verify in browser (mobile viewport)"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Già implementato. Migliorare con nota vocale e vibrazione pattern SOS."
+    },
+    {
+      "id": "US-010",
+      "title": "Centrale operativa GPS con mappa Leaflet",
+      "description": "As an Ufficiale in centrale, I want to vedere su mappa in tempo reale tutti gli agenti in servizio con marker colorati per tipo servizio.",
+      "acceptanceCriteria": [
+        "Mappa Leaflet/OpenStreetMap con marker per ogni pattuglia",
+        "Colore marker: blu=ordinario, verde=scuole, rosso=emergenza",
+        "Popup con dettagli pattuglia (agenti, veicolo, contatto)",
+        "Aggiornamento posizioni ogni 30 secondi (5s se SOS attivo)",
+        "Visualizzazione interventi attivi con priorità (RED/YELLOW/GREEN)",
+        "Geofencing: zone configurabili con alert uscita zona",
+        "Polling in pausa quando tab in background",
+        "Typecheck passes",
+        "Verify in browser"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "Già implementato. Aggiungere pausa polling su background tab."
+    },
+    {
+      "id": "US-011",
+      "title": "Workflow approvativo richieste a 2 livelli",
+      "description": "As an Agente, I want to inviare richieste di assenza che passano prima dall'ufficiale di turno e poi dall'admin.",
+      "acceptanceCriteria": [
+        "Flusso: Agente → Ufficiale di turno (48h timeout) → Admin",
+        "Notifica in-app + Telegram a ogni passaggio di stato",
+        "Auto-escalation ad admin dopo 48h di inattività ufficiale",
+        "Stati visibili: PENDING_OFFICER → PENDING_ADMIN → APPROVED/REJECTED",
+        "Validazione saldi (ferie, permessi, L.104, 150h studio) prima dell'invio",
+        "Typecheck passes",
+        "Verify in browser"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "Già implementato. Verificare integrazione escalation cron."
+    },
+    {
+      "id": "US-012",
+      "title": "Pianificazione ferie annuale con periodi",
+      "description": "As an Admin, I want to assegnare ferie per periodi (Estate, Inverno, Pasqua, Natale) con sincronizzazione automatica sulla griglia turni.",
+      "acceptanceCriteria": [
+        "Agente esprime preferenza (PREFERENCE), Admin assegna (ASSIGNED) o conferma (CONFIRMED)",
+        "Vista annuale con conflitti evidenziati e calcolo giorni residui",
+        "Sincronizzazione automatica: giorni ferie → tipo FERIE/R/(INFR) nella griglia turni",
+        "Notifica push + Telegram all'agente su assegnazione",
+        "CRUD completo da pagina /admin/ferie",
+        "Typecheck passes",
+        "Verify in browser"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "Già implementato con VacationPlan model + VacationPlanner component."
+    },
+    {
+      "id": "US-013",
+      "title": "Rotazione ferie automatica pluriennale",
+      "description": "As an Admin, I want to configurare gruppi di rotazione ferie dove gli agenti ruotano equamente nei periodi anno dopo anno.",
+      "acceptanceCriteria": [
+        "Definizione periodi di rotazione (es. Estate 1-15 Giu, 16-30 Giu...)",
+        "Gruppi con membri e periodo base assegnato",
+        "Calcolo automatico anno corrente: baseYear + offset = activePeriod",
+        "Pubblicazione rotazione genera automaticamente VacationPlan per tutti i membri",
+        "Simulatore 'dove sarò tra N anni' per agenti",
+        "Gestione festivi infrasettimanali con personale dedicato",
+        "Typecheck passes",
+        "Verify in browser"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": "Già implementato in VacationRotationManager (1642 linee). Da refactoring in sotto-componenti."
+    },
+    {
+      "id": "US-014",
+      "title": "Scambio ferie tra colleghi con approvazione admin",
+      "description": "As an Agente, I want to proporre uno scambio del mio periodo di ferie con un collega, con validazione automatica e visto finale dell'admin.",
+      "acceptanceCriteria": [
+        "Proposta scambio: seleziono mio periodo, seleziono collega, invio",
+        "Regola termine 1 mese prima dell'inizio ferie",
+        "Notifica al collega con possibilità di accettare/rifiutare",
+        "Se accettato, notifica admin per visto finale",
+        "Admin approva: swap effettivo nei VacationPlan e nei turni Shift",
+        "Bacheca scambi ferie visibile a tutti gli agenti",
+        "Typecheck passes",
+        "Verify in browser"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": "Già implementato in vacation-swap API. Verificare integrazione completa."
+    },
+    {
+      "id": "US-015",
+      "title": "Dashboard del Comandante con KPI strategici",
+      "description": "As a Comandante, I want to vedere una panoramica con KPI in tempo reale: organico, copertura, assenteismo, straordinari, interventi.",
+      "acceptanceCriteria": [
+        "8 KPI cards con icone, valori e trend",
+        "Alert automatici: alto tasso assenze (>5), scadenze documenti (>3), richieste pendenti (>3)",
+        "Sezione pianificazione ferie con riepilogo per periodo",
+        "Navigazione anno per ferie",
+        "Dati caricati con Promise.all per parallelismo query",
+        "Typecheck passes",
+        "Verify in browser"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": "Già implementato. Ottimizzare query DB con Promise.all."
+    },
+    {
+      "id": "US-016",
+      "title": "Report mensile con grafici Recharts e export Excel",
+      "description": "As an Admin, I want to generare un report mensile con KPI, grafico a barre e tabella dettaglio agenti esportabile in Excel.",
+      "acceptanceCriteria": [
+        "KPI cards: organico, ore lavorate, straordinario, tasso assenza",
+        "Grafico a barre: top 10 agenti per ore lavorate",
+        "Tabella dettaglio con tutte le metriche, ordinabile per colonna",
+        "Export Excel one-click con tutti i dati",
+        "Navigazione tra mesi con frecce",
+        "Typecheck passes",
+        "Verify in browser"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": "Già implementato in MonthlyReport.tsx."
+    },
+    {
+      "id": "US-017",
+      "title": "Gestione parco auto con scadenze",
+      "description": "As an Admin, I want to gestire il parco veicoli con tracciamento scadenze assicurazione, bollo e revisione.",
+      "acceptanceCriteria": [
+        "CRUD veicoli: targa, modello, tipo, stato (ATTIVO/MANUTENZIONE/DISMESSO)",
+        "Scadenze: assicurazione, bollo, revisione con date",
+        "Alert automatici 30 giorni prima della scadenza (cron + notifica)",
+        "Assegnazione veicolo a turno/agente",
+        "Typecheck passes",
+        "Verify in browser"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": "Già implementato."
+    },
+    {
+      "id": "US-018",
+      "title": "Gestione armeria e dotazioni",
+      "description": "As an Admin, I want to gestire armi, giubbotti e radio con assegnazioni e scadenze.",
+      "acceptanceCriteria": [
+        "CRUD armi: modello, matricola, assegnatario",
+        "CRUD giubbotti: modello, seriale, scadenza Kevlar",
+        "CRUD radio: modello, seriale, assegnatario",
+        "Alert scadenza Kevlar 30 giorni prima",
+        "Assegnazione fissa o a turno",
+        "Typecheck passes",
+        "Verify in browser"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": "Già implementato."
+    },
+    {
+      "id": "US-019",
+      "title": "Centro conformità PA — Documenti legali PDF",
+      "description": "As an Admin, I want to generare DPA, Registro Trattamenti, Nomina DPO e SLA in PDF precompilati con i dati del comando.",
+      "acceptanceCriteria": [
+        "Generazione PDF DPA (art.28 GDPR) con dati tenant",
+        "Generazione PDF Registro Trattamenti (art.30 GDPR)",
+        "Generazione PDF Nomina DPO",
+        "Generazione PDF SLA con tempi di risposta/risoluzione",
+        "Download one-click da /admin/compliance",
+        "Typecheck passes",
+        "Verify in browser"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": "Già implementato in generate-compliance-doc API + ComplianceCenter."
+    },
+    {
+      "id": "US-020",
+      "title": "GDPR: diritto all'oblio e portabilità dati",
+      "description": "As an Agente, I want to esercitare i miei diritti GDPR di export e cancellazione dati personali.",
+      "acceptanceCriteria": [
+        "Export dati personali in JSON (art.20 GDPR) da /api/user/gdpr/export",
+        "Pseudonimizzazione dati su richiesta (art.17 GDPR): nome→[RIMOSSO], email→erased_xxx@erased.invalid",
+        "Soft-delete su 10 modelli con Prisma middleware automatico",
+        "Data retention configurabile con cron di pulizia mensile",
+        "Log audit immutabile per ogni operazione GDPR",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": "Già implementato. Verificare integrazione data retention cron."
+    },
+    {
+      "id": "US-021",
+      "title": "PWA mobile: installabile e offline-ready",
+      "description": "As an Agente, I want to installare l'app sulla home screen e usarla anche offline per timbrature e visualizzazione turni.",
+      "acceptanceCriteria": [
+        "Service Worker con cache runtime (StaleWhileRevalidate) per turni e OdS",
+        "Background Sync per timbrature e SOS quando torna connessione",
+        "Manifest PWA con icona 192x192 e 512x512, orientamento portrait",
+        "Badge contatore notifiche non lette sull'icona",
+        "Pull-to-refresh su liste turni e interventi",
+        "Vibrazione differenziata per tipo notifica",
+        "Typecheck passes",
+        "Verify in browser (mobile viewport, offline mode)"
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": "PWA base già implementata. Migliorare offline sync IndexedDB."
+    },
+    {
+      "id": "US-022",
+      "title": "Dark mode completa",
+      "description": "As an Operatore in centrale, I want to attivare la dark mode ottimizzata per ambienti con scarsa illuminazione.",
+      "acceptanceCriteria": [
+        "Toggle Dark/Light in sidebar e header agente",
+        "Rispetto prefers-color-scheme del sistema + persistenza localStorage",
+        "Tema scuro su TUTTE le pagine (admin, agent, login, landing, superadmin)",
+        "Palette ottimizzata per centrale operativa (sfondo scuro, testo ambra/verde)",
+        "Typecheck passes",
+        "Verify in browser (toggle dark/light su 3 pagine diverse)"
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": "Già implementato con ThemeProvider/useTheme. Verificare copertura tutte le pagine."
+    },
+    {
+      "id": "US-023",
+      "title": "Shortcut da tastiera per admin",
+      "description": "As an Admin esperto, I want to usare shortcut da tastiera per navigare rapidamente tra le pagine principali.",
+      "acceptanceCriteria": [
+        "Ctrl+K: ricerca globale agente/pagina/funzione",
+        "Tasti 1-9: navigazione rapida tra pagine (1=Dashboard, 2=Pianificazione, 3=OdS, etc.)",
+        "?: overlay help con tutti gli shortcut disponibili",
+        "Shortcut disabilitati quando focus è su input/textarea/select",
+        "Typecheck passes",
+        "Verify in browser"
+      ],
+      "priority": 23,
+      "passes": false,
+      "notes": "Hook useKeyboardShortcuts già creato. Da integrare in AdminLayout."
+    },
+    {
+      "id": "US-024",
+      "title": "Refactoring VacationRotationManager in sotto-componenti",
+      "description": "As a Developer, I want to split VacationRotationManager (1642 linee) in 4 componenti per tab (Periodi, Gruppi, Festivi, Simulatore) per manutenibilità.",
+      "acceptanceCriteria": [
+        "Estrarre VacationPeriodsTab.tsx (CRUD periodi rotazione)",
+        "Estrarre VacationGroupsTab.tsx (CRUD gruppi con membri)",
+        "Estrarre VacationHolidaysTab.tsx (gestione festivi custom + assegnazioni)",
+        "Estrarre VacationSimulatorTab.tsx (simulatore 'dove sarò tra N anni')",
+        "Componente principale ridotto a < 200 linee (solo stato e routing tab)",
+        "Nessuna regressione funzionale",
+        "Typecheck passes",
+        "Verify in browser (tutti e 4 i tab)"
+      ],
+      "priority": 24,
+      "passes": false,
+      "notes": "Refactoring strutturale. Alto impatto manutenibilità. Procedere un tab alla volta."
+    },
+    {
+      "id": "US-025",
+      "title": "Eliminare duplicazione getMidweekHolidays",
+      "description": "As a Developer, I want to replace 4 copie duplicate di getMidweekHolidays con un unico import da utils/holidays.ts.",
+      "acceptanceCriteria": [
+        "src/utils/holidays.ts esporta getMidweekHolidays(year) centralizzato",
+        "src/app/api/agent/vacations/rotation/route.ts importa da holidays.ts",
+        "src/app/api/admin/vacations/rotation/holidays/publish/route.ts importa da holidays.ts",
+        "src/app/api/admin/vacations/rotation/holidays/custom/route.ts importa da holidays.ts",
+        "src/components/admin/VacationRotationManager.tsx importa da holidays.ts (lato client)",
+        "Nessuna regressione funzionale nei 4 consumer",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 25,
+      "passes": false,
+      "notes": "Funzione centralizzata già creata in holidays.ts. I 4 consumer vanno aggiornati."
+    }
+  ]
+}
