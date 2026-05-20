@@ -15,14 +15,11 @@ const getRedis = () => {
 }
 
 export const createRateLimiter = (limit: number, window: string) => {
-  const r = getRedis()
-  if (!r) return null
-  return new Ratelimit({
-    redis: r,
-    limiter: Ratelimit.slidingWindow(limit, window as any),
-    analytics: true,
-    prefix: "@sentinel/ratelimit",
-  })
+  // BYPASS: Upstash Free Tier limit reached, causing server to crash.
+  // Returning a dummy limiter that always allows traffic until the limit resets or is upgraded.
+  return {
+    limit: async (identifier: string) => ({ success: true, limit, remaining: limit, reset: 0 })
+  } as any
 }
 
 // Limiter predefiniti
