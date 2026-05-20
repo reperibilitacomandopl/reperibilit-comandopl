@@ -300,12 +300,41 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
                     <div className="bg-slate-100 p-4 rounded-xl border border-slate-200 space-y-2 opacity-60">
                        <h4 className="text-[10px] font-black text-slate-500 uppercase">Nota Storica da Excel</h4>
                        <div className="flex justify-between items-center bg-white px-3 py-2 rounded-lg border border-slate-200">
-                          <span className="text-xs font-bold text-slate-400">Ex "Squadra" di testo:</span>
+                          <span className="text-xs font-bold text-slate-400">Ex &quot;Squadra&quot; di testo:</span>
                           <span className="text-xs font-black text-slate-700 uppercase">{editingAgent.squadra}</span>
                        </div>
-                       <p className="text-[9px] font-bold text-slate-400">Questo dato è conservato per compatibilità ma l'assegnazione reale segue ora la selezione in alto.</p>
+                       <p className="text-[9px] font-bold text-slate-400">Questo dato è conservato per compatibilità ma l&apos;assegnazione reale segue ora la selezione in alto.</p>
                     </div>
                 )}
+
+                {/* ELENCO COLLEGHI NELLA STESSA SEZIONE */}
+                {tempDefaultCategoryId && (() => {
+                  const sectionName = categories.find((c: any) => c.id === tempDefaultCategoryId)?.name || "Sezione"
+                  const colleagues = activeAgentsForPartners.filter(
+                    (a: any) => a.defaultServiceCategoryId === tempDefaultCategoryId && a.id !== editingAgent.id
+                  )
+                  return (
+                    <div className="bg-blue-50/30 p-5 rounded-2xl border border-blue-200/30 space-y-3">
+                       <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.15em] flex items-center gap-2">
+                          <Users viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14" />
+                          Colleghi in {sectionName} ({colleagues.length})
+                       </h4>
+                       {colleagues.length === 0 ? (
+                         <p className="text-[10px] text-slate-400 italic font-bold py-2">Nessun altro operatore assegnato a questa sezione.</p>
+                       ) : (
+                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-[200px] overflow-y-auto custom-scrollbar">
+                           {colleagues.map((c: any) => (
+                             <div key={c.id} className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-blue-100 hover:border-blue-300 transition-all">
+                               <div className={`w-2 h-2 rounded-full shrink-0 ${c.isUfficiale ? 'bg-indigo-500 shadow-[0_0_6px_rgba(99,102,241,0.5)]' : 'bg-blue-400'}`} />
+                               <span className="text-[10px] font-bold text-slate-700 uppercase leading-tight truncate">{c.name}</span>
+                               {c.isUfficiale && <span className="text-[7px] font-black bg-indigo-100 text-indigo-700 px-1 py-0.5 rounded border border-indigo-200 shrink-0">UFF</span>}
+                             </div>
+                           ))}
+                         </div>
+                       )}
+                    </div>
+                  )
+                })()}
               </div>
             )}
 
