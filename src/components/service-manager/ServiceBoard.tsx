@@ -87,8 +87,8 @@ export default function ServiceBoard({
       <div className="flex-1 bg-slate-100 p-3 space-y-4 overflow-y-auto custom-scrollbar relative">
         
         {/* SEZIONE UFFICIALI DI TURNO */}
-        <div className="bg-blue-900/10 border-2 border-blue-600/20 rounded-2xl overflow-hidden mb-4">
-          <div className="bg-blue-700 text-white px-3 py-1.5 text-[11px] font-black uppercase tracking-widest flex items-center gap-2">
+        <div className="bg-blue-900/10 border-2 border-blue-600/20 rounded-2xl mb-4">
+          <div className="bg-blue-700 text-white rounded-t-[14px] px-3 py-1.5 text-[11px] font-black uppercase tracking-widest flex items-center gap-2">
             <Shield width={14} height={14} /> Ufficiali di Servizio ({ufficialiInServizio.length})
           </div>
           <div className="p-2 space-y-2">
@@ -243,8 +243,8 @@ export default function ServiceBoard({
                                 
                                 const compagni = agentiInQuestoServizio.filter(s => s.patrolGroupId === pgId);
                                 return (
-                                  <div key={pgId} className="mx-1.5 my-2 p-1 bg-slate-800 rounded-xl shadow-inner border-2 border-slate-700 overflow-hidden">
-                                    <div className="px-3 py-1 bg-slate-700/50 flex justify-between items-center mb-1">
+                                  <div key={pgId} className="mx-1.5 my-2 p-1 bg-slate-800 rounded-xl shadow-inner border-2 border-slate-700">
+                                    <div className="px-3 py-1 bg-slate-700/50 rounded-t-lg flex justify-between items-center mb-1">
                                       <div className="flex items-center gap-2">
                                         <div className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse shadow-[0_0_8px_rgba(96,165,250,0.6)]"></div>
                                         <span className="text-[10px] font-black text-blue-100 uppercase tracking-widest">Equipaggio</span>

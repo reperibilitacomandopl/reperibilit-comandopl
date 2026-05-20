@@ -616,7 +616,7 @@ export default function AdminShiftGrid({
                     </div>
                   )}
                   {/* Tooltip */}
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/stat:block z-[100] w-48 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-3 pointer-events-none text-left">
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 hidden group-hover/stat:block z-[100] w-48 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-3 pointer-events-none text-left">
                     <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2 border-b border-slate-700 pb-2">Reperibilità ({stat.total} - Uff: {stat.officers})</p>
                     {stat.agents.length > 0 ? stat.agents.map((a, i) => (
                       <p key={i} className="text-[10px] text-white font-bold leading-relaxed flex items-center gap-2">
