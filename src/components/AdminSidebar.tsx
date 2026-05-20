@@ -188,7 +188,7 @@ export default function AdminSidebar({
       <aside
         className={`${
           collapsed ? "w-[80px]" : "w-[280px]"
-        } h-screen flex flex-col bg-[#050914] border-r border-white/5 transition-all duration-500 ease-in-out shrink-0 relative z-[110] 
+        } h-screen flex flex-col bg-[#050914] border-r border-white/5 transition-all duration-500 ease-in-out shrink-0 z-[110] 
         ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         fixed lg:sticky top-0 left-0`}
       >
