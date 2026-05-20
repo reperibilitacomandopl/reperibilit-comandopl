@@ -105,7 +105,7 @@ export async function PUT(req: Request) {
           await sendPushNotification(assignedToId, {
             title: alertTitle,
             body: `${existing.type} in ${existing.address}`,
-            url: `/${session.user.tenantSlug}/agent/interventi`
+            url: `/${session.user.tenantSlug}/agent/dashboard?tab=interventions`
           }).catch(console.error)
        } else {
           updateData.status = "PENDING"
