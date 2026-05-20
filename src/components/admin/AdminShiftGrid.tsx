@@ -845,7 +845,7 @@ export default function AdminShiftGrid({
                     <div className="flex flex-col items-end">
                       <p className="text-[10px] text-slate-300">Turno base: <span className="font-bold text-white">{editingCell.baseType || "Nessuno"}</span></p>
                       {editingCell.canBeRep === false && (
-                        <p className="text-[9px] text-rose-400 font-bold">🚫 Non reperibile (Turni M/P richiesti oggi e domani)</p>
+                        <p className="text-[9px] text-amber-400 font-bold" title="Consentito l'inserimento manuale per necessità">⚠️ Rep. sconsigliata (Turni M/P assenti oggi o domani)</p>
                       )}
                       {editingCell.canBeRep === true && (
                         <p className="text-[9px] text-emerald-400 font-bold">✅ Reperibilità consentita</p>
@@ -883,8 +883,8 @@ export default function AdminShiftGrid({
                   <option value="">Seleziona codice...</option>
                   <optgroup label="Tipi di Turno e Riposo">
                     {["M7", "M8", "P12", "P14", "P15", "P16", "R", "RR", "REP", "REP_I"].map(c => {
-                      const isDisabled = (c === "REP" || c === "REP_I") && editingCell?.canBeRep === false;
-                      return <option key={c} value={c} disabled={isDisabled}>{c}{isDisabled ? " 🚫 (Bloccato)" : ""}</option>
+                      const isWarning = (c === "REP" || c === "REP_I") && editingCell?.canBeRep === false;
+                      return <option key={c} value={c}>{c}{isWarning ? " ⚠️ (Forzato)" : ""}</option>
                     })}
                   </optgroup>
                   {AGENDA_CATEGORIES.map(cat => (
@@ -925,11 +925,11 @@ export default function AdminShiftGrid({
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Turni Rapidi</p>
               <div className="grid grid-cols-6 gap-1.5">
                 {["M7", "M8", "P12", "P14", "P15", "REP"].map(code => {
-                  const isDisabled = code === "REP" && editingCell?.canBeRep === false;
+                  const isWarning = code === "REP" && editingCell?.canBeRep === false;
                   return (
-                    <button key={code} onClick={() => handleSave(code)} disabled={isDisabled}
+                    <button key={code} onClick={() => handleSave(code)}
                       className={`py-2 rounded-lg text-[10px] font-black transition-all border ${code === "REP"
-                        ? (isDisabled ? "bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed" : "bg-violet-600 text-white border-violet-700 hover:bg-violet-700")
+                        ? (isWarning ? "bg-amber-500 text-white border-amber-600 hover:bg-amber-600" : "bg-violet-600 text-white border-violet-700 hover:bg-violet-700")
                         : code.startsWith("M")
                           ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-500 hover:text-white"
                           : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-500 hover:text-white"
