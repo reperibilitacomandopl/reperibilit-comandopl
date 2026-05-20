@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import dynamic from "next/dynamic"
+import { useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Shield, Plus, Clock, MapPin, Phone, User, X, Send, CheckCircle, XCircle, Car, RadioTower, Crosshair, AlertTriangle, Volume2 } from "lucide-react"
 import toast from "react-hot-toast"
@@ -42,6 +43,8 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 export default function CentraleOperativa() {
   const { data: session } = useSession()
+  const params = useParams()
+  const tenantSlug = params?.tenantSlug as string || "altamura"
   const [patrols, setPatrols] = useState<any[]>([])
   const [interventions, setInterventions] = useState<any[]>([])
   const [sosAlerts, setSosAlerts] = useState<any[]>([])
@@ -194,8 +197,30 @@ export default function CentraleOperativa() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
-    const lat = 40.8286 + (Math.random() - 0.5) * 0.02
-    const lng = 16.5518 + (Math.random() - 0.5) * 0.02
+    
+    let lat = 40.8286 + (Math.random() - 0.5) * 0.01
+    let lng = 16.5518 + (Math.random() - 0.5) * 0.01
+    
+    try {
+      const cityName = tenantSlug ? tenantSlug.charAt(0).toUpperCase() + tenantSlug.slice(1) : "Altamura"
+      const addressQuery = form.address.toLowerCase().includes(cityName.toLowerCase())
+        ? form.address
+        : `${form.address}, ${cityName}, Italia`
+        
+      const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addressQuery)}&format=json&limit=1`, {
+        headers: { "User-Agent": "SentinelCommandSuite/1.0" }
+      })
+      if (geoRes.ok) {
+        const geoData = await geoRes.json()
+        if (geoData && geoData.length > 0) {
+          lat = parseFloat(geoData[0].lat)
+          lng = parseFloat(geoData[0].lon)
+        }
+      }
+    } catch (err) {
+      console.error("Geocoding failed, using fallback:", err)
+    }
+
     const finalType = form.type === "ALTRO_CUSTOM" ? customType : form.type
     const finalPriority = form.priority === "ALTRO_CUSTOM" ? customPriority : form.priority
     
