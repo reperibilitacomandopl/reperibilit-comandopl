@@ -166,7 +166,7 @@ function NFCClockContent() {
                 onChange={e => setJustificationCode(e.target.value)}
               >
                 {AGENDA_CATEGORIES.map(cat => (
-                  <optgroup key={cat.category} label={cat.category}>
+                  <optgroup key={cat.group} label={cat.group}>
                     {cat.items.map(item => (
                       <option key={item.code} value={item.code}>{item.label}</option>
                     ))}
