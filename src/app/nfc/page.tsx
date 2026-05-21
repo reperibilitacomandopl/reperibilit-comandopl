@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckCircle2, MapPinOff, Loader2, MapPin, AlertTriangle } from 'lucide-react'
-import { AGENDA_CATEGORIES } from '@/utils/agenda-codes'
+import { ClockOutModal } from '@/components/ClockOutModal'
 
 function NFCClockContent() {
   const router = useRouter()
@@ -14,10 +14,8 @@ function NFCClockContent() {
   
   // Anomaly State
   const [anomalyData, setAnomalyData] = useState<any>(null)
-  const [justificationCode, setJustificationCode] = useState('0008')
-  const [justificationNotes, setJustificationNotes] = useState('')
 
-  const handleClockIn = async (lat: number, lng: number, accuracy: number, overtimeReason?: string, shiftId?: string) => {
+  const handleClockIn = async (lat: number, lng: number, accuracy: number, overtimeReason?: string, shiftId?: string, isCorrection?: boolean, actualEndTimeStr?: string, actualStartTimeStr?: string) => {
     setStatus('loading')
     setMessage('Verifica e registrazione in corso...')
 
@@ -31,9 +29,11 @@ function NFCClockContent() {
           lng, 
           accuracy, 
           isManual: false,
-          checkAnomaly: !overtimeReason,
+          checkAnomaly: !overtimeReason && !isCorrection,
           overtimeReason,
-          shiftId
+          shiftId,
+          isCorrection,
+          actualEndTimeStr: actualEndTimeStr || actualStartTimeStr
         })
       })
 
@@ -70,17 +70,6 @@ function NFCClockContent() {
       setStatus('error')
       setMessage('Errore di connessione al server.')
     }
-  }
-
-  const submitJustification = () => {
-    if (!anomalyData) return
-    handleClockIn(
-      anomalyData.lat, 
-      anomalyData.lng, 
-      anomalyData.accuracy, 
-      `${justificationCode} ${justificationNotes}`, 
-      anomalyData.shiftId
-    )
   }
 
   useEffect(() => {
@@ -146,54 +135,6 @@ function NFCClockContent() {
           </div>
         )}
 
-        {status === 'justification_required' && anomalyData && (
-          <div className="flex flex-col items-center w-full animate-in fade-in zoom-in duration-300 text-left">
-            <div className="bg-amber-500/20 p-4 rounded-full mb-4 ring-4 ring-amber-500/10">
-              <AlertTriangle className="h-12 w-12 text-amber-500" />
-            </div>
-            <h2 className="text-xl font-bold text-amber-400 mb-2">Anomalia Orario Rilevata</h2>
-            <p className="text-slate-300 text-sm mb-6 text-center">
-              {anomalyData.anomalyType === 'LATE_IN' && `Sei in ritardo rispetto all'inizio del turno (${anomalyData.plannedTime}).`}
-              {anomalyData.anomalyType === 'OVERTIME' && `Stai uscendo oltre l'orario del turno (${anomalyData.plannedTime}).`}
-              {anomalyData.anomalyType === 'EARLY_EXIT' && `Stai uscendo in anticipo rispetto al turno (${anomalyData.plannedTime}).`}
-            </p>
-
-            <div className="w-full mb-4">
-              <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Motivazione</label>
-              <select 
-                className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-3 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={justificationCode}
-                onChange={e => setJustificationCode(e.target.value)}
-              >
-                {AGENDA_CATEGORIES.map(cat => (
-                  <optgroup key={cat.group} label={cat.group}>
-                    {cat.items.map(item => (
-                      <option key={item.code} value={item.code}>{item.label}</option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
-
-            <div className="w-full mb-6">
-              <label className="block text-xs font-bold text-slate-400 mb-1 uppercase">Note aggiuntive</label>
-              <textarea 
-                className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-24"
-                placeholder="Specifica eventuali dettagli..."
-                value={justificationNotes}
-                onChange={e => setJustificationNotes(e.target.value)}
-              />
-            </div>
-
-            <button 
-              onClick={submitJustification}
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white px-6 py-4 rounded-xl font-bold text-lg shadow-lg transition-all"
-            >
-              Conferma e Timbra
-            </button>
-          </div>
-        )}
-
         {status === 'success' && (
           <div className="flex flex-col items-center my-6 animate-in fade-in zoom-in duration-300">
             <div className="bg-green-500/20 p-5 rounded-full mb-4 ring-4 ring-green-500/10">
@@ -234,6 +175,42 @@ function NFCClockContent() {
           </div>
         )}
       </div>
+
+      {status === 'justification_required' && anomalyData && (
+        <ClockOutModal 
+          type={anomalyData.anomalyType}
+          diffMins={anomalyData.diffMins}
+          plannedEndTime={anomalyData.plannedTime}
+          onConfirm={(data) => {
+            const overtimeReason = data.isCorrection ? undefined : `${data.code} ${data.notes}`
+            const isLateIn = anomalyData.anomalyType === "LATE_IN"
+            handleClockIn(
+              anomalyData.lat, 
+              anomalyData.lng, 
+              anomalyData.accuracy, 
+              overtimeReason, 
+              anomalyData.shiftId,
+              data.isCorrection,
+              isLateIn ? data.actualStartTimeStr : data.actualEndTimeStr
+            )
+          }}
+          onCancel={() => {
+            setStatus('error')
+            setMessage('Operazione annullata dall\\'utente.')
+          }}
+          onCorrectionOnly={anomalyData.anomalyType === "OVERTIME" ? () => {
+            handleClockIn(
+              anomalyData.lat, 
+              anomalyData.lng, 
+              anomalyData.accuracy, 
+              undefined, 
+              anomalyData.shiftId,
+              true, 
+              anomalyData.plannedTime
+            )
+          } : undefined}
+        />
+      )}
     </div>
   )
 }
