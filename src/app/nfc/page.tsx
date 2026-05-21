@@ -1,17 +1,59 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState, Suspense, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle2, XCircle, Loader2, MapPin, MapPinOff, LogIn, LogOut } from 'lucide-react'
+import { CheckCircle2, MapPinOff, Loader2, MapPin } from 'lucide-react'
 
 function NFCClockContent() {
   const router = useRouter()
+  const hasExecuted = useRef(false)
   
-  const [status, setStatus] = useState<'acquiring_gps' | 'ready' | 'loading' | 'success' | 'error'>('acquiring_gps')
+  const [status, setStatus] = useState<'acquiring_gps' | 'loading' | 'success' | 'error'>('acquiring_gps')
   const [message, setMessage] = useState('Acquisizione posizione GPS in corso...')
-  const [location, setLocation] = useState<{lat: number, lng: number, accuracy: number} | null>(null)
+
+  const handleClockIn = async (lat: number, lng: number, accuracy: number) => {
+    setStatus('loading')
+    setMessage('Verifica e registrazione in corso...')
+
+    try {
+      const res = await fetch('/api/admin/clock-in', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          type: 'AUTO', 
+          lat, 
+          lng, 
+          accuracy, 
+          isManual: false 
+        })
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        setStatus('success')
+        const actionType = data.record?.type === 'IN' ? 'Entrata' : 'Uscita'
+        setMessage(`Timbratura di ${actionType} registrata con successo!`)
+        // Torna alla home dopo 3 secondi
+        setTimeout(() => router.push('/'), 3000)
+      } else {
+        setStatus('error')
+        if (res.status === 403 && data.distance) {
+            setMessage(`Sei troppo lontano dalla sede! (Distanza rilevata: ${data.distance}m. Limite: ${data.allowed}m)`)
+        } else {
+            setMessage(data.error || 'Errore durante la timbratura.')
+        }
+      }
+    } catch (err) {
+      setStatus('error')
+      setMessage('Errore di connessione al server.')
+    }
+  }
 
   useEffect(() => {
+    if (hasExecuted.current) return
+    hasExecuted.current = true
+
     if (!navigator.geolocation) {
       setStatus('error')
       setMessage('Geolocalizzazione non supportata dal tuo browser.')
@@ -20,13 +62,7 @@ function NFCClockContent() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          accuracy: position.coords.accuracy
-        })
-        setStatus('ready')
-        setMessage('Posizione acquisita. Seleziona il tipo di timbratura.')
+        handleClockIn(position.coords.latitude, position.coords.longitude, position.coords.accuracy)
       },
       (error) => {
         setStatus('error')
@@ -53,46 +89,6 @@ function NFCClockContent() {
     )
   }, [])
 
-  const handleClockIn = async (type: 'IN' | 'OUT') => {
-    if (!location) return
-
-    setStatus('loading')
-    setMessage('Registrazione in corso...')
-
-    try {
-      const res = await fetch('/api/admin/clock-in', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          type, 
-          lat: location.lat, 
-          lng: location.lng, 
-          accuracy: location.accuracy, 
-          isManual: false 
-        })
-      })
-
-      const data = await res.json()
-
-      if (res.ok) {
-        setStatus('success')
-        setMessage(`Timbratura ${type === 'IN' ? 'Entrata' : 'Uscita'} registrata con successo!`)
-        // Torna alla home dopo 3 secondi
-        setTimeout(() => router.push('/'), 3000)
-      } else {
-        setStatus('error')
-        if (res.status === 403 && data.distance) {
-            setMessage(`Sei troppo lontano dalla sede! (Distanza rilevata: ${data.distance}m. Limite: ${data.allowed}m)`)
-        } else {
-            setMessage(data.error || 'Errore durante la timbratura.')
-        }
-      }
-    } catch (err) {
-      setStatus('error')
-      setMessage('Errore di connessione al server.')
-    }
-  }
-
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white p-6 font-sans">
       <div className="bg-slate-800 p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-md w-full text-center border border-slate-700">
@@ -114,35 +110,6 @@ function NFCClockContent() {
             {status === 'acquiring_gps' && (
                 <p className="text-slate-500 text-sm mt-2">Assicurati di aver concesso i permessi GPS al browser.</p>
             )}
-          </div>
-        )}
-
-        {status === 'ready' && location && (
-          <div className="w-full flex flex-col items-center animate-in fade-in zoom-in duration-300">
-            <div className="bg-slate-900/50 rounded-2xl p-4 mb-8 w-full border border-slate-700/50">
-                <p className="text-green-400 text-sm font-semibold flex items-center justify-center gap-2 mb-1">
-                    <CheckCircle2 className="h-4 w-4" /> Posizione Verificata
-                </p>
-                <p className="text-slate-400 text-xs">Accuratezza GPS: ~{Math.round(location.accuracy)}m</p>
-            </div>
-            
-            <div className="flex flex-col w-full gap-4">
-                <button 
-                  onClick={() => handleClockIn('IN')}
-                  className="group relative w-full flex items-center justify-center gap-3 bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 active:scale-[0.98] transition-all text-white px-6 py-5 rounded-2xl font-bold text-lg shadow-lg shadow-blue-500/20"
-                >
-                  <LogIn className="h-6 w-6" />
-                  REGISTRA ENTRATA
-                </button>
-                
-                <button 
-                  onClick={() => handleClockIn('OUT')}
-                  className="group relative w-full flex items-center justify-center gap-3 bg-gradient-to-b from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 active:scale-[0.98] transition-all text-white px-6 py-5 rounded-2xl font-bold text-lg shadow-lg border border-slate-600"
-                >
-                  <LogOut className="h-6 w-6" />
-                  REGISTRA USCITA
-                </button>
-            </div>
           </div>
         )}
 

@@ -48,7 +48,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json()
-    const { type, lat, lng, accuracy, overtimeReason, isCorrection, shiftId, actualEndTimeStr } = body
+    let { type, lat, lng, accuracy, overtimeReason, isCorrection, shiftId, actualEndTimeStr } = body
     let tenantId = session.user.tenantId
     const userId = session.user.id
 
@@ -62,6 +62,17 @@ export async function POST(req: Request) {
     }
 
     if (!tenantId) return NextResponse.json({ error: "No Tenant" }, { status: 400 })
+
+    if (type === 'AUTO') {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const lastRecord = await prisma.clockRecord.findFirst({
+        where: { userId, timestamp: { gte: today } },
+        orderBy: { timestamp: 'desc' }
+      })
+      type = lastRecord?.type === 'IN' ? 'OUT' : 'IN'
+      console.log(`[CLOCK-IN] Tipo AUTO risolto in: ${type} per Utente: ${userId}`)
+    }
 
     // 1. Fetch Tenant Geofence
     const tenant = await prisma.tenant.findUnique({
