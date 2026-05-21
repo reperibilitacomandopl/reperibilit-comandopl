@@ -27,6 +27,7 @@ const PUBLIC_PREFIXES = [
   "/api/calendar",
   "/api/demo-request",
   "/api/health",
+  "/api/admin/verbatel-sync",
 ]
 
 function isPublicRoute(pathname: string): boolean {
