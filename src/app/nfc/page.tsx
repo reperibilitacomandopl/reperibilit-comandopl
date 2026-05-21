@@ -196,7 +196,7 @@ function NFCClockContent() {
           }}
           onCancel={() => {
             setStatus('error')
-            setMessage('Operazione annullata dall\\'utente.')
+            setMessage("Operazione annullata dall'utente.")
           }}
           onCorrectionOnly={anomalyData.anomalyType === "OVERTIME" ? () => {
             handleClockIn(
