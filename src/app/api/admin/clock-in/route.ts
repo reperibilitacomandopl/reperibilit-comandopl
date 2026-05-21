@@ -48,7 +48,9 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json()
-    let { type, lat, lng, accuracy, overtimeReason, isCorrection, shiftId, actualEndTimeStr } = body
+    const { type: origType, lat, lng, accuracy, overtimeReason, isCorrection, shiftId, actualEndTimeStr, checkAnomaly } = body
+    let type = origType
+
     let tenantId = session.user.tenantId
     const userId = session.user.id
 
@@ -72,6 +74,68 @@ export async function POST(req: Request) {
       })
       type = lastRecord?.type === 'IN' ? 'OUT' : 'IN'
       console.log(`[CLOCK-IN] Tipo AUTO risolto in: ${type} per Utente: ${userId}`)
+    }
+
+    // --- ANOMALY CHECK ---
+    let activeShift = null
+    if (checkAnomaly && !overtimeReason) {
+      const today = new Date()
+      today.setHours(0,0,0,0)
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      const todayShift = await prisma.shift.findFirst({
+         where: { userId, date: { gte: today, lt: tomorrow }, type: { notIn: ['FERIE', 'MALATTIA', 'RIPOSO', 'PERMESSO'] } }
+      })
+      activeShift = todayShift
+      
+      if (todayShift?.timeRange) {
+         const now = new Date()
+         const [startTimeStr, endTimeStr] = todayShift.timeRange.split(/[-–]/).map(p => p.trim())
+         
+         if (type === 'IN') {
+           const [sh, sm] = startTimeStr.split(':').map(Number)
+           const plannedStart = new Date(now)
+           plannedStart.setHours(sh, sm, 0, 0)
+           const diffMins = Math.floor((now.getTime() - plannedStart.getTime()) / (1000 * 60))
+           
+           if (diffMins >= 15) {
+             return NextResponse.json({ 
+               requiresJustification: true, 
+               anomalyType: "LATE_IN", 
+               diffMins, 
+               shiftId: todayShift.id,
+               plannedTime: startTimeStr
+             }, { status: 428 })
+           }
+         } else if (type === 'OUT') {
+           const [eh, em] = endTimeStr.split(':').map(Number)
+           const plannedEnd = new Date(now)
+           plannedEnd.setHours(eh, em, 0, 0)
+           
+           const [sh] = startTimeStr.split(':').map(Number)
+           if (eh < sh) plannedEnd.setDate(plannedEnd.getDate() + 1) // night shift
+           
+           const diffMins = Math.floor((now.getTime() - plannedEnd.getTime()) / (1000 * 60))
+           
+           if (diffMins >= 15) {
+             return NextResponse.json({ 
+               requiresJustification: true, 
+               anomalyType: "OVERTIME", 
+               diffMins, 
+               shiftId: todayShift.id,
+               plannedTime: endTimeStr
+             }, { status: 428 })
+           } else if (diffMins <= -15) {
+             return NextResponse.json({ 
+               requiresJustification: true, 
+               anomalyType: "EARLY_EXIT", 
+               diffMins, 
+               shiftId: todayShift.id,
+               plannedTime: endTimeStr
+             }, { status: 428 })
+           }
+         }
+      }
     }
 
     // 1. Fetch Tenant Geofence
