@@ -69,7 +69,7 @@ export default auth(async (req) => {
 
   // --- RATE LIMITING GLOBALE (⚠ Critico) ---
   // Protezione contro DoS applicativo su operazioni di scrittura
-  if (method !== "GET" && method !== "HEAD" && process.env.NODE_ENV === "production") {
+  if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS" && process.env.NODE_ENV === "production") {
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1"
     
     // Usiamo il limiter globale (60 req/min) o bulk per operazioni massive
@@ -85,6 +85,15 @@ export default auth(async (req) => {
         return addSecurityHeaders(NextResponse.json({ error: "Too Many Requests", message: "Limite operativo superato. Riprova tra un minuto." }, { status: 429 }), false, requestId)
       }
     }
+  }
+
+  // Lascia passare le richieste preflight OPTIONS per CORS
+  if (method === "OPTIONS") {
+    const response = NextResponse.next()
+    response.headers.set('Access-Control-Allow-Origin', '*')
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key')
+    return response
   }
 
   // 1. Route pubbliche: lascia passare
