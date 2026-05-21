@@ -146,7 +146,7 @@ export default auth(async (req) => {
   const pathParts = pathname.split("/")
   const urlSlug = pathParts[1] // es: /altamura/admin -> 'altamura'
 
-  const reservedPrefixes = ["api", "superadmin", "verify-2fa", "login", "_next", "favicon", "sw"]
+  const reservedPrefixes = ["api", "superadmin", "verify-2fa", "login", "_next", "favicon", "sw", "nfc", "quick-clock"]
   if (urlSlug && !reservedPrefixes.includes(urlSlug) && !PUBLIC_ROUTES.has("/" + urlSlug)) {
     // Se l'utente non è SuperAdmin e sta cercando di accedere a uno slug diverso dal suo
     if (!u.isSuperAdmin && u.tenantSlug !== urlSlug) {
