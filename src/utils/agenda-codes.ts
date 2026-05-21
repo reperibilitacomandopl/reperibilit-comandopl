@@ -142,6 +142,16 @@ export function getShortCode(codeOrShortCode: string): string {
   return codeOrShortCode
 }
 
+export function getCanonicalCode(codeOrShortCode: string): string {
+  for (const cat of AGENDA_CATEGORIES) {
+    for (const item of cat.items) {
+      if (item.code === codeOrShortCode) return item.code
+      if (item.shortCode === codeOrShortCode) return item.code
+    }
+  }
+  return codeOrShortCode
+}
+
 export function getLabel(codeOrShortCode: string): string {
   for (const cat of AGENDA_CATEGORIES) {
     for (const item of cat.items) {

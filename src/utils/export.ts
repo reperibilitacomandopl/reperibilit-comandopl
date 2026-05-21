@@ -9,13 +9,14 @@ interface ExportCartellinoOptions {
   agentName: string
   matricola: string
   monthName: string
+  month: number
   year: number
   days: number[]
   data: any // cartellino data object (shifts, clocks, requests, etc.)
 }
 
 export function exportCartellinoPDF(options: ExportCartellinoOptions) {
-  const { agentName, matricola, monthName, year, days, data } = options
+  const { agentName, matricola, monthName, month, year, days, data } = options
   
   const doc = new jsPDF("landscape")
   
@@ -27,7 +28,7 @@ export function exportCartellinoPDF(options: ExportCartellinoOptions) {
   doc.text(`Generato il: ${new Date().toLocaleDateString("it-IT")}`, 14, 28)
 
   const tableData = days.map(day => {
-    const dateObj = new Date(Date.UTC(year, new Date(`${monthName} 1, ${year}`).getMonth(), day))
+    const dateObj = new Date(Date.UTC(year, month - 1, day))
     const dateStr = dateObj.toISOString().split('T')[0]
     
     const dayShifts = data.shifts?.filter((s: any) => new Date(s.date).toISOString().split('T')[0] === dateStr) || []
@@ -83,10 +84,10 @@ export function exportCartellinoPDF(options: ExportCartellinoOptions) {
 }
 
 export function exportCartellinoExcel(options: ExportCartellinoOptions) {
-  const { agentName, matricola, monthName, year, days, data } = options
+  const { agentName, matricola, monthName, month, year, days, data } = options
   
   const excelData = days.map(day => {
-    const dateObj = new Date(Date.UTC(year, new Date(`${monthName} 1, ${year}`).getMonth(), day))
+    const dateObj = new Date(Date.UTC(year, month - 1, day))
     const dateStr = dateObj.toISOString().split('T')[0]
     
     const dayShifts = data.shifts?.filter((s: any) => new Date(s.date).toISOString().split('T')[0] === dateStr) || []

@@ -48,6 +48,7 @@ export default function AgentTimecardView({
       agentName: admin.currentUser?.name || 'Agente',
       matricola: admin.currentUser?.matricola || '',
       monthName,
+      month,
       year,
       days,
       data: admin
@@ -68,6 +69,7 @@ export default function AgentTimecardView({
       agentName: admin.currentUser?.name || 'Agente',
       matricola: admin.currentUser?.matricola || '',
       monthName,
+      month,
       year,
       days,
       data: admin

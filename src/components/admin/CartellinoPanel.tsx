@@ -264,6 +264,7 @@ export default function CartellinoPanel() {
       agentName: agent?.name || 'Agente',
       matricola: agent?.matricola || '',
       monthName,
+      month,
       year,
       days,
       data
@@ -279,6 +280,7 @@ export default function CartellinoPanel() {
       agentName: agent?.name || 'Agente',
       matricola: agent?.matricola || '',
       monthName,
+      month,
       year,
       days,
       data

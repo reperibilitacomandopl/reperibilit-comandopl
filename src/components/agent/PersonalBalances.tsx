@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { WalletCards, Clock, CheckCircle2, TrendingUp, AlertTriangle, ShieldCheck, GraduationCap } from "lucide-react"
-import { getLabel } from "@/utils/agenda-codes"
+import { getLabel, getCanonicalCode } from "@/utils/agenda-codes"
 
 // Helper sicuro per evitare NaN
 const safeNum = (val: any): number => {
@@ -76,15 +76,17 @@ export default function PersonalBalances() {
   const rawDetails = data.balance.details || []
   const uniqueDetailsMap = new Map()
   for (const d of rawDetails) {
-    uniqueDetailsMap.set(d.code, d)
+    const canonical = getCanonicalCode(d.code)
+    uniqueDetailsMap.set(canonical, d)
   }
   const uniqueDetails = Array.from(uniqueDetailsMap.values())
 
   const allDetails = uniqueDetails.map((d: any) => {
     let dynamicUsed = 0;
     if (data.usage) {
-       const shiftSum = (data.usage.shiftsCount || []).filter((s:any) => s.type === d.code).reduce((acc:any, curr:any) => acc + safeNum(curr._count?._all), 0)
-       const agendaSum = (data.usage.agendaSums || []).filter((s:any) => s.code === d.code).reduce((acc:any, curr:any) => acc + safeNum(curr._count?._all), 0)
+       const canonical = getCanonicalCode(d.code)
+       const shiftSum = (data.usage.shiftsCount || []).filter((s:any) => getCanonicalCode(s.type) === canonical).reduce((acc:any, curr:any) => acc + safeNum(curr._count?._all), 0)
+       const agendaSum = (data.usage.agendaSums || []).filter((s:any) => getCanonicalCode(s.code) === canonical).reduce((acc:any, curr:any) => acc + safeNum(curr._count?._all), 0)
        dynamicUsed = shiftSum + agendaSum
     } else {
        dynamicUsed = safeNum(d.used)

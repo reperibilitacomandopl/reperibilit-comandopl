@@ -15,7 +15,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from "lucide-react"
-import { getLabel, AGENDA_CATEGORIES } from "@/utils/agenda-codes"
+import { getLabel, getCanonicalCode, AGENDA_CATEGORIES } from "@/utils/agenda-codes"
 
 interface CartellinoSummaryViewProps {
   requests: any[]
@@ -105,10 +105,11 @@ export default function CartellinoSummaryView({
   // Estrai i saldi dal DB, supportando sia formato Admin (balances.details) che Agent (balances.balance.details)
   const rawDetails = balances?.details || balances?.balance?.details || []
   
-  // Deduplicazione: prendi solo l'ultimo inserito per ogni codice (per correggere bug dei contatori doppi)
+  // Deduplicazione: prendi solo l'ultimo inserito per ogni codice (risolvendo alias come 'FERIE' vs '0015')
   const uniqueDetailsMap = new Map()
   for (const d of rawDetails) {
-    uniqueDetailsMap.set(d.code, d)
+    const canonical = getCanonicalCode(d.code)
+    uniqueDetailsMap.set(canonical, d)
   }
   const uniqueDetails = Array.from(uniqueDetailsMap.values())
 
@@ -119,10 +120,11 @@ export default function CartellinoSummaryView({
     // Calcolo dinamico dell'utilizzo
     let dynamicUsed = 0;
     if (actualUsage) {
+       const canonical = getCanonicalCode(d.code)
        // Se è un codice assenza che finisce nei turni (es. FERIE)
-       const shiftSum = (actualUsage.shiftsCount || []).filter((s:any) => s.type === d.code).reduce((acc:any, curr:any) => acc + safeNum(curr._count?._all), 0)
+       const shiftSum = (actualUsage.shiftsCount || []).filter((s:any) => getCanonicalCode(s.type) === canonical).reduce((acc:any, curr:any) => acc + safeNum(curr._count?._all), 0)
        // Se è un permesso ad ore o giorni in agenda
-       const agendaSum = (actualUsage.agendaSums || []).filter((s:any) => s.code === d.code).reduce((acc:any, curr:any) => acc + safeNum(curr._count?._all), 0)
+       const agendaSum = (actualUsage.agendaSums || []).filter((s:any) => getCanonicalCode(s.code) === canonical).reduce((acc:any, curr:any) => acc + safeNum(curr._count?._all), 0)
        dynamicUsed = shiftSum + agendaSum
     } else {
        dynamicUsed = safeNum(d.used)
