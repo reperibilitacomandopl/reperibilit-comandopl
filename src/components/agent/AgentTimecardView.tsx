@@ -8,11 +8,16 @@ import {
   Clock, 
   CalendarDays,
   History,
-  Info
+  Info,
+  Download
 } from "lucide-react"
 import PersonalBalances from "./PersonalBalances"
 import PersonalClockHistory from "./PersonalClockHistory"
 import CartellinoSummaryView from "@/components/shared/CartellinoSummaryView"
+import { exportCartellinoPDF, exportCartellinoExcel } from "@/utils/export"
+import { format, getDaysInMonth } from "date-fns"
+import { it } from "date-fns/locale"
+import toast from "react-hot-toast"
 
 interface AgentTimecardViewProps {
   admin: any
@@ -29,6 +34,47 @@ export default function AgentTimecardView({
   onShowUpload,
   onShowStraordinario
 }: AgentTimecardViewProps) {
+
+  const handleExportPDF = () => {
+    if (!admin) return
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = now.getMonth() + 1
+    const monthName = format(now, "MMMM", { locale: it })
+    const daysInMonth = getDaysInMonth(now)
+    const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
+    
+    exportCartellinoPDF({
+      agentName: admin.currentUser?.name || 'Agente',
+      matricola: admin.currentUser?.matricola || '',
+      monthName,
+      year,
+      days,
+      data: admin
+    })
+    toast.success("PDF esportato")
+  }
+
+  const handleExportExcel = () => {
+    if (!admin) return
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = now.getMonth() + 1
+    const monthName = format(now, "MMMM", { locale: it })
+    const daysInMonth = getDaysInMonth(now)
+    const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
+    
+    exportCartellinoExcel({
+      agentName: admin.currentUser?.name || 'Agente',
+      matricola: admin.currentUser?.matricola || '',
+      monthName,
+      year,
+      days,
+      data: admin
+    })
+    toast.success("Excel esportato")
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
@@ -44,6 +90,12 @@ export default function AgentTimecardView({
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
+               <button onClick={handleExportPDF} className="bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500 hover:text-white px-4 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:scale-105 transition-all flex items-center gap-2">
+                 <Download size={18} /> PDF
+               </button>
+               <button onClick={handleExportExcel} className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500 hover:text-white px-4 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:scale-105 transition-all flex items-center gap-2">
+                 <Download size={18} /> Excel
+               </button>
                <button 
                 onClick={onShowRequest}
                 className="bg-white text-indigo-900 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:scale-105 transition-all flex items-center gap-2"

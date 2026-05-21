@@ -72,13 +72,31 @@ export default function PersonalBalances() {
 
   const feriePercent = initialFerie > 0 ? Math.min(100, Math.max(0, (ferieUtilizzate / initialFerie) * 100)) : 0
 
-  // Recupera TUTTI i saldi dal DB (balance.details) per mostrarli
-  const allDetails = (data.balance.details || []).map((d: any) => ({
-    ...d,
-    initialValue: safeNum(d.initialValue),
-    used: safeNum(d.used),
-    residue: safeNum(d.residue) || (safeNum(d.initialValue) - safeNum(d.used))
-  }))
+  // Recupera TUTTI i saldi dal DB (balance.details) e rimuovi duplicati
+  const rawDetails = data.balance.details || []
+  const uniqueDetailsMap = new Map()
+  for (const d of rawDetails) {
+    uniqueDetailsMap.set(d.code, d)
+  }
+  const uniqueDetails = Array.from(uniqueDetailsMap.values())
+
+  const allDetails = uniqueDetails.map((d: any) => {
+    let dynamicUsed = 0;
+    if (data.usage) {
+       const shiftSum = (data.usage.shiftsCount || []).filter((s:any) => s.type === d.code).reduce((acc:any, curr:any) => acc + safeNum(curr._count?._all), 0)
+       const agendaSum = (data.usage.agendaSums || []).filter((s:any) => s.code === d.code).reduce((acc:any, curr:any) => acc + safeNum(curr._count?._all), 0)
+       dynamicUsed = shiftSum + agendaSum
+    } else {
+       dynamicUsed = safeNum(d.used)
+    }
+
+    return {
+      ...d,
+      initialValue: safeNum(d.initialValue),
+      used: dynamicUsed,
+      residue: safeNum(d.initialValue) - dynamicUsed
+    }
+  })
 
   // Filtra saldi extra (escludendo FERIE e FERIE_AP già mostrati sopra)
   const extraBalances = allDetails.filter((d: any) => 

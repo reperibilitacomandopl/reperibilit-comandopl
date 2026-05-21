@@ -8,6 +8,8 @@ import { AGENDA_CATEGORIES, getLabel } from "@/utils/agenda-codes"
 import CartellinoSummaryView from "@/components/shared/CartellinoSummaryView"
 import { toast } from "react-hot-toast"
 
+import { exportCartellinoPDF, exportCartellinoExcel } from "@/utils/export"
+
 const CAT_THEME: Record<string, { border: string; bg: string; text: string; btnBg: string; btnText: string; btnHover: string }> = {
   amber:  { border: "border-yellow-300", bg: "bg-yellow-50",  text: "text-yellow-800", btnBg: "bg-yellow-500",  btnText: "text-white", btnHover: "hover:bg-yellow-600" },
   rose:   { border: "border-pink-300",   bg: "bg-pink-50",    text: "text-pink-800",   btnBg: "bg-pink-500",    btnText: "text-white", btnHover: "hover:bg-pink-600" },
@@ -254,6 +256,36 @@ export default function CartellinoPanel() {
     }
   }
 
+  const handleExportPDF = () => {
+    if (!data || !selectedUserId) return
+    const agent = agents.find(a => a.id === selectedUserId)
+    const monthName = format(new Date(year, month - 1, 1), "MMMM", { locale: it })
+    exportCartellinoPDF({
+      agentName: agent?.name || 'Agente',
+      matricola: agent?.matricola || '',
+      monthName,
+      year,
+      days,
+      data
+    })
+    toast.success("PDF esportato")
+  }
+
+  const handleExportExcel = () => {
+    if (!data || !selectedUserId) return
+    const agent = agents.find(a => a.id === selectedUserId)
+    const monthName = format(new Date(year, month - 1, 1), "MMMM", { locale: it })
+    exportCartellinoExcel({
+      agentName: agent?.name || 'Agente',
+      matricola: agent?.matricola || '',
+      monthName,
+      year,
+      days,
+      data
+    })
+    toast.success("Excel esportato")
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/50 backdrop-blur-md p-5 rounded-2xl border border-slate-700/50 shadow-xl">
@@ -277,6 +309,12 @@ export default function CartellinoPanel() {
           <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500">
             {[2024, 2025, 2026].map(y => (<option key={y} value={y}>{y}</option>))}
           </select>
+          <button onClick={handleExportPDF} disabled={!data} className="bg-rose-500/20 text-rose-400 border border-rose-500/40 hover:bg-rose-500 hover:text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-bold text-xs uppercase transition-all disabled:opacity-50">
+            <Download size={16} /> PDF
+          </button>
+          <button onClick={handleExportExcel} disabled={!data} className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500 hover:text-white px-4 py-2.5 rounded-lg flex items-center gap-2 font-bold text-xs uppercase transition-all disabled:opacity-50">
+            <Download size={16} /> Excel
+          </button>
         </div>
       </div>
 

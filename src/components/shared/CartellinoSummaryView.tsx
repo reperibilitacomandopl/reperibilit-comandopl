@@ -20,6 +20,7 @@ import { getLabel, AGENDA_CATEGORIES } from "@/utils/agenda-codes"
 interface CartellinoSummaryViewProps {
   requests: any[]
   balances: any
+  usage?: any
   mode: 'ADMIN' | 'USER'
   onAction?: (requestId: string, action: 'APPROVE' | 'REJECT') => Promise<void>
   isLoading?: boolean
@@ -47,6 +48,7 @@ const ALL_BALANCE_CODES = AGENDA_CATEGORIES.flatMap(cat =>
 export default function CartellinoSummaryView({ 
   requests, 
   balances, 
+  usage,
   mode, 
   onAction,
   isLoading,
@@ -100,13 +102,39 @@ export default function CartellinoSummaryView({
     }
   }
 
-  // Estrai i saldi dal DB e calcola residuo in modo sicuro
-  const details = (balances?.details || []).map((d: any) => ({
-    ...d,
-    initialValue: safeNum(d.initialValue),
-    used: safeNum(d.used),
-    residue: safeNum(d.residue) || (safeNum(d.initialValue) - safeNum(d.used))
-  }))
+  // Estrai i saldi dal DB, supportando sia formato Admin (balances.details) che Agent (balances.balance.details)
+  const rawDetails = balances?.details || balances?.balance?.details || []
+  
+  // Deduplicazione: prendi solo l'ultimo inserito per ogni codice (per correggere bug dei contatori doppi)
+  const uniqueDetailsMap = new Map()
+  for (const d of rawDetails) {
+    uniqueDetailsMap.set(d.code, d)
+  }
+  const uniqueDetails = Array.from(uniqueDetailsMap.values())
+
+  // Usa l'oggetto usage se passato esplicitamente (Admin), altrimenti prova a prenderlo da balances.usage (Agent)
+  const actualUsage = usage || balances?.usage || null
+
+  const details = uniqueDetails.map((d: any) => {
+    // Calcolo dinamico dell'utilizzo
+    let dynamicUsed = 0;
+    if (actualUsage) {
+       // Se è un codice assenza che finisce nei turni (es. FERIE)
+       const shiftSum = (actualUsage.shiftsCount || []).filter((s:any) => s.type === d.code).reduce((acc:any, curr:any) => acc + safeNum(curr._count?._all), 0)
+       // Se è un permesso ad ore o giorni in agenda
+       const agendaSum = (actualUsage.agendaSums || []).filter((s:any) => s.code === d.code).reduce((acc:any, curr:any) => acc + safeNum(curr._count?._all), 0)
+       dynamicUsed = shiftSum + agendaSum
+    } else {
+       dynamicUsed = safeNum(d.used)
+    }
+
+    return {
+      ...d,
+      initialValue: safeNum(d.initialValue),
+      used: dynamicUsed,
+      residue: safeNum(d.initialValue) - dynamicUsed
+    }
+  })
 
   // Mostra TUTTI i saldi configurati (initialValue > 0 oppure usati > 0)
   const activeBalances = details.filter((d: any) => d.initialValue > 0 || d.used > 0)

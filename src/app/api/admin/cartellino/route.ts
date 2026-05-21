@@ -94,6 +94,24 @@ export async function GET(req: Request) {
       return t === "MALATT" || t === "MALATTIA" || t === "MAL" || t === "M" || t === "(M)" || t === "MAL_FI" || t === "MAL_FIGLIO"
     }).length
 
+    const shiftsCount = await prisma.shift.groupBy({
+      by: ['type'],
+      where: { userId, date: { gte: startOfYear, lte: endOfYear }, ...tf },
+      _count: { _all: true }
+    })
+
+    const agendaSums = await prisma.agendaEntry.groupBy({
+      by: ['code'],
+      where: { userId, date: { gte: startOfYear, lte: endOfYear }, ...tf },
+      _sum: { hours: true },
+      _count: { _all: true }
+    })
+
+    const overtimeSums = await prisma.shift.aggregate({
+      where: { userId, date: { gte: startOfYear, lte: endOfYear }, overtimeHours: { gt: 0 }, ...tf },
+      _sum: { overtimeHours: true }
+    })
+
     return NextResponse.json({
        agents,
        shifts,
@@ -106,6 +124,11 @@ export async function GET(req: Request) {
        yearlyStats: {
          usedFerie,
          usedMalattia
+       },
+       usage: {
+         shiftsCount,
+         agendaSums,
+         overtimeSums
        }
     })
 
