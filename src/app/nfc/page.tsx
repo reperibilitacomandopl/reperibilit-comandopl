@@ -182,7 +182,7 @@ function NFCClockContent() {
           diffMins={anomalyData.diffMins}
           plannedEndTime={anomalyData.plannedTime}
           onConfirm={(data) => {
-            const overtimeReason = data.isCorrection ? undefined : `${data.code} ${data.notes}`
+            const overtimeReason = `${data.code} ${data.notes}`
             const isLateIn = anomalyData.anomalyType === "LATE_IN"
             handleClockIn(
               anomalyData.lat, 
@@ -190,7 +190,7 @@ function NFCClockContent() {
               anomalyData.accuracy, 
               overtimeReason, 
               anomalyData.shiftId,
-              data.isCorrection,
+              false,
               isLateIn ? data.actualStartTimeStr : data.actualEndTimeStr
             )
           }}
