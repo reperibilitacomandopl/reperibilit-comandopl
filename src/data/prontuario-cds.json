@@ -1,0 +1,98 @@
+[
+  {
+    "articolo": "Art. 7",
+    "descrizione": "Regolamentazione della circolazione nei centri abitati (es. sosta su strisce blu senza ticket)",
+    "importo_minimo": 29.40,
+    "punti": 0
+  },
+  {
+    "articolo": "Art. 142 c. 7",
+    "descrizione": "Eccesso di velocità (superamento limite fino a 10 km/h)",
+    "importo_minimo": 42.00,
+    "punti": 0
+  },
+  {
+    "articolo": "Art. 142 c. 8",
+    "descrizione": "Eccesso di velocità (superamento limite tra 10 e 40 km/h)",
+    "importo_minimo": 173.00,
+    "punti": 3
+  },
+  {
+    "articolo": "Art. 143",
+    "descrizione": "Circolazione contromano",
+    "importo_minimo": 167.00,
+    "punti": 4
+  },
+  {
+    "articolo": "Art. 145",
+    "descrizione": "Mancata precedenza",
+    "importo_minimo": 167.00,
+    "punti": 5
+  },
+  {
+    "articolo": "Art. 146 c. 3",
+    "descrizione": "Passaggio con semaforo rosso",
+    "importo_minimo": 167.00,
+    "punti": 6
+  },
+  {
+    "articolo": "Art. 157",
+    "descrizione": "Sosta irregolare (motore acceso, non parallela al margine, ecc.)",
+    "importo_minimo": 42.00,
+    "punti": 0
+  },
+  {
+    "articolo": "Art. 158 c. 1",
+    "descrizione": "Divieto di fermata e sosta (es. curve, dossi, incroci)",
+    "importo_minimo": 87.00,
+    "punti": 2
+  },
+  {
+    "articolo": "Art. 158 c. 2",
+    "descrizione": "Sosta su marciapiede, strisce pedonali o passo carrabile",
+    "importo_minimo": 87.00,
+    "punti": 2
+  },
+  {
+    "articolo": "Art. 171",
+    "descrizione": "Guida senza casco",
+    "importo_minimo": 83.00,
+    "punti": 5
+  },
+  {
+    "articolo": "Art. 172",
+    "descrizione": "Mancato uso delle cinture di sicurezza",
+    "importo_minimo": 83.00,
+    "punti": 5
+  },
+  {
+    "articolo": "Art. 173",
+    "descrizione": "Uso del cellulare alla guida",
+    "importo_minimo": 165.00,
+    "punti": 5
+  },
+  {
+    "articolo": "Art. 180",
+    "descrizione": "Mancanza di documenti al seguito (patente, libretto)",
+    "importo_minimo": 42.00,
+    "punti": 0
+  },
+  {
+    "articolo": "Art. 186",
+    "descrizione": "Guida in stato di ebbrezza (fascia lieve)",
+    "importo_minimo": 543.00,
+    "punti": 10
+  },
+  {
+    "articolo": "Art. 188",
+    "descrizione": "Sosta abusiva in stallo invalidi",
+    "importo_minimo": 165.00,
+    "punti": 4
+  },
+  {
+    "articolo": "Art. 193",
+    "descrizione": "Veicolo sprovvisto di copertura assicurativa",
+    "importo_minimo": 866.00,
+    "punti": 5
+  }
+]

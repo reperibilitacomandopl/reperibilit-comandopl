@@ -65,6 +65,7 @@ model Tenant {
   vacationRotationGroups  VacationRotationGroup[]
   holidayRotationGroups   HolidayRotationGroup[]
   customHolidays          CustomHoliday[]
+  violations              Violation[]
 }
 
 model User {
@@ -161,6 +162,7 @@ model User {
   vacationPlans            VacationPlan[]
   vacationRotationGroups   VacationRotationGroup[] @relation("VacationRotationGroupMembers")
   holidayRotationGroups    HolidayRotationGroup[]  @relation("HolidayRotationGroupMembers")
+  violations               Violation[]             @relation("UserViolations")
 
   @@unique([tenantId, matricola])
 }
@@ -907,4 +909,44 @@ model CustomHolidayAssignment {
   user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([holidayId, userId])
+}
+
+model Violation {
+  id              String             @id @default(uuid())
+  tenantId        String?
+  userId          String             // Agente che redige il verbale
+  targa           String
+  tipoInfrazione  String             // es. DIVIETO_SOSTA, ZTL, VELOCITA
+  articoloCDS     String             // es. Art. 158
+  importo         Float
+  stato           String             @default("EMESSO") // EMESSO, NOTIFICATO, PAGATO, CONTESTATO, SCADUTO, ANNULLATO
+  lat             Float?
+  lng             Float?
+  indirizzo       String?
+  note            String?            @db.Text
+  foto            String[]           @default([])
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  deletedAt       DateTime?
+  
+  tenant          Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user            User               @relation("UserViolations", fields: [userId], references: [id])
+  payments        ViolationPayment[]
+
+  @@index([tenantId, stato])
+  @@index([userId, createdAt])
+}
+
+model ViolationPayment {
+  id              String    @id @default(uuid())
+  violationId     String
+  importoPagato   Float
+  dataPagamento   DateTime  @default(now())
+  metodo          String    // PagoPA, Bonifico, Contanti, ecc.
+  note            String?   @db.Text
+  createdAt       DateTime  @default(now())
+  
+  violation       Violation @relation(fields: [violationId], references: [id], onDelete: Cascade)
+
+  @@index([violationId])
 }
