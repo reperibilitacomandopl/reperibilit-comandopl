@@ -16,6 +16,7 @@ import AgentInterventions from "./agent/AgentInterventions"
 import PersonalBalances from "./agent/PersonalBalances"
 import AgentRotationView from "./agent/AgentRotationView"
 import AgentVerbalListView from "./agent/AgentVerbalListView"
+import MobileAgentLaunchpad from "./agent/MobileAgentLaunchpad"
 import { useAgentData } from "@/hooks/useAgentData"
 
 export default function DashboardShell({ 
@@ -39,6 +40,13 @@ export default function DashboardShell({
 }: any) {
   const [activeTab, setActiveTab] = useState('dashboard')
   const { role, name, matricola, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem } = session.user
+
+  // Ascolta cambio tab dal Launchpad mobile
+  React.useEffect(() => {
+    const handler = (e: Event) => setActiveTab((e as CustomEvent).detail)
+    window.addEventListener("agent-tab-change", handler)
+    return () => window.removeEventListener("agent-tab-change", handler)
+  }, [])
 
   const agentData = useAgentData({
     currentUser: session.user,
@@ -127,28 +135,38 @@ export default function DashboardShell({
             />
           ) : (
             <div className="space-y-6">
-              {/* Desktop Always shows the Full Dashboard */}
+              {/* Desktop: mostra dashboard completa. Mobile: Launchpad come Home */}
               <div className={`lg:block ${activeTab === 'dashboard' ? 'block' : 'hidden'}`}>
-                <DynamicAgentDashboard 
-                  currentUser={session.user} 
-                  shifts={shifts}
-                  myShifts={myShifts}
-                  allAgents={allAgents}
-                  currentMonth={currentMonth}
-                  currentYear={currentYear}
-                  isPublished={isPublished}
-                  tenantSlug={tenantSlug}
-                  agendaEntries={agendaEntries}
-                  userRole={role}
-                  canManageShifts={canManageShifts}
-                  canManageUsers={canManageUsers}
-                  canVerifyClockIns={canVerifyClockIns}
-                  canConfigureSystem={canConfigureSystem}
-                  logoUrl={logoUrl}
-                  tenant={tenant}
-                  certifiedDates={certifiedDates}
-                  agentData={agentData}
-                />
+                {/* Mobile Launchpad */}
+                <div className="lg:hidden">
+                  <MobileAgentLaunchpad
+                    tenantSlug={tenantSlug || ""}
+                    isClockedIn={agentData.isClockedIn}
+                  />
+                </div>
+                {/* Desktop Dashboard */}
+                <div className="hidden lg:block">
+                  <DynamicAgentDashboard
+                    currentUser={session.user}
+                    shifts={shifts}
+                    myShifts={myShifts}
+                    allAgents={allAgents}
+                    currentMonth={currentMonth}
+                    currentYear={currentYear}
+                    isPublished={isPublished}
+                    tenantSlug={tenantSlug}
+                    agendaEntries={agendaEntries}
+                    userRole={role}
+                    canManageShifts={canManageShifts}
+                    canManageUsers={canManageUsers}
+                    canVerifyClockIns={canVerifyClockIns}
+                    canConfigureSystem={canConfigureSystem}
+                    logoUrl={logoUrl}
+                    tenant={tenant}
+                    certifiedDates={certifiedDates}
+                    agentData={agentData}
+                  />
+                </div>
               </div>
 
               {/* Mobile Only Tabs */}
