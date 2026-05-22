@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { Home, Calendar, ClipboardList, AlertCircle, RefreshCw, Navigation, Palmtree } from "lucide-react"
+import { Home, Calendar, ClipboardList, AlertCircle, RefreshCw, Navigation, Palmtree, FileText } from "lucide-react"
 
 interface MobileNavBarProps {
   activeTab: string
@@ -33,6 +33,7 @@ export default function MobileNavBar({ activeTab, setActiveTab, onSOS, loadingSO
     { id: 'dashboard', label: 'Home', icon: Home },
     { id: 'planning', label: 'Turni', icon: Calendar },
     { id: 'ferie', label: 'Ferie', icon: Palmtree },
+    { id: 'verbali', label: 'Verbali', icon: FileText },
     { id: 'interventions', label: 'Missioni', icon: Navigation, count: interventionsCount },
     { id: 'requests', label: 'Richieste', icon: ClipboardList },
     { id: 'swaps', label: 'Scambi', icon: RefreshCw },

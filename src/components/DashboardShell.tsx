@@ -15,6 +15,7 @@ import FloatingSosButton from "./agent/FloatingSosButton"
 import AgentInterventions from "./agent/AgentInterventions"
 import PersonalBalances from "./agent/PersonalBalances"
 import AgentRotationView from "./agent/AgentRotationView"
+import AgentVerbalListView from "./agent/AgentVerbalListView"
 import { useAgentData } from "@/hooks/useAgentData"
 
 export default function DashboardShell({ 
@@ -195,6 +196,12 @@ export default function DashboardShell({
                   <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <PersonalBalances />
                     <AgentRotationView />
+                  </div>
+                )}
+
+                {activeTab === 'verbali' && (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <AgentVerbalListView tenantSlug={tenantSlug || ""} />
                   </div>
                 )}
 

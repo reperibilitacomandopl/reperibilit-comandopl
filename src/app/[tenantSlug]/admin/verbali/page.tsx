@@ -6,7 +6,7 @@ import { format } from "date-fns"
 import { it } from "date-fns/locale"
 import {
   FileText, Search, Filter, ArrowUpDown, MoreVertical,
-  MapPin, CheckCircle, Clock, XCircle, AlertCircle, TrendingUp, Download
+  MapPin, CheckCircle, Clock, XCircle, AlertCircle, TrendingUp, Download, Plus
 } from "lucide-react"
 import { useTheme } from "@/hooks/useTheme"
 
@@ -97,10 +97,31 @@ export default function AdminVerbaliPage() {
           <p className="text-sm opacity-60 font-medium">Gestione contravvenzioni e stato incassi</p>
         </div>
         
-        <button className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl transition-colors shadow-lg shadow-emerald-600/20">
-          <Download size={16} />
-          Esporta Registro
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => window.open(`/${tenantSlug}/agent/verbale/nuovo`, '_blank')}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-colors shadow-lg shadow-blue-600/20"
+          >
+            <Plus size={16} />
+            Nuovo Verbale
+          </button>
+          <button
+            onClick={async () => {
+              const res = await fetch('/api/admin/violations/pdf')
+              if (res.ok) {
+                const blob = await res.blob()
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url; a.download = 'registro-verbali.pdf'; a.click()
+                URL.revokeObjectURL(url)
+              }
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl transition-colors shadow-lg shadow-emerald-600/20"
+          >
+            <Download size={16} />
+            Esporta PDF
+          </button>
+        </div>
       </div>
 
       {/* KPI CARDS */}
