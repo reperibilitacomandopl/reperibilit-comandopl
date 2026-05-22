@@ -27,9 +27,9 @@ export default async function Home({
     redirect(`/${userSlug}`)
   }
 
-  // Admin users: redirect to sidebar pannello (unless previewing agent view)
+  // Admin users: redirect to Launchpad (unless previewing agent view)
   if (role === "ADMIN" && view !== "agent") {
-    redirect(`/${userSlug}/admin/pannello`)
+    redirect(`/${userSlug}/admin`)
   }
 
   const now = new Date()

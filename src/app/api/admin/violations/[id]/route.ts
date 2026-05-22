@@ -2,14 +2,13 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const session = await auth()
     if (!session?.user?.id || !session.user.tenantId || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 })
     }
-
-    const { id } = params
     const body = await req.json()
     const { stato } = body
 

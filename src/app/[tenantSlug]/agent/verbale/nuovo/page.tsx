@@ -1,11 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import { Camera, MapPin, Check, ChevronLeft, AlertTriangle } from "lucide-react"
 
-export default function NuovoVerbalePage({ params }: { params: { tenantSlug: string } }) {
+export default function NuovoVerbalePage() {
   const router = useRouter()
+  const { tenantSlug } = useParams<{ tenantSlug: string }>()
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState("")
@@ -60,7 +61,7 @@ export default function NuovoVerbalePage({ params }: { params: { tenantSlug: str
 
       setSuccess(true)
       setTimeout(() => {
-        router.push(`/${params.tenantSlug}?view=agent`)
+        router.push(`/${tenantSlug}?view=agent`)
       }, 2000)
     } catch (err: any) {
       setError(err.message)

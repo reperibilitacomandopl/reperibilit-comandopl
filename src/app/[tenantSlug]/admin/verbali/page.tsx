@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useParams } from "next/navigation"
 import { format } from "date-fns"
 import { it } from "date-fns/locale"
-import { 
-  FileText, Search, Filter, ArrowUpDown, MoreVertical, 
+import {
+  FileText, Search, Filter, ArrowUpDown, MoreVertical,
   MapPin, CheckCircle, Clock, XCircle, AlertCircle, TrendingUp, Download
 } from "lucide-react"
 import { useTheme } from "@/hooks/useTheme"
@@ -21,7 +22,8 @@ type Violation = {
   user: { name: string, matricola: string }
 }
 
-export default function AdminVerbaliPage({ params }: { params: { tenantSlug: string } }) {
+export default function AdminVerbaliPage() {
+  const { tenantSlug } = useParams<{ tenantSlug: string }>()
   const { isDark } = useTheme()
   const [violations, setViolations] = useState<Violation[]>([])
   const [stats, setStats] = useState<any>(null)
