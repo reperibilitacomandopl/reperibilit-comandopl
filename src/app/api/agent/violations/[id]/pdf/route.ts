@@ -4,8 +4,9 @@ import { prisma } from "@/lib/prisma"
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params;
   const session = await auth()
   if (!session?.user) {
     return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
@@ -14,7 +15,7 @@ export async function GET(
   try {
     const violation = await prisma.violation.findUnique({
       where: { 
-        id: params.id,
+        id: resolvedParams.id,
         tenantId: session.user.tenantId
       },
       include: { 
