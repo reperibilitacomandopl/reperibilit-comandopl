@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { Calendar, FileText, MapPin, Clock, ClipboardList, RefreshCw, Shield, Palmtree, Camera } from "lucide-react"
+import { Calendar, FileText, MapPin, Clock, ClipboardList, RefreshCw, Shield, Palmtree, Camera, LayoutDashboard } from "lucide-react"
 
 export default function MobileAgentLaunchpad({ tenantSlug, isClockedIn }: { tenantSlug: string; isClockedIn?: string | null }) {
   const router = useRouter()
@@ -87,6 +87,15 @@ export default function MobileAgentLaunchpad({ tenantSlug, isClockedIn }: { tena
         const btn = document.querySelector('[data-sos-button]') as HTMLElement
         btn?.click()
       }
+    },
+    {
+      id: "summary",
+      title: "Riepilogo Oggi",
+      description: "Reperibilità, orari e riassunto del giorno",
+      icon: LayoutDashboard,
+      color: "from-slate-500 to-slate-700",
+      bg: "bg-slate-100 dark:bg-slate-900/50",
+      tab: "summary"
     }
   ]
 

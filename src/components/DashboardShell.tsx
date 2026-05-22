@@ -135,38 +135,66 @@ export default function DashboardShell({
             />
           ) : (
             <div className="space-y-6">
-              {/* Desktop: mostra dashboard completa. Mobile: Launchpad come Home */}
-              <div className={`lg:block ${activeTab === 'dashboard' ? 'block' : 'hidden'}`}>
-                {/* Mobile Launchpad */}
-                <div className="lg:hidden">
-                  <MobileAgentLaunchpad
-                    tenantSlug={tenantSlug || ""}
-                    isClockedIn={agentData.isClockedIn}
-                  />
-                </div>
-                {/* Desktop Dashboard */}
-                <div className="hidden lg:block">
-                  <DynamicAgentDashboard
-                    currentUser={session.user}
-                    shifts={shifts}
-                    myShifts={myShifts}
-                    allAgents={allAgents}
-                    currentMonth={currentMonth}
-                    currentYear={currentYear}
-                    isPublished={isPublished}
-                    tenantSlug={tenantSlug}
-                    agendaEntries={agendaEntries}
-                    userRole={role}
-                    canManageShifts={canManageShifts}
-                    canManageUsers={canManageUsers}
-                    canVerifyClockIns={canVerifyClockIns}
-                    canConfigureSystem={canConfigureSystem}
-                    logoUrl={logoUrl}
-                    tenant={tenant}
-                    certifiedDates={certifiedDates}
-                    agentData={agentData}
-                  />
-                </div>
+              {/* Desktop Dashboard always visible on lg, hidden on mobile */}
+              <div className="hidden lg:block">
+                <DynamicAgentDashboard
+                  currentUser={session.user}
+                  shifts={shifts}
+                  myShifts={myShifts}
+                  allAgents={allAgents}
+                  currentMonth={currentMonth}
+                  currentYear={currentYear}
+                  isPublished={isPublished}
+                  tenantSlug={tenantSlug}
+                  agendaEntries={agendaEntries}
+                  userRole={role}
+                  canManageShifts={canManageShifts}
+                  canManageUsers={canManageUsers}
+                  canVerifyClockIns={canVerifyClockIns}
+                  canConfigureSystem={canConfigureSystem}
+                  logoUrl={logoUrl}
+                  tenant={tenant}
+                  certifiedDates={certifiedDates}
+                  agentData={agentData}
+                />
+              </div>
+
+              {/* Mobile Only: Show Launchpad when tab is dashboard */}
+              <div className="lg:hidden">
+                {activeTab === 'dashboard' && (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <MobileAgentLaunchpad
+                      tenantSlug={tenantSlug || ""}
+                      isClockedIn={agentData.isClockedIn}
+                    />
+                  </div>
+                )}
+                
+                {/* Mobile Only: Show full summary when tab is summary */}
+                {activeTab === 'summary' && (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+                    <DynamicAgentDashboard
+                      currentUser={session.user}
+                      shifts={shifts}
+                      myShifts={myShifts}
+                      allAgents={allAgents}
+                      currentMonth={currentMonth}
+                      currentYear={currentYear}
+                      isPublished={isPublished}
+                      tenantSlug={tenantSlug}
+                      agendaEntries={agendaEntries}
+                      userRole={role}
+                      canManageShifts={canManageShifts}
+                      canManageUsers={canManageUsers}
+                      canVerifyClockIns={canVerifyClockIns}
+                      canConfigureSystem={canConfigureSystem}
+                      logoUrl={logoUrl}
+                      tenant={tenant}
+                      certifiedDates={certifiedDates}
+                      agentData={agentData}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Mobile Only Tabs */}
