@@ -187,6 +187,16 @@ export default function AgentVerbalListView({ tenantSlug }: { tenantSlug: string
                     </div>
                   )}
                 </div>
+                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                  <a 
+                    href={`/api/agent/violations/${v.id}/pdf`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors"
+                  >
+                    <FileText size={12} /> Stampa PDF
+                  </a>
+                </div>
               </div>
             )
           })}

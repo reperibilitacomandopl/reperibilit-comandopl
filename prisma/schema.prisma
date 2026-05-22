@@ -3,64 +3,64 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Tenant {
-  id                 String              @id @default(uuid())
-  name               String              @unique
-  slug               String              @unique
-  logoUrl            String?
-  address            String?
-  partitaIva         String?
-  maxAgents          Int                 @default(100)
-  planType           String              @default("TRIAL")
-  trialEndsAt        DateTime?
-  serviceStartDate   DateTime?
-  serviceEndDate     DateTime?
-  isActive           Boolean             @default(true)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  clockInRadius      Int                 @default(500)
-  lat                Float?
-  lng                Float?
-  primaryColor       String              @default("#4f46e5")
-  absences           Absence[]
-  agendaEntries      AgendaEntry[]
-  agentBalances      AgentBalance[]
-  agentRequests      AgentRequest[]
-  announcements      Announcement[]
-  armors             Armor[]
-  auditLogs          AuditLog[]
-  certifiedDocuments CertifiedDocument[]
-  clockRecords       ClockRecord[]
-  emergencyAlerts    EmergencyAlert[]
-  geofenceZones      GeofenceZone[]
-  globalSettings     GlobalSettings?
-  locationHistory    LocationHistory[]
-  monthStatuses      MonthStatus[]
-  notifications      Notification[]
-  patrolTemplates    PatrolTemplate[]
-  pecSettings        PecSettings?
-  radios             Radio[]
-  rotationGroups     RotationGroup[]
-  schools            School[]
-  serviceCategories  ServiceCategory[]
-  serviceTypes       ServiceType[]
-  shifts             Shift[]
-  ShiftRule          ShiftRule[]
-  shiftSwapRequests  ShiftSwapRequest[]
-  vacationSwapRequests VacationSwapRequest[]
-  trainingRecords    TrainingRecord[]
-  users              User[]
-  userDocuments      UserDocument[]
-  vehicles           Vehicle[]
-  weapons            Weapon[]
-  chatMessages       ChatMessage[]
-  dailyOdsNotes      DailyOdsNote[]
-  interventions      Intervention[]
-  vacationPlans       VacationPlan[]
+  id                      String                   @id @default(uuid())
+  name                    String                   @unique
+  slug                    String                   @unique
+  logoUrl                 String?
+  address                 String?
+  partitaIva              String?
+  maxAgents               Int                      @default(100)
+  planType                String                   @default("TRIAL")
+  trialEndsAt             DateTime?
+  serviceStartDate        DateTime?
+  serviceEndDate          DateTime?
+  isActive                Boolean                  @default(true)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  clockInRadius           Int                      @default(500)
+  lat                     Float?
+  lng                     Float?
+  primaryColor            String                   @default("#4f46e5")
+  absences                Absence[]
+  agendaEntries           AgendaEntry[]
+  agentBalances           AgentBalance[]
+  agentRequests           AgentRequest[]
+  announcements           Announcement[]
+  armors                  Armor[]
+  auditLogs               AuditLog[]
+  certifiedDocuments      CertifiedDocument[]
+  clockRecords            ClockRecord[]
+  emergencyAlerts         EmergencyAlert[]
+  geofenceZones           GeofenceZone[]
+  globalSettings          GlobalSettings?
+  locationHistory         LocationHistory[]
+  monthStatuses           MonthStatus[]
+  notifications           Notification[]
+  patrolTemplates         PatrolTemplate[]
+  pecSettings             PecSettings?
+  radios                  Radio[]
+  rotationGroups          RotationGroup[]
+  schools                 School[]
+  serviceCategories       ServiceCategory[]
+  serviceTypes            ServiceType[]
+  shifts                  Shift[]
+  ShiftRule               ShiftRule[]
+  shiftSwapRequests       ShiftSwapRequest[]
+  vacationSwapRequests    VacationSwapRequest[]
+  trainingRecords         TrainingRecord[]
+  users                   User[]
+  userDocuments           UserDocument[]
+  vehicles                Vehicle[]
+  weapons                 Weapon[]
+  chatMessages            ChatMessage[]
+  dailyOdsNotes           DailyOdsNote[]
+  interventions           Intervention[]
+  vacationPlans           VacationPlan[]
   vacationRotationPeriods VacationRotationPeriod[]
   vacationRotationGroups  VacationRotationGroup[]
   holidayRotationGroups   HolidayRotationGroup[]
@@ -69,115 +69,115 @@ model Tenant {
 }
 
 model User {
-  id                       String             @id @default(uuid())
-  tenantId                 String?
-  matricola                String
-  name                     String
-  isSuperAdmin             Boolean            @default(false)
-  email                    String?            @unique
-  phone                    String?
-  password                 String
-  role                     String             @default("AGENTE")
-  isUfficiale              Boolean            @default(false)
-  qualifica                String?            @default("Agente di P.L.")
-  gradoLivello             Int                @default(13)
-  massimale                Int                @default(8)
-  squadra                  String?
-  servizio                 String?
-  rotationGroupId          String?
-  defaultServiceCategoryId String?
-  defaultServiceTypeId     String?
+  id                        String                    @id @default(uuid())
+  tenantId                  String?
+  matricola                 String
+  name                      String
+  isSuperAdmin              Boolean                   @default(false)
+  email                     String?                   @unique
+  phone                     String?
+  password                  String
+  role                      String                    @default("AGENTE")
+  isUfficiale               Boolean                   @default(false)
+  qualifica                 String?                   @default("Agente di P.L.")
+  gradoLivello              Int                       @default(13)
+  massimale                 Int                       @default(8)
+  squadra                   String?
+  servizio                  String?
+  rotationGroupId           String?
+  defaultServiceCategoryId  String?
+  defaultServiceTypeId      String?
   fallbackServiceCategoryId String?
-  fixedRestDay             Int?
-  forcePasswordChange      Boolean            @default(true)
-  telegramChatId           String?
-  telegramLinkCode         String?
-  telegramLinkExpires      DateTime?
-  dataAssunzione           DateTime?
-  scadenzaPatente          DateTime?
-  scadenzaPortoArmi        DateTime?
-  noteInterne              String?
-  createdAt                DateTime           @default(now())
-  updatedAt                DateTime           @updatedAt
-  canConfigureSystem       Boolean            @default(false)
-  canManageShifts          Boolean            @default(false)
-  canManageUsers           Boolean            @default(false)
-  canVerifyClockIns        Boolean            @default(false)
-  isActive                 Boolean            @default(true)
-  dataDiNascita            DateTime?
-  defaultPartnerIds        String[]
-  fixedServiceDays         String[]
-  tipoContratto            String?
-  hasChildSicknessLeave    Boolean            @default(false)
-  hasL104                  Boolean            @default(false)
-  hasParentalLeave         Boolean            @default(false)
-  hasStudyLeave            Boolean            @default(false)
-  l104Assistiti            Int                @default(1)
-  lastLat                  Float?
-  lastLng                  Float?
-  lastSeenAt               DateTime?
-  gpsAcceptedAt            DateTime?
-  gpsConsent               Boolean            @default(false)
-  privacyAcceptedAt        DateTime?
-  privacyConsent           Boolean            @default(false)
-  twoFactorEnabled         Boolean            @default(false)
-  twoFactorSecret          String?
-  twoFactorBackupCodes     String[]           @default([])
-  trustedIps               String[]           @default([])
-  telegramOptIn            Boolean            @default(true)
-  absences                 Absence[]
-  agendaEntries            AgendaEntry[]      @relation("agendaEntries")
-  agentBalances            AgentBalance[]     @relation("AgentBalances")
-  agentRequests            AgentRequest[]     @relation("AgentRequests")
-  receivedAlerts           AlertRecipient[]   @relation("AlertRecipientUser")
-  announcements            Announcement[]
-  armors                   Armor[]            @relation("ArmorAssegnatario")
-  clockRecords             ClockRecord[]
-  adminAlerts              EmergencyAlert[]   @relation("AdminAlerts")
-  locationHistory          LocationHistory[]
-  notifications            Notification[]
-  pushSubscriptions        PushSubscription[]
-  radios                   Radio[]            @relation("RadioAssegnatario")
-  shifts                   Shift[]
-  sentSwaps                ShiftSwapRequest[] @relation("SentSwaps")
-  receivedSwaps            ShiftSwapRequest[] @relation("ReceivedSwaps")
-  sentVacationSwaps        VacationSwapRequest[] @relation("SentVacationSwaps")
-  receivedVacationSwaps    VacationSwapRequest[] @relation("ReceivedVacationSwaps")
-  trainingRecords          TrainingRecord[]
-  defaultServiceCategory   ServiceCategory?   @relation("DefaultCategory", fields: [defaultServiceCategoryId], references: [id])
-  defaultServiceType       ServiceType?       @relation("DefaultType", fields: [defaultServiceTypeId], references: [id])
-  rotationGroup            RotationGroup?     @relation(fields: [rotationGroupId], references: [id])
-  tenant                   Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  weapons                  Weapon[]           @relation("WeaponAssegnatario")
-  patrolTemplates          PatrolTemplate[]   @relation("PatrolMembers")
-  sentMessages             ChatMessage[]      @relation("SentMessages")
-  documents                UserDocument[]
-  customHolidayAssignments CustomHolidayAssignment[]
-  deletedAt                DateTime?
-  failedLoginAttempts      Int                @default(0)
-  lockoutUntil             DateTime?
-  lockoutReason            String?
-  unlockedBy               String?
-  interventions            Intervention[]     @relation("UserInterventions")
-  vacationPlans            VacationPlan[]
-  vacationRotationGroups   VacationRotationGroup[] @relation("VacationRotationGroupMembers")
-  holidayRotationGroups    HolidayRotationGroup[]  @relation("HolidayRotationGroupMembers")
-  violations               Violation[]             @relation("UserViolations")
+  fixedRestDay              Int?
+  forcePasswordChange       Boolean                   @default(true)
+  telegramChatId            String?
+  telegramLinkCode          String?
+  telegramLinkExpires       DateTime?
+  dataAssunzione            DateTime?
+  scadenzaPatente           DateTime?
+  scadenzaPortoArmi         DateTime?
+  noteInterne               String?
+  createdAt                 DateTime                  @default(now())
+  updatedAt                 DateTime                  @updatedAt
+  canConfigureSystem        Boolean                   @default(false)
+  canManageShifts           Boolean                   @default(false)
+  canManageUsers            Boolean                   @default(false)
+  canVerifyClockIns         Boolean                   @default(false)
+  isActive                  Boolean                   @default(true)
+  dataDiNascita             DateTime?
+  defaultPartnerIds         String[]
+  fixedServiceDays          String[]
+  tipoContratto             String?
+  hasChildSicknessLeave     Boolean                   @default(false)
+  hasL104                   Boolean                   @default(false)
+  hasParentalLeave          Boolean                   @default(false)
+  hasStudyLeave             Boolean                   @default(false)
+  l104Assistiti             Int                       @default(1)
+  lastLat                   Float?
+  lastLng                   Float?
+  lastSeenAt                DateTime?
+  gpsAcceptedAt             DateTime?
+  gpsConsent                Boolean                   @default(false)
+  privacyAcceptedAt         DateTime?
+  privacyConsent            Boolean                   @default(false)
+  twoFactorEnabled          Boolean                   @default(false)
+  twoFactorSecret           String?
+  twoFactorBackupCodes      String[]                  @default([])
+  trustedIps                String[]                  @default([])
+  telegramOptIn             Boolean                   @default(true)
+  absences                  Absence[]
+  agendaEntries             AgendaEntry[]             @relation("agendaEntries")
+  agentBalances             AgentBalance[]            @relation("AgentBalances")
+  agentRequests             AgentRequest[]            @relation("AgentRequests")
+  receivedAlerts            AlertRecipient[]          @relation("AlertRecipientUser")
+  announcements             Announcement[]
+  armors                    Armor[]                   @relation("ArmorAssegnatario")
+  clockRecords              ClockRecord[]
+  adminAlerts               EmergencyAlert[]          @relation("AdminAlerts")
+  locationHistory           LocationHistory[]
+  notifications             Notification[]
+  pushSubscriptions         PushSubscription[]
+  radios                    Radio[]                   @relation("RadioAssegnatario")
+  shifts                    Shift[]
+  sentSwaps                 ShiftSwapRequest[]        @relation("SentSwaps")
+  receivedSwaps             ShiftSwapRequest[]        @relation("ReceivedSwaps")
+  sentVacationSwaps         VacationSwapRequest[]     @relation("SentVacationSwaps")
+  receivedVacationSwaps     VacationSwapRequest[]     @relation("ReceivedVacationSwaps")
+  trainingRecords           TrainingRecord[]
+  defaultServiceCategory    ServiceCategory?          @relation("DefaultCategory", fields: [defaultServiceCategoryId], references: [id])
+  defaultServiceType        ServiceType?              @relation("DefaultType", fields: [defaultServiceTypeId], references: [id])
+  rotationGroup             RotationGroup?            @relation(fields: [rotationGroupId], references: [id])
+  tenant                    Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  weapons                   Weapon[]                  @relation("WeaponAssegnatario")
+  patrolTemplates           PatrolTemplate[]          @relation("PatrolMembers")
+  sentMessages              ChatMessage[]             @relation("SentMessages")
+  documents                 UserDocument[]
+  customHolidayAssignments  CustomHolidayAssignment[]
+  deletedAt                 DateTime?
+  failedLoginAttempts       Int                       @default(0)
+  lockoutUntil              DateTime?
+  lockoutReason             String?
+  unlockedBy                String?
+  interventions             Intervention[]            @relation("UserInterventions")
+  vacationPlans             VacationPlan[]
+  vacationRotationGroups    VacationRotationGroup[]   @relation("VacationRotationGroupMembers")
+  holidayRotationGroups     HolidayRotationGroup[]    @relation("HolidayRotationGroupMembers")
+  violations                Violation[]               @relation("UserViolations")
 
   @@unique([tenantId, matricola])
 }
 
 model Absence {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   tenantId  String?
   userId    String
   date      DateTime
   code      String
-  source    String   @default("MANUAL")
-  createdAt DateTime @default(now())
+  source    String    @default("MANUAL")
+  createdAt DateTime  @default(now())
   deletedAt DateTime?
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date, tenantId])
 }
@@ -416,7 +416,7 @@ model PecSettings {
 }
 
 model AuditLog {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   tenantId   String?
   adminId    String
   adminName  String?
@@ -424,12 +424,12 @@ model AuditLog {
   targetId   String?
   targetName String?
   details    String
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
   deletedAt  DateTime?
   ipAddress  String?
   userAgent  String?
   requestId  String?
-  tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant     Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([requestId])
 }
@@ -481,47 +481,47 @@ model ShiftSwapRequest {
 }
 
 model AgentRequest {
-  id                    String    @id @default(uuid())
-  tenantId              String?
-  userId                String
-  date                  DateTime
-  endDate               DateTime?
-  startTime             String?
-  endTime               String?
-  hours                 Float?
-  code                  String
-  notes                 String?
-  status                String    @default("PENDING_OFFICER")
-  reviewedBy            String?
-  reviewedByOfficerId   String?
-  officerReviewedAt     DateTime?
-  officerNotes          String?
-  adminReviewedAt       DateTime?
-  escalatedAt           DateTime?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  deletedAt             DateTime?
-  tenant                Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user                  User      @relation("AgentRequests", fields: [userId], references: [id], onDelete: Cascade)
+  id                  String    @id @default(uuid())
+  tenantId            String?
+  userId              String
+  date                DateTime
+  endDate             DateTime?
+  startTime           String?
+  endTime             String?
+  hours               Float?
+  code                String
+  notes               String?
+  status              String    @default("PENDING_OFFICER")
+  reviewedBy          String?
+  reviewedByOfficerId String?
+  officerReviewedAt   DateTime?
+  officerNotes        String?
+  adminReviewedAt     DateTime?
+  escalatedAt         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+  tenant              Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user                User      @relation("AgentRequests", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
 }
 
 model VacationPlan {
-  id        String    @id @default(uuid())
-  tenantId  String?
-  userId    String
-  year      Int
-  period    String    // "SUMMER" | "WINTER" | "EASTER" | "CHRISTMAS"
-  startDate DateTime
-  endDate   DateTime
-  status    String    @default("PREFERENCE") // PREFERENCE | ASSIGNED | CONFIRMED
-  notes     String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  tenant    Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                  String                @id @default(uuid())
+  tenantId            String?
+  userId              String
+  year                Int
+  period              String // "SUMMER" | "WINTER" | "EASTER" | "CHRISTMAS"
+  startDate           DateTime
+  endDate             DateTime
+  status              String                @default("PREFERENCE") // PREFERENCE | ASSIGNED | CONFIRMED
+  notes               String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  tenant              Tenant?               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   vacationSwaps       VacationSwapRequest[] @relation("VacationSwapPlans")
   targetVacationSwaps VacationSwapRequest[] @relation("TargetVacationSwapPlans")
 
@@ -530,23 +530,23 @@ model VacationPlan {
 }
 
 model VacationSwapRequest {
-  id                    String        @id @default(uuid())
-  tenantId              String?
-  requesterId           String
-  targetUserId          String?       // Collega destinatario diretto
-  acceptedById          String?       // Collega che ha accettato (offerta aperta in bacheca)
-  vacationPlanId        String        // Piano ferie del richiedente
-  targetVacationPlanId  String?       // Piano ferie del collega da scambiare
-  status                String        @default("PENDING") // PENDING | ACCEPTED | REJECTED | COMPLETED
-  message               String?
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
+  id                   String   @id @default(uuid())
+  tenantId             String?
+  requesterId          String
+  targetUserId         String? // Collega destinatario diretto
+  acceptedById         String? // Collega che ha accettato (offerta aperta in bacheca)
+  vacationPlanId       String // Piano ferie del richiedente
+  targetVacationPlanId String? // Piano ferie del collega da scambiare
+  status               String   @default("PENDING") // PENDING | ACCEPTED | REJECTED | COMPLETED
+  message              String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  requester             User          @relation("SentVacationSwaps", fields: [requesterId], references: [id])
-  targetUser            User?         @relation("ReceivedVacationSwaps", fields: [targetUserId], references: [id])
-  vacationPlan          VacationPlan  @relation("VacationSwapPlans", fields: [vacationPlanId], references: [id], onDelete: Cascade)
-  targetVacationPlan    VacationPlan? @relation("TargetVacationSwapPlans", fields: [targetVacationPlanId], references: [id], onDelete: Cascade)
-  tenant                Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  requester          User          @relation("SentVacationSwaps", fields: [requesterId], references: [id])
+  targetUser         User?         @relation("ReceivedVacationSwaps", fields: [targetUserId], references: [id])
+  vacationPlan       VacationPlan  @relation("VacationSwapPlans", fields: [vacationPlanId], references: [id], onDelete: Cascade)
+  targetVacationPlan VacationPlan? @relation("TargetVacationSwapPlans", fields: [targetVacationPlanId], references: [id], onDelete: Cascade)
+  tenant             Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([requesterId])
   @@index([targetUserId])
@@ -554,18 +554,18 @@ model VacationSwapRequest {
 }
 
 model VacationRotationPeriod {
-  id        String   @id @default(uuid())
-  tenantId  String?
-  season    String   // "SUMMER" | "WINTER"
-  name      String   // es. "1° Quindicina Luglio"
-  startDay  Int      // Giorno inizio (es. 1)
-  startMonth Int     // Mese inizio (es. 7)
-  endDay    Int      // Giorno fine (es. 15)
-  endMonth  Int      // Mese fine (es. 7)
-  orderIndex Int     @default(0) // Sequenza ordinale per la rotazione
-  createdAt DateTime @default(now())
-  
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid())
+  tenantId   String?
+  season     String // "SUMMER" | "WINTER"
+  name       String // es. "1° Quindicina Luglio"
+  startDay   Int // Giorno inizio (es. 1)
+  startMonth Int // Mese inizio (es. 7)
+  endDay     Int // Giorno fine (es. 15)
+  endMonth   Int // Mese fine (es. 7)
+  orderIndex Int      @default(0) // Sequenza ordinale per la rotazione
+  createdAt  DateTime @default(now())
+
+  tenant         Tenant?                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   rotationGroups VacationRotationGroup[] @relation("PeriodRotationGroups")
 
   @@unique([tenantId, season, orderIndex])
@@ -573,17 +573,17 @@ model VacationRotationPeriod {
 }
 
 model VacationRotationGroup {
-  id              String   @id @default(uuid())
-  tenantId        String?
-  name            String   // es. "Gruppo Alpha", "Gruppo Beta"
-  season          String   // "SUMMER" | "WINTER"
-  baseYear        Int      // Anno di riferimento per l'assegnazione iniziale (es. 2026)
-  basePeriodId    String   // Periodo iniziale assegnato nel baseYear
-  createdAt       DateTime @default(now())
-  
-  basePeriod      VacationRotationPeriod @relation("PeriodRotationGroups", fields: [basePeriodId], references: [id])
-  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  members         User[]   @relation("VacationRotationGroupMembers")
+  id           String   @id @default(uuid())
+  tenantId     String?
+  name         String // es. "Gruppo Alpha", "Gruppo Beta"
+  season       String // "SUMMER" | "WINTER"
+  baseYear     Int // Anno di riferimento per l'assegnazione iniziale (es. 2026)
+  basePeriodId String // Periodo iniziale assegnato nel baseYear
+  createdAt    DateTime @default(now())
+
+  basePeriod VacationRotationPeriod @relation("PeriodRotationGroups", fields: [basePeriodId], references: [id])
+  tenant     Tenant?                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  members    User[]                 @relation("VacationRotationGroupMembers")
 
   @@index([tenantId])
 }
@@ -591,27 +591,27 @@ model VacationRotationGroup {
 model HolidayRotationGroup {
   id         String   @id @default(uuid())
   tenantId   String?
-  name       String   // es. "Gruppo Festivo A", "Gruppo Festivo B"
+  name       String // es. "Gruppo Festivo A", "Gruppo Festivo B"
   baseYear   Int      @default(2026)
   orderIndex Int      @default(0) // Ordine cronologico/sequenza del gruppo
   createdAt  DateTime @default(now())
-  
-  tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  members    User[]   @relation("HolidayRotationGroupMembers")
+
+  tenant  Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  members User[]  @relation("HolidayRotationGroupMembers")
 
   @@unique([tenantId, name])
   @@index([tenantId])
 }
 
 model AgentBalance {
-  id       String          @id @default(uuid())
-  tenantId String?
-  userId   String
-  year     Int
-  tenant   Tenant?         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id        String          @id @default(uuid())
+  tenantId  String?
+  userId    String
+  year      Int
+  tenant    Tenant?         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   deletedAt DateTime?
-  user     User            @relation("AgentBalances", fields: [userId], references: [id], onDelete: Cascade)
-  details  BalanceDetail[]
+  user      User            @relation("AgentBalances", fields: [userId], references: [id], onDelete: Cascade)
+  details   BalanceDetail[]
 
   @@unique([userId, year, tenantId])
 }
@@ -629,20 +629,20 @@ model BalanceDetail {
 }
 
 model Notification {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   tenantId   String?
   userId     String
   title      String
   message    String
-  type       String   @default("INFO")
+  type       String    @default("INFO")
   link       String?
-  isRead     Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  isRead     Boolean   @default(false)
+  createdAt  DateTime  @default(now())
   deletedAt  DateTime?
   metadata   String?
-  isArchived Boolean  @default(false)
-  tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isArchived Boolean   @default(false)
+  tenant     Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, tenantId])
 }
@@ -658,20 +658,20 @@ model PushSubscription {
 }
 
 model ClockRecord {
-  id              String   @id @default(uuid())
+  id              String    @id @default(uuid())
   tenantId        String?
   userId          String
-  timestamp       DateTime @default(now())
+  timestamp       DateTime  @default(now())
   actualTimestamp DateTime?
   deletedAt       DateTime?
   type            String
   lat             Float?
   lng             Float?
   accuracy        Float?
-  isVerified      Boolean  @default(true)
-  isManual        Boolean  @default(false)
-  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isVerified      Boolean   @default(true)
+  isManual        Boolean   @default(false)
+  tenant          Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, tenantId, timestamp])
 }
@@ -701,16 +701,16 @@ model SchoolSchedule {
 }
 
 model CertifiedDocument {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   tenantId   String?
-  hash       String   @unique
+  hash       String    @unique
   type       String
   issuerId   String
   issuerName String
-  issuedAt   DateTime @default(now())
+  issuedAt   DateTime  @default(now())
   deletedAt  DateTime?
   metadata   String?
-  tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant     Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([hash, tenantId])
 }
@@ -819,27 +819,27 @@ model ChatMessage {
   senderId      String
   message       String
   createdAt     DateTime @default(now())
-  
-  sender        User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  tenant        Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
+
+  sender User    @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   @@index([patrolGroupId, createdAt])
 }
 
 model UserDocument {
-  id        String   @id @default(uuid())
-  tenantId  String?
-  userId    String
-  name      String
-  fileUrl   String
-  fileType  String?
-  fileSize  Int?
-  category  String   @default("GENERALE")
+  id         String    @id @default(uuid())
+  tenantId   String?
+  userId     String
+  name       String
+  fileUrl    String
+  fileType   String?
+  fileSize   Int?
+  category   String    @default("GENERALE")
   expiryDate DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  tenant     Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model DailyOdsNote {
@@ -855,31 +855,31 @@ model DailyOdsNote {
 }
 
 model Intervention {
-  id              String    @id @default(uuid())
-  tenantId        String?
-  assignedToId    String?   // L'agente incaricato (es. capopattuglia)
-  type            String    // es. INCIDENTE, VIABILITA, LITE
-  priority        String    // RED, YELLOW, GREEN
-  status          String    @default("PENDING") // PENDING, DISPATCHED, ACCEPTED, ON_SITE, COMPLETED
-  address         String
-  lat             Float?
-  lng             Float?
-  description     String?   @db.Text
-  callerName      String?
-  callerPhone     String?
-  notes           String?   @db.Text
-  outcome         String?   // POSITIVO, NEGATIVO, INFONDATO
-  outcomeNotes    String?   @db.Text
-  
+  id           String  @id @default(uuid())
+  tenantId     String?
+  assignedToId String? // L'agente incaricato (es. capopattuglia)
+  type         String // es. INCIDENTE, VIABILITA, LITE
+  priority     String // RED, YELLOW, GREEN
+  status       String  @default("PENDING") // PENDING, DISPATCHED, ACCEPTED, ON_SITE, COMPLETED
+  address      String
+  lat          Float?
+  lng          Float?
+  description  String? @db.Text
+  callerName   String?
+  callerPhone  String?
+  notes        String? @db.Text
+  outcome      String? // POSITIVO, NEGATIVO, INFONDATO
+  outcomeNotes String? @db.Text
+
   // Timestamps per "Accesso agli Atti"
-  createdAt       DateTime  @default(now())
-  dispatchedAt    DateTime?
-  acceptedAt      DateTime?
-  arrivedAt       DateTime?
-  completedAt     DateTime?
-  
-  assignedTo      User?     @relation("UserInterventions", fields: [assignedToId], references: [id])
-  tenant          Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  dispatchedAt DateTime?
+  acceptedAt   DateTime?
+  arrivedAt    DateTime?
+  completedAt  DateTime?
+
+  assignedTo User?   @relation("UserInterventions", fields: [assignedToId], references: [id])
+  tenant     Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, status])
   @@index([assignedToId, status])
@@ -888,11 +888,11 @@ model Intervention {
 model CustomHoliday {
   id        String   @id @default(uuid())
   tenantId  String?
-  name      String   // es. "Festa Patronale di Altamura"
+  name      String // es. "Festa Patronale di Altamura"
   date      DateTime
   createdAt DateTime @default(now())
-  
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  tenant      Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   assignments CustomHolidayAssignment[]
 
   @@unique([tenantId, date])
@@ -905,55 +905,85 @@ model CustomHolidayAssignment {
   userId    String
   createdAt DateTime @default(now())
 
-  holiday   CustomHoliday @relation(fields: [holidayId], references: [id], onDelete: Cascade)
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  holiday CustomHoliday @relation(fields: [holidayId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([holidayId, userId])
 }
 
 model Violation {
-  id              String             @id @default(uuid())
-  tenantId        String?
-  userId          String             // Agente che redige il verbale
-  targa           String
-  tipoInfrazione  String             // es. DIVIETO_SOSTA, ZTL, VELOCITA
-  articoloCDS     String             // es. Art. 158
-  importo         Float
-  stato           String             @default("EMESSO") // EMESSO, NOTIFICATO, PAGATO, CONTESTATO, SCADUTO, ANNULLATO
-  lat             Float?
-  lng             Float?
-  indirizzo       String?
-  note            String?            @db.Text
-  foto            String[]           @default([])
+  id                  String    @id @default(uuid())
+  tenantId            String?
+  userId              String // Agente che redige il verbale
+  targa               String
+  tipoInfrazione      String // es. DIVIETO_SOSTA, ZTL, VELOCITA
+  articoloCDS         String // es. Art. 158
+  importo             Float
+  stato               String    @default("EMESSO") // EMESSO, NOTIFICATO, PAGATO, CONTESTATO, SCADUTO, ANNULLATO
+  lat                 Float?
+  lng                 Float?
+  indirizzo           String?
+  note                String?   @db.Text
+  foto                String[]  @default([])
   trasgressoreNome    String?
   trasgressoreCognome String?
   patenteNumero       String?
   marcaVeicolo        String?
   modelloVeicolo      String?
   coloreVeicolo       String?
-  puntiPatente        Int              @default(0)
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  deletedAt       DateTime?
-  
-  tenant          Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user            User               @relation("UserViolations", fields: [userId], references: [id])
-  payments        ViolationPayment[]
+  puntiPatente        Int       @default(0)
+  descrizioneGenerata String?   @db.Text
+  cdsViolationId      String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+
+  tenant       Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user         User               @relation("UserViolations", fields: [userId], references: [id])
+  cdsViolation CdsViolation?      @relation("ViolationToCdsViolation", fields: [cdsViolationId], references: [id])
+  payments     ViolationPayment[]
 
   @@index([tenantId, stato])
   @@index([userId, createdAt])
 }
 
 model ViolationPayment {
-  id              String    @id @default(uuid())
-  violationId     String
-  importoPagato   Float
-  dataPagamento   DateTime  @default(now())
-  metodo          String    // PagoPA, Bonifico, Contanti, ecc.
-  note            String?   @db.Text
-  createdAt       DateTime  @default(now())
-  
-  violation       Violation @relation(fields: [violationId], references: [id], onDelete: Cascade)
+  id            String   @id @default(uuid())
+  violationId   String
+  importoPagato Float
+  dataPagamento DateTime @default(now())
+  metodo        String // PagoPA, Bonifico, Contanti, ecc.
+  note          String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  violation Violation @relation(fields: [violationId], references: [id], onDelete: Cascade)
 
   @@index([violationId])
+}
+
+model CdsArticle {
+  id           String         @id @default(uuid())
+  articolo     Int            @unique
+  titolo       String
+  testo        String         @db.Text
+  aggiornatoIl DateTime       @default(now())
+  violazioni   CdsViolation[]
+}
+
+model CdsViolation {
+  id                String   @id @default(uuid())
+  articoloId        String
+  comma             String?
+  descrizione       String   @db.Text
+  sanzioneMin       Float
+  sanzioneMax       Float
+  puntiPatente      Int      @default(0)
+  sospensione       Boolean  @default(false)
+  fermo             Boolean  @default(false)
+  contestoOperativo String?  @db.Text
+  paroleChiave      String[] @default([])
+  createdAt         DateTime @default(now())
+
+  articolo         CdsArticle  @relation(fields: [articoloId], references: [id], onDelete: Cascade)
+  violazioniEmesse Violation[] @relation("ViolationToCdsViolation")
 }

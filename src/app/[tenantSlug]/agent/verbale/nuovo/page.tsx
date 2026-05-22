@@ -1,15 +1,19 @@
 "use client"
 
-import { useState, useEffect, useRef, useMemo } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { Camera, MapPin, Check, ChevronLeft, AlertTriangle, Search, X, FileText, Shield } from "lucide-react"
-import prontuarioCDS from "@/data/prontuario-cds.json"
+import { Camera, MapPin, Check, ChevronLeft, AlertTriangle, Search, X, Shield, Sparkles, FileText } from "lucide-react"
 
-type ProntuarioEntry = {
-  articolo: string
+type AIResult = {
+  id: string
+  articoloId: string
+  comma: string | null
   descrizione: string
-  importo_minimo: number
-  punti: number
+  sanzioneMin: number
+  sanzioneMax: number
+  puntiPatente: number
+  articolo: { articolo: number }
+  score: number
 }
 
 export default function NuovoVerbalePage() {
@@ -18,15 +22,19 @@ export default function NuovoVerbalePage() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState("")
-  const [prontuarioOpen, setProntuarioOpen] = useState(false)
-  const [prontuarioSearch, setProntuarioSearch] = useState("")
   const [photos, setPhotos] = useState<string[]>([])
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [step, setStep] = useState(1) // 1=infrazione, 2=trasgressore, 3=riepilogo
 
+  // AI Search state
+  const [nlpText, setNlpText] = useState("")
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiResults, setAiResults] = useState<AIResult[]>([])
+  const [searched, setSearched] = useState(false)
+
   const [formData, setFormData] = useState({
     targa: "",
-    tipoInfrazione: "",
+    tipoInfrazione: "ALTRO", // Default, will be updated by AI if matched
     articoloCDS: "",
     importo: "",
     puntiPatente: 0,
@@ -41,7 +49,8 @@ export default function NuovoVerbalePage() {
     // Dati veicolo
     marcaVeicolo: "",
     modelloVeicolo: "",
-    coloreVeicolo: ""
+    coloreVeicolo: "",
+    cdsViolationId: ""
   })
 
   // Geolocation effect on mount
@@ -61,43 +70,44 @@ export default function NuovoVerbalePage() {
     }
   }, [])
 
-  // Filter prontuario CDS
-  const filteredProntuario = useMemo(() => {
-    if (!prontuarioSearch) return prontuarioCDS as ProntuarioEntry[]
-    const q = prontuarioSearch.toLowerCase()
-    return (prontuarioCDS as ProntuarioEntry[]).filter(
-      (e) =>
-        e.articolo.toLowerCase().includes(q) ||
-        e.descrizione.toLowerCase().includes(q)
-    )
-  }, [prontuarioSearch])
+  const searchNLP = async () => {
+    if (nlpText.length < 3) return
+    setAiLoading(true)
+    setSearched(true)
+    setError("")
+    
+    try {
+      const res = await fetch("/api/agent/violations/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ testo: nlpText })
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        setAiResults(data.risultati || [])
+      } else {
+        const err = await res.json()
+        setError(err.error || "Errore durante la ricerca intelligente")
+      }
+    } catch (e) {
+      setError("Errore di connessione al motore AI")
+    } finally {
+      setAiLoading(false)
+    }
+  }
 
-  const selectFromProntuario = (entry: ProntuarioEntry) => {
-    // Derive tipo infrazione from the description
-    let tipo = "ALTRO"
-    const desc = entry.descrizione.toLowerCase()
-    if (desc.includes("sosta") || desc.includes("fermata")) tipo = "DIVIETO_SOSTA"
-    else if (desc.includes("velocità") || desc.includes("velocita")) tipo = "VELOCITA"
-    else if (desc.includes("cintur")) tipo = "CINTURE"
-    else if (desc.includes("cellulare") || desc.includes("smartphone")) tipo = "TELEFONO"
-    else if (desc.includes("contromano")) tipo = "CONTROMANO"
-    else if (desc.includes("precedenza")) tipo = "MANCATA_PRECEDENZA"
-    else if (desc.includes("semaforo")) tipo = "SEMAFORO_ROSSO"
-    else if (desc.includes("casco")) tipo = "GUIDA_SENZA_CASCO"
-    else if (desc.includes("ebbrezza")) tipo = "GUIDA_IN_STATO_EBBREZZA"
-    else if (desc.includes("assicur")) tipo = "MANCANZA_ASSICURAZIONE"
-    else if (desc.includes("documenti") || desc.includes("patente")) tipo = "MANCANZA_DOCUMENTI"
-    else if (desc.includes("invalidi")) tipo = "SOSTA_INVALIDI"
-
+  const selectAIResult = (result: AIResult) => {
     setFormData(prev => ({
       ...prev,
-      articoloCDS: entry.articolo,
-      importo: entry.importo_minimo.toString(),
-      puntiPatente: entry.punti,
-      tipoInfrazione: tipo
+      articoloCDS: `Art. ${result.articolo.articolo}${result.comma ? ` c. ${result.comma}` : ''}`,
+      importo: result.sanzioneMin.toString(),
+      puntiPatente: result.puntiPatente,
+      cdsViolationId: result.id,
+      tipoInfrazione: result.descrizione.length > 50 ? result.descrizione.substring(0, 47) + "..." : result.descrizione
     }))
-    setProntuarioOpen(false)
-    setProntuarioSearch("")
+    setAiResults([])
+    setSearched(false)
   }
 
   const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,7 +121,6 @@ export default function NuovoVerbalePage() {
       }
       reader.readAsDataURL(file)
     })
-    // Reset input so the same file can be re-selected
     e.target.value = ""
   }
 
@@ -167,7 +176,6 @@ export default function NuovoVerbalePage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white pb-24">
-      {/* App Bar */}
       <header className="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-xl border-b border-white/5 p-4 flex items-center gap-4">
         <button onClick={() => step > 1 ? setStep(step - 1) : router.back()} className="p-2 bg-white/5 rounded-xl text-white/70 hover:bg-white/10 transition-colors active:scale-90">
           <ChevronLeft size={20} />
@@ -178,7 +186,6 @@ export default function NuovoVerbalePage() {
         </div>
       </header>
 
-      {/* Step Progress */}
       <div className="px-4 pt-4">
         <div className="flex gap-2">
           {[1, 2, 3].map((s) => (
@@ -214,82 +221,69 @@ export default function NuovoVerbalePage() {
                 />
               </div>
 
-              {/* Prontuario CDS Selector */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Seleziona dal Prontuario CDS</label>
-                <button 
-                  type="button"
-                  onClick={() => setProntuarioOpen(true)}
-                  className="w-full p-4 bg-slate-900 border border-white/10 rounded-2xl text-left hover:border-blue-500/50 transition-all flex items-center gap-3"
-                >
-                  <div className="p-2 bg-blue-500/20 text-blue-400 rounded-xl">
-                    <FileText size={18} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    {formData.articoloCDS ? (
-                      <>
-                        <p className="font-black text-sm">{formData.articoloCDS}</p>
-                        <p className="text-[10px] text-slate-500 truncate">
-                          {(prontuarioCDS as ProntuarioEntry[]).find(e => e.articolo === formData.articoloCDS)?.descrizione || formData.tipoInfrazione.replace(/_/g, " ")}
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="font-bold text-sm text-slate-500">Cerca articolo CDS...</p>
-                        <p className="text-[10px] text-slate-600">Tocca per selezionare l&apos;infrazione</p>
-                      </>
-                    )}
-                  </div>
-                  <Search size={16} className="text-slate-600" />
-                </button>
-              </div>
+              {/* AI Search NLP */}
+              <div className="space-y-2 relative">
+                <label className="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles size={14} /> Ricerca Intelligente Violazione
+                </label>
+                <div className="flex gap-2">
+                  <input 
+                    type="text"
+                    value={nlpText}
+                    onChange={e => setNlpText(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), searchNLP())}
+                    className="flex-1 bg-slate-900 border border-blue-500/30 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none placeholder:text-blue-200/30 text-blue-100"
+                    placeholder="Es. Guidava al cellulare senza cintura..."
+                  />
+                  <button 
+                    type="button"
+                    onClick={searchNLP}
+                    disabled={aiLoading || nlpText.length < 3}
+                    className="p-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-2xl flex items-center justify-center transition-all"
+                  >
+                    {aiLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Search size={20} />}
+                  </button>
+                </div>
 
-              {/* Prontuario Modal */}
-              {prontuarioOpen && (
-                <div className="fixed inset-0 z-[200] bg-slate-950/90 backdrop-blur-md flex flex-col animate-in fade-in duration-200">
-                  <div className="p-4 border-b border-white/5 flex items-center gap-3">
-                    <button type="button" onClick={() => { setProntuarioOpen(false); setProntuarioSearch("") }} className="p-2 bg-white/5 rounded-xl">
-                      <X size={20} />
-                    </button>
-                    <div className="flex-1 relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40" size={16} />
-                      <input
-                        type="text"
-                        autoFocus
-                        placeholder="Cerca articolo o descrizione..."
-                        value={prontuarioSearch}
-                        onChange={e => setProntuarioSearch(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                    {filteredProntuario.map((entry) => (
+                {/* AI Results Dropdown */}
+                {searched && aiResults.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-white/10 rounded-2xl overflow-hidden shadow-2xl z-10 animate-in slide-in-from-top-2">
+                    {aiResults.map((res, i) => (
                       <button
-                        key={entry.articolo}
+                        key={res.id}
                         type="button"
-                        onClick={() => selectFromProntuario(entry)}
-                        className="w-full text-left p-4 bg-slate-900 border border-white/5 rounded-2xl hover:border-blue-500/50 hover:bg-blue-500/5 transition-all group"
+                        onClick={() => selectAIResult(res)}
+                        className={`w-full text-left p-4 hover:bg-white/5 transition-all flex items-start gap-3 ${i !== aiResults.length - 1 ? 'border-b border-white/5' : ''}`}
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-black text-sm group-hover:text-blue-400 transition-colors">{entry.articolo}</p>
-                            <p className="text-xs text-slate-400 mt-1 leading-relaxed">{entry.descrizione}</p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="font-black text-emerald-500 text-sm">€ {entry.importo_minimo.toFixed(2)}</p>
-                            {entry.punti > 0 && (
-                              <p className="text-[10px] text-rose-500 font-bold mt-1">-{entry.punti} punti</p>
-                            )}
-                          </div>
+                        <div className="p-2 bg-blue-500/20 text-blue-400 rounded-xl shrink-0 mt-1">
+                          <FileText size={16} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-bold text-white">Art. {res.articolo.articolo}{res.comma ? ` c. ${res.comma}` : ''}</p>
+                          <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{res.descrizione}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-black text-emerald-400">€{res.sanzioneMin}</p>
+                          {res.puntiPatente > 0 && <p className="text-[10px] font-bold text-rose-400">-{res.puntiPatente} pt</p>}
                         </div>
                       </button>
                     ))}
-                    {filteredProntuario.length === 0 && (
-                      <div className="text-center py-12 opacity-40">
-                        <p className="font-bold">Nessun articolo trovato</p>
-                      </div>
-                    )}
+                  </div>
+                )}
+                {searched && aiResults.length === 0 && !aiLoading && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-rose-500/30 rounded-2xl p-4 text-sm text-center text-rose-300 z-10">
+                    Nessuna corrispondenza trovata. Riprova con altre parole chiave.
+                  </div>
+                )}
+              </div>
+
+              {/* Selected Article Preview */}
+              {formData.articoloCDS && !searched && (
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-start gap-3 animate-in fade-in">
+                  <Check size={20} className="text-emerald-500 shrink-0" />
+                  <div>
+                    <p className="text-sm font-black text-emerald-400">{formData.articoloCDS}</p>
+                    <p className="text-xs text-emerald-500/70 mt-1">{formData.tipoInfrazione}</p>
                   </div>
                 </div>
               )}
@@ -391,12 +385,12 @@ export default function NuovoVerbalePage() {
 
               {/* Note */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Note (Opzionale)</label>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Note Operative (Opzionale)</label>
                 <textarea 
                   value={formData.note}
                   onChange={e => setFormData({...formData, note: e.target.value})}
                   className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none min-h-[80px] resize-none"
-                  placeholder="Dettagli aggiuntivi..."
+                  placeholder="Dettagli aggiuntivi per il rapporto..."
                 />
               </div>
 
@@ -404,7 +398,7 @@ export default function NuovoVerbalePage() {
                 type="button"
                 onClick={() => {
                   if (!formData.targa || !formData.articoloCDS || !formData.importo) {
-                    setError("Compila targa, articolo CDS e importo prima di continuare")
+                    setError("Compila targa e cerca un'infrazione con l'assistente AI prima di continuare")
                     return
                   }
                   setError("")
@@ -521,7 +515,7 @@ export default function NuovoVerbalePage() {
           {step === 3 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="p-5 bg-slate-900 border border-white/5 rounded-2xl space-y-4">
-                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400">Riepilogo Verbale</h3>
+                <h3 className="text-xs font-black uppercase tracking-widest text-blue-400">Verbale di Accertamento</h3>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -537,7 +531,7 @@ export default function NuovoVerbalePage() {
                 <div className="border-t border-white/5 pt-4">
                   <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Violazione</p>
                   <p className="text-sm font-bold mt-1">{formData.articoloCDS}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{formData.tipoInfrazione.replace(/_/g, " ")}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{formData.tipoInfrazione}</p>
                   {formData.puntiPatente > 0 && (
                     <p className="text-xs text-rose-500 font-bold mt-1">-{formData.puntiPatente} punti patente</p>
                   )}
@@ -576,12 +570,15 @@ export default function NuovoVerbalePage() {
                   </div>
                 )}
 
-                {formData.note && (
-                  <div className="border-t border-white/5 pt-4">
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Note</p>
-                    <p className="text-sm text-slate-400 mt-1">{formData.note}</p>
+                <div className="border-t border-white/5 pt-4">
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-2">Testo Verbale Generato</p>
+                  <div className="p-3 bg-white/5 rounded-xl text-[10px] text-slate-300 font-mono leading-relaxed">
+                    Si dà atto che il veicolo tg. {formData.targa} {formData.marcaVeicolo} {formData.modelloVeicolo} procedeva violando l'Art. {formData.articoloCDS} del C.d.S. ({formData.tipoInfrazione.toLowerCase()}). 
+                    {formData.indirizzo ? ` Accertamento in ${formData.indirizzo}.` : ""}
+                    {formData.trasgressoreCognome ? ` Conducente identificato in ${formData.trasgressoreNome} ${formData.trasgressoreCognome}.` : ""}
+                    {formData.note ? ` Note: ${formData.note}` : ""}
                   </div>
-                )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
