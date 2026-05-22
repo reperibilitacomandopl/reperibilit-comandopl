@@ -925,6 +925,13 @@ model Violation {
   indirizzo       String?
   note            String?            @db.Text
   foto            String[]           @default([])
+  trasgressoreNome    String?
+  trasgressoreCognome String?
+  patenteNumero       String?
+  marcaVeicolo        String?
+  modelloVeicolo      String?
+  coloreVeicolo       String?
+  puntiPatente        Int              @default(0)
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
   deletedAt       DateTime?

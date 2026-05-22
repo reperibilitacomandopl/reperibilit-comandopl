@@ -8,11 +8,20 @@ const violationSchema = z.object({
   tipoInfrazione: z.string().min(1, 'Tipo infrazione obbligatorio'),
   articoloCDS: z.string().min(1, 'Articolo CDS obbligatorio'),
   importo: z.number().positive('L\'importo deve essere positivo'),
+  puntiPatente: z.number().int().min(0).optional().default(0),
   lat: z.number().optional().nullable(),
   lng: z.number().optional().nullable(),
   indirizzo: z.string().optional().nullable(),
   note: z.string().optional().nullable(),
-  foto: z.array(z.string()).optional()
+  foto: z.array(z.string()).optional(),
+  // Dati trasgressore
+  trasgressoreNome: z.string().optional().nullable(),
+  trasgressoreCognome: z.string().optional().nullable(),
+  patenteNumero: z.string().optional().nullable(),
+  // Dati veicolo
+  marcaVeicolo: z.string().optional().nullable(),
+  modelloVeicolo: z.string().optional().nullable(),
+  coloreVeicolo: z.string().optional().nullable(),
 })
 
 export async function POST(req: Request) {
@@ -42,11 +51,18 @@ export async function POST(req: Request) {
         tipoInfrazione: data.tipoInfrazione,
         articoloCDS: data.articoloCDS,
         importo: data.importo,
+        puntiPatente: data.puntiPatente || 0,
         lat: data.lat,
         lng: data.lng,
         indirizzo: data.indirizzo,
         note: data.note,
         foto: data.foto || [],
+        trasgressoreNome: data.trasgressoreNome,
+        trasgressoreCognome: data.trasgressoreCognome,
+        patenteNumero: data.patenteNumero,
+        marcaVeicolo: data.marcaVeicolo,
+        modelloVeicolo: data.modelloVeicolo,
+        coloreVeicolo: data.coloreVeicolo,
         stato: 'EMESSO'
       }
     })
