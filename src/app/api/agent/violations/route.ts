@@ -14,6 +14,8 @@ const violationSchema = z.object({
   indirizzo: z.string().optional().nullable(),
   note: z.string().optional().nullable(),
   foto: z.array(z.string()).optional(),
+  documentType: z.string().optional().default('VERBALE'),
+  motivoMancataContestazione: z.string().optional().nullable(),
   // Dati trasgressore
   trasgressoreNome: z.string().optional().nullable(),
   trasgressoreCognome: z.string().optional().nullable(),
@@ -57,6 +59,8 @@ export async function POST(req: Request) {
         indirizzo: data.indirizzo,
         note: data.note,
         foto: data.foto || [],
+        documentType: data.documentType,
+        motivoMancataContestazione: data.motivoMancataContestazione,
         trasgressoreNome: data.trasgressoreNome,
         trasgressoreCognome: data.trasgressoreCognome,
         patenteNumero: data.patenteNumero,

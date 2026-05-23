@@ -66,6 +66,11 @@ export async function POST(req: Request) {
         if (inputWords.includes(viol.articolo.articolo.toString())) {
           score += 5
         }
+        
+        // Match esatto con il codice infrazione EGAF (es. "16075")
+        if (viol.codice && inputTesto.includes(viol.codice)) {
+          score += 50 // Punteggio altissimo per farla apparire per prima
+        }
 
         return {
           ...viol,

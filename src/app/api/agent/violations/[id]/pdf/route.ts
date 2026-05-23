@@ -34,7 +34,8 @@ export async function GET(
     // Intestazione
     doc.setFontSize(16)
     doc.setFont("helvetica", "bold")
-    doc.text("VERBALE DI ACCERTAMENTO", 105, 20, { align: "center" })
+    const docTitle = violation.documentType === 'PREAVVISO' ? "PREAVVISO DI ACCERTAMENTO" : "VERBALE DI CONTESTAZIONE"
+    doc.text(docTitle, 105, 20, { align: "center" })
     
     doc.setFontSize(10)
     doc.text(`Comando di Polizia Locale: ${violation.tenant?.name || "Polizia Locale"}`, 105, 28, { align: "center" })
@@ -126,9 +127,18 @@ export async function GET(
     let testoGenerato = violation.descrizioneGenerata
     if (!testoGenerato) {
       // Fallback discorsivo
-      testoGenerato = `Si dà atto che in data ${new Date(violation.createdAt).toLocaleString("it-IT")}, l'agente verbalizzante ha accertato che il veicolo tg. ${violation.targa} procedeva violando l'Art. ${violation.articoloCDS} del C.d.S. (${violation.tipoInfrazione.toLowerCase()}).`
+      testoGenerato = `Si dà atto che in data ${new Date(violation.createdAt).toLocaleString("it-IT")}, l'agente verbalizzante ha accertato che il veicolo tg. ${violation.targa} procedeva violando l'Art. ${violation.articoloCDS} del C.d.S. (${violation.tipoInfrazione}).`
       if (violation.indirizzo) testoGenerato += ` Accertamento in ${violation.indirizzo}.`
       if (violation.trasgressoreCognome) testoGenerato += ` Conducente identificato in ${violation.trasgressoreNome} ${violation.trasgressoreCognome}.`
+      
+      if (violation.documentType === 'VERBALE') {
+        if (violation.motivoMancataContestazione) {
+          testoGenerato += ` Non è stata effettuata la contestazione immediata per il seguente motivo: ${violation.motivoMancataContestazione}.`
+        } else {
+          testoGenerato += ` È stata effettuata la contestazione immediata.`
+        }
+      }
+      
       if (violation.note) testoGenerato += ` Note: ${violation.note}`
     }
 
@@ -152,11 +162,12 @@ export async function GET(
     doc.setFontSize(8)
     doc.text("Documento generato elettronicamente dal Sistema Informativo di Polizia Locale", 105, 280, { align: "center" })
 
+    const docPrefix = violation.documentType === 'PREAVVISO' ? 'preavviso' : 'verbale'
     const pdfBuffer = Buffer.from(doc.output("arraybuffer"))
     return new NextResponse(pdfBuffer, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="verbale_${violation.targa}_${violation.id.substring(0,6)}.pdf"`
+        "Content-Disposition": `attachment; filename="${docPrefix}_${violation.targa}_${violation.id.substring(0,6)}.pdf"`
       }
     })
   } catch (error) {

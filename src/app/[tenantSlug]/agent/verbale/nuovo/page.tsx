@@ -8,6 +8,7 @@ type AIResult = {
   id: string
   articoloId: string
   comma: string | null
+  codice: string | null
   descrizione: string
   sanzione: number
   sanzioneScontata: number | null
@@ -24,7 +25,8 @@ export default function NuovoVerbalePage() {
   const [error, setError] = useState("")
   const [photos, setPhotos] = useState<string[]>([])
   const photoInputRef = useRef<HTMLInputElement>(null)
-  const [step, setStep] = useState(1) // 1=infrazione, 2=trasgressore, 3=riepilogo
+  const [step, setStep] = useState(0) // 0=tipo doc, 1=infrazione, 2=trasgressore, 3=riepilogo
+  const [contestazioneImmediata, setContestazioneImmediata] = useState<boolean | null>(null)
 
   // AI Search state
   const [nlpText, setNlpText] = useState("")
@@ -51,7 +53,10 @@ export default function NuovoVerbalePage() {
     marcaVeicolo: "",
     modelloVeicolo: "",
     coloreVeicolo: "",
-    cdsViolationId: ""
+    cdsViolationId: "",
+    // Nuovi campi
+    documentType: "", // PREAVVISO o VERBALE
+    motivoMancataContestazione: ""
   })
 
   // Geolocation effect on mount
@@ -129,6 +134,8 @@ export default function NuovoVerbalePage() {
     setPhotos((prev) => prev.filter((_, i) => i !== index))
   }
 
+  const [createdViolationId, setCreatedViolationId] = useState<string | null>(null)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -150,14 +157,19 @@ export default function NuovoVerbalePage() {
         throw new Error(data.error || "Errore durante il salvataggio")
       }
 
+      const newViolation = await res.json()
+      setCreatedViolationId(newViolation.id)
       setSuccess(true)
-      setTimeout(() => {
-        router.push(`/${tenantSlug}?view=agent`)
-      }, 2000)
     } catch (err: any) {
       setError(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDownloadPdf = () => {
+    if (createdViolationId) {
+      window.open(`/api/agent/violations/${createdViolationId}/pdf`, "_blank")
     }
   }
 
@@ -167,29 +179,45 @@ export default function NuovoVerbalePage() {
         <div className="w-24 h-24 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mb-6 animate-in zoom-in duration-500">
           <Check size={48} />
         </div>
-        <h1 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Verbale Emesso</h1>
-        <p className="text-slate-400">Il verbale è stato registrato a sistema.</p>
+        <h1 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">
+          {formData.documentType === 'PREAVVISO' ? 'Preavviso Emesso' : 'Verbale Emesso'}
+        </h1>
+        <p className="text-slate-400 mb-8">Il documento è stato registrato a sistema.</p>
+        
+        <button 
+          onClick={handleDownloadPdf}
+          className="w-full max-w-xs p-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-emerald-500/20 mb-4"
+        >
+          <FileText size={20} /> Stampa Documento
+        </button>
+
+        <button 
+          onClick={() => router.push(`/${tenantSlug}?view=agent`)}
+          className="w-full max-w-xs p-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-bold transition-all active:scale-95"
+        >
+          Torna alla Home
+        </button>
       </div>
     )
   }
 
-  const stepTitles = ["Infrazione", "Trasgressore", "Riepilogo"]
+  const stepTitles = ["Tipo Documento", "Infrazione", "Trasgressore", "Riepilogo"]
 
   return (
     <div className="min-h-screen bg-slate-950 text-white pb-24">
       <header className="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-xl border-b border-white/5 p-4 flex items-center gap-4">
-        <button onClick={() => step > 1 ? setStep(step - 1) : router.back()} className="p-2 bg-white/5 rounded-xl text-white/70 hover:bg-white/10 transition-colors active:scale-90">
+        <button onClick={() => step > 0 ? setStep(step - 1) : router.back()} className="p-2 bg-white/5 rounded-xl text-white/70 hover:bg-white/10 transition-colors active:scale-90">
           <ChevronLeft size={20} />
         </button>
         <div className="flex-1">
-          <h1 className="text-sm font-black uppercase tracking-widest">Nuovo Verbale</h1>
-          <p className="text-[10px] text-blue-400 font-bold">Step {step}/3 — {stepTitles[step - 1]}</p>
+          <h1 className="text-sm font-black uppercase tracking-widest">Nuovo Accertamento</h1>
+          <p className="text-[10px] text-blue-400 font-bold">Step {step + 1}/4 — {stepTitles[step]}</p>
         </div>
       </header>
 
       <div className="px-4 pt-4">
         <div className="flex gap-2">
-          {[1, 2, 3].map((s) => (
+          {[0, 1, 2, 3].map((s) => (
             <div key={s} className={`flex-1 h-1.5 rounded-full transition-all duration-500 ${s <= step ? "bg-blue-500" : "bg-white/10"}`} />
           ))}
         </div>
@@ -204,6 +232,87 @@ export default function NuovoVerbalePage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
+
+          {/* STEP 0: TIPO DOCUMENTO E CONTESTAZIONE */}
+          {step === 0 && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Cosa stai redigendo?</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData({...formData, documentType: "PREAVVISO"})
+                      setContestazioneImmediata(false)
+                      setStep(1)
+                    }}
+                    className="p-6 bg-slate-900 border border-white/10 hover:border-blue-500/50 rounded-2xl flex flex-col items-center gap-3 transition-all"
+                  >
+                    <FileText size={32} className="text-blue-400" />
+                    <span className="font-bold text-sm">Preavviso Sosta</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({...formData, documentType: "VERBALE"})}
+                    className={`p-6 bg-slate-900 border ${formData.documentType === "VERBALE" ? "border-blue-500" : "border-white/10"} hover:border-blue-500/50 rounded-2xl flex flex-col items-center gap-3 transition-all`}
+                  >
+                    <Shield size={32} className="text-blue-400" />
+                    <span className="font-bold text-sm">Verbale C.d.S.</span>
+                  </button>
+                </div>
+              </div>
+
+              {formData.documentType === "VERBALE" && (
+                <div className="space-y-4 animate-in fade-in duration-300">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Contestazione Immediata?</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setContestazioneImmediata(true)}
+                      className={`p-4 bg-slate-900 border ${contestazioneImmediata === true ? "border-emerald-500 text-emerald-400" : "border-white/10 text-white"} rounded-2xl font-bold transition-all`}
+                    >
+                      Sì, trasgressore presente
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setContestazioneImmediata(false)}
+                      className={`p-4 bg-slate-900 border ${contestazioneImmediata === false ? "border-rose-500 text-rose-400" : "border-white/10 text-white"} rounded-2xl font-bold transition-all`}
+                    >
+                      No, trasgressore assente
+                    </button>
+                  </div>
+                  
+                  {contestazioneImmediata === false && (
+                    <div className="space-y-2 animate-in fade-in duration-300">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Motivo mancata contestazione *</label>
+                      <select 
+                        required
+                        value={formData.motivoMancataContestazione}
+                        onChange={e => setFormData({...formData, motivoMancataContestazione: e.target.value})}
+                        className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-white appearance-none"
+                      >
+                        <option value="">Seleziona motivo...</option>
+                        <option value="Assenza del trasgressore e del proprietario del veicolo">Assenza del trasgressore e del proprietario del veicolo</option>
+                        <option value="Impossibilità di raggiungere un veicolo lanciato a velocità eccessiva">Veicolo lanciato a velocità eccessiva</option>
+                        <option value="Veicolo in transito">Veicolo in transito</option>
+                        <option value="Impossibilità di fermare il veicolo in condizioni di sicurezza">Impossibilità di fermare il veicolo in condizioni di sicurezza</option>
+                        <option value="Attraversamento di un incrocio con semaforo rosso">Attraversamento incrocio con semaforo rosso</option>
+                        <option value="Sorpasso vietato">Sorpasso vietato</option>
+                        <option value="Accertamento della violazione per mezzo di appositi apparecchi">Accertamento tramite apparecchiature</option>
+                        <option value="Altro (specificare nelle note)">Altro (specificare nelle note)</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {formData.documentType === "VERBALE" && contestazioneImmediata !== null && (
+                <button type="button" onClick={() => setStep(1)} className="w-full p-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold transition-all">
+                  Procedi all'Infrazione
+                </button>
+              )}
+            </div>
+          )}
 
           {/* STEP 1: INFRAZIONE */}
           {step === 1 && (
@@ -269,7 +378,10 @@ export default function NuovoVerbalePage() {
                           <FileText size={16} />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-bold text-white">Art. {res.articolo.articolo}{res.comma ? ` c. ${res.comma}` : ''}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-bold text-white">Art. {res.articolo.articolo}{res.comma ? ` c. ${res.comma}` : ''}</p>
+                            {res.codice && <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 text-[10px] rounded-md font-mono border border-blue-500/30">Cod. {res.codice}</span>}
+                          </div>
                           <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{res.descrizione}</p>
                         </div>
                         <div className="text-right shrink-0">
