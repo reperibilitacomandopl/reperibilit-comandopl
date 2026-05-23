@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { Camera, MapPin, Check, ChevronLeft, AlertTriangle, Search, X, Shield, Sparkles, FileText } from "lucide-react"
+import { Camera, MapPin, Check, ChevronLeft, AlertTriangle, Search, X, Shield, Sparkles, FileText, User, Building } from "lucide-react"
 import { StreetSearchAutocomplete } from "@/components/StreetSearchAutocomplete"
+import { MunicipalityAutocomplete } from "@/components/MunicipalityAutocomplete"
 import { VehicleBrandAutocomplete } from "@/components/VehicleBrandAutocomplete"
 
 type AIResult = {
@@ -29,6 +30,7 @@ export default function NuovoVerbalePage() {
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [step, setStep] = useState(0) // 0=tipo doc, 1=infrazione, 2=trasgressore, 3=riepilogo
   const [contestazioneImmediata, setContestazioneImmediata] = useState<boolean | null>(null)
+  const [isObbligatoAzienda, setIsObbligatoAzienda] = useState(false)
 
   // AI Search state
   const [nlpText, setNlpText] = useState("")
@@ -51,7 +53,21 @@ export default function NuovoVerbalePage() {
     // Dati trasgressore
     trasgressoreNome: "",
     trasgressoreCognome: "",
+    trasgressoreDataNascita: "",
+    trasgressoreLuogoNascita: "",
+    trasgressoreIndirizzo: "",
+    trasgressoreComuneResidenza: "",
+    // Dati obbligato in solido
+    obbligatoNome: "",
+    obbligatoCognome: "",
+    obbligatoIndirizzo: "",
+    obbligatoComuneResidenza: "",
+    // Dati patente
     patenteNumero: "",
+    patenteEnteRilascio: "",
+    patenteDataRilascio: "",
+    patenteDataScadenza: "",
+    patenteCategoria: "",
     // Dati veicolo
     marcaVeicolo: "",
     modelloVeicolo: "",
@@ -558,12 +574,12 @@ export default function NuovoVerbalePage() {
             </div>
           )}
 
-          {/* STEP 2: TRASGRESSORE */}
+          {/* STEP 2: TRASGRESSORE E OBBLIGATO */}
           {step === 2 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl">
                 <p className="text-xs text-blue-400 font-bold uppercase tracking-wider mb-1">Dati Trasgressore (Opzionale)</p>
-                <p className="text-[10px] text-slate-500">Se noti in contestazione, indica le generalità del conducente</p>
+                <p className="text-[10px] text-slate-500">Se noti, indica le generalità del conducente</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -589,14 +605,192 @@ export default function NuovoVerbalePage() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Data di Nascita</label>
+                  <input 
+                    type="date"
+                    value={formData.trasgressoreDataNascita}
+                    onChange={e => setFormData({...formData, trasgressoreDataNascita: e.target.value})}
+                    className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-white [color-scheme:dark]"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Luogo di Nascita</label>
+                  <MunicipalityAutocomplete
+                    value={formData.trasgressoreLuogoNascita}
+                    onChange={val => setFormData({...formData, trasgressoreLuogoNascita: val})}
+                    placeholder="Es. Roma"
+                  />
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Numero Patente</label>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Comune di Residenza</label>
+                <MunicipalityAutocomplete
+                  value={formData.trasgressoreComuneResidenza}
+                  onChange={val => setFormData({...formData, trasgressoreComuneResidenza: val})}
+                  placeholder="Es. Milano (MI)"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Indirizzo di Residenza (Via e N.Civico)</label>
                 <input 
                   type="text"
-                  value={formData.patenteNumero}
-                  onChange={e => setFormData({...formData, patenteNumero: e.target.value.toUpperCase()})}
-                  className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none uppercase"
-                  placeholder="U1XXXXXXXX"
+                  value={formData.trasgressoreIndirizzo}
+                  onChange={e => setFormData({...formData, trasgressoreIndirizzo: e.target.value})}
+                  className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="Via Roma 1"
+                />
+              </div>
+
+              {/* PATENTE */}
+              <div className="p-4 bg-purple-500/5 border border-purple-500/10 rounded-2xl mt-8">
+                <p className="text-xs text-purple-400 font-bold uppercase tracking-wider mb-1">Patente di Guida</p>
+                <p className="text-[10px] text-slate-500">Estremi del documento di guida del trasgressore</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Numero Patente</label>
+                  <input 
+                    type="text"
+                    value={formData.patenteNumero}
+                    onChange={e => setFormData({...formData, patenteNumero: e.target.value.toUpperCase()})}
+                    className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none uppercase"
+                    placeholder="U1XXXXXXXX"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Categoria</label>
+                  <input 
+                    type="text"
+                    value={formData.patenteCategoria}
+                    onChange={e => setFormData({...formData, patenteCategoria: e.target.value.toUpperCase()})}
+                    className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none uppercase"
+                    placeholder="Es. B"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ente di Rilascio</label>
+                <select
+                  value={formData.patenteEnteRilascio}
+                  onChange={e => setFormData({...formData, patenteEnteRilascio: e.target.value})}
+                  className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-white appearance-none"
+                >
+                  <option value="">Seleziona ente...</option>
+                  <option value="MCTC">MCTC (Motorizzazione)</option>
+                  <option value="Prefettura">Prefettura</option>
+                  <option value="UCO">UCO (Ufficio Centrale Operativo)</option>
+                  <option value="Estero">Autorità Estera</option>
+                  <option value="Altro">Altro</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Data Rilascio</label>
+                  <input 
+                    type="date"
+                    value={formData.patenteDataRilascio}
+                    onChange={e => setFormData({...formData, patenteDataRilascio: e.target.value})}
+                    className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-white [color-scheme:dark]"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Data Scadenza</label>
+                  <input 
+                    type="date"
+                    value={formData.patenteDataScadenza}
+                    onChange={e => setFormData({...formData, patenteDataScadenza: e.target.value})}
+                    className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-white [color-scheme:dark]"
+                  />
+                </div>
+              </div>
+
+              {/* OBBLIGATO IN SOLIDO */}
+              <div className="p-4 bg-orange-500/5 border border-orange-500/10 rounded-2xl mt-8">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-orange-400 font-bold uppercase tracking-wider">Obbligato in Solido (Opzionale)</p>
+                  <div className="flex bg-slate-900 rounded-lg p-1 border border-white/5">
+                    <button 
+                      type="button"
+                      onClick={() => setIsObbligatoAzienda(false)}
+                      className={`px-3 py-1 text-xs font-bold rounded-md flex items-center gap-1.5 transition-all ${!isObbligatoAzienda ? 'bg-orange-500 text-white' : 'text-slate-500 hover:text-white'}`}
+                    >
+                      <User size={12} /> Persona
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setIsObbligatoAzienda(true)
+                        setFormData({...formData, obbligatoCognome: ""})
+                      }}
+                      className={`px-3 py-1 text-xs font-bold rounded-md flex items-center gap-1.5 transition-all ${isObbligatoAzienda ? 'bg-orange-500 text-white' : 'text-slate-500 hover:text-white'}`}
+                    >
+                      <Building size={12} /> Azienda
+                    </button>
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-500">Proprietario del veicolo o altro soggetto responsabile in solido</p>
+              </div>
+
+              {isObbligatoAzienda ? (
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ragione Sociale</label>
+                  <input 
+                    type="text"
+                    value={formData.obbligatoNome}
+                    onChange={e => setFormData({...formData, obbligatoNome: e.target.value})}
+                    className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                    placeholder="Nome Azienda SRL"
+                  />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Nome</label>
+                    <input 
+                      type="text"
+                      value={formData.obbligatoNome}
+                      onChange={e => setFormData({...formData, obbligatoNome: e.target.value})}
+                      className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                      placeholder="Luigi"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Cognome</label>
+                    <input 
+                      type="text"
+                      value={formData.obbligatoCognome}
+                      onChange={e => setFormData({...formData, obbligatoCognome: e.target.value})}
+                      className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                      placeholder="Bianchi"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Comune Sede/Residenza</label>
+                <MunicipalityAutocomplete
+                  value={formData.obbligatoComuneResidenza}
+                  onChange={val => setFormData({...formData, obbligatoComuneResidenza: val})}
+                  placeholder="Es. Torino (TO)"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Indirizzo (Via e N.Civico)</label>
+                <input 
+                  type="text"
+                  value={formData.obbligatoIndirizzo}
+                  onChange={e => setFormData({...formData, obbligatoIndirizzo: e.target.value})}
+                  className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                  placeholder="Via Milano 10"
                 />
               </div>
 

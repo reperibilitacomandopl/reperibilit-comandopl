@@ -69,6 +69,21 @@ model Tenant {
   streets                 Street[]
   vehicleTypes            VehicleType[]
   vehicleBrands           VehicleBrand[]
+  municipalities          Municipality[]
+}
+
+model Municipality {
+  id            String   @id @default(uuid())
+  tenantId      String?
+  codiceBelfiore String
+  denominazione String
+  provincia     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant        Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
 }
 
 model VehicleType {
@@ -979,7 +994,19 @@ model Violation {
   foto                String[]  @default([])
   trasgressoreNome    String?
   trasgressoreCognome String?
+  trasgressoreDataNascita     DateTime?
+  trasgressoreLuogoNascita    String?
+  trasgressoreIndirizzo       String?
+  trasgressoreComuneResidenza String?
+  obbligatoNome               String?
+  obbligatoCognome            String?
+  obbligatoIndirizzo          String?
+  obbligatoComuneResidenza    String?
   patenteNumero       String?
+  patenteEnteRilascio String?
+  patenteDataRilascio DateTime?
+  patenteDataScadenza DateTime?
+  patenteCategoria    String?
   tipoVeicolo         String?
   marcaVeicolo        String?
   modelloVeicolo      String?
