@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter, useParams } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { Camera, MapPin, Check, ChevronLeft, AlertTriangle, Search, X, Shield, Sparkles, FileText, User, Building } from "lucide-react"
 import { StreetSearchAutocomplete } from "@/components/StreetSearchAutocomplete"
 import { MunicipalityAutocomplete } from "@/components/MunicipalityAutocomplete"
@@ -23,6 +24,7 @@ type AIResult = {
 export default function NuovoVerbalePage() {
   const router = useRouter()
   const { tenantSlug } = useParams<{ tenantSlug: string }>()
+  const { data: session } = useSession()
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState("")
@@ -105,6 +107,33 @@ export default function NuovoVerbalePage() {
       )
     }
   }, [])
+
+  // Auto-fill municipality from tenant name
+  useEffect(() => {
+    if (session?.user?.tenantName) {
+      const tenantName = session.user.tenantName
+      // Extract city from tenant name like "Comune di Altamura" -> "ALTAMURA (BA)"
+      const cityMatch = tenantName.match(/Comune di (.+)/i)
+      if (cityMatch) {
+        const city = cityMatch[1].toUpperCase()
+        // Search the municipality in the DB to get province
+        fetch(`/api/agent/municipalities/search?q=${encodeURIComponent(city)}`)
+          .then(res => res.json())
+          .then(data => {
+            if (Array.isArray(data) && data.length > 0) {
+              const mun = data[0]
+              const label = `${mun.denominazione} (${mun.provincia})`
+              setFormData(prev => ({
+                ...prev,
+                trasgressoreComuneResidenza: prev.trasgressoreComuneResidenza || label,
+                obbligatoComuneResidenza: prev.obbligatoComuneResidenza || label
+              }))
+            }
+          })
+          .catch(err => console.error('Auto-fill municipality error:', err))
+      }
+    }
+  }, [session?.user?.tenantName])
 
   const searchNLP = async () => {
     if (nlpText.length < 3 && searchArticolo.length === 0) return
@@ -637,12 +666,10 @@ export default function NuovoVerbalePage() {
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Indirizzo di Residenza (Via e N.Civico)</label>
-                <input 
-                  type="text"
+                <StreetSearchAutocomplete
                   value={formData.trasgressoreIndirizzo}
-                  onChange={e => setFormData({...formData, trasgressoreIndirizzo: e.target.value})}
-                  className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                  placeholder="Via Roma 1"
+                  onChange={val => setFormData({...formData, trasgressoreIndirizzo: val})}
+                  placeholder="Cerca via..."
                 />
               </div>
 
@@ -798,12 +825,10 @@ export default function NuovoVerbalePage() {
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Indirizzo (Via e N.Civico)</label>
-                <input 
-                  type="text"
+                <StreetSearchAutocomplete
                   value={formData.obbligatoIndirizzo}
-                  onChange={e => setFormData({...formData, obbligatoIndirizzo: e.target.value})}
-                  className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
-                  placeholder="Via Milano 10"
+                  onChange={val => setFormData({...formData, obbligatoIndirizzo: val})}
+                  placeholder="Cerca via..."
                 />
               </div>
 

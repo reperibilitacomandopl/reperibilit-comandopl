@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import dynamic from "next/dynamic"
 import { useSession } from "next-auth/react"
-import { Shield, Plus, Navigation, AlertTriangle, CheckCircle2, Clock } from "lucide-react"
+import { Shield, Plus, Navigation, AlertTriangle, CheckCircle2, Clock, Pencil, X } from "lucide-react"
 import toast from "react-hot-toast"
 import { StreetSearchAutocomplete } from "@/components/StreetSearchAutocomplete"
 
@@ -16,12 +16,19 @@ export default function CentraleOperativa() {
   const [interventions, setInterventions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showNewModal, setShowNewModal] = useState(false)
+  const [editingIntervention, setEditingIntervention] = useState<any>(null)
   
   // Dati per nuovo intervento
   const [newType, setNewType] = useState("INCIDENTE")
   const [newPriority, setNewPriority] = useState("YELLOW")
   const [newAddress, setNewAddress] = useState("")
   const [newDesc, setNewDesc] = useState("")
+
+  // Dati per modifica intervento
+  const [editType, setEditType] = useState("")
+  const [editPriority, setEditPriority] = useState("")
+  const [editAddress, setEditAddress] = useState("")
+  const [editDesc, setEditDesc] = useState("")
 
   const fetchData = async () => {
     try {
@@ -93,6 +100,74 @@ export default function CentraleOperativa() {
     }
   }
 
+  const openEdit = (intervention: any) => {
+    setEditingIntervention(intervention)
+    setEditType(intervention.type)
+    setEditPriority(intervention.priority)
+    setEditAddress(intervention.address || "")
+    setEditDesc(intervention.description || "")
+  }
+
+  const handleUpdateIntervention = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const res = await fetch("/api/admin/interventions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingIntervention.id,
+          type: editType,
+          priority: editPriority,
+          address: editAddress,
+          description: editDesc
+        })
+      })
+      if (res.ok) {
+        toast.success("Intervento aggiornato")
+        setEditingIntervention(null)
+        fetchData()
+      } else {
+        toast.error("Errore aggiornamento")
+      }
+    } catch (error) {
+      toast.error("Errore di rete")
+    }
+  }
+
+  const handleCloseIntervention = async (id: string) => {
+    try {
+      const res = await fetch("/api/admin/interventions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: 'COMPLETED' })
+      })
+      if (res.ok) {
+        toast.success("Intervento chiuso")
+        setEditingIntervention(null)
+        fetchData()
+      }
+    } catch (error) {
+      toast.error("Errore di rete")
+    }
+  }
+
+  const handleReopenIntervention = async (id: string) => {
+    try {
+      const res = await fetch("/api/admin/interventions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: 'PENDING' })
+      })
+      if (res.ok) {
+        toast.success("Intervento riaperto")
+        setEditingIntervention(null)
+        fetchData()
+      }
+    } catch (error) {
+      toast.error("Errore di rete")
+    }
+  }
+
   if (!session) return null
 
   return (
@@ -118,10 +193,15 @@ export default function CentraleOperativa() {
           )}
 
           {interventions.map(i => (
-            <div key={i.id} className={`p-3 bg-white rounded-lg border-l-4 shadow-sm text-sm ${i.priority === 'RED' ? 'border-red-500' : i.priority === 'YELLOW' ? 'border-yellow-500' : 'border-green-500'}`}>
+            <div key={i.id} className={`p-3 bg-white rounded-lg border-l-4 shadow-sm text-sm cursor-pointer hover:shadow-md transition-shadow ${i.priority === 'RED' ? 'border-red-500' : i.priority === 'YELLOW' ? 'border-yellow-500' : 'border-green-500'}`}>
               <div className="flex justify-between items-start mb-1">
                 <span className="font-semibold">{i.type}</span>
-                <span className="text-[10px] text-gray-400"><Clock className="w-3 h-3 inline mr-1"/>{new Date(i.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => openEdit(i)} className="p-1 hover:bg-gray-100 rounded" title="Modifica">
+                    <Pencil className="w-3 h-3 text-gray-400" />
+                  </button>
+                  <span className="text-[10px] text-gray-400"><Clock className="w-3 h-3 inline mr-1"/>{new Date(i.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                </div>
               </div>
               <p className="text-gray-600 text-xs mb-2 truncate" title={i.address}>{i.address}</p>
               
@@ -209,6 +289,68 @@ export default function CentraleOperativa() {
               <div className="pt-4 border-t flex justify-end gap-2">
                 <button type="button" onClick={() => setShowNewModal(false)} className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200">Annulla</button>
                 <button type="submit" className="px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 shadow-sm">Crea Intervento</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modale Modifica Intervento */}
+      {editingIntervention && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
+            <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
+              <h2 className="font-semibold text-slate-800">Modifica Intervento</h2>
+              <button onClick={() => setEditingIntervention(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateIntervention} className="p-4 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Tipologia</label>
+                  <select value={editType} onChange={e => setEditType(e.target.value)} className="w-full border rounded-md p-2 text-sm">
+                    <option value="INCIDENTE">Incidente Stradale</option>
+                    <option value="VIABILITA">Viabilità</option>
+                    <option value="LITE">Lite in corso</option>
+                    <option value="CONTROLLO">Controllo Territorio</option>
+                    <option value="ALTRO">Altro</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Priorità</label>
+                  <select value={editPriority} onChange={e => setEditPriority(e.target.value)} className="w-full border rounded-md p-2 text-sm">
+                    <option value="RED">🔴 Codice Rosso (Emergenza)</option>
+                    <option value="YELLOW">🟡 Codice Giallo (Urgente)</option>
+                    <option value="GREEN">🟢 Codice Verde (Differibile)</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Indirizzo / Luogo</label>
+                <StreetSearchAutocomplete
+                  value={editAddress}
+                  onChange={(val) => setEditAddress(val)}
+                  placeholder="Es. Via Bari 12, Altamura"
+                  className="w-full !border-gray-200 !bg-white !text-gray-900 focus:!ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Descrizione Dettagliata</label>
+                <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} className="w-full border rounded-md p-2 text-sm" rows={3} placeholder="Note aggiuntive..."></textarea>
+              </div>
+              <div className="pt-4 border-t flex justify-between">
+                <div className="flex gap-2">
+                  {editingIntervention.status !== 'COMPLETED' ? (
+                    <button type="button" onClick={() => handleCloseIntervention(editingIntervention.id)} className="px-4 py-2 text-sm text-white bg-red-600 rounded-md hover:bg-red-700 shadow-sm">Chiudi Intervento</button>
+                  ) : (
+                    <button type="button" onClick={() => handleReopenIntervention(editingIntervention.id)} className="px-4 py-2 text-sm text-white bg-orange-600 rounded-md hover:bg-orange-700 shadow-sm">Riapri Intervento</button>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setEditingIntervention(null)} className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200">Annulla</button>
+                  <button type="submit" className="px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700 shadow-sm">Salva Modifiche</button>
+                </div>
               </div>
             </form>
           </div>

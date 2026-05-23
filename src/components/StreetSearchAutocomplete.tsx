@@ -79,7 +79,7 @@ export function StreetSearchAutocomplete({ value, onChange, placeholder = "Indir
 
   const handleSelect = (street: Street) => {
     isSelecting.current = true
-    const fullAddress = street.comune ? `${street.denominazione}, ${street.comune}` : street.denominazione
+    const fullAddress = street.denominazione
     setQuery(fullAddress)
     onChange(fullAddress)
     setShowDropdown(false)
@@ -135,7 +135,6 @@ export function StreetSearchAutocomplete({ value, onChange, placeholder = "Indir
               </div>
               <div className="flex-1 truncate">
                 <p className="text-sm font-bold text-white truncate">{street.denominazione}</p>
-                {street.comune && <p className="text-[10px] text-slate-400">{street.comune}</p>}
               </div>
             </button>
           ))}
