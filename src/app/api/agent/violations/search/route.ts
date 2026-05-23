@@ -4,7 +4,10 @@ import { auth } from '@/auth'
 import { z } from 'zod'
 
 const searchSchema = z.object({
-  testo: z.string().min(3, "Il testo deve contenere almeno 3 caratteri")
+  testo: z.string().optional(),
+  articolo: z.string().optional()
+}).refine(data => data.testo || data.articolo, {
+  message: "Fornisci un testo di ricerca o un articolo"
 })
 
 export async function POST(req: Request) {
@@ -18,10 +21,12 @@ export async function POST(req: Request) {
     const validationResult = searchSchema.safeParse(body)
 
     if (!validationResult.success) {
-      return NextResponse.json({ error: 'Testo non valido' }, { status: 400 })
+      return NextResponse.json({ error: 'Dati non validi: ' + validationResult.error.errors[0].message }, { status: 400 })
     }
 
-    const inputTesto = validationResult.data.testo.toLowerCase()
+    const { testo, articolo } = validationResult.data
+
+    const inputTesto = testo ? testo.toLowerCase() : ""
     // Normalizzazione input: rimuove punteggiatura e converte in array di parole uniche lunghe almeno 3 caratteri
     const inputWords = [...new Set(inputTesto.replace(/[^\w\sàèéìòù]/g, '').split(/\s+/).filter(w => w.length > 2))]
 
@@ -32,38 +37,53 @@ export async function POST(req: Request) {
       }
     })
 
-    const scoredViolations = allViolations.map((viol: any) => {
-      let score = 0
-      const paroleChiave = viol.paroleChiave.map((k: string) => k.toLowerCase())
-      const descrWords = viol.descrizione.toLowerCase().replace(/[^\w\sàèéìòù]/g, '').split(/\s+/)
-      
-      // Match 1: Parole chiave esatte definite nel DB (peso alto)
-      inputWords.forEach((word: string) => {
-        if (paroleChiave.some((k: string) => k === word || k.includes(word) || word.includes(k))) {
-          score += 3
+    // Se fornito l'articolo, filtriamo direttamente
+    let filteredViolations = allViolations
+    if (articolo && articolo.trim() !== "") {
+      filteredViolations = allViolations.filter((v: any) => v.articolo.articolo.toString() === articolo.trim())
+    }
+
+    let results = []
+    
+    if (inputWords.length > 0) {
+      const scoredViolations = filteredViolations.map((viol: any) => {
+        let score = 0
+        const paroleChiave = viol.paroleChiave.map((k: string) => k.toLowerCase())
+        const descrWords = viol.descrizione.toLowerCase().replace(/[^\w\sàèéìòù]/g, '').split(/\s+/)
+        
+        // Match 1: Parole chiave esatte definite nel DB (peso alto)
+        inputWords.forEach((word: string) => {
+          if (paroleChiave.some((k: string) => k === word || k.includes(word) || word.includes(k))) {
+            score += 3
+          }
+          // Match 2: Parole presenti nella descrizione (peso medio)
+          if (descrWords.some((w: string) => w === word || w.includes(word))) {
+            score += 1
+          }
+        })
+
+        // Bonus se l'agente menziona esplicitamente un numero di articolo
+        if (inputWords.includes(viol.articolo.articolo.toString())) {
+          score += 5
         }
-        // Match 2: Parole presenti nella descrizione (peso medio)
-        if (descrWords.some((w: string) => w === word || w.includes(word))) {
-          score += 1
+
+        return {
+          ...viol,
+          score
         }
       })
 
-      // Bonus se l'agente menziona esplicitamente un numero di articolo (es. "173" o "art 173")
-      if (inputWords.includes(viol.articolo.articolo.toString())) {
-        score += 5
-      }
-
-      return {
-        ...viol,
-        score
-      }
-    })
-
-    // Filtriamo i risultati con punteggio maggiore di 0 e li ordiniamo per score decrescente
-    const results = scoredViolations
-      .filter((v: any) => v.score > 0)
-      .sort((a: any, b: any) => b.score - a.score)
-      .slice(0, 3) // Ritorniamo solo le top 3 proposte
+      // Filtriamo i risultati con punteggio maggiore di 0 e li ordiniamo per score decrescente
+      results = scoredViolations
+        .filter((v: any) => v.score > 0)
+        .sort((a: any, b: any) => b.score - a.score)
+        .slice(0, 50) // Limite aumentato a 50
+    } else {
+      // Se c'è solo l'articolo (senza testo), restituiamo tutte le violazioni per quell'articolo
+      results = filteredViolations
+        .sort((a: any, b: any) => (a.comma || "").localeCompare(b.comma || ""))
+        .slice(0, 50)
+    }
 
     return NextResponse.json({
       risultati: results,

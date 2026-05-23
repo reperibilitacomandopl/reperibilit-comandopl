@@ -15,12 +15,10 @@ async function main() {
     process.exit(1)
   }
 
-  // Creazione stream di lettura
-  const fileStream = fs.createReadStream(filePath, { encoding: 'utf-8' })
-  const rl = readline.createInterface({
-    input: fileStream,
-    crlfDelay: Infinity
-  })
+  // Read file entirely
+  const fileContent = fs.readFileSync(filePath, 'utf-8')
+  // Split by any newline sequence
+  const lines = fileContent.split(/\r?\n/)
 
   let isFirstLine = true
   let successCount = 0
@@ -28,7 +26,12 @@ async function main() {
 
   // 1. Azzeramento tabella esistente (perché abbiamo cambiato lo schema)
   console.log('🗑️ Cancellazione vecchie violazioni CdsViolation (reset)...')
-  await prisma.cdsViolation.deleteMany({})
+  try {
+    const delRes = await prisma.cdsViolation.deleteMany({})
+    console.log(`Eliminate ${delRes.count} righe vecchie.`)
+  } catch (e) {
+    console.error('Errore deleteMany:', e)
+  }
 
   const parseCurrency = (val: string): number => {
     if (!val || val === 'N.P.' || val.trim() === '') return 0;
@@ -44,11 +47,13 @@ async function main() {
   // Articles Cache
   const articlesCache: Record<string, string> = {}
 
-  for await (const line of rl) {
+  for (const line of lines) {
     if (isFirstLine) {
       isFirstLine = false
       continue // Salta l'intestazione
     }
+
+    if (!line || line.trim() === '') continue;
 
     const cols = line.split('\t')
     

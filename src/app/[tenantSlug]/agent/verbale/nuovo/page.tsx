@@ -9,8 +9,8 @@ type AIResult = {
   articoloId: string
   comma: string | null
   descrizione: string
-  sanzioneMin: number
-  sanzioneMax: number
+  sanzione: number
+  sanzioneScontata: number | null
   puntiPatente: number
   articolo: { articolo: number }
   score: number
@@ -28,6 +28,7 @@ export default function NuovoVerbalePage() {
 
   // AI Search state
   const [nlpText, setNlpText] = useState("")
+  const [searchArticolo, setSearchArticolo] = useState("")
   const [aiLoading, setAiLoading] = useState(false)
   const [aiResults, setAiResults] = useState<AIResult[]>([])
   const [searched, setSearched] = useState(false)
@@ -71,7 +72,7 @@ export default function NuovoVerbalePage() {
   }, [])
 
   const searchNLP = async () => {
-    if (nlpText.length < 3) return
+    if (nlpText.length < 3 && searchArticolo.length === 0) return
     setAiLoading(true)
     setSearched(true)
     setError("")
@@ -80,7 +81,7 @@ export default function NuovoVerbalePage() {
       const res = await fetch("/api/agent/violations/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ testo: nlpText })
+        body: JSON.stringify({ testo: nlpText, articolo: searchArticolo })
       })
       
       if (res.ok) {
@@ -101,10 +102,10 @@ export default function NuovoVerbalePage() {
     setFormData(prev => ({
       ...prev,
       articoloCDS: `Art. ${result.articolo.articolo}${result.comma ? ` c. ${result.comma}` : ''}`,
-      importo: result.sanzioneMin.toString(),
+      importo: result.sanzione.toString(),
       puntiPatente: result.puntiPatente,
       cdsViolationId: result.id,
-      tipoInfrazione: result.descrizione.length > 50 ? result.descrizione.substring(0, 47) + "..." : result.descrizione
+      tipoInfrazione: result.descrizione // Intero testo della violazione
     }))
     setAiResults([])
     setSearched(false)
@@ -221,24 +222,33 @@ export default function NuovoVerbalePage() {
                 />
               </div>
 
-              {/* AI Search NLP */}
-              <div className="space-y-2 relative">
+              {/* AI Search NLP & Articolo */}
+              <div className="space-y-3 relative">
                 <label className="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
                   <Sparkles size={14} /> Ricerca Intelligente Violazione
                 </label>
+                
                 <div className="flex gap-2">
+                  <input 
+                    type="text"
+                    value={searchArticolo}
+                    onChange={e => setSearchArticolo(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), searchNLP())}
+                    className="w-24 bg-slate-900 border border-blue-500/30 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none placeholder:text-blue-200/30 text-blue-100"
+                    placeholder="Art."
+                  />
                   <input 
                     type="text"
                     value={nlpText}
                     onChange={e => setNlpText(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), searchNLP())}
                     className="flex-1 bg-slate-900 border border-blue-500/30 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none placeholder:text-blue-200/30 text-blue-100"
-                    placeholder="Es. Guidava al cellulare senza cintura..."
+                    placeholder="Es. Guidava al cellulare..."
                   />
                   <button 
                     type="button"
                     onClick={searchNLP}
-                    disabled={aiLoading || nlpText.length < 3}
+                    disabled={aiLoading || (nlpText.length < 3 && searchArticolo.length === 0)}
                     className="p-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-2xl flex items-center justify-center transition-all"
                   >
                     {aiLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Search size={20} />}
@@ -247,7 +257,7 @@ export default function NuovoVerbalePage() {
 
                 {/* AI Results Dropdown */}
                 {searched && aiResults.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-white/10 rounded-2xl overflow-hidden shadow-2xl z-10 animate-in slide-in-from-top-2">
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-white/10 rounded-2xl shadow-2xl z-20 max-h-80 overflow-y-auto animate-in slide-in-from-top-2 overflow-hidden scrollbar-thin scrollbar-thumb-white/20">
                     {aiResults.map((res, i) => (
                       <button
                         key={res.id}
@@ -263,7 +273,7 @@ export default function NuovoVerbalePage() {
                           <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{res.descrizione}</p>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-sm font-black text-emerald-400">€{res.sanzioneMin}</p>
+                          <p className="text-sm font-black text-emerald-400">€{res.sanzione}</p>
                           {res.puntiPatente > 0 && <p className="text-[10px] font-bold text-rose-400">-{res.puntiPatente} pt</p>}
                         </div>
                       </button>
@@ -277,13 +287,26 @@ export default function NuovoVerbalePage() {
                 )}
               </div>
 
-              {/* Selected Article Preview */}
+              {/* Selected Article Preview & Editable Description */}
               {formData.articoloCDS && !searched && (
-                <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-start gap-3 animate-in fade-in">
-                  <Check size={20} className="text-emerald-500 shrink-0" />
-                  <div>
-                    <p className="text-sm font-black text-emerald-400">{formData.articoloCDS}</p>
-                    <p className="text-xs text-emerald-500/70 mt-1">{formData.tipoInfrazione}</p>
+                <div className="space-y-4 animate-in fade-in">
+                  <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-start gap-3">
+                    <Check size={20} className="text-emerald-500 shrink-0" />
+                    <div>
+                      <p className="text-sm font-black text-emerald-400">{formData.articoloCDS}</p>
+                      <p className="text-xs text-emerald-500/70 mt-1">Sanzione selezionata e importi precompilati</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Testo della Violazione</label>
+                    <textarea 
+                      required
+                      value={formData.tipoInfrazione}
+                      onChange={e => setFormData({...formData, tipoInfrazione: e.target.value})}
+                      className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-emerald-500 outline-none min-h-[120px] resize-none text-emerald-50"
+                      placeholder="Descrizione della sanzione..."
+                    />
                   </div>
                 </div>
               )}
@@ -531,7 +554,7 @@ export default function NuovoVerbalePage() {
                 <div className="border-t border-white/5 pt-4">
                   <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Violazione</p>
                   <p className="text-sm font-bold mt-1">{formData.articoloCDS}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{formData.tipoInfrazione}</p>
+                  <p className="text-xs text-slate-400 mt-0.5 whitespace-pre-wrap">{formData.tipoInfrazione}</p>
                   {formData.puntiPatente > 0 && (
                     <p className="text-xs text-rose-500 font-bold mt-1">-{formData.puntiPatente} punti patente</p>
                   )}
@@ -573,7 +596,7 @@ export default function NuovoVerbalePage() {
                 <div className="border-t border-white/5 pt-4">
                   <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-2">Testo Verbale Generato</p>
                   <div className="p-3 bg-white/5 rounded-xl text-[10px] text-slate-300 font-mono leading-relaxed">
-                    Si dà atto che il veicolo tg. {formData.targa} {formData.marcaVeicolo} {formData.modelloVeicolo} procedeva violando l'Art. {formData.articoloCDS} del C.d.S. ({formData.tipoInfrazione.toLowerCase()}). 
+                    Si dà atto che il veicolo tg. {formData.targa} {formData.marcaVeicolo} {formData.modelloVeicolo} procedeva violando l'Art. {formData.articoloCDS} del C.d.S. ({formData.tipoInfrazione}). 
                     {formData.indirizzo ? ` Accertamento in ${formData.indirizzo}.` : ""}
                     {formData.trasgressoreCognome ? ` Conducente identificato in ${formData.trasgressoreNome} ${formData.trasgressoreCognome}.` : ""}
                     {formData.note ? ` Note: ${formData.note}` : ""}
