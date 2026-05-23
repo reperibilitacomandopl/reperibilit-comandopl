@@ -56,10 +56,8 @@ function NFCClockContent() {
         setStatus('success')
         const actionType = data.record?.type === 'IN' ? 'Entrata' : 'Uscita'
         setMessage(`Timbratura di ${actionType} registrata con successo!`)
-        // Cerca di chiudere la finestra automaticamente dopo 2.5s
-        setTimeout(() => {
-          try { window.close() } catch (e) {}
-        }, 2500)
+        // iOS Shortcuts impedisce la chiusura via javascript e causa un crash (error.tsx). 
+        // Lasciamo l'utente sulla schermata di successo finché non chiude manualmente.
       } else {
         setStatus('error')
         if (res.status === 403 && data.distance) {
