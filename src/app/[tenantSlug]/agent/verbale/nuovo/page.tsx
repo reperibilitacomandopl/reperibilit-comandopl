@@ -58,13 +58,13 @@ export default function NuovoVerbalePage() {
     trasgressoreDataNascita: "",
     trasgressoreLuogoNascita: "",
     trasgressoreIndirizzo: "",
-    trasgressoreComuneResidenza: "",
+    trasgressoreComuneResidenza: tenantSlug ? tenantSlug.charAt(0).toUpperCase() + tenantSlug.slice(1) : "",
     // Dati obbligato in solido
     obbligatoNome: "",
     obbligatoCognome: "",
     obbligatoPartitaIva: "",
     obbligatoIndirizzo: "",
-    obbligatoComuneResidenza: "",
+    obbligatoComuneResidenza: tenantSlug ? tenantSlug.charAt(0).toUpperCase() + tenantSlug.slice(1) : "",
     // Dati patente
     patenteNumero: "",
     patenteEnteRilascio: "",
