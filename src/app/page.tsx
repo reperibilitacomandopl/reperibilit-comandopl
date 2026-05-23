@@ -12,19 +12,20 @@ export default async function RootPage() {
 
   const { tenantSlug, role } = session.user
   
+  // SuperAdmin → pannello globale multi-tenant
+  if (session.user.isSuperAdmin) {
+    redirect("/superadmin")
+  }
+
   if (!tenantSlug) {
-    // Caso d'emergenza: se non c'è lo slug (es. SuperAdmin globale), lo portiamo al login o a una dashboard globale
-    if (session.user.isSuperAdmin) {
-      redirect("/superadmin")
-    }
     redirect("/login")
   }
 
-  // Admin → Launchpad. SuperAdmin e Agenti → dashboard mobile
+  // Admin → Launchpad
   if (role === "ADMIN") {
     redirect(`/${tenantSlug}/admin`)
   }
 
-  // Agenti, SuperAdmin e operatori → dashboard mobile
+  // Agenti e operatori → dashboard mobile
   redirect(`/${tenantSlug}`)
 }

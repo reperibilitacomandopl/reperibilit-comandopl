@@ -64,9 +64,10 @@ export async function GET(req: Request) {
     if (!tenantId) return NextResponse.json({ error: "Tenant non identificato" }, { status: 400 })
     
     const users = await prisma.user.findMany({
-      where: { 
-        tenantId, 
-        isActive: true
+      where: {
+        tenantId,
+        isActive: true,
+        isSuperAdmin: false // SuperAdmin nascosti ai tenant
       },
       orderBy: { name: "asc" }
     })

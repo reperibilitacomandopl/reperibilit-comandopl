@@ -40,7 +40,7 @@ export default async function Home({
 
   // Data Fetching
   const users = await prisma.user.findMany({
-    where: { role: "AGENTE", ...(tenantId ? { tenantId } : {}) },
+    where: { role: "AGENTE", isSuperAdmin: false, ...(tenantId ? { tenantId } : {}) },
     orderBy: { name: 'asc' },
     select: { id: true, name: true, matricola: true, isUfficiale: true, telegramChatId: true }
   })
