@@ -247,8 +247,8 @@ export default function CentraleOperativa() {
       {/* Modale Nuovo Intervento */}
       {showNewModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
-            <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-visible">
+            <div className="p-4 border-b bg-slate-50 flex justify-between items-center rounded-t-xl">
               <h2 className="font-semibold text-slate-800">Nuovo Intervento</h2>
               <button onClick={() => setShowNewModal(false)} className="text-gray-400 hover:text-gray-600">&times;</button>
             </div>
@@ -298,8 +298,8 @@ export default function CentraleOperativa() {
       {/* Modale Modifica Intervento */}
       {editingIntervention && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
-            <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-visible">
+            <div className="p-4 border-b bg-slate-50 flex justify-between items-center rounded-t-xl">
               <h2 className="font-semibold text-slate-800">Modifica Intervento</h2>
               <button onClick={() => setEditingIntervention(null)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5" />
