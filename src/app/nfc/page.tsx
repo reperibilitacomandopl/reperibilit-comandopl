@@ -123,12 +123,12 @@ function NFCClockContent() {
             if (slug) {
               const role = session?.user?.role
               const dest = role === 'ADMIN' ? `/${slug}/admin/pannello` : `/${slug}`
-              window.location.href = dest
+              router.replace(dest)
               return
             }
           }
           // Fallback: go to root (landing will handle redirect)
-          window.location.href = '/'
+          router.replace('/')
         } catch (e) {
           // If fetch fails, don't crash - user can use the manual button
           console.warn('Auto-redirect failed, user can tap Dashboard button', e)
@@ -180,12 +180,12 @@ function NFCClockContent() {
                       const slug = s?.user?.tenantSlug
                       if (slug) {
                         const dest = s?.user?.role === 'ADMIN' ? `/${slug}/admin/pannello` : `/${slug}`
-                        window.location.href = dest
+                        router.replace(dest)
                         return
                       }
                     }
                   } catch(e) {}
-                  window.location.href = '/'
+                  router.replace('/')
                 }}
                 className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
               >
@@ -218,12 +218,12 @@ function NFCClockContent() {
                       const slug = s?.user?.tenantSlug
                       if (slug) {
                         const dest = s?.user?.role === 'ADMIN' ? `/${slug}/admin/pannello` : `/${slug}`
-                        window.location.href = dest
+                        router.replace(dest)
                         return
                       }
                     }
                   } catch(e) {}
-                  window.location.href = '/'
+                  router.replace('/')
                 }}
                 className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-xl font-semibold transition-all"
                 >
