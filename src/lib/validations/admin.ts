@@ -73,15 +73,7 @@ export const userCreateSchema = z.object({
 export const userUpdateSchema = userCreateSchema.extend({
   userId: z.string().optional(),
   action: z.string().optional(),
-  newPassword: z.string().optional(),
-  password: z.string()
-    .min(8, "La password deve contenere almeno 8 caratteri.")
-    .regex(/[A-Z]/, "La password deve contenere almeno una lettera maiuscola.")
-    .regex(/[a-z]/, "La password deve contenere almeno una lettera minuscola.")
-    .regex(/[0-9]/, "La password deve contenere almeno un numero.")
-    .regex(/[^A-Za-z0-9]/, "La password deve contenere almeno un carattere speciale (!@#$%^&*...).")
-    .optional()
-    .or(z.literal("")),
+  newPassword: z.string().min(6).optional().or(z.literal("")),
 }).partial();
 
 // --- VALIDAZIONI ARMERIA (WEAPONS & ARMORS) ---

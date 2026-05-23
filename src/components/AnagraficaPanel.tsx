@@ -318,15 +318,9 @@ export default function AnagraficaPanel({ agents, rotationGroups, categories }: 
           onSave={async (id, payload) => {
              const isNew = id === "NEW";
              const method = isNew ? "POST" : "PUT";
-             
-             // Per i nuovi utenti la password è obbligatoria, lo SlideOver la mette in payload.newPassword
-             if (isNew && !payload.newPassword) {
-                toast.error("Password obbligatoria per nuovi profili");
-                return false;
-             }
 
-             const finalPayload = isNew 
-                ? { ...payload, password: payload.newPassword } 
+             const finalPayload = isNew
+                ? { ...payload, password: payload.newPassword || "" }
                 : { userId: id, ...payload };
 
              const res = await fetch("/api/admin/users", {
