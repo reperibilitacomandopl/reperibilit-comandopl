@@ -22,6 +22,8 @@ export function VehicleBrandAutocomplete({ value, onChange, placeholder = "Es. F
   const [loading, setLoading] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const isSelecting = useRef(false)
+  const isInitialMount = useRef(true)
 
   useEffect(() => {
     setQuery(value)
@@ -43,8 +45,14 @@ export function VehicleBrandAutocomplete({ value, onChange, placeholder = "Es. F
       return
     }
 
-    if (query === value && query.length > 0) {
-        return;
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      if (query === value) return
+    }
+
+    if (isSelecting.current) {
+      isSelecting.current = false
+      return
     }
 
     const timer = setTimeout(async () => {
@@ -67,6 +75,7 @@ export function VehicleBrandAutocomplete({ value, onChange, placeholder = "Es. F
   }, [query, value])
 
   const handleSelect = (brand: Brand) => {
+    isSelecting.current = true
     setQuery(brand.descrizione)
     onChange(brand.descrizione)
     setShowDropdown(false)

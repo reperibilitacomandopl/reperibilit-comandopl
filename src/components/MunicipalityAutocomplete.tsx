@@ -23,6 +23,8 @@ export function MunicipalityAutocomplete({ value, onChange, placeholder = "Es. R
   const [loading, setLoading] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const isSelecting = useRef(false)
+  const isInitialMount = useRef(true)
 
   useEffect(() => {
     setQuery(value)
@@ -44,9 +46,14 @@ export function MunicipalityAutocomplete({ value, onChange, placeholder = "Es. R
       return
     }
 
-    // Se la query corrisponde al valore selezionato, non rifare la chiamata
-    if (query === value && query.length > 0) {
-        return;
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      if (query === value) return
+    }
+
+    if (isSelecting.current) {
+      isSelecting.current = false
+      return
     }
 
     const timer = setTimeout(async () => {
@@ -69,6 +76,7 @@ export function MunicipalityAutocomplete({ value, onChange, placeholder = "Es. R
   }, [query, value])
 
   const handleSelect = (municipality: Municipality) => {
+    isSelecting.current = true
     const label = `${municipality.denominazione} (${municipality.provincia})`
     setQuery(label)
     onChange(label)

@@ -23,6 +23,8 @@ export function StreetSearchAutocomplete({ value, onChange, placeholder = "Indir
   const [loading, setLoading] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const isSelecting = useRef(false)
+  const isInitialMount = useRef(true)
 
   // Sync internal state with external value if it changes externally
   useEffect(() => {
@@ -46,9 +48,14 @@ export function StreetSearchAutocomplete({ value, onChange, placeholder = "Indir
       return
     }
 
-    // Only search if user is typing (not if they just selected a result)
-    if (query === value && query.length > 0) {
-        return;
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      if (query === value) return
+    }
+
+    if (isSelecting.current) {
+      isSelecting.current = false
+      return
     }
 
     const timer = setTimeout(async () => {
@@ -71,6 +78,7 @@ export function StreetSearchAutocomplete({ value, onChange, placeholder = "Indir
   }, [query, value])
 
   const handleSelect = (street: Street) => {
+    isSelecting.current = true
     const fullAddress = street.comune ? `${street.denominazione}, ${street.comune}` : street.denominazione
     setQuery(fullAddress)
     onChange(fullAddress)
