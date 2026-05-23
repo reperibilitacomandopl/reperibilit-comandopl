@@ -20,11 +20,11 @@ export default async function RootPage() {
     redirect("/login")
   }
 
-  // Se è Admin, lo portiamo al pannello admin del suo comando
-  if (role === "ADMIN") {
-    redirect(`/${tenantSlug}/admin/pannello`)
+  // Admin e SuperAdmin → Launchpad
+  if (role === "ADMIN" || session.user.isSuperAdmin) {
+    redirect(`/${tenantSlug}/admin`)
   }
 
-  // Altrimenti (Agenti/Operatori), lo portiamo alla dashboard principale del suo comando
+  // Agenti → dashboard mobile
   redirect(`/${tenantSlug}`)
 }
