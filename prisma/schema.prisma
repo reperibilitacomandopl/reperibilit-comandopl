@@ -963,9 +963,9 @@ model ViolationPayment {
 
 model CdsArticle {
   id           String         @id @default(uuid())
-  articolo     Int            @unique
+  articolo     String         @unique // Modificato in String perchè ci sono articoli come "001" o "6" o "142 bis"
   titolo       String
-  testo        String         @db.Text
+  testo        String?        @db.Text
   aggiornatoIl DateTime       @default(now())
   violazioni   CdsViolation[]
 }
@@ -974,13 +974,16 @@ model CdsViolation {
   id                String   @id @default(uuid())
   articoloId        String
   comma             String?
+  codice            String?
   descrizione       String   @db.Text
-  sanzioneMin       Float
-  sanzioneMax       Float
+  sanzione          Float
+  sanzioneScontata  Float?
+  sanzioneAccessoria String? @db.Text
   puntiPatente      Int      @default(0)
   sospensione       Boolean  @default(false)
   fermo             Boolean  @default(false)
   contestoOperativo String?  @db.Text
+  note              String?  @db.Text
   paroleChiave      String[] @default([])
   createdAt         DateTime @default(now())
 
