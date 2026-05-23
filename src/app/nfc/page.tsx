@@ -57,7 +57,7 @@ function NFCClockContent() {
         const actionType = data.record?.type === 'IN' ? 'Entrata' : 'Uscita'
         setMessage(`Timbratura di ${actionType} registrata con successo!`)
         // Torna alla home dopo 3 secondi
-        setTimeout(() => router.push('/'), 3000)
+        setTimeout(() => window.location.href = '/', 3000)
       } else {
         setStatus('error')
         if (res.status === 403 && data.distance) {
@@ -143,7 +143,7 @@ function NFCClockContent() {
             <h1 className="text-3xl font-bold mb-2 text-green-400">Confermato!</h1>
             <p className="text-slate-300 text-lg mb-8">{message}</p>
             <button 
-              onClick={() => router.push('/')}
+              onClick={() => window.location.href = '/'}
               className="bg-slate-700 hover:bg-slate-600 text-white px-8 py-3 rounded-xl font-semibold transition-all"
             >
               Torna alla Dashboard
@@ -166,7 +166,7 @@ function NFCClockContent() {
                 Riprova
                 </button>
                 <button 
-                onClick={() => router.push('/')}
+                onClick={() => window.location.href = '/'}
                 className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-xl font-semibold transition-all"
                 >
                 Dashboard

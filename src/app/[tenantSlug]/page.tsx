@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import DashboardShell from "@/components/DashboardShell"
 import { isHoliday } from "@/utils/holidays"
+import { generateCalendarToken } from "@/lib/calendar-token"
 
 export default async function Home({ 
   params,
@@ -122,6 +123,7 @@ export default async function Home({
       logoUrl={tenant?.logoUrl}
       tenant={tenant}
       certifiedDates={certifiedDates}
+      calendarToken={generateCalendarToken(session.user.id)}
     />
   )
 }

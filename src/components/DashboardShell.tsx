@@ -19,6 +19,27 @@ import AgentVerbalListView from "./agent/AgentVerbalListView"
 import MobileAgentLaunchpad from "./agent/MobileAgentLaunchpad"
 import { useAgentData } from "@/hooks/useAgentData"
 
+interface DashboardShellProps {
+  session: any
+  allAgents: any[]
+  shifts: any[]
+  myShifts: any[]
+  agendaEntries: any[]
+  currentMonth: number
+  currentYear: number
+  isPublished: boolean
+  settings: any
+  tenantSlug: string
+  rotationGroups: any[]
+  categories: any[]
+  dayInfo: any
+  adminData: any
+  logoUrl?: string | null
+  tenant?: any
+  certifiedDates?: string[]
+  calendarToken?: string
+}
+
 export default function DashboardShell({ 
   session, 
   allAgents, 
@@ -36,8 +57,9 @@ export default function DashboardShell({
   adminData,
   logoUrl,
   tenant,
-  certifiedDates
-}: any) {
+  certifiedDates,
+  calendarToken
+}: DashboardShellProps) {
   const [activeTab, setActiveTab] = useState('dashboard')
   const { role, name, matricola, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem } = session.user
 
@@ -137,26 +159,27 @@ export default function DashboardShell({
             <div className="space-y-6">
               {/* Desktop Dashboard always visible on lg, hidden on mobile */}
               <div className="hidden lg:block">
-                <DynamicAgentDashboard
-                  currentUser={session.user}
-                  shifts={shifts}
-                  myShifts={myShifts}
-                  allAgents={allAgents}
-                  currentMonth={currentMonth}
-                  currentYear={currentYear}
-                  isPublished={isPublished}
-                  tenantSlug={tenantSlug}
-                  agendaEntries={agendaEntries}
-                  userRole={role}
-                  canManageShifts={canManageShifts}
-                  canManageUsers={canManageUsers}
-                  canVerifyClockIns={canVerifyClockIns}
-                  canConfigureSystem={canConfigureSystem}
-                  logoUrl={logoUrl}
-                  tenant={tenant}
-                  certifiedDates={certifiedDates}
-                  agentData={agentData}
-                />
+                  <DynamicAgentDashboard
+                    currentUser={session.user}
+                    shifts={shifts}
+                    myShifts={myShifts}
+                    allAgents={allAgents}
+                    currentMonth={currentMonth}
+                    currentYear={currentYear}
+                    isPublished={isPublished}
+                    tenantSlug={tenantSlug}
+                    agendaEntries={agendaEntries}
+                    userRole={role}
+                    canManageShifts={canManageShifts}
+                    canManageUsers={canManageUsers}
+                    canVerifyClockIns={canVerifyClockIns}
+                    canConfigureSystem={canConfigureSystem}
+                    logoUrl={logoUrl}
+                    tenant={tenant}
+                    certifiedDates={certifiedDates}
+                    agentData={agentData}
+                    calendarToken={calendarToken}
+                  />
               </div>
 
               {/* Mobile Only: Show Launchpad when tab is dashboard */}
@@ -192,6 +215,7 @@ export default function DashboardShell({
                       tenant={tenant}
                       certifiedDates={certifiedDates}
                       agentData={agentData}
+                      calendarToken={calendarToken}
                     />
                   </div>
                 )}

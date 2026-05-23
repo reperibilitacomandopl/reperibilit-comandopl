@@ -61,6 +61,7 @@ export interface AgentDashboardProps {
   tenant?: any
   certifiedDates?: string[]
   agentData?: any
+  calendarToken?: string
 }
 
 export default function AgentDashboard({ 
@@ -78,7 +79,8 @@ export default function AgentDashboard({
   logoUrl,
   tenant,
   certifiedDates,
-  agentData
+  agentData,
+  calendarToken
 }: AgentDashboardProps) {
   
   const localAgentData = useAgentData({ currentUser, currentYear, currentMonth, shifts, tenant });
@@ -495,6 +497,7 @@ export default function AgentDashboard({
         <AgentSyncModal 
           userId={currentUser.id}
           userName={currentUser.name}
+          calendarToken={calendarToken}
           onClose={() => setShowSyncModal(false)}
         />
       )}

@@ -5,12 +5,14 @@ import { X, Smartphone, Monitor, Globe, FileDown } from "lucide-react"
 interface AgentSyncModalProps {
   userId: string
   userName: string
+  calendarToken?: string
   onClose: () => void
 }
 
-export default function AgentSyncModal({ userId, onClose }: AgentSyncModalProps) {
+export default function AgentSyncModal({ userId, calendarToken, onClose }: AgentSyncModalProps) {
   const host = typeof window !== 'undefined' ? window.location.host : ''
   const protocol = typeof window !== 'undefined' ? window.location.protocol : 'https:'
+  const tokenParam = calendarToken ? `?token=${calendarToken}` : ''
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -25,7 +27,7 @@ export default function AgentSyncModal({ userId, onClose }: AgentSyncModalProps)
         <div className="p-5 space-y-3">
           <button
             onClick={() => {
-              window.location.href = `webcal://${host}/api/calendar/${userId}`
+              window.location.href = `webcal://${host}/api/calendar/${userId}${tokenParam}`
             }}
             className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-slate-100 hover:border-blue-400 hover:bg-blue-50/50 transition-all text-left"
           >
@@ -38,7 +40,7 @@ export default function AgentSyncModal({ userId, onClose }: AgentSyncModalProps)
 
           <button
             onClick={() => {
-              window.location.href = `webcal://${host}/api/calendar/${userId}`
+              window.location.href = `webcal://${host}/api/calendar/${userId}${tokenParam}`
             }}
             className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-slate-100 hover:border-indigo-400 hover:bg-indigo-50/50 transition-all text-left"
           >
@@ -51,7 +53,7 @@ export default function AgentSyncModal({ userId, onClose }: AgentSyncModalProps)
 
           <button
             onClick={() => {
-              const calUrl = `${protocol}//${host}/api/calendar/${userId}`
+              const calUrl = `${protocol}//${host}/api/calendar/${userId}${tokenParam}`
               const gcalUrl = `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(calUrl)}`
               window.open(gcalUrl, '_blank')
             }}
@@ -67,7 +69,7 @@ export default function AgentSyncModal({ userId, onClose }: AgentSyncModalProps)
           <div className="pt-3 border-t border-slate-100">
             <button
               onClick={() => {
-                window.location.href = `/api/calendar/${userId}`
+                window.location.href = `/api/calendar/${userId}${tokenParam}`
                 onClose()
               }}
               className="w-full flex items-center justify-center gap-2 text-xs font-bold text-slate-500 hover:text-blue-600 py-2 transition-colors"
