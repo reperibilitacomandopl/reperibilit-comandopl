@@ -43,6 +43,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/violazioni.txt ./violazioni.txt
+COPY --from=builder /app/via.txt ./via.txt
 
 USER nextjs
 

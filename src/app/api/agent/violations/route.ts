@@ -21,6 +21,7 @@ const violationSchema = z.object({
   trasgressoreCognome: z.string().optional().nullable(),
   patenteNumero: z.string().optional().nullable(),
   // Dati veicolo
+  tipoVeicolo: z.string().optional().nullable(),
   marcaVeicolo: z.string().optional().nullable(),
   modelloVeicolo: z.string().optional().nullable(),
   coloreVeicolo: z.string().optional().nullable(),
@@ -64,6 +65,7 @@ export async function POST(req: Request) {
         trasgressoreNome: data.trasgressoreNome,
         trasgressoreCognome: data.trasgressoreCognome,
         patenteNumero: data.patenteNumero,
+        tipoVeicolo: data.tipoVeicolo,
         marcaVeicolo: data.marcaVeicolo,
         modelloVeicolo: data.modelloVeicolo,
         coloreVeicolo: data.coloreVeicolo,

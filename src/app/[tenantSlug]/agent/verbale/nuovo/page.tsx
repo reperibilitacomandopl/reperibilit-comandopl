@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { Camera, MapPin, Check, ChevronLeft, AlertTriangle, Search, X, Shield, Sparkles, FileText } from "lucide-react"
 import { StreetSearchAutocomplete } from "@/components/StreetSearchAutocomplete"
+import { VehicleBrandAutocomplete } from "@/components/VehicleBrandAutocomplete"
 
 type AIResult = {
   id: string
@@ -38,6 +39,7 @@ export default function NuovoVerbalePage() {
 
   const [formData, setFormData] = useState({
     targa: "",
+    tipoVeicolo: "",
     tipoInfrazione: "ALTRO", // Default, will be updated by AI if matched
     articoloCDS: "",
     importo: "",
@@ -61,7 +63,17 @@ export default function NuovoVerbalePage() {
   })
 
   // Geolocation effect on mount
+  const [vehicleTypes, setVehicleTypes] = useState<any[]>([])
+
   useEffect(() => {
+    // Fetch vehicle types
+    fetch('/api/agent/vehicles/types')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setVehicleTypes(data)
+      })
+      .catch(err => console.error(err))
+
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -594,14 +606,24 @@ export default function NuovoVerbalePage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 col-span-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tipo Veicolo</label>
+                  <select
+                    value={formData.tipoVeicolo}
+                    onChange={e => setFormData({...formData, tipoVeicolo: e.target.value})}
+                    className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-white appearance-none"
+                  >
+                    <option value="">Seleziona tipologia...</option>
+                    {vehicleTypes.map((vt: any) => (
+                      <option key={vt.id} value={vt.descrizione}>{vt.descrizione} ({vt.codice})</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Marca</label>
-                  <input 
-                    type="text"
+                  <VehicleBrandAutocomplete
                     value={formData.marcaVeicolo}
-                    onChange={e => setFormData({...formData, marcaVeicolo: e.target.value})}
-                    className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                    placeholder="Fiat"
+                    onChange={val => setFormData({...formData, marcaVeicolo: val})}
                   />
                 </div>
                 <div className="space-y-2">
