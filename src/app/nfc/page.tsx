@@ -7,21 +7,21 @@ import { ClockOutModal } from '@/components/ClockOutModal'
 
 // Helper: redirect to dashboard (funziona anche su iOS/mobile)
 function goToDashboard() {
-  // Prova prima a recuperare la sessione
-  fetch('/api/auth/session')
+  fetch('/api/auth/session', { credentials: 'include' })
     .then(r => r.ok ? r.json() : null)
     .then(session => {
+      const base = window.location.origin
       if (session?.user?.tenantSlug) {
         const slug = session.user.tenantSlug
         const dest = session.user.role === 'ADMIN' ? `/${slug}/admin` : `/${slug}?view=agent`
-        // Usa window.location per bypassare Next.js router (più affidabile su mobile)
-        window.location.href = window.location.origin + dest
+        window.location.replace(base + dest)
       } else {
-        window.location.href = window.location.origin + '/'
+        // Senza sessione, vai alla landing page
+        window.location.replace(base + '/')
       }
     })
     .catch(() => {
-      window.location.href = window.location.origin + '/'
+      window.location.replace(window.location.origin + '/')
     })
 }
 
@@ -100,7 +100,7 @@ function NFCClockContent() {
     hasExecuted.current = true
 
     // Prima verifica che l'utente sia autenticato
-    fetch('/api/auth/session')
+    fetch('/api/auth/session', { credentials: 'include' })
       .then(r => r.json())
       .then(session => {
         if (!session?.user?.id) {

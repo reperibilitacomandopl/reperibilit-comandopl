@@ -28,6 +28,7 @@ const PUBLIC_PREFIXES = [
   "/api/demo-request",
   "/api/health",
   "/api/admin/verbatel-sync",
+  "/nfc",
 ]
 
 function isPublicRoute(pathname: string): boolean {
