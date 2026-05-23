@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     const validationResult = searchSchema.safeParse(body)
 
     if (!validationResult.success) {
-      return NextResponse.json({ error: 'Dati non validi: ' + validationResult.error.errors[0].message }, { status: 400 })
+      return NextResponse.json({ error: 'Dati di ricerca non validi' }, { status: 400 })
     }
 
     const { testo, articolo } = validationResult.data
