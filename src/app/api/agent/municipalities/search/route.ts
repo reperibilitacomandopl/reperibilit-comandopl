@@ -18,7 +18,6 @@ export async function GET(req: Request) {
 
     const municipalities = await prisma.municipality.findMany({
       where: {
-        tenantId: session.user.tenantId,
         OR: [
           { denominazione: { startsWith: q, mode: 'insensitive' } },
           { denominazione: { contains: q, mode: 'insensitive' } }

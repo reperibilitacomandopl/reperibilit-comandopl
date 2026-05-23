@@ -111,6 +111,15 @@ function NFCClockContent() {
     )
   }, [])
 
+  useEffect(() => {
+    if (status === 'success') {
+      const timer = setTimeout(() => {
+        window.location.href = '/'
+      }, 2500)
+      return () => clearTimeout(timer)
+    }
+  }, [status])
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white p-6 font-sans">
       <div className="bg-slate-800 p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-md w-full text-center border border-slate-700">
@@ -142,7 +151,7 @@ function NFCClockContent() {
             </div>
             <h1 className="text-3xl font-bold mb-2 text-green-400">Confermato!</h1>
             <p className="text-slate-300 text-lg mb-2 text-center px-4">{message}</p>
-            <p className="text-slate-500 text-sm mb-8 text-center px-4">Puoi chiudere questa schermata o tornare all'app.</p>
+            <p className="text-slate-500 text-sm mb-8 text-center px-4">Reindirizzamento alla Home in corso...</p>
             <div className="flex gap-3">
               <button 
                 onClick={() => { try { window.close() } catch(e) {} }}

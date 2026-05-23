@@ -1000,6 +1000,7 @@ model Violation {
   trasgressoreComuneResidenza String?
   obbligatoNome               String?
   obbligatoCognome            String?
+  obbligatoPartitaIva         String?
   obbligatoIndirizzo          String?
   obbligatoComuneResidenza    String?
   patenteNumero       String?

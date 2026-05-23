@@ -60,6 +60,7 @@ export default function NuovoVerbalePage() {
     // Dati obbligato in solido
     obbligatoNome: "",
     obbligatoCognome: "",
+    obbligatoPartitaIva: "",
     obbligatoIndirizzo: "",
     obbligatoComuneResidenza: "",
     // Dati patente
@@ -135,11 +136,11 @@ export default function NuovoVerbalePage() {
   const selectAIResult = (result: AIResult) => {
     setFormData(prev => ({
       ...prev,
-      articoloCDS: `Art. ${result.articolo.articolo}${result.comma ? ` c. ${result.comma}` : ''}`,
-      importo: result.sanzione.toString(),
-      puntiPatente: result.puntiPatente,
+      articoloCDS: `Art. ${result.articolo?.articolo || ''}${result.comma ? ` c. ${result.comma}` : ''}`,
+      importo: result.sanzione?.toString() || "0",
+      puntiPatente: result.puntiPatente || 0,
       cdsViolationId: result.id,
-      tipoInfrazione: result.descrizione // Intero testo della violazione
+      tipoInfrazione: result.descrizione || "" // Intero testo della violazione
     }))
     setAiResults([])
     setSearched(false)
@@ -408,7 +409,7 @@ export default function NuovoVerbalePage() {
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <p className="text-sm font-bold text-white">Art. {res.articolo.articolo}{res.comma ? ` c. ${res.comma}` : ''}</p>
+                            <p className="text-sm font-bold text-white">Art. {res.articolo?.articolo || ''}{res.comma ? ` c. ${res.comma}` : ''}</p>
                             {res.codice && <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 text-[10px] rounded-md font-mono border border-blue-500/30">Cod. {res.codice}</span>}
                           </div>
                           <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{res.descrizione}</p>
@@ -739,15 +740,27 @@ export default function NuovoVerbalePage() {
               </div>
 
               {isObbligatoAzienda ? (
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ragione Sociale</label>
-                  <input 
-                    type="text"
-                    value={formData.obbligatoNome}
-                    onChange={e => setFormData({...formData, obbligatoNome: e.target.value})}
-                    className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
-                    placeholder="Nome Azienda SRL"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ragione Sociale</label>
+                    <input 
+                      type="text"
+                      value={formData.obbligatoNome}
+                      onChange={e => setFormData({...formData, obbligatoNome: e.target.value})}
+                      className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                      placeholder="Nome Azienda SRL"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Partita IVA o C.F.</label>
+                    <input 
+                      type="text"
+                      value={formData.obbligatoPartitaIva}
+                      onChange={e => setFormData({...formData, obbligatoPartitaIva: e.target.value})}
+                      className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-sm font-mono focus:ring-2 focus:ring-orange-500 outline-none uppercase"
+                      placeholder="IT01234567890"
+                    />
+                  </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">

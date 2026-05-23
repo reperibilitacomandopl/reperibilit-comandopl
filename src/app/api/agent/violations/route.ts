@@ -26,6 +26,7 @@ const violationSchema = z.object({
   // Dati obbligato in solido
   obbligatoNome: z.string().optional().nullable(),
   obbligatoCognome: z.string().optional().nullable(),
+  obbligatoPartitaIva: z.string().optional().nullable(),
   obbligatoIndirizzo: z.string().optional().nullable(),
   obbligatoComuneResidenza: z.string().optional().nullable(),
   // Dati patente
@@ -84,6 +85,7 @@ export async function POST(req: Request) {
         trasgressoreComuneResidenza: data.trasgressoreComuneResidenza,
         obbligatoNome: data.obbligatoNome,
         obbligatoCognome: data.obbligatoCognome,
+        obbligatoPartitaIva: data.obbligatoPartitaIva,
         obbligatoIndirizzo: data.obbligatoIndirizzo,
         obbligatoComuneResidenza: data.obbligatoComuneResidenza,
         patenteNumero: data.patenteNumero,

@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     // Se fornito l'articolo, filtriamo direttamente
     let filteredViolations = allViolations
     if (articolo && articolo.trim() !== "") {
-      filteredViolations = allViolations.filter((v: any) => v.articolo.articolo.toString() === articolo.trim())
+      filteredViolations = allViolations.filter((v: any) => v.articolo?.articolo?.toString() === articolo.trim())
     }
 
     let results = []
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
         })
 
         // Bonus se l'agente menziona esplicitamente un numero di articolo
-        if (inputWords.includes(viol.articolo.articolo.toString())) {
+        if (viol.articolo && inputWords.includes(viol.articolo.articolo.toString())) {
           score += 5
         }
         

@@ -19,8 +19,8 @@ async function main() {
     process.exit(1)
   }
 
-  console.log(`Eliminazione vecchi comuni per il tenant ${tenant.name}...`)
-  await prisma.municipality.deleteMany({ where: { tenantId: tenant.id } })
+  console.log(`Eliminazione vecchi comuni globali...`)
+  await prisma.municipality.deleteMany({})
 
   const content = fs.readFileSync(comuniPath, 'utf-8')
   const lines = content.split('\n').filter(line => line.trim().length > 0)
@@ -40,7 +40,7 @@ async function main() {
 
     if (denominazione) {
       batch.push({
-        tenantId: tenant.id,
+        tenantId: null, // Globale
         denominazione,
         provincia,
         codiceBelfiore
