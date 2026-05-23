@@ -113,8 +113,26 @@ function NFCClockContent() {
 
   useEffect(() => {
     if (status === 'success') {
-      const timer = setTimeout(() => {
-        window.location.href = '/'
+      const timer = setTimeout(async () => {
+        try {
+          // Fetch session to get tenant slug for proper redirect
+          const res = await fetch('/api/auth/session')
+          if (res.ok) {
+            const session = await res.json()
+            const slug = session?.user?.tenantSlug
+            if (slug) {
+              const role = session?.user?.role
+              const dest = role === 'ADMIN' ? `/${slug}/admin/pannello` : `/${slug}`
+              window.location.href = dest
+              return
+            }
+          }
+          // Fallback: go to root (landing will handle redirect)
+          window.location.href = '/'
+        } catch (e) {
+          // If fetch fails, don't crash - user can use the manual button
+          console.warn('Auto-redirect failed, user can tap Dashboard button', e)
+        }
       }, 2500)
       return () => clearTimeout(timer)
     }
@@ -151,16 +169,24 @@ function NFCClockContent() {
             </div>
             <h1 className="text-3xl font-bold mb-2 text-green-400">Confermato!</h1>
             <p className="text-slate-300 text-lg mb-2 text-center px-4">{message}</p>
-            <p className="text-slate-500 text-sm mb-8 text-center px-4">Reindirizzamento alla Home in corso...</p>
+            <p className="text-slate-500 text-sm mb-8 text-center px-4">Reindirizzamento alla Dashboard in corso...</p>
             <div className="flex gap-3">
               <button 
-                onClick={() => { try { window.close() } catch(e) {} }}
-                className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-xl font-semibold transition-all"
-              >
-                Chiudi
-              </button>
-              <button 
-                onClick={() => window.location.href = '/'}
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/auth/session')
+                    if (res.ok) {
+                      const s = await res.json()
+                      const slug = s?.user?.tenantSlug
+                      if (slug) {
+                        const dest = s?.user?.role === 'ADMIN' ? `/${slug}/admin/pannello` : `/${slug}`
+                        window.location.href = dest
+                        return
+                      }
+                    }
+                  } catch(e) {}
+                  window.location.href = '/'
+                }}
                 className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
               >
                 Dashboard
@@ -184,7 +210,21 @@ function NFCClockContent() {
                 Riprova
                 </button>
                 <button 
-                onClick={() => window.location.href = '/'}
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/auth/session')
+                    if (res.ok) {
+                      const s = await res.json()
+                      const slug = s?.user?.tenantSlug
+                      if (slug) {
+                        const dest = s?.user?.role === 'ADMIN' ? `/${slug}/admin/pannello` : `/${slug}`
+                        window.location.href = dest
+                        return
+                      }
+                    }
+                  } catch(e) {}
+                  window.location.href = '/'
+                }}
                 className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-xl font-semibold transition-all"
                 >
                 Dashboard
