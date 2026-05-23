@@ -243,19 +243,16 @@ export default function AdminSidebar({
       <nav aria-label="Menu Principale" className={`flex-1 py-10 ${collapsed ? "px-2" : "px-4"} space-y-10 overflow-y-auto custom-scrollbar-dark pb-6`}>
         {NAV_SECTIONS.map((section) => {
           const filteredItems = section.items.filter(item => {
-            if (userRole === "ADMIN") return true;
-            
-            if (item.label === "Overview & KPI") return true;
-            if (item.label === "Pianificazione Mensile") return true;
-            
-            if (section.title === "Centro Operativo") return canManageShifts;
-            
-            if (item.label === "Timbrature GPS") return canVerifyClockIns;
-            if (section.title === "Risorse Umane") return canManageUsers;
-            
-            if (section.title === "Logistica & Mezzi") return canConfigureSystem;
-            if (section.title === "Amministrazione") return canConfigureSystem;
-            
+            if (userRole === "ADMIN" || isSuperAdmin) return true;
+
+            // Utente con permessi granulari: mostra in base al permesso
+            if (section.title === "Centrale Operativa") return canManageShifts || canVerifyClockIns;
+            if (section.title === "Pianificazione") return canManageShifts;
+            if (section.title === "Personale") return canManageUsers || canManageShifts;
+            if (section.title === "Risorse e Mezzi") return canConfigureSystem || canManageShifts;
+            if (section.title === "Report e Analisi") return canConfigureSystem || canManageShifts;
+            if (section.title === "Sistema") return canConfigureSystem;
+
             return false;
           });
 

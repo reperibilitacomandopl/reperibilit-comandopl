@@ -141,7 +141,7 @@ export default function DashboardShell({
       {/* Main Content Area */}
       <main className="flex-1 pt-20">
         <div className={containerClass}>
-          {role === "ADMIN" ? (
+          {(role === "ADMIN" || canManageShifts || canManageUsers || canVerifyClockIns || canConfigureSystem) ? (
             <AdminDashboard 
               allAgents={allAgents} 
               shifts={shifts} 

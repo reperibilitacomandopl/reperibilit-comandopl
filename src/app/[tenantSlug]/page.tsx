@@ -17,19 +17,20 @@ export default async function Home({
   if (!session?.user) redirect('/login')
   if (session.user.forcePasswordChange) redirect('/change-password')
 
-  const { role, tenantSlug: userSlug, tenantId } = session.user
+  const { role, tenantSlug: userSlug, tenantId, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem, isSuperAdmin } = session.user
   const urlSlug = (await params).tenantSlug
   const view = (await searchParams).view
   const monthStr = (await searchParams).month
   const yearStr = (await searchParams).year
 
   // Verifica COERENZA SLUG
-  if (urlSlug !== userSlug && !session.user.isSuperAdmin) {
+  if (urlSlug !== userSlug && !isSuperAdmin) {
     redirect(`/${userSlug}`)
   }
 
-  // Admin users: redirect to Launchpad (unless previewing agent view)
-  if (role === "ADMIN" && view !== "agent") {
+  // Admin o utente con permessi granulari: redirect al Launchpad (tranne preview agent)
+  const hasAdminAccess = role === "ADMIN" || isSuperAdmin || canManageShifts || canManageUsers || canVerifyClockIns || canConfigureSystem
+  if (hasAdminAccess && view !== "agent") {
     redirect(`/${userSlug}/admin`)
   }
 
