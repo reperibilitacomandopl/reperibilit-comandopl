@@ -933,6 +933,8 @@ model Violation {
   coloreVeicolo       String?
   puntiPatente        Int       @default(0)
   descrizioneGenerata String?   @db.Text
+  documentType        String    @default("VERBALE") // PREAVVISO, VERBALE
+  motivoMancataContestazione String? @db.Text
   cdsViolationId      String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
