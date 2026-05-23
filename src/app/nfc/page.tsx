@@ -123,12 +123,12 @@ function NFCClockContent() {
             if (slug) {
               const role = session?.user?.role
               const dest = role === 'ADMIN' ? `/${slug}/admin/pannello` : `/${slug}`
-              router.replace(dest)
+              window.location.assign(window.location.origin + dest)
               return
             }
           }
           // Fallback: go to root (landing will handle redirect)
-          router.replace('/')
+          window.location.assign(window.location.origin + '/')
         } catch (e) {
           // If fetch fails, don't crash - user can use the manual button
           console.warn('Auto-redirect failed, user can tap Dashboard button', e)
@@ -180,16 +180,16 @@ function NFCClockContent() {
                       const slug = s?.user?.tenantSlug
                       if (slug) {
                         const dest = s?.user?.role === 'ADMIN' ? `/${slug}/admin/pannello` : `/${slug}`
-                        router.replace(dest)
+                        window.location.assign(window.location.origin + dest)
                         return
                       }
                     }
                   } catch(e) {}
-                  router.replace('/')
+                  window.location.assign(window.location.origin + '/')
                 }}
                 className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
               >
-                Dashboard
+                Vai alla Dashboard
               </button>
             </div>
           </div>
@@ -218,16 +218,16 @@ function NFCClockContent() {
                       const slug = s?.user?.tenantSlug
                       if (slug) {
                         const dest = s?.user?.role === 'ADMIN' ? `/${slug}/admin/pannello` : `/${slug}`
-                        router.replace(dest)
+                        window.location.assign(window.location.origin + dest)
                         return
                       }
                     }
                   } catch(e) {}
-                  router.replace('/')
+                  window.location.assign(window.location.origin + '/')
                 }}
                 className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-xl font-semibold transition-all"
                 >
-                Dashboard
+                Vai alla Dashboard
                 </button>
             </div>
           </div>
