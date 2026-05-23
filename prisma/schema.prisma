@@ -66,6 +66,26 @@ model Tenant {
   holidayRotationGroups   HolidayRotationGroup[]
   customHolidays          CustomHoliday[]
   violations              Violation[]
+  streets                 Street[]
+}
+
+model Street {
+  id              String   @id @default(uuid())
+  tenantId        String?
+  codice          String?
+  denominazione   String
+  chiave          String?
+  comune          String?
+  zona            String?
+  enteProprietario String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([chiave])
+  @@index([denominazione])
 }
 
 model User {

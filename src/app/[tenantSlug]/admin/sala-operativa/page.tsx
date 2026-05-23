@@ -6,7 +6,7 @@ import { useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Shield, Plus, Clock, MapPin, Phone, User, X, Send, CheckCircle, XCircle, Car, RadioTower, Crosshair, AlertTriangle, Volume2 } from "lucide-react"
 import toast from "react-hot-toast"
-import { STRADE_ALTAMURA } from "@/data/strade-altamura"
+import { StreetSearchAutocomplete } from "@/components/StreetSearchAutocomplete"
 
 const LiveMap = dynamic(() => import("@/components/admin/LiveMap"), {
   ssr: false,
@@ -55,8 +55,6 @@ export default function CentraleOperativa() {
   const [showNewModal, setShowNewModal] = useState(false)
   const [hqCenter, setHqCenter] = useState<[number, number]>([40.8286, 16.5518])
   const [submitting, setSubmitting] = useState(false)
-  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([])
-  const [showSuggestions, setShowSuggestions] = useState(false)
   const [selectedIntervention, setSelectedIntervention] = useState<any>(null)
   
   const [form, setForm] = useState({
@@ -553,36 +551,12 @@ export default function CentraleOperativa() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Indirizzo / Luogo</label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400"/>
-                  <input required value={form.address} 
-                    onChange={e => {
-                      const val = e.target.value
-                      setForm({...form, address: val})
-                      if (val.length >= 2) {
-                        const matches = STRADE_ALTAMURA.filter(s => s.toLowerCase().includes(val.toLowerCase())).slice(0, 6)
-                        setAddressSuggestions(matches)
-                        setShowSuggestions(matches.length > 0)
-                      } else {
-                        setShowSuggestions(false)
-                      }
-                    }}
-                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                    className="w-full border border-gray-200 rounded-lg p-2.5 pl-9 text-sm focus:ring-2 focus:ring-blue-500" 
-                    placeholder="Es. Via Bari 12, Altamura"
-                    autoComplete="off"
-                  />
-                  {showSuggestions && addressSuggestions.length > 0 && (
-                    <div className="absolute z-50 top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                      {addressSuggestions.map((s, idx) => (
-                        <button key={idx} type="button"
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 border-b border-gray-50 last:border-0"
-                          onMouseDown={() => { setForm({...form, address: s}); setShowSuggestions(false) }}
-                        >{s}</button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <StreetSearchAutocomplete
+                  value={form.address}
+                  onChange={(val) => setForm({...form, address: val})}
+                  placeholder="Es. Via Bari 12, Altamura"
+                  className="w-full !border-gray-200 !bg-white !text-gray-900 focus:!ring-blue-500 !pl-10"
+                />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Descrizione</label>

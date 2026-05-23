@@ -5,6 +5,7 @@ import dynamic from "next/dynamic"
 import { useSession } from "next-auth/react"
 import { Shield, Plus, Navigation, AlertTriangle, CheckCircle2, Clock } from "lucide-react"
 import toast from "react-hot-toast"
+import { StreetSearchAutocomplete } from "@/components/StreetSearchAutocomplete"
 
 // Carica la mappa lato client
 const LiveMap = dynamic(() => import("@/components/admin/LiveMap"), { ssr: false, loading: () => <div className="w-full h-full flex items-center justify-center bg-gray-100">Caricamento Mappa...</div> })
@@ -194,7 +195,12 @@ export default function CentraleOperativa() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Indirizzo / Luogo</label>
-                <input required type="text" value={newAddress} onChange={e => setNewAddress(e.target.value)} className="w-full border rounded-md p-2 text-sm" placeholder="Es. Via Bari 12, Altamura" />
+                <StreetSearchAutocomplete
+                  value={newAddress}
+                  onChange={(val) => setNewAddress(val)}
+                  placeholder="Es. Via Bari 12, Altamura"
+                  className="w-full !border-gray-200 !bg-white !text-gray-900 focus:!ring-blue-500"
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Descrizione Dettagliata</label>

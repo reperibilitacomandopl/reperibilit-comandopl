@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { Camera, MapPin, Check, ChevronLeft, AlertTriangle, Search, X, Shield, Sparkles, FileText } from "lucide-react"
+import { StreetSearchAutocomplete } from "@/components/StreetSearchAutocomplete"
 
 type AIResult = {
   id: string
@@ -467,12 +468,11 @@ export default function NuovoVerbalePage() {
                     </p>
                   </div>
                 </div>
-                <input 
-                  type="text" 
+                <StreetSearchAutocomplete
                   value={formData.indirizzo}
-                  onChange={e => setFormData({...formData, indirizzo: e.target.value})}
-                  className="w-full bg-slate-900 border border-white/10 rounded-2xl p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none mt-2"
+                  onChange={val => setFormData({...formData, indirizzo: val})}
                   placeholder="Indirizzo o via (opzionale se GPS attivo)"
+                  className="mt-2"
                 />
               </div>
 
