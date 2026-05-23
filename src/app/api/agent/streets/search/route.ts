@@ -21,6 +21,7 @@ export async function GET(req: Request) {
     // Cerca le vie che contengono la stringa cercata nella denominazione o nella chiave
     const streets = await prisma.street.findMany({
       where: {
+        tenantId: session.user.tenantId,
         OR: [
           { denominazione: { contains: searchQuery, mode: 'insensitive' } },
           { chiave: { contains: searchQuery, mode: 'insensitive' } }

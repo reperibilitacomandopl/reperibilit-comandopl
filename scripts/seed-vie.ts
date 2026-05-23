@@ -20,6 +20,19 @@ async function main() {
   // Ignoriamo la prima riga (header)
   const dataLines = lines.slice(1)
 
+  const tenant = await prisma.tenant.findUnique({ where: { slug: 'altamura' } })
+  if (!tenant) {
+    console.error("Tenant 'altamura' non trovato. Impossibile importare.")
+    process.exit(1)
+  }
+
+  console.log(`Eliminazione vecchie vie per il tenant ${tenant.name}...`)
+  await prisma.street.deleteMany({ where: { tenantId: tenant.id } })
+  // Elimina anche eventuali vie inserite globalmente per errore
+  await prisma.street.deleteMany({ where: { tenantId: null } })
+
+  console.log('Inserimento nuove vie...')
+
   let successCount = 0
   let errorCount = 0
 
@@ -38,6 +51,7 @@ async function main() {
 
       await prisma.street.create({
         data: {
+          tenantId: tenant.id,
           codice,
           denominazione,
           chiave,
