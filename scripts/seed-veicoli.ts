@@ -16,8 +16,8 @@ async function main() {
   // Importazione Tabella Mezzi
   const mezziPath = path.join(process.cwd(), 'tabella_mezzi.txt')
   if (fs.existsSync(mezziPath)) {
-    console.log(`Eliminazione vecchi tipi mezzo per il tenant ${tenant.name}...`)
-    await prisma.vehicleType.deleteMany({ where: { tenantId: tenant.id } })
+    console.log(`Eliminazione vecchi tipi mezzo globali...`)
+    await prisma.vehicleType.deleteMany({})
 
     const mezziContent = fs.readFileSync(mezziPath, 'utf-8')
     const mezziLines = mezziContent.split('\n').filter(line => line.trim().length > 0)
@@ -37,7 +37,7 @@ async function main() {
 
         await prisma.vehicleType.create({
           data: {
-            tenantId: tenant.id,
+            tenantId: null,
             codice,
             descrizione,
             targaObbligatoria,
@@ -56,8 +56,8 @@ async function main() {
   // Importazione Tabella Veicoli (Marche)
   const veicoliPath = path.join(process.cwd(), 'veicoli.txt')
   if (fs.existsSync(veicoliPath)) {
-    console.log(`Eliminazione vecchie marche veicoli per il tenant ${tenant.name}...`)
-    await prisma.vehicleBrand.deleteMany({ where: { tenantId: tenant.id } })
+    console.log(`Eliminazione vecchie marche veicoli globali...`)
+    await prisma.vehicleBrand.deleteMany({})
 
     const veicoliContent = fs.readFileSync(veicoliPath, 'utf-8')
     const veicoliLines = veicoliContent.split('\n').filter(line => line.trim().length > 0)
@@ -75,7 +75,7 @@ async function main() {
 
         await prisma.vehicleBrand.create({
           data: {
-            tenantId: tenant.id,
+            tenantId: null,
             codice,
             descrizione,
             nazione

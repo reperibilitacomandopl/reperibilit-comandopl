@@ -11,8 +11,7 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url)
     const q = searchParams.get('q')
-
-    let whereClause: any = { tenantId: session.user.tenantId }
+    let whereClause: any = {}
     
     if (q && q.length >= 1) {
       whereClause = {

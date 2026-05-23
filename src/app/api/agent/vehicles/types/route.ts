@@ -10,9 +10,6 @@ export async function GET(req: Request) {
     }
 
     const types = await prisma.vehicleType.findMany({
-      where: {
-        tenantId: session.user.tenantId
-      },
       orderBy: {
         descrizione: 'asc'
       }
