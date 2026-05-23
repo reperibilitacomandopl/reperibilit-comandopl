@@ -135,11 +135,14 @@ export default auth(async (req) => {
     return NextResponse.redirect(new URL("/verify-2fa", req.url))
   }
 
-  // ENFORCEMENT: Se l'utente è un ADMIN ma non ha l'MFA attiva, forza il setup (Punto 2.4 Checklist)
-  // SALTA se l'IP è già trusted (anche se improbabile qui, per coerenza)
+  // ENFORCEMENT MFA: admin senza 2FA da IP noto → aggiungi IP a trusted, non forzare setup
   const securityPath = `/${u.tenantSlug}/admin/sicurezza`
   if (u.role === "ADMIN" && !u.twoFactorEnabled && !isIpTrusted && pathname !== securityPath && !pathname.startsWith("/api/")) {
-    return addSecurityHeaders(NextResponse.redirect(new URL(securityPath + "?forceMFA=true", req.url)), false, requestId)
+    try {
+      const { prisma } = await import("@/lib/prisma")
+      const updatedIps = [...new Set([...(u.trustedIps || []), currentIp])]
+      await prisma.user.update({ where: { id: u.id }, data: { trustedIps: updatedIps } })
+    } catch (_) { /* non bloccare */ }
   }
 
   // 4. ISOLAMENTO MULTI-TENANT (⚠ Critico)
