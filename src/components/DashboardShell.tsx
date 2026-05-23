@@ -188,22 +188,21 @@ export default function DashboardShell({
                   />
               </div>
 
-              {/* Mobile: dashboard classica (stabile). Launchpad riattivabile dopo fix hydration */}
+              {/* Mobile: mostra dashboard SOLO su tab Home, altrimenti contenuto specifico */}
               <div className="lg:hidden">
-                <DynamicAgentDashboard
-                  currentUser={session.user}
-                  shifts={shifts} myShifts={myShifts} allAgents={allAgents}
-                  currentMonth={currentMonth} currentYear={currentYear}
-                  isPublished={isPublished} tenantSlug={tenantSlug}
-                  agendaEntries={agendaEntries} userRole={role}
-                  canManageShifts={canManageShifts} canManageUsers={canManageUsers}
-                  canVerifyClockIns={canVerifyClockIns} canConfigureSystem={canConfigureSystem}
-                  logoUrl={logoUrl} tenant={tenant} certifiedDates={certifiedDates}
-                  agentData={agentData} calendarToken={calendarToken}
-                />
-              </div>
-              <div className="lg:hidden">
-                {activeTab === 'dashboard' && null}
+                {activeTab === 'dashboard' && (
+                  <DynamicAgentDashboard
+                    currentUser={session.user}
+                    shifts={shifts} myShifts={myShifts} allAgents={allAgents}
+                    currentMonth={currentMonth} currentYear={currentYear}
+                    isPublished={isPublished} tenantSlug={tenantSlug}
+                    agendaEntries={agendaEntries} userRole={role}
+                    canManageShifts={canManageShifts} canManageUsers={canManageUsers}
+                    canVerifyClockIns={canVerifyClockIns} canConfigureSystem={canConfigureSystem}
+                    logoUrl={logoUrl} tenant={tenant} certifiedDates={certifiedDates}
+                    agentData={agentData} calendarToken={calendarToken}
+                  />
+                )}
                 
                 {/* Mobile Only: Show full summary when tab is summary */}
                 {activeTab === 'summary' && (
