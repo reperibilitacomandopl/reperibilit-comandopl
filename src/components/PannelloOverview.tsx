@@ -62,7 +62,7 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
   const assentiOggi = todayShifts.filter(s => isAssenza(s.type)).length
   const operativiOggi = totalAgents - assentiOggi
   const malattieOggi = todayShifts.filter(s => isMalattia(s.type)).length
-  const ufficialiOggi = todayShifts.filter(s => s.user.isUfficiale && !isAssenza(s.type)).length
+  const ufficialiOggi = todayShifts.filter(s => s.user?.isUfficiale && !isAssenza(s.type)).length
   const veicoliInUsoCount = new Set(todayShifts.filter(s => s.vehicle?.name).map(s => s.vehicle!.name)).size
   
   const targetUfficiali = settings?.minUfficiali ?? 1
@@ -424,11 +424,11 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
                      {repOnly.map(s => (
                        <div key={s.userId} className="bg-amber-50/30 border border-amber-100 rounded-[2rem] p-6 shadow-sm flex items-center justify-between group hover:bg-white hover:border-amber-400 transition-all duration-300">
                           <div className="flex items-center gap-4">
-                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs ${s.user.isUfficiale ? 'bg-amber-600 text-white shadow-lg' : 'bg-amber-100 text-amber-700'}`}>
-                                {s.user.name ? s.user.name.split(' ').map(n => n[0]).join('').slice(0,2) : '?'}
+                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs ${s.user?.isUfficiale ? 'bg-amber-600 text-white shadow-lg' : 'bg-amber-100 text-amber-700'}`}>
+                                {s.user?.name ? s.user.name.split(' ').map(n => n[0]).join('').slice(0,2) : '?'}
                              </div>
                              <div>
-                                <p className="text-sm font-black text-slate-800 uppercase tracking-tight">{s.user.name || "Sconosciuto"}</p>
+                                <p className="text-sm font-black text-slate-800 uppercase tracking-tight">{s.user?.name || "Sconosciuto"}</p>
                                 <p className="text-[9px] font-bold text-amber-600 uppercase tracking-widest leading-none mt-1">Stato: Reperibile ({s.repType})</p>
                              </div>
                           </div>
@@ -493,12 +493,12 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
                                     {group.map(member => (
                                        <div key={member.userId} className="flex items-center justify-between group/row">
                                           <div className="flex items-center gap-4">
-                                             <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-[10px] ${member.user.isUfficiale ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-slate-100 text-slate-500'}`}>
-                                                {member.user.name ? member.user.name.split(' ').map(n => n[0]).join('').slice(0,2) : '?'}
+                                             <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-[10px] ${member.user?.isUfficiale ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-slate-100 text-slate-500'}`}>
+                                                {member.user?.name ? member.user.name.split(' ').map(n => n[0]).join('').slice(0,2) : '?'}
                                              </div>
                                              <div>
-                                                <p className="text-sm font-black text-slate-800 uppercase tracking-tight">{member.user.name || "Sconosciuto"}</p>
-                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{member.user.qualifica || 'Operatore'}</p>
+                                                <p className="text-sm font-black text-slate-800 uppercase tracking-tight">{member.user?.name || "Sconosciuto"}</p>
+                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{member.user?.qualifica || 'Operatore'}</p>
                                              </div>
                                           </div>
                                           {member.repType && (
@@ -553,10 +553,10 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
                    {todayShifts.filter(s => isAssenza(s.type)).map(s => (
                      <div key={s.userId} className="flex items-center gap-4 bg-slate-50 p-5 rounded-[1.8rem] border border-slate-100 hover:bg-white hover:shadow-xl hover:scale-105 transition-all duration-300">
                         <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white font-black text-xs shadow-lg ${isMalattia(s.type) ? 'bg-rose-600 shadow-rose-100' : 'bg-amber-500 shadow-amber-100'}`}>
-                           {s.user.name ? s.user.name[0] : '?'}
+                           {s.user?.name ? s.user.name[0] : '?'}
                         </div>
                         <div className="flex-1">
-                           <p className="text-sm font-black text-slate-800 uppercase leading-snug">{s.user.name || "Sconosciuto"}</p>
+                           <p className="text-sm font-black text-slate-800 uppercase leading-snug">{s.user?.name || "Sconosciuto"}</p>
                            <p className={`text-[9px] font-black uppercase tracking-wider ${isMalattia(s.type) ? 'text-rose-600' : 'text-amber-600'}`}>
                               {isMalattia(s.type) ? 'Stato: Malattia' : `Stato: ${getLabel(s.type)} (${s.type})`}
                            </p>
