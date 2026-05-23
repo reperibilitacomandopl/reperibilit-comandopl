@@ -132,8 +132,8 @@ export default function DashboardShell({
                 </Link>
               )}
               <NotificationHub userRole={role} />
-              <button 
-                onClick={() => signOut()} 
+              <button
+                onClick={() => { try { sessionStorage.clear() } catch(_) {}; signOut({ callbackUrl: '/login' }) }}
                 className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-90"
                 title="Esci"
               >

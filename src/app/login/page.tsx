@@ -31,17 +31,18 @@ function LoginForm() {
   useEffect(() => {
     const c = searchParams.get("c") || searchParams.get("comando")
     if (c) setTenantSlug(c)
-    // Carica tentativi falliti dalla sessione con scadenza 15 minuti
+    // Pulisci sessionStorage all'arrivo (previene crash dopo logout/login su mobile)
+    // Ma salva i tentativi falliti prima di pulire
     const stored = sessionStorage.getItem("login_failed_attempts")
     const storedTime = sessionStorage.getItem("login_failed_time")
+    try { sessionStorage.clear() } catch (_) {}
+    // Ripristina i tentativi falliti se ancora validi
     if (stored && storedTime) {
       const elapsed = Date.now() - parseInt(storedTime, 10)
-      if (elapsed < 15 * 60 * 1000) { // 15 minuti
+      if (elapsed < 15 * 60 * 1000) {
         setFailedAttempts(parseInt(stored, 10))
-      } else {
-        // Scaduto, pulisci
-        sessionStorage.removeItem("login_failed_attempts")
-        sessionStorage.removeItem("login_failed_time")
+        sessionStorage.setItem("login_failed_attempts", stored)
+        sessionStorage.setItem("login_failed_time", storedTime)
       }
     }
   }, [searchParams])
