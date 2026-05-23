@@ -19,6 +19,12 @@ import AgentVerbalListView from "./agent/AgentVerbalListView"
 import MobileAgentLaunchpad from "./agent/MobileAgentLaunchpad"
 import { useAgentData } from "@/hooks/useAgentData"
 
+class ErrorBoundary extends React.Component<{ children: React.ReactNode; fallback: React.ReactNode }> {
+  state = { hasError: false }
+  static getDerivedStateFromError() { return { hasError: true } }
+  render() { return this.state.hasError ? this.props.fallback : this.props.children }
+}
+
 interface DashboardShellProps {
   session: any
   allAgents: any[]
@@ -185,12 +191,26 @@ export default function DashboardShell({
               {/* Mobile Only: Show Launchpad when tab is dashboard */}
               <div className="lg:hidden">
                 {activeTab === 'dashboard' && (
-                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <MobileAgentLaunchpad
-                      tenantSlug={tenantSlug || ""}
-                      isClockedIn={agentData.isClockedIn}
+                  <ErrorBoundary fallback={
+                    <DynamicAgentDashboard
+                      currentUser={session.user}
+                      shifts={shifts} myShifts={myShifts} allAgents={allAgents}
+                      currentMonth={currentMonth} currentYear={currentYear}
+                      isPublished={isPublished} tenantSlug={tenantSlug}
+                      agendaEntries={agendaEntries} userRole={role}
+                      canManageShifts={canManageShifts} canManageUsers={canManageUsers}
+                      canVerifyClockIns={canVerifyClockIns} canConfigureSystem={canConfigureSystem}
+                      logoUrl={logoUrl} tenant={tenant} certifiedDates={certifiedDates}
+                      agentData={agentData} calendarToken={calendarToken}
                     />
-                  </div>
+                  }>
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <MobileAgentLaunchpad
+                        tenantSlug={tenantSlug || ""}
+                        isClockedIn={agentData.isClockedIn}
+                      />
+                    </div>
+                  </ErrorBoundary>
                 )}
                 
                 {/* Mobile Only: Show full summary when tab is summary */}
