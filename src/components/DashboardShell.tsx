@@ -30,10 +30,10 @@ interface DashboardShellProps {
   isPublished: boolean
   settings: any
   tenantSlug: string
-  rotationGroups: any[]
-  categories: any[]
+  rotationGroups?: any[]
+  categories?: any[]
   dayInfo: any
-  adminData: any
+  adminData?: any
   logoUrl?: string | null
   tenant?: any
   certifiedDates?: string[]
