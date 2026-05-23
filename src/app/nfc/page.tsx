@@ -13,7 +13,7 @@ function goToDashboard() {
       const base = window.location.origin
       if (session?.user?.tenantSlug) {
         const slug = session.user.tenantSlug
-        const dest = session.user.role === 'ADMIN' ? `/${slug}/admin` : `/${slug}?view=agent`
+        const dest = session.user.role === 'ADMIN' ? `/${slug}/admin` : `/${slug}`
         window.location.replace(base + dest)
       } else {
         // Senza sessione, vai alla landing page
