@@ -2,16 +2,36 @@
 
 import { useEffect, useState, Suspense, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle2, MapPinOff, Loader2, MapPin, AlertTriangle } from 'lucide-react'
+import { CheckCircle2, MapPinOff, Loader2, MapPin, AlertTriangle, LogIn } from 'lucide-react'
 import { ClockOutModal } from '@/components/ClockOutModal'
+
+// Helper: redirect to dashboard (funziona anche su iOS/mobile)
+function goToDashboard() {
+  // Prova prima a recuperare la sessione
+  fetch('/api/auth/session')
+    .then(r => r.ok ? r.json() : null)
+    .then(session => {
+      if (session?.user?.tenantSlug) {
+        const slug = session.user.tenantSlug
+        const dest = session.user.role === 'ADMIN' ? `/${slug}/admin` : `/${slug}?view=agent`
+        // Usa window.location per bypassare Next.js router (più affidabile su mobile)
+        window.location.href = window.location.origin + dest
+      } else {
+        window.location.href = window.location.origin + '/'
+      }
+    })
+    .catch(() => {
+      window.location.href = window.location.origin + '/'
+    })
+}
 
 function NFCClockContent() {
   const router = useRouter()
   const hasExecuted = useRef(false)
-  
-  const [status, setStatus] = useState<'acquiring_gps' | 'loading' | 'success' | 'error' | 'justification_required'>('acquiring_gps')
-  const [message, setMessage] = useState('Acquisizione posizione GPS in corso...')
-  
+
+  const [status, setStatus] = useState<'checking_auth' | 'acquiring_gps' | 'loading' | 'success' | 'error' | 'justification_required'>('checking_auth')
+  const [message, setMessage] = useState('Verifica autenticazione...')
+
   // Anomaly State
   const [anomalyData, setAnomalyData] = useState<any>(null)
 
@@ -23,11 +43,11 @@ function NFCClockContent() {
       const res = await fetch('/api/admin/clock-in', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          type: 'AUTO', 
-          lat, 
-          lng, 
-          accuracy, 
+        body: JSON.stringify({
+          type: 'AUTO',
+          lat,
+          lng,
+          accuracy,
           isManual: false,
           checkAnomaly: !overtimeReason && !isCorrection,
           overtimeReason,
@@ -56,21 +76,78 @@ function NFCClockContent() {
         setStatus('success')
         const actionType = data.record?.type === 'IN' ? 'Entrata' : 'Uscita'
         setMessage(`Timbratura di ${actionType} registrata con successo!`)
-        // iOS Shortcuts impedisce la chiusura via javascript e causa un crash (error.tsx). 
-        // Lasciamo l'utente sulla schermata di successo finché non chiude manualmente.
       } else {
         setStatus('error')
-        if (res.status === 403 && data.distance) {
-            setMessage(`Sei troppo lontano dalla sede! (Distanza rilevata: ${data.distance}m. Limite: ${data.allowed}m)`)
+        if (res.status === 401) {
+            setMessage('Sessione scaduta. Effettua nuovamente il login nell\'app Sentinel, poi riprova il tag NFC.')
+        } else if (res.status === 403 && data.distance) {
+            setMessage(`Troppo lontano dalla sede! Distanza: ${data.distance}m (limite: ${data.allowed}m)`)
+        } else if (data.error) {
+            setMessage(data.error)
         } else {
-            setMessage(data.error || 'Errore durante la timbratura.')
+            setMessage('Si è verificato un problema durante la timbratura. Riprova.')
         }
       }
     } catch (err) {
       setStatus('error')
-      setMessage('Errore di connessione al server.')
+      setMessage('Impossibile connettersi al server. Verifica la connessione internet e riprova.')
     }
   }
+
+  // Step 0: Verifica autenticazione prima di tutto
+  useEffect(() => {
+    if (hasExecuted.current) return
+    hasExecuted.current = true
+
+    // Prima verifica che l'utente sia autenticato
+    fetch('/api/auth/session')
+      .then(r => r.json())
+      .then(session => {
+        if (!session?.user?.id) {
+          setStatus('error')
+          setMessage('Nessuna sessione attiva. Apri l\'app Sentinel, effettua il login, poi avvicina il tag NFC.')
+          return
+        }
+
+        // Utente autenticato, procedi con GPS
+        setStatus('acquiring_gps')
+        setMessage('Acquisizione posizione GPS...')
+
+        if (!navigator.geolocation) {
+          setStatus('error')
+          setMessage('Geolocalizzazione non supportata dal tuo browser.')
+          return
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            handleClockIn(position.coords.latitude, position.coords.longitude, position.coords.accuracy)
+          },
+          (error) => {
+            setStatus('error')
+            switch(error.code) {
+              case error.PERMISSION_DENIED:
+                setMessage('Permesso GPS negato. Consenti l\'accesso alla posizione per timbrare tramite NFC.')
+                break
+              case error.POSITION_UNAVAILABLE:
+                setMessage('Posizione non disponibile. Riprova.')
+                break
+              case error.TIMEOUT:
+                setMessage('Timeout GPS. Avvicinati a una finestra o esci all\'aperto e riprova.')
+                break
+              default:
+                setMessage('Errore durante l\'acquisizione della posizione GPS.')
+                break
+            }
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        )
+      })
+      .catch(() => {
+        setStatus('error')
+        setMessage('Impossibile verificare la sessione. Controlla la connessione.')
+      })
+  }, [])
 
   useEffect(() => {
     if (hasExecuted.current) return
@@ -113,26 +190,8 @@ function NFCClockContent() {
 
   useEffect(() => {
     if (status === 'success') {
-      const timer = setTimeout(async () => {
-        try {
-          // Fetch session to get tenant slug for proper redirect
-          const res = await fetch('/api/auth/session')
-          if (res.ok) {
-            const session = await res.json()
-            const slug = session?.user?.tenantSlug
-            if (slug) {
-              const role = session?.user?.role
-              const dest = role === 'ADMIN' ? `/${slug}/admin/pannello` : `/${slug}`
-              window.location.assign(window.location.origin + dest)
-              return
-            }
-          }
-          // Fallback: go to root (landing will handle redirect)
-          window.location.assign(window.location.origin + '/')
-        } catch (e) {
-          // If fetch fails, don't crash - user can use the manual button
-          console.warn('Auto-redirect failed, user can tap Dashboard button', e)
-        }
+      const timer = setTimeout(() => {
+        goToDashboard()
       }, 2500)
       return () => clearTimeout(timer)
     }
@@ -152,7 +211,7 @@ function NFCClockContent() {
         </div>
 
         {/* Stati */}
-        {(status === 'acquiring_gps' || status === 'loading') && (
+        {(status === 'checking_auth' || status === 'acquiring_gps' || status === 'loading') && (
           <div className="flex flex-col items-center my-6">
             <Loader2 className="h-16 w-16 text-blue-500 animate-spin mb-4" />
             <p className="text-slate-300 font-medium text-lg">{message}</p>
@@ -171,22 +230,8 @@ function NFCClockContent() {
             <p className="text-slate-300 text-lg mb-2 text-center px-4">{message}</p>
             <p className="text-slate-500 text-sm mb-8 text-center px-4">Reindirizzamento alla Dashboard in corso...</p>
             <div className="flex gap-3">
-              <button 
-                onClick={async () => {
-                  try {
-                    const res = await fetch('/api/auth/session')
-                    if (res.ok) {
-                      const s = await res.json()
-                      const slug = s?.user?.tenantSlug
-                      if (slug) {
-                        const dest = s?.user?.role === 'ADMIN' ? `/${slug}/admin/pannello` : `/${slug}`
-                        window.location.assign(window.location.origin + dest)
-                        return
-                      }
-                    }
-                  } catch(e) {}
-                  window.location.assign(window.location.origin + '/')
-                }}
+              <button
+                onClick={goToDashboard}
                 className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
               >
                 Vai alla Dashboard
@@ -209,25 +254,11 @@ function NFCClockContent() {
                 >
                 Riprova
                 </button>
-                <button 
-                onClick={async () => {
-                  try {
-                    const res = await fetch('/api/auth/session')
-                    if (res.ok) {
-                      const s = await res.json()
-                      const slug = s?.user?.tenantSlug
-                      if (slug) {
-                        const dest = s?.user?.role === 'ADMIN' ? `/${slug}/admin/pannello` : `/${slug}`
-                        window.location.assign(window.location.origin + dest)
-                        return
-                      }
-                    }
-                  } catch(e) {}
-                  window.location.assign(window.location.origin + '/')
-                }}
+                <button
+                onClick={goToDashboard}
                 className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-xl font-semibold transition-all"
                 >
-                Vai alla Dashboard
+                Dashboard
                 </button>
             </div>
           </div>
