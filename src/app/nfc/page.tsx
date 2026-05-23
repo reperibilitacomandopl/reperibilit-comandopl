@@ -56,8 +56,10 @@ function NFCClockContent() {
         setStatus('success')
         const actionType = data.record?.type === 'IN' ? 'Entrata' : 'Uscita'
         setMessage(`Timbratura di ${actionType} registrata con successo!`)
-        // Torna alla home dopo 3 secondi
-        setTimeout(() => window.location.href = '/', 3000)
+        // Cerca di chiudere la finestra automaticamente dopo 2.5s
+        setTimeout(() => {
+          try { window.close() } catch (e) {}
+        }, 2500)
       } else {
         setStatus('error')
         if (res.status === 403 && data.distance) {
@@ -141,13 +143,22 @@ function NFCClockContent() {
               <CheckCircle2 className="h-16 w-16 text-green-500" />
             </div>
             <h1 className="text-3xl font-bold mb-2 text-green-400">Confermato!</h1>
-            <p className="text-slate-300 text-lg mb-8">{message}</p>
-            <button 
-              onClick={() => window.location.href = '/'}
-              className="bg-slate-700 hover:bg-slate-600 text-white px-8 py-3 rounded-xl font-semibold transition-all"
-            >
-              Torna alla Dashboard
-            </button>
+            <p className="text-slate-300 text-lg mb-2 text-center px-4">{message}</p>
+            <p className="text-slate-500 text-sm mb-8 text-center px-4">Puoi chiudere questa schermata o tornare all'app.</p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => { try { window.close() } catch(e) {} }}
+                className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+              >
+                Chiudi
+              </button>
+              <button 
+                onClick={() => window.location.href = '/'}
+                className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+              >
+                Dashboard
+              </button>
+            </div>
           </div>
         )}
 
