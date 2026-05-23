@@ -35,11 +35,9 @@ export const userCreateSchema = z.object({
   matricola: z.string().min(1, "La matricola è un campo obbligatorio."),
   name: z.string().min(2, "Il nome e cognome deve contenere almeno 2 caratteri."),
   password: z.string()
-    .min(8, "La password deve contenere almeno 8 caratteri.")
-    .regex(/[A-Z]/, "La password deve contenere almeno una lettera maiuscola.")
-    .regex(/[a-z]/, "La password deve contenere almeno una lettera minuscola.")
-    .regex(/[0-9]/, "La password deve contenere almeno un numero.")
-    .regex(/[^A-Za-z0-9]/, "La password deve contenere almeno un carattere speciale (!@#$%^&*...)."),
+    .min(6, "Minimo 6 caratteri.")
+    .optional()
+    .or(z.literal("")),
   isUfficiale: z.boolean().default(false),
   isSuperAdmin: z.boolean().default(false),
   squadra: z.string().optional().nullable(),

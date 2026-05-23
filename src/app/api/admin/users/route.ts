@@ -269,7 +269,8 @@ export async function POST(req: Request) {
     })
     if (existing) return NextResponse.json({ error: "Matricola già esistente in questo comando" }, { status: 409 })
 
-    const hashed = await bcrypt.hash(password, 10)
+    const finalPassword = password || crypto.randomUUID().substring(0, 12)
+    const hashed = await bcrypt.hash(finalPassword, 10)
 
     const newUser = await prisma.user.create({
       data: {
