@@ -188,30 +188,22 @@ export default function DashboardShell({
                   />
               </div>
 
-              {/* Mobile Only: Show Launchpad when tab is dashboard */}
+              {/* Mobile: dashboard classica (stabile). Launchpad riattivabile dopo fix hydration */}
               <div className="lg:hidden">
-                {activeTab === 'dashboard' && (
-                  <ErrorBoundary fallback={
-                    <DynamicAgentDashboard
-                      currentUser={session.user}
-                      shifts={shifts} myShifts={myShifts} allAgents={allAgents}
-                      currentMonth={currentMonth} currentYear={currentYear}
-                      isPublished={isPublished} tenantSlug={tenantSlug}
-                      agendaEntries={agendaEntries} userRole={role}
-                      canManageShifts={canManageShifts} canManageUsers={canManageUsers}
-                      canVerifyClockIns={canVerifyClockIns} canConfigureSystem={canConfigureSystem}
-                      logoUrl={logoUrl} tenant={tenant} certifiedDates={certifiedDates}
-                      agentData={agentData} calendarToken={calendarToken}
-                    />
-                  }>
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                      <MobileAgentLaunchpad
-                        tenantSlug={tenantSlug || ""}
-                        isClockedIn={agentData.isClockedIn}
-                      />
-                    </div>
-                  </ErrorBoundary>
-                )}
+                <DynamicAgentDashboard
+                  currentUser={session.user}
+                  shifts={shifts} myShifts={myShifts} allAgents={allAgents}
+                  currentMonth={currentMonth} currentYear={currentYear}
+                  isPublished={isPublished} tenantSlug={tenantSlug}
+                  agendaEntries={agendaEntries} userRole={role}
+                  canManageShifts={canManageShifts} canManageUsers={canManageUsers}
+                  canVerifyClockIns={canVerifyClockIns} canConfigureSystem={canConfigureSystem}
+                  logoUrl={logoUrl} tenant={tenant} certifiedDates={certifiedDates}
+                  agentData={agentData} calendarToken={calendarToken}
+                />
+              </div>
+              <div className="lg:hidden">
+                {activeTab === 'dashboard' && null}
                 
                 {/* Mobile Only: Show full summary when tab is summary */}
                 {activeTab === 'summary' && (
