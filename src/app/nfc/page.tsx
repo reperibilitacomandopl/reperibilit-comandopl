@@ -29,7 +29,7 @@ function NFCClockContent() {
   const router = useRouter()
   const hasExecuted = useRef(false)
 
-  const [status, setStatus] = useState<'checking_auth' | 'acquiring_gps' | 'loading' | 'success' | 'error' | 'justification_required'>('checking_auth')
+  const [status, setStatus] = useState<'checking_auth' | 'acquiring_gps' | 'loading' | 'success' | 'error' | 'justification_required' | 'no_session'>('checking_auth')
   const [message, setMessage] = useState('Verifica autenticazione...')
 
   // Anomaly State
@@ -104,8 +104,8 @@ function NFCClockContent() {
       .then(r => r.json())
       .then(session => {
         if (!session?.user?.id) {
-          setStatus('error')
-          setMessage('Nessuna sessione attiva. Apri l\'app Sentinel, effettua il login, poi avvicina il tag NFC.')
+          setStatus('no_session')
+          setMessage('Nessuna sessione attiva.')
           return
         }
 
@@ -240,6 +240,31 @@ function NFCClockContent() {
           </div>
         )}
 
+        {status === 'no_session' && (
+          <div className="flex flex-col items-center my-6 animate-in fade-in zoom-in duration-300">
+            <div className="bg-amber-500/20 p-5 rounded-full mb-4 ring-4 ring-amber-500/10">
+              <LogIn className="h-16 w-16 text-amber-400" />
+            </div>
+            <h1 className="text-2xl font-bold mb-2 text-amber-400">Accesso Richiesto</h1>
+            <p className="text-slate-300 mb-4 text-center px-4">Su iPhone il tag NFC apre una finestra separata. Devi prima aver fatto login nell&apos;app.</p>
+            <div className="bg-slate-700/50 rounded-2xl p-4 mb-6 text-left text-sm text-slate-400 space-y-2 w-full">
+              <p className="font-bold text-white text-center mb-2">🔧 Come risolvere:</p>
+              <p>1. Apri <b>Safari</b> e vai su <b>gestionepolizialocale.it</b></p>
+              <p>2. Fai login con le tue credenziali</p>
+              <p className="text-amber-300">3. TORNA QUI e ricarica la pagina</p>
+              <p className="text-xs text-slate-500 mt-2">💡 Dopo il login, aggiungi l&apos;app alla Home per non rifare questa procedura.</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => window.location.reload()} className="bg-amber-600 hover:bg-amber-500 text-white px-6 py-3 rounded-xl font-semibold transition-all">
+                Ho fatto il Login — Ricarica
+              </button>
+              <a href="/login" className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-xl font-semibold transition-all inline-block">
+                Vai al Login
+              </a>
+            </div>
+          </div>
+        )}
+
         {status === 'error' && (
           <div className="flex flex-col items-center my-6 animate-in fade-in zoom-in duration-300">
             <div className="bg-red-500/20 p-5 rounded-full mb-4 ring-4 ring-red-500/10">
@@ -248,7 +273,7 @@ function NFCClockContent() {
             <h1 className="text-2xl font-bold mb-2 text-red-400">Operazione Negata</h1>
             <p className="text-slate-300 mb-8 text-center px-4">{message}</p>
             <div className="flex gap-3">
-                <button 
+                <button
                 onClick={() => window.location.reload()}
                 className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
                 >
