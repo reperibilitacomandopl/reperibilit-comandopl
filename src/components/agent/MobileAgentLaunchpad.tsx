@@ -1,10 +1,13 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Calendar, FileText, MapPin, Clock, ClipboardList, RefreshCw, Shield, Palmtree, Camera, LayoutDashboard } from "lucide-react"
 
 export default function MobileAgentLaunchpad({ tenantSlug, isClockedIn }: { tenantSlug: string; isClockedIn?: string | null }) {
   const router = useRouter()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
 
   const modules = [
     {
@@ -107,7 +110,7 @@ export default function MobileAgentLaunchpad({ tenantSlug, isClockedIn }: { tena
           Sentinel <span className="text-blue-500">Agent</span>
         </h1>
         <p className="text-xs text-slate-500 mt-1">Seleziona il modulo operativo</p>
-        {isClockedIn === "IN" && (
+        {mounted && isClockedIn === "IN" && (
           <div className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-[10px] font-black uppercase">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
             In Servizio

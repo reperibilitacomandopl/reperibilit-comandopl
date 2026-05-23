@@ -86,7 +86,7 @@ export default function DashboardShell({
   const nextYear = currentMonth === 12 ? currentYear + 1 : currentYear
 
   return (
-    <div className={`min-h-screen bg-[#F8FAFC] flex flex-col ${role !== 'ADMIN' ? 'pb-24 lg:pb-0' : ''}`}>
+    <div className={`min-h-screen bg-[#F8FAFC] flex flex-col ${role !== 'ADMIN' ? 'pb-24 lg:pb-0' : ''}`} suppressHydrationWarning>
       {/* Navbar with Glass Effect */}
       <header className="fixed top-0 left-0 right-0 bg-white/70 backdrop-blur-xl border-b border-slate-200 z-[100] h-16 flex items-center">
         <div className={`${containerClass} flex items-center justify-between`}>
