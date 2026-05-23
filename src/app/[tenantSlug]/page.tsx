@@ -28,9 +28,9 @@ export default async function Home({
     redirect(`/${userSlug}`)
   }
 
-  // Admin o utente con permessi granulari: redirect al Launchpad (tranne preview agent)
-  const hasAdminAccess = role === "ADMIN" || isSuperAdmin || canManageShifts || canManageUsers || canVerifyClockIns || canConfigureSystem
-  if (hasAdminAccess && view !== "agent") {
+  // Solo ADMIN e SuperAdmin vanno direttamente al Launchpad.
+  // Agenti con permessi granulari restano nella vista agente (possono passare all'admin dal pulsante "Amministrazione")
+  if ((role === "ADMIN" || isSuperAdmin) && view !== "agent") {
     redirect(`/${userSlug}/admin`)
   }
 
