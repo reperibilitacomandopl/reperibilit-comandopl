@@ -13,7 +13,7 @@ export default function NotificationManager() {
   useEffect(() => {
     if ("serviceWorker" in navigator && "PushManager" in window) {
       setIsSupported(true)
-      setPermission(Notification.permission)
+      if (typeof Notification !== 'undefined') setPermission(Notification.permission)
       
       // Controlla se c'è già una sottoscrizione attiva
       navigator.serviceWorker.ready.then((reg) => {
@@ -39,6 +39,7 @@ export default function NotificationManager() {
     setLoading(true)
     try {
       // 1. Richiedi Permesso
+      if (typeof Notification === 'undefined') { toast.error("Notifiche non supportate su questo dispositivo."); setLoading(false); return }
       const res = await Notification.requestPermission()
       setPermission(res)
       if (res !== "granted") {

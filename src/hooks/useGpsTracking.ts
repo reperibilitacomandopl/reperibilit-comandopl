@@ -147,8 +147,8 @@ export function useGpsTracking({ isClockedIn, intervalMs = 300000, tenant, myShi
       )
     }
 
-    // Richiedi permessi notifiche se necessario
-    if (Notification.permission === "default") {
+    // Richiedi permessi notifiche (solo se disponibili — non su iOS Safari)
+    if (typeof Notification !== 'undefined' && Notification.permission === "default") {
       Notification.requestPermission()
     }
 
