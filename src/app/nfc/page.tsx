@@ -26,7 +26,7 @@ function goToDashboard() {
 function NFCClockContent() {
   const hasCheckedAuth = useRef(false)
 
-  const [status, setStatus] = useState<'checking_auth' | 'ready_to_clock' | 'acquiring_gps' | 'loading' | 'success' | 'error' | 'justification_required' | 'no_session'>('checking_auth')
+  const [status, setStatus] = useState<'checking_auth' | 'acquiring_gps' | 'loading' | 'success' | 'error' | 'justification_required' | 'no_session'>('checking_auth')
   const [message, setMessage] = useState('Verifica autenticazione...')
   const [userName, setUserName] = useState<string | null>(null)
 
@@ -175,38 +175,17 @@ function NFCClockContent() {
             <p className="text-slate-400 text-sm mt-1 font-medium">Autenticazione Presenza Sicura</p>
         </div>
 
-        {/* Stato: Verifica auth in corso */}
-        {status === 'checking_auth' && (
+        {/* Stato: Verifica auth / GPS / Timbratura in corso (badge automatico) */}
+        {(status === 'checking_auth' || status === 'acquiring_gps' || status === 'loading') && (
           <div className="flex flex-col items-center my-6">
-            <Loader2 className="h-16 w-16 text-blue-500 animate-spin mb-4" />
+            <div className="bg-blue-500/20 p-4 rounded-full mb-4 ring-4 ring-blue-500/10">
+              <Fingerprint className="h-12 w-12 text-blue-400" />
+            </div>
+            <Loader2 className="h-8 w-8 text-blue-500 animate-spin mb-4" />
             <p className="text-slate-300 font-medium text-lg">{message}</p>
-          </div>
-        )}
-
-        {/* Stato: Timbratura automatica in corso (badge mode) */}
-        {(status === 'ready_to_clock' || status === 'acquiring_gps' || status === 'loading') && (
-          <div className="flex flex-col items-center my-6">
-            {status === 'ready_to_clock' && (
-              <button
-                onClick={startGpsAndClock}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-8 py-6 rounded-2xl font-bold text-lg transition-all active:scale-95 shadow-2xl shadow-blue-900/40 flex items-center justify-center gap-3 mb-4"
-            >
-              <Fingerprint className="h-8 w-8" />
-              Timbra Presenza
-            </button>
-            <p className="text-slate-500 text-xs">
-              Premi il pulsante per acquisire il GPS e registrare la timbratura.
-            </p>
-          </div>
-        )}
-
-        {/* Stato: Acquisizione GPS */}
-        {(status === 'acquiring_gps' || status === 'loading') && (
-          <div className="flex flex-col items-center my-6">
-            <Loader2 className="h-16 w-16 text-blue-500 animate-spin mb-4" />
-            <p className="text-slate-300 font-medium text-lg">{message}</p>
+            {userName && <p className="text-slate-500 text-sm mt-2">{userName}</p>}
             {status === 'acquiring_gps' && (
-                <p className="text-slate-500 text-sm mt-2">Assicurati di aver concesso i permessi GPS al browser.</p>
+              <p className="text-slate-500 text-xs mt-2">Consenti l'accesso alla posizione se richiesto</p>
             )}
           </div>
         )}
