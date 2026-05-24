@@ -244,9 +244,7 @@ function NFCClockContent() {
             <div className="flex gap-3">
                 <button
                 onClick={() => {
-                  // Riparte dal bottone "Timbra" per consentire il gesto utente
-                  setStatus('ready_to_clock')
-                  setMessage('Premi il pulsante per timbrare')
+                  startGpsAndClock()
                 }}
                 className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
                 >
