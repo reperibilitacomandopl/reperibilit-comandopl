@@ -142,10 +142,9 @@ function NFCClockContent() {
           return
         }
 
-        // Utente autenticato: mostra il bottone "Timbra"
+        // Utente autenticato: avvia automaticamente timbratura (modalità badge)
         setUserName(session.user.name || session.user.matricola || 'Operatore')
-        setStatus('ready_to_clock')
-        setMessage('Premi il pulsante per timbrare')
+        startGpsAndClock()
       })
       .catch(() => {
         setStatus('error')
@@ -184,14 +183,12 @@ function NFCClockContent() {
           </div>
         )}
 
-        {/* Stato: Pronto a timbrare — BOTTONE GRANDE */}
-        {status === 'ready_to_clock' && (
-          <div className="flex flex-col items-center my-6 animate-in fade-in zoom-in duration-300 w-full">
-            {userName && (
-              <p className="text-slate-400 text-sm mb-4">Benvenuto, <span className="text-white font-bold">{userName}</span></p>
-            )}
-            <button
-              onClick={startGpsAndClock}
+        {/* Stato: Timbratura automatica in corso (badge mode) */}
+        {(status === 'ready_to_clock' || status === 'acquiring_gps' || status === 'loading') && (
+          <div className="flex flex-col items-center my-6">
+            {status === 'ready_to_clock' && (
+              <button
+                onClick={startGpsAndClock}
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-8 py-6 rounded-2xl font-bold text-lg transition-all active:scale-95 shadow-2xl shadow-blue-900/40 flex items-center justify-center gap-3 mb-4"
             >
               <Fingerprint className="h-8 w-8" />
