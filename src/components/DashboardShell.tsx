@@ -16,6 +16,7 @@ import AgentInterventions from "./agent/AgentInterventions"
 import PersonalBalances from "./agent/PersonalBalances"
 import AgentRotationView from "./agent/AgentRotationView"
 import AgentVerbalListView from "./agent/AgentVerbalListView"
+import MobileAgentLaunchpad from "./agent/MobileAgentLaunchpad"
 import { useAgentData } from "@/hooks/useAgentData"
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode; fallback: React.ReactNode }> {
@@ -181,20 +182,15 @@ export default function DashboardShell({
                   />
               </div>
 
-              {/* Mobile: stessa dashboard classica del desktop (stabile) */}
+              {/* Mobile: Launchpad con quadretti (solo Link, niente eventi) */}
               <div className="lg:hidden">
                 {activeTab === 'dashboard' && (
-                  <DynamicAgentDashboard
-                    currentUser={session.user}
-                    shifts={shifts} myShifts={myShifts} allAgents={allAgents}
-                    currentMonth={currentMonth} currentYear={currentYear}
-                    isPublished={isPublished} tenantSlug={tenantSlug}
-                    agendaEntries={agendaEntries} userRole={role}
-                    canManageShifts={canManageShifts} canManageUsers={canManageUsers}
-                    canVerifyClockIns={canVerifyClockIns} canConfigureSystem={canConfigureSystem}
-                    logoUrl={logoUrl} tenant={tenant} certifiedDates={certifiedDates}
-                    agentData={agentData} calendarToken={calendarToken}
-                  />
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500" suppressHydrationWarning>
+                    <MobileAgentLaunchpad
+                      tenantSlug={tenantSlug || ""}
+                      isClockedIn={agentData.isClockedIn}
+                    />
+                  </div>
                 )}
               </div>
 
