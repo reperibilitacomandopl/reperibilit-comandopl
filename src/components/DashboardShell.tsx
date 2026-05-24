@@ -19,6 +19,14 @@ import AgentVerbalListView from "./agent/AgentVerbalListView"
 import MobileAgentLaunchpad from "./agent/MobileAgentLaunchpad"
 import { useAgentData } from "@/hooks/useAgentData"
 
+// Componente che renderizza solo lato client (evita hydration mismatch)
+function ClientOnly({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = React.useState(false)
+  React.useEffect(() => { setMounted(true) }, [])
+  if (!mounted) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" /></div>
+  return <>{children}</>
+}
+
 class ErrorBoundary extends React.Component<{ children: React.ReactNode; fallback: React.ReactNode }> {
   state = { hasError: false }
   static getDerivedStateFromError() { return { hasError: true } }
@@ -188,20 +196,15 @@ export default function DashboardShell({
                   />
               </div>
 
-              {/* Mobile: mostra dashboard SOLO su tab Home, altrimenti contenuto specifico */}
+              {/* Mobile: Launchpad (solo client-side per evitare hydration mismatch) */}
               <div className="lg:hidden">
                 {activeTab === 'dashboard' && (
-                  <DynamicAgentDashboard
-                    currentUser={session.user}
-                    shifts={shifts} myShifts={myShifts} allAgents={allAgents}
-                    currentMonth={currentMonth} currentYear={currentYear}
-                    isPublished={isPublished} tenantSlug={tenantSlug}
-                    agendaEntries={agendaEntries} userRole={role}
-                    canManageShifts={canManageShifts} canManageUsers={canManageUsers}
-                    canVerifyClockIns={canVerifyClockIns} canConfigureSystem={canConfigureSystem}
-                    logoUrl={logoUrl} tenant={tenant} certifiedDates={certifiedDates}
-                    agentData={agentData} calendarToken={calendarToken}
-                  />
+                  <ClientOnly>
+                    <MobileAgentLaunchpad
+                      tenantSlug={tenantSlug || ""}
+                      isClockedIn={agentData.isClockedIn}
+                    />
+                  </ClientOnly>
                 )}
                 
                 {/* Mobile Only: Show full summary when tab is summary */}
