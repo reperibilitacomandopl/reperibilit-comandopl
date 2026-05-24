@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useState, Suspense, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import { CheckCircle2, MapPinOff, Loader2, MapPin, AlertTriangle, LogIn } from 'lucide-react'
+import { useEffect, useState, Suspense, useRef, useCallback } from 'react'
+import { CheckCircle2, MapPinOff, Loader2, MapPin, LogIn, Fingerprint } from 'lucide-react'
 import { ClockOutModal } from '@/components/ClockOutModal'
 
 // Helper: redirect to dashboard (funziona anche su iOS/mobile)
@@ -16,7 +15,6 @@ function goToDashboard() {
         const dest = session.user.role === 'ADMIN' ? `/${slug}/admin` : `/${slug}`
         window.location.replace(base + dest)
       } else {
-        // Senza sessione, vai alla landing page
         window.location.replace(base + '/')
       }
     })
@@ -26,16 +24,16 @@ function goToDashboard() {
 }
 
 function NFCClockContent() {
-  const router = useRouter()
-  const hasExecuted = useRef(false)
+  const hasCheckedAuth = useRef(false)
 
-  const [status, setStatus] = useState<'checking_auth' | 'acquiring_gps' | 'loading' | 'success' | 'error' | 'justification_required' | 'no_session'>('checking_auth')
+  const [status, setStatus] = useState<'checking_auth' | 'ready_to_clock' | 'acquiring_gps' | 'loading' | 'success' | 'error' | 'justification_required' | 'no_session'>('checking_auth')
   const [message, setMessage] = useState('Verifica autenticazione...')
+  const [userName, setUserName] = useState<string | null>(null)
 
   // Anomaly State
   const [anomalyData, setAnomalyData] = useState<any>(null)
 
-  const handleClockIn = async (lat: number, lng: number, accuracy: number, overtimeReason?: string, shiftId?: string, isCorrection?: boolean, actualEndTimeStr?: string, actualStartTimeStr?: string) => {
+  const handleClockIn = useCallback(async (lat: number, lng: number, accuracy: number, overtimeReason?: string, shiftId?: string, isCorrection?: boolean, actualEndTimeStr?: string, actualStartTimeStr?: string) => {
     setStatus('loading')
     setMessage('Verifica e registrazione in corso...')
 
@@ -92,66 +90,12 @@ function NFCClockContent() {
       setStatus('error')
       setMessage('Impossibile connettersi al server. Verifica la connessione internet e riprova.')
     }
-  }
-
-  // Step 0: Verifica autenticazione prima di tutto
-  useEffect(() => {
-    if (hasExecuted.current) return
-    hasExecuted.current = true
-
-    // Prima verifica che l'utente sia autenticato
-    fetch('/api/auth/session', { credentials: 'include' })
-      .then(r => r.json())
-      .then(session => {
-        if (!session?.user?.id) {
-          setStatus('no_session')
-          setMessage('Nessuna sessione attiva.')
-          return
-        }
-
-        // Utente autenticato, procedi con GPS
-        setStatus('acquiring_gps')
-        setMessage('Acquisizione posizione GPS...')
-
-        if (!navigator.geolocation) {
-          setStatus('error')
-          setMessage('Geolocalizzazione non supportata dal tuo browser.')
-          return
-        }
-
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            handleClockIn(position.coords.latitude, position.coords.longitude, position.coords.accuracy)
-          },
-          (error) => {
-            setStatus('error')
-            switch(error.code) {
-              case error.PERMISSION_DENIED:
-                setMessage('Permesso GPS negato. Consenti l\'accesso alla posizione per timbrare tramite NFC.')
-                break
-              case error.POSITION_UNAVAILABLE:
-                setMessage('Posizione non disponibile. Riprova.')
-                break
-              case error.TIMEOUT:
-                setMessage('Timeout GPS. Avvicinati a una finestra o esci all\'aperto e riprova.')
-                break
-              default:
-                setMessage('Errore durante l\'acquisizione della posizione GPS.')
-                break
-            }
-          },
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-        )
-      })
-      .catch(() => {
-        setStatus('error')
-        setMessage('Impossibile verificare la sessione. Controlla la connessione.')
-      })
   }, [])
 
-  useEffect(() => {
-    if (hasExecuted.current) return
-    hasExecuted.current = true
+  // Funzione per acquisire GPS e timbrare — viene chiamata al CLICK del bottone
+  const startGpsAndClock = useCallback(() => {
+    setStatus('acquiring_gps')
+    setMessage('Acquisizione posizione GPS...')
 
     if (!navigator.geolocation) {
       setStatus('error')
@@ -167,27 +111,49 @@ function NFCClockContent() {
         setStatus('error')
         switch(error.code) {
           case error.PERMISSION_DENIED:
-            setMessage('Permesso GPS negato. Devi consentire l\'accesso alla posizione per timbrare tramite NFC.')
+            setMessage('Permesso GPS negato dal sistema.\n\nPer risolvere:\n• Su iPhone: Impostazioni → Safari → Posizione → Consenti\n• Poi torna qui e premi "Riprova"')
             break
           case error.POSITION_UNAVAILABLE:
-            setMessage('Informazioni sulla posizione non disponibili.')
+            setMessage('Posizione non disponibile. Avvicinati a una finestra o esci all\'aperto e riprova.')
             break
           case error.TIMEOUT:
-            setMessage('Timeout durante la richiesta della posizione GPS.')
+            setMessage('Timeout GPS. Avvicinati a una finestra o esci all\'aperto e riprova.')
             break
           default:
-            setMessage('Errore sconosciuto durante l\'acquisizione della posizione.')
+            setMessage('Errore durante l\'acquisizione della posizione GPS.')
             break
         }
       },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     )
+  }, [handleClockIn])
+
+  // Step 0: Verifica autenticazione UNA SOLA VOLTA
+  useEffect(() => {
+    if (hasCheckedAuth.current) return
+    hasCheckedAuth.current = true
+
+    fetch('/api/auth/session', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(session => {
+        if (!session?.user?.id) {
+          setStatus('no_session')
+          setMessage('Nessuna sessione attiva.')
+          return
+        }
+
+        // Utente autenticato: mostra il bottone "Timbra"
+        setUserName(session.user.name || session.user.matricola || 'Operatore')
+        setStatus('ready_to_clock')
+        setMessage('Premi il pulsante per timbrare')
+      })
+      .catch(() => {
+        setStatus('error')
+        setMessage('Impossibile verificare la sessione. Controlla la connessione.')
+      })
   }, [])
 
+  // Auto-redirect dopo successo
   useEffect(() => {
     if (status === 'success') {
       const timer = setTimeout(() => {
@@ -210,8 +176,35 @@ function NFCClockContent() {
             <p className="text-slate-400 text-sm mt-1 font-medium">Autenticazione Presenza Sicura</p>
         </div>
 
-        {/* Stati */}
-        {(status === 'checking_auth' || status === 'acquiring_gps' || status === 'loading') && (
+        {/* Stato: Verifica auth in corso */}
+        {status === 'checking_auth' && (
+          <div className="flex flex-col items-center my-6">
+            <Loader2 className="h-16 w-16 text-blue-500 animate-spin mb-4" />
+            <p className="text-slate-300 font-medium text-lg">{message}</p>
+          </div>
+        )}
+
+        {/* Stato: Pronto a timbrare — BOTTONE GRANDE */}
+        {status === 'ready_to_clock' && (
+          <div className="flex flex-col items-center my-6 animate-in fade-in zoom-in duration-300 w-full">
+            {userName && (
+              <p className="text-slate-400 text-sm mb-4">Benvenuto, <span className="text-white font-bold">{userName}</span></p>
+            )}
+            <button
+              onClick={startGpsAndClock}
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-8 py-6 rounded-2xl font-bold text-lg transition-all active:scale-95 shadow-2xl shadow-blue-900/40 flex items-center justify-center gap-3 mb-4"
+            >
+              <Fingerprint className="h-8 w-8" />
+              Timbra Presenza
+            </button>
+            <p className="text-slate-500 text-xs">
+              Premi il pulsante per acquisire il GPS e registrare la timbratura.
+            </p>
+          </div>
+        )}
+
+        {/* Stato: Acquisizione GPS */}
+        {(status === 'acquiring_gps' || status === 'loading') && (
           <div className="flex flex-col items-center my-6">
             <Loader2 className="h-16 w-16 text-blue-500 animate-spin mb-4" />
             <p className="text-slate-300 font-medium text-lg">{message}</p>
@@ -271,10 +264,14 @@ function NFCClockContent() {
               <MapPinOff className="h-16 w-16 text-red-500" />
             </div>
             <h1 className="text-2xl font-bold mb-2 text-red-400">Operazione Negata</h1>
-            <p className="text-slate-300 mb-8 text-center px-4">{message}</p>
+            <p className="text-slate-300 mb-8 text-center px-4 whitespace-pre-line">{message}</p>
             <div className="flex gap-3">
                 <button
-                onClick={() => window.location.reload()}
+                onClick={() => {
+                  // Riparte dal bottone "Timbra" per consentire il gesto utente
+                  setStatus('ready_to_clock')
+                  setMessage('Premi il pulsante per timbrare')
+                }}
                 className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
                 >
                 Riprova

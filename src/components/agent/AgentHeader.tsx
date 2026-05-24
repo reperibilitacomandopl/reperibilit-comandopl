@@ -55,9 +55,11 @@ export default function AgentHeader({
   }
 
   React.useEffect(() => {
-    if (localStorage.getItem('high-contrast') === 'true') {
-      document.documentElement.classList.add('theme-high-contrast');
-    }
+    try {
+      if (localStorage.getItem('high-contrast') === 'true') {
+        document.documentElement.classList.add('theme-high-contrast');
+      }
+    } catch (e) {}
   }, []);
 
   React.useEffect(() => {
@@ -239,7 +241,7 @@ export default function AgentHeader({
                   onClick={() => {
                     const html = document.documentElement;
                     const isHC = html.classList.toggle('theme-high-contrast');
-                    localStorage.setItem('high-contrast', isHC ? 'true' : 'false');
+                    try { localStorage.setItem('high-contrast', isHC ? 'true' : 'false'); } catch (e) {}
                   }}
                   className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-[1.5rem] sm:rounded-[2rem] text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 border border-white/5"
                   title="Attiva/Disattiva Tema Scuro / Alto Contrasto"

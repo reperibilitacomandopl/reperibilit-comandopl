@@ -620,9 +620,18 @@ export default function CentraleOperativa() {
 
               <div className="p-5 space-y-4">
                 {/* Indirizzo */}
-                <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg border">
-                  <MapPin className="w-4 h-4 text-blue-500 mt-0.5 shrink-0"/>
-                  <p className="text-sm font-medium text-slate-700">{i.address}</p>
+                <div className="flex flex-col gap-1 p-3 bg-gray-50 rounded-lg border">
+                  <div className="flex items-center gap-1 mb-1">
+                    <MapPin className="w-4 h-4 text-blue-500 shrink-0"/>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase">Indirizzo / Luogo</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <input type="text" id={`address-${i.id}`} defaultValue={i.address} className="w-full border rounded-lg p-2.5 text-sm" />
+                    <button onClick={() => {
+                      const address = (document.getElementById(`address-${i.id}`) as HTMLInputElement)?.value
+                      handleUpdateIntervention(i.id, { address })
+                    }} className="px-3 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold whitespace-nowrap hover:bg-blue-200 transition">Aggiorna Via</button>
+                  </div>
                 </div>
 
                 {/* Descrizione */}

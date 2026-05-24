@@ -53,7 +53,10 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
   const [collapsedEccezioni, setCollapsedEccezioni] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(totalAgents === 0)
 
+  const [mounted, setMounted] = useState(false)
+
   useEffect(() => {
+    setMounted(true)
     const timer = setInterval(() => setCurrentTime(new Date()), 30000) // aggiorna ogni 30 sec
     return () => clearInterval(timer)
   }, [])
@@ -136,10 +139,10 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
           <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tighter uppercase leading-none">Pannello <span className="text-blue-600">Overview</span></h1>
           <p className="text-sm text-slate-500 mt-4 font-bold flex items-center gap-3">
              <span className="bg-slate-100 px-3 py-1 rounded-lg text-slate-700">
-               {currentTime.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" })}
+               {mounted ? currentTime.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" }) : "Caricamento data..."}
              </span>
              <span className="w-1.5 h-1.5 bg-slate-200 rounded-full"></span>
-             <span className="text-slate-500 font-black tracking-widest">{currentTime.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}</span>
+             <span className="text-slate-500 font-black tracking-widest">{mounted ? currentTime.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }) : "--:--"}</span>
           </p>
         </div>
 

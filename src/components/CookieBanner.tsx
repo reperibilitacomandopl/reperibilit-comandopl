@@ -8,7 +8,8 @@ export default function CookieBanner() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    const consent = localStorage.getItem("cookie-consent")
+    let consent = null
+    try { consent = localStorage.getItem("cookie-consent") } catch (e) {}
     if (!consent) {
       // Delay to avoid layout shift on page load
       const timer = setTimeout(() => setVisible(true), 1500)
@@ -17,8 +18,10 @@ export default function CookieBanner() {
   }, [])
 
   const accept = (type: "all" | "necessary") => {
-    localStorage.setItem("cookie-consent", type)
-    localStorage.setItem("cookie-consent-date", new Date().toISOString())
+    try {
+      localStorage.setItem("cookie-consent", type)
+      localStorage.setItem("cookie-consent-date", new Date().toISOString())
+    } catch (e) {}
     setVisible(false)
   }
 

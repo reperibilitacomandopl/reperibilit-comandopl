@@ -38,7 +38,8 @@ export default function AgentInterventions() {
 
   // Load saved preference on mount
   useEffect(() => {
-    const saved = localStorage.getItem(NAV_STORAGE_KEY) as NavApp | null
+    let saved: NavApp | null = null
+    try { saved = localStorage.getItem(NAV_STORAGE_KEY) as NavApp | null } catch (e) {}
     if (saved && ["google", "apple", "waze"].includes(saved)) {
       setPreferredNav(saved)
     }
@@ -89,7 +90,7 @@ export default function AgentInterventions() {
 
   const selectNavApp = useCallback((app: NavApp, remember: boolean) => {
     if (remember) {
-      localStorage.setItem(NAV_STORAGE_KEY, app)
+      try { localStorage.setItem(NAV_STORAGE_KEY, app) } catch (e) {}
       setPreferredNav(app)
     }
     if (showNavPicker) {
@@ -99,7 +100,7 @@ export default function AgentInterventions() {
   }, [showNavPicker, openNavigation])
 
   const resetNavPreference = useCallback(() => {
-    localStorage.removeItem(NAV_STORAGE_KEY)
+    try { localStorage.removeItem(NAV_STORAGE_KEY) } catch (e) {}
     setPreferredNav(null)
     toast.success("Preferenza navigazione rimossa")
   }, [])

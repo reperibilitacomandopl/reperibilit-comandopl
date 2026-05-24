@@ -21,7 +21,8 @@ export default function WelcomeTour({
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
-    const completed = localStorage.getItem(TOUR_STORAGE_KEY)
+    let completed = null
+    try { completed = localStorage.getItem(TOUR_STORAGE_KEY) } catch (e) {}
     if (!completed) {
       setIsVisible(true)
     }
@@ -29,7 +30,7 @@ export default function WelcomeTour({
 
   const handleDismiss = () => {
     setDismissed(true)
-    localStorage.setItem(TOUR_STORAGE_KEY, "true")
+    try { localStorage.setItem(TOUR_STORAGE_KEY, "true") } catch (e) {}
     setIsVisible(false)
   }
 

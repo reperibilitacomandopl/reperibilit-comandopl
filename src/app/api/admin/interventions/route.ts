@@ -74,7 +74,7 @@ export async function PUT(req: Request) {
   
   try {
     const data = await req.json()
-    const { id, assignedToId, status, notes, outcome, outcomeNotes } = data
+    const { id, assignedToId, status, notes, outcome, outcomeNotes, address, type, priority, description } = data
 
     const existing = await prisma.intervention.findUnique({ where: { id } })
     if (!existing || existing.tenantId !== tenantId) {
@@ -87,6 +87,10 @@ export async function PUT(req: Request) {
     
     if (outcome !== undefined) updateData.outcome = outcome
     if (outcomeNotes !== undefined) updateData.outcomeNotes = outcomeNotes
+    if (address !== undefined) updateData.address = address
+    if (type !== undefined) updateData.type = type
+    if (priority !== undefined) updateData.priority = priority
+    if (description !== undefined) updateData.description = description
 
     if (status && status !== existing.status) {
        updateData.status = status
