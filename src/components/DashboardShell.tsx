@@ -16,16 +16,7 @@ import AgentInterventions from "./agent/AgentInterventions"
 import PersonalBalances from "./agent/PersonalBalances"
 import AgentRotationView from "./agent/AgentRotationView"
 import AgentVerbalListView from "./agent/AgentVerbalListView"
-import MobileAgentLaunchpad from "./agent/MobileAgentLaunchpad"
 import { useAgentData } from "@/hooks/useAgentData"
-
-// Componente che renderizza solo lato client (evita hydration mismatch)
-function ClientOnly({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = React.useState(false)
-  React.useEffect(() => { setMounted(true) }, [])
-  if (!mounted) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" /></div>
-  return <>{children}</>
-}
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode; fallback: React.ReactNode }> {
   state = { hasError: false }
@@ -77,12 +68,6 @@ export default function DashboardShell({
   const [activeTab, setActiveTab] = useState('dashboard')
   const { role, name, matricola, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem } = session.user
 
-  // Ascolta cambio tab dal Launchpad mobile
-  React.useEffect(() => {
-    const handler = (e: Event) => setActiveTab((e as CustomEvent).detail)
-    window.addEventListener("agent-tab-change", handler)
-    return () => window.removeEventListener("agent-tab-change", handler)
-  }, [])
 
   const agentData = useAgentData({
     currentUser: session.user,
@@ -196,42 +181,20 @@ export default function DashboardShell({
                   />
               </div>
 
-              {/* Mobile: Launchpad (solo client-side per evitare hydration mismatch) */}
+              {/* Mobile: stessa dashboard classica del desktop (stabile) */}
               <div className="lg:hidden">
                 {activeTab === 'dashboard' && (
-                  <ClientOnly>
-                    <MobileAgentLaunchpad
-                      tenantSlug={tenantSlug || ""}
-                      isClockedIn={agentData.isClockedIn}
-                    />
-                  </ClientOnly>
-                )}
-                
-                {/* Mobile Only: Show full summary when tab is summary */}
-                {activeTab === 'summary' && (
-                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-                    <DynamicAgentDashboard
-                      currentUser={session.user}
-                      shifts={shifts}
-                      myShifts={myShifts}
-                      allAgents={allAgents}
-                      currentMonth={currentMonth}
-                      currentYear={currentYear}
-                      isPublished={isPublished}
-                      tenantSlug={tenantSlug}
-                      agendaEntries={agendaEntries}
-                      userRole={role}
-                      canManageShifts={canManageShifts}
-                      canManageUsers={canManageUsers}
-                      canVerifyClockIns={canVerifyClockIns}
-                      canConfigureSystem={canConfigureSystem}
-                      logoUrl={logoUrl}
-                      tenant={tenant}
-                      certifiedDates={certifiedDates}
-                      agentData={agentData}
-                      calendarToken={calendarToken}
-                    />
-                  </div>
+                  <DynamicAgentDashboard
+                    currentUser={session.user}
+                    shifts={shifts} myShifts={myShifts} allAgents={allAgents}
+                    currentMonth={currentMonth} currentYear={currentYear}
+                    isPublished={isPublished} tenantSlug={tenantSlug}
+                    agendaEntries={agendaEntries} userRole={role}
+                    canManageShifts={canManageShifts} canManageUsers={canManageUsers}
+                    canVerifyClockIns={canVerifyClockIns} canConfigureSystem={canConfigureSystem}
+                    logoUrl={logoUrl} tenant={tenant} certifiedDates={certifiedDates}
+                    agentData={agentData} calendarToken={calendarToken}
+                  />
                 )}
               </div>
 
