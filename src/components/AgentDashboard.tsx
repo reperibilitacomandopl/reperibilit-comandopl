@@ -115,7 +115,10 @@ export default function AgentDashboard({
       } else if (action === 'clockin') {
         if (admin.isClockedIn !== 'IN') admin.handleClockAction('IN')
       }
-      window.history.replaceState({}, '', window.location.pathname)
+      // Non fare replaceState su iOS/NFC — interferisce con la history navigation
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/nfc')) {
+        try { window.history.replaceState({}, '', window.location.pathname) } catch (_) {}
+      }
     }
   }, [admin.isClockedIn, shifts]);
 
