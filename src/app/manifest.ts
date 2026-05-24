@@ -26,21 +26,16 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       {
-        name: '🆘 SOS GPS',
-        short_name: 'SOS',
-        url: '/?action=sos',
-        icons: [{ src: '/icon-192.png', sizes: '192x192' }]
-      },
-      {
-        name: '⏱️ Timbra Entrata',
+        name: '⏱️ Timbra Presenza (Badge)',
         short_name: 'Timbra',
-        url: '/?action=clockin',
+        description: 'Avvicina il telefono al tag NFC e timbra automaticamente',
+        url: '/nfc',
         icons: [{ src: '/icon-192.png', sizes: '192x192' }]
       },
       {
         name: '📅 I miei Turni',
         short_name: 'Turni',
-        url: '/?action=planning',
+        url: '/?view=planning',
         icons: [{ src: '/icon-192.png', sizes: '192x192' }]
       }
     ]
