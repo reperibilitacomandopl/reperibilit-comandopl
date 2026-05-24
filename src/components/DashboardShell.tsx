@@ -64,9 +64,10 @@ export default function DashboardShell({
   logoUrl,
   tenant,
   certifiedDates,
-  calendarToken
-}: DashboardShellProps) {
-  const [activeTab, setActiveTab] = useState('dashboard')
+  calendarToken,
+  initialView
+}: DashboardShellProps & { initialView?: string }) {
+  const [activeTab, setActiveTab] = useState(initialView || 'dashboard')
   const { role, name, matricola, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem } = session.user
 
 

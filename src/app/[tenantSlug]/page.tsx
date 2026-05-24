@@ -125,6 +125,7 @@ export default async function Home({
       tenant={tenant}
       certifiedDates={certifiedDates}
       calendarToken={generateCalendarToken(session.user.id)}
+      initialView={view || undefined}
     />
   )
 }
