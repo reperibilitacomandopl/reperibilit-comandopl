@@ -70,6 +70,12 @@ export default function DashboardShell({
   const [activeTab, setActiveTab] = useState(initialView || 'dashboard')
   const { role, name, matricola, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem } = session.user
 
+  // Sincronizza tab quando arriva da Launchpad (cambio query string)
+  React.useEffect(() => {
+    if (initialView && initialView !== 'dashboard') {
+      setActiveTab(initialView)
+    }
+  }, [initialView])
 
   const agentData = useAgentData({
     currentUser: session.user,
