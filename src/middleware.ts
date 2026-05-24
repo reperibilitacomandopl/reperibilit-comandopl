@@ -52,6 +52,7 @@ function isPublicRoute(pathname: string): boolean {
 }
 
 function isAdminRoute(pathname: string): boolean {
+  if (pathname.includes("/api/admin/clock-in")) return false
   return pathname.includes("/admin") || pathname.includes("/api/admin")
 }
 
