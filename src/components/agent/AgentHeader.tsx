@@ -22,6 +22,7 @@ export default function AgentHeader({
   handleClockAction,
   
   repCount,
+  repDays,
   
   canManageShifts,
   userRole,
@@ -298,9 +299,21 @@ export default function AgentHeader({
                 <div className="p-4 bg-emerald-500/20 border border-emerald-400/30 rounded-2xl w-fit group-hover:scale-110 transition-transform">
                   <ShieldCheck className="text-emerald-400" size={24} />
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <p className="text-[10px] text-white/40 font-black uppercase tracking-widest mb-1">Reperibilità</p>
                   <p className="text-4xl font-black text-white">{repCount}</p>
+                  {repDays && repDays.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2 max-h-16 overflow-y-auto">
+                      {repDays.map((d: { day: number; repType?: string }) => (
+                        <span
+                          key={d.day}
+                          className="text-[9px] font-black bg-emerald-500/30 text-emerald-100 px-1.5 py-0.5 rounded-md border border-emerald-400/20"
+                        >
+                          {d.day}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 

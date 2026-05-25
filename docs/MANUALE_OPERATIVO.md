@@ -37,7 +37,12 @@ Menu ☰ → **Saldi** → vedi ferie residue, permessi, ore L.104, ore studio d
 Su iPhone: tocca **Condividi** (in Safari) → **Aggiungi a Home**.
 Su Android: tocca i **tre puntini** (in Chrome) → **Installa app**.
 
-### 8. Notifiche Push (SOS, turni, OdS)
+### 8. Reperibilità del mese
+- In **Home** vedi il numero di reperibilità e i **giorni** (es. `5 Fer.`, `12 Fest.`).
+- Tocca **Dettaglio** o il modulo **Reperibilità** per la griglia del mese e l’elenco completo.
+- Se sei **ufficiale** in servizio oggi, compare la **Squadra di Reperibilità** con icona **telefono** per chiamare i colleghi reperibili.
+
+### 9. Notifiche Push (SOS, turni, OdS)
 - Su **iPhone** le push funzionano solo aprendo l'app dall'**icona Home** (PWA), non da una tab Safari normale.
 - Dopo ogni aggiornamento dell'app: dalla **Home agente** tocca **«RICONNETTI NOTIFICHE»** o **«ATTIVA ORA»**.
 - Verifica in iPhone → **Impostazioni → Sentinel → Notifiche** che siano attive.

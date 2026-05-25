@@ -1,9 +1,11 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Clock, RefreshCw, Shield, CalendarDays, ChevronLeft, ChevronRight, Fingerprint } from "lucide-react"
+import { Clock, RefreshCw, Shield, CalendarDays, ChevronLeft, ChevronRight, Fingerprint, Phone } from "lucide-react"
 import NextShiftCard from "./NextShiftCard"
+import OfficerDutyPanel from "./OfficerDutyPanel"
 import { isAssenza } from "@/utils/shift-logic"
+import { formatRepTypeLabel, getRepDaysForMonth } from "@/lib/agent-rep-utils"
 
 type Props = {
   currentUser: {
@@ -11,7 +13,9 @@ type Props = {
     name: string
     matricola?: string
     gpsConsent?: boolean
+    isUfficiale?: boolean
   }
+  isPublished?: boolean
   tenantSlug: string
   currentMonth: number
   currentYear: number
@@ -49,6 +53,7 @@ export default function MobileAgentRiepilogo({
   onNavigate,
   onSos,
   onGpsConsentRequired,
+  isPublished = true,
 }: Props) {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [activeShiftIndex, setActiveShiftIndex] = useState(0)
@@ -58,9 +63,11 @@ export default function MobileAgentRiepilogo({
     return () => clearInterval(t)
   }, [])
 
-  const repCount = myShifts.filter((s: any) =>
-    (s.repType || "").toLowerCase().includes("rep")
-  ).length
+  const repDays = useMemo(
+    () => getRepDaysForMonth(myShifts, currentYear, currentMonth),
+    [myShifts, currentYear, currentMonth]
+  )
+  const repCount = repDays.length
 
   const featuredShifts = useMemo(() => {
     const now = new Date()
@@ -211,18 +218,40 @@ export default function MobileAgentRiepilogo({
             </button>
           </div>
 
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">Reperibilità mese</p>
-              <p className="text-3xl font-black">{repCount}</p>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">
+                  Reperibilità mese
+                </p>
+                <p className="text-3xl font-black">{repCount}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onNavigate("reperibilita")}
+                className="px-4 py-2 rounded-xl bg-emerald-500/30 text-emerald-100 text-[10px] font-black uppercase tracking-wide border border-emerald-400/30"
+              >
+                Dettaglio
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => onNavigate("swaps")}
-              className="px-4 py-2 rounded-xl bg-white/10 text-[10px] font-black uppercase tracking-wide border border-white/10"
-            >
-              Scambi
-            </button>
+            {repDays.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {repDays.map((r) => (
+                  <span
+                    key={r.day}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-600/40 border border-emerald-400/30 text-[10px] font-black text-white"
+                    title={`${r.weekday} — ${r.repType}`}
+                  >
+                    <span>{r.day}</span>
+                    <span className="text-emerald-200 font-bold opacity-90">
+                      {formatRepTypeLabel(r.repType)}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[10px] text-white/40 font-bold">Nessun giorno REP questo mese</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -235,14 +264,20 @@ export default function MobileAgentRiepilogo({
             </button>
             <button
               type="button"
-              onClick={() => onNavigate("planning")}
-              className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white/10 border border-white/10 text-[10px] font-black uppercase tracking-wide"
+              onClick={() => onNavigate("reperibilita")}
+              className="flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-600/40 border border-emerald-400/30 text-[10px] font-black uppercase tracking-wide"
             >
-              <CalendarDays size={16} /> Turni
+              <Phone size={16} /> REP
             </button>
           </div>
         </div>
       </div>
+
+      {currentUser.isUfficiale && (
+        <div className="-mx-1">
+          <OfficerDutyPanel />
+        </div>
+      )}
 
       {currentShift ? (
         <div className="space-y-2">

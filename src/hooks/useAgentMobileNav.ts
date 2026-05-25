@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 export const AGENT_MOBILE_VIEWS = [
   "dashboard",
+  "reperibilita",
   "planning",
   "requests",
   "interventions",

@@ -22,6 +22,7 @@ import FloatingSosButton from "./FloatingSosButton"
 import AgentSosModal from "./AgentSosModal"
 import { ClockOutModal } from "@/components/ClockOutModal"
 import NotificationManager from "@/components/NotificationManager"
+import AgentReperibilitaView from "./AgentReperibilitaView"
 import toast from "react-hot-toast"
 
 const MONTH_NAMES = [
@@ -41,6 +42,7 @@ type Props = {
   tenant?: any
   certifiedDates?: string[]
   logoUrl?: string | null
+  isPublished?: boolean
 }
 
 function MobileAgentShellInner(props: Props) {
@@ -55,6 +57,7 @@ function MobileAgentShellInner(props: Props) {
     tenantSlug,
     tenant,
     certifiedDates,
+    isPublished = true,
   } = props
 
   const { role } = session.user
@@ -139,6 +142,7 @@ function MobileAgentShellInner(props: Props) {
               onNavigate={navigate}
               onSos={() => setShowSosModal(true)}
               onGpsConsentRequired={openGpsConsentHint}
+              isPublished={isPublished}
             />
             <MobileAgentLaunchpad
               tenantSlug={tenantSlug || ""}
@@ -148,6 +152,18 @@ function MobileAgentShellInner(props: Props) {
               onSos={() => setShowSosModal(true)}
             />
           </div>
+        )}
+
+        {activeTab === "reperibilita" && (
+          <AgentReperibilitaView
+            myShifts={myShifts}
+            currentMonth={currentMonth}
+            currentYear={currentYear}
+            monthNames={MONTH_NAMES}
+            isPublished={isPublished}
+            isUfficiale={!!session.user.isUfficiale}
+            onNavigateMonth={(m, y) => navigateMonth(m, y, "reperibilita")}
+          />
         )}
 
         {activeTab === "planning" && (

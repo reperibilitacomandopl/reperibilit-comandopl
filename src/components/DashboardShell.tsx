@@ -177,6 +177,7 @@ export default function DashboardShell({
                 tenantSlug={tenantSlug || ""}
                 tenant={tenant}
                 certifiedDates={certifiedDates}
+                isPublished={isPublished}
               />
             </div>
           )}

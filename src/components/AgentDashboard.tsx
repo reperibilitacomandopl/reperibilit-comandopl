@@ -40,6 +40,7 @@ import AgentRotationView from "./agent/AgentRotationView"
 import { useGpsTracking } from "@/hooks/useGpsTracking"
 
 import { isAssenza } from "@/utils/shift-logic"
+import { getRepDaysForMonth } from "@/lib/agent-rep-utils"
 import { Shield, CalendarDays, BookOpen, FileDown, MessageSquare, Users, ChevronLeft, ChevronRight } from "lucide-react"
 
 export interface AgentDashboardProps {
@@ -160,7 +161,8 @@ export default function AgentDashboard({
   const nextDay1 = new Date(currentYear, currentMonth, 1)
   dayInfo.push({ day: 1, name: dayNames[nextDay1.getDay()], isWeekend: isHoliday(nextDay1), isNextMonth: true })
 
-  const repCount = admin.myShifts.filter((s: any) => s.repType?.toUpperCase().includes("REP")).length
+  const repDays = getRepDaysForMonth(admin.myShifts, currentYear, currentMonth)
+  const repCount = repDays.length
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] px-3 py-4 md:p-8 space-y-5 md:space-y-8 pb-28">
@@ -190,6 +192,7 @@ export default function AgentDashboard({
         canManageShifts={canManageShifts}
         userRole={userRole}
         repCount={repCount}
+        repDays={repDays}
         tenantSlug={tenantSlug}
         setShowSyncModal={setShowSyncModal}
         setShowSosModal={setShowSosModal}

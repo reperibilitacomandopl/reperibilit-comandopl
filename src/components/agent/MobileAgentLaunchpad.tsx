@@ -10,6 +10,7 @@ import {
   ClipboardList,
   RefreshCw,
   Shield,
+  ShieldCheck,
   Palmtree,
   LayoutGrid,
   Megaphone,
@@ -44,6 +45,7 @@ export default function MobileAgentLaunchpad({
   const modules: Module[] = [
     { id: "riepilogo", title: "Riepilogo", desc: "Timbrature e prossimo turno", icon: Clock, color: "from-slate-700 to-slate-900", action: "riepilogo" },
     { id: "nfc", title: "Tag NFC", desc: "Timbratura badge automatica", icon: Nfc, color: "from-blue-600 to-indigo-600", href: "/nfc" },
+    { id: "rep", title: "Reperibilità", desc: "Giorni REP e contatti", icon: ShieldCheck, color: "from-emerald-500 to-teal-600", view: "reperibilita" },
     { id: "turni", title: "I Miei Turni", desc: "Calendario e griglia", icon: Calendar, color: "from-blue-500 to-cyan-500", view: "planning" },
     { id: "cartellino", title: "Cartellino HR", desc: "Saldi e storico", icon: Wallet, color: "from-violet-500 to-purple-600", view: "cartellino" },
     { id: "ferie", title: "Ferie e Permessi", desc: "Saldi e rotazioni", icon: Palmtree, color: "from-amber-500 to-orange-500", view: "ferie" },
