@@ -5,6 +5,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { logAudit } from '@/lib/audit';
 import { verifyVerbatelToken } from '@/lib/verbatel-token';
+import { verifyIntegrationApiKey } from '@/lib/integration-api-key';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
       isAdmin = true;
       adminId = session.user.id || 'ADMIN';
       tenantId = session.user.tenantId || tenantId;
-    } else if (providedKey === process.env.AUTH_SECRET) {
+    } else if (verifyIntegrationApiKey(providedKey)) {
       isAdmin = true;
     } else if (providedKey && providedKey.includes(':')) {
       const parts = providedKey.split(':');

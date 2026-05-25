@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { blockInProduction } from "@/lib/dev-only"
 
 export async function GET() {
+  const blocked = blockInProduction()
+  if (blocked) return blocked
+
   try {
     const count = await prisma.user.count()
     const users = await prisma.user.findMany({

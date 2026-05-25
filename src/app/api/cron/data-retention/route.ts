@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
-// Protezione base Vercel Cron. Solo le invocazioni da Vercel Cron avranno l'Authorization header corretto.
+// Protezione cron: richiede Authorization: Bearer CRON_SECRET (crontab sul server Oracle).
 export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization")
   if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {

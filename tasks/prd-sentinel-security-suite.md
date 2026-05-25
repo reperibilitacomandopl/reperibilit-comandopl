@@ -528,7 +528,7 @@ I seguenti moduli sono pianificati per la Fase 2 e 3 del prodotto.
 | Styling | Tailwind CSS | 4.x |
 | Backend | Next.js API Routes | 16.2 |
 | ORM | Prisma | 6.4.1 |
-| Database | PostgreSQL (Supabase) | 15+ |
+| Database | PostgreSQL 15 (Oracle Cloud EU) | 15+ |
 | Cache/Rate Limit | Upstash Redis | - |
 | Auth | NextAuth v5 (JWT) | 5.0-beta |
 | 2FA | otplib + QR Code | 13.x / 1.5 |
@@ -540,7 +540,7 @@ I seguenti moduli sono pianificati per la Fase 2 e 3 del prodotto.
 | Push | web-push (VAPID) | 3.x |
 | Test | Vitest + Playwright | 4.x / latest |
 | CI/CD | GitHub Actions | - |
-| Deploy | Docker + Nginx + Vercel | - |
+| Deploy | Oracle Cloud EU + Docker + Nginx | - |
 
 ---
 

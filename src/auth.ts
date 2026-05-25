@@ -36,7 +36,13 @@ const HCAPTCHA_SECRET = process.env.HCAPTCHA_SECRET_KEY
 const HCAPTCHA_VERIFY_URL = "https://hcaptcha.com/siteverify"
 
 async function verifyHCaptcha(token: string): Promise<boolean> {
-  if (!HCAPTCHA_SECRET) return true // Se non configurato, lascia passare
+  if (!HCAPTCHA_SECRET) {
+    if (process.env.NODE_ENV === "production") {
+      console.error("[AUTH] HCAPTCHA_SECRET_KEY mancante in produzione")
+      return false
+    }
+    return true // Solo sviluppo locale senza captcha configurato
+  }
   if (!token) return false
   try {
     const res = await fetch(HCAPTCHA_VERIFY_URL, {

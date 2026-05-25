@@ -1,0 +1,38 @@
+# Produzione Oracle — app in ascolto solo su localhost (Nginx termina TLS)
+# Uso: docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  portale-caserma:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: app-portale-caserma
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Opzionale: decommentare se PostgreSQL gira sullo stesso host via Docker
+  # db:
+  #   image: postgres:15-alpine
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: ${POSTGRES_USER:-postgres}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+  #     POSTGRES_DB: ${POSTGRES_DB:-postgres}
+  #   volumes:
+  #     - db-data:/var/lib/postgresql/data
+  #   ports:
+  #     - "127.0.0.1:5432:5432"
+
+# volumes:
+#   db-data:

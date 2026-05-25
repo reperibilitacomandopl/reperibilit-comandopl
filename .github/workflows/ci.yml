@@ -105,6 +105,6 @@ jobs:
     - name: OWASP ZAP Full Scan
       uses: zaproxy/action-full-scan@v0.12.0
       with:
-        target: ${{ secrets.STAGING_URL || 'https://gestionepolizialecale.it' }}
+        target: ${{ secrets.STAGING_URL || 'https://gestionepolizialocale.it' }}
         cmd_options: "-a"
       continue-on-error: true

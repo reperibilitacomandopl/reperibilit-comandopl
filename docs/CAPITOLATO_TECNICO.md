@@ -108,8 +108,8 @@ Il sistema implementa un'architettura **multi-tenant con isolamento logico**:
 
 | Requisito | Specifica |
 |-----------|----------|
-| Hosting | Cloud EU (requisito GDPR) — Vercel/AWS eu-west-1 |
-| Database | PostgreSQL 15+ gestito (Supabase/Neon/RDS) |
+| Hosting | Oracle Cloud Infrastructure — regione UE (es. eu-milan-1) |
+| Database | PostgreSQL 15+ su VM OCI o servizio gestito OCI (stessa regione UE) |
 | CDN | Distribuzione globale con edge caching |
 | Backup | Giornaliero crittografato AES-256, retention 30 giorni |
 | Disaster Recovery | Replica su regione geografica diversa |

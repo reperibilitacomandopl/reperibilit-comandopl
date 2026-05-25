@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
-// Endpoint per Vercel Cron. Chiamata quotidiana.
+// Endpoint cron server (Oracle). Chiamata quotidiana con CRON_SECRET.
 export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization")
   if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {

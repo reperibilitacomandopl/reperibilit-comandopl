@@ -182,10 +182,10 @@ export default function DPIAPage() {
                   probability="Bassa"
                   impact="Medio"
                   measures={[
-                    "Database su AWS EU-Central-1 (Francoforte, Germania)",
-                    "DPA con Supabase e Vercel con SCC (Standard Contractual Clauses)",
-                    "Vercel edge network con PoP EU per minimizzare routing extra-UE",
-                    "Nessun sub-responsabile in giurisdizioni senza adequacy decision"
+                    "Database e applicazione su Oracle Cloud Infrastructure (regione UE)",
+                    "DPA con OCI e sub-responsabili elencati in informativa privacy",
+                    "Minimizzazione sub-responsabili extra-UE (Telegram/hCaptcha solo se attivati)",
+                    "Backup giornalieri su server UE con retention documentata"
                   ]}
                   residualRisk="Molto Basso"
                 />

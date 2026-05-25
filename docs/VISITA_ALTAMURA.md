@@ -83,7 +83,7 @@ Mostrare:
 > Abbiamo un piano TRIAL gratuito di 30 giorni. Dopo, 199€/mese per fino a 50 agenti. Per Altamura, in qualità di primo comando pilota, offriamo 3 mesi gratuiti e uno sconto fedeltà.
 
 **"I dati dove stanno?"**
-> Su cloud Supabase in AWS EU-Central-1 (Francoforte). Certificato GDPR. Facciamo backup automatici giornalieri. Possiamo anche installare su vostro server se preferite.
+> Su **Oracle Cloud Infrastructure in regione UE** (server dedicato: applicazione + PostgreSQL). Certificato GDPR. Backup giornalieri. Dati non su Vercel né Supabase.
 
 **"È sicuro?"**
 > Abbiamo completato un audit di sicurezza su 28 punti. Usiamo crittografia AES-256 per i dati sensibili, 2FA per l'accesso, firma digitale SHA-256 per gli OdS. Superiamo i requisiti AgID per SaaS PA.

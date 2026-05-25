@@ -250,7 +250,7 @@ export default function LandingPage() {
                 </div>
                 <div className="flex-1 mx-4">
                   <div className="bg-white/5 rounded-lg px-3 py-1 text-[10px] text-white/30 font-mono max-w-xs mx-auto text-center">
-                    sentinel-pl.vercel.app
+                    gestionepolizialocale.it
                   </div>
                 </div>
               </div>

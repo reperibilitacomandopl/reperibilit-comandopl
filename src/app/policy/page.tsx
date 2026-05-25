@@ -195,9 +195,10 @@ export default function PrivacyPolicyPage() {
                   <li>
                     <strong>Sub-responsabili del trattamento</strong>, elencati e contrattualizzati con DPA:
                     <ul className="mt-2 space-y-1.5 text-sm">
-                      <li><strong>Supabase Inc.</strong> — Database PostgreSQL (hosting: AWS EU-Central-1, Francoforte, Germania). DPA: <a href="https://supabase.com/privacy" className="text-indigo-600 hover:underline" target="_blank" rel="noopener">supabase.com/privacy</a></li>
-                      <li><strong>Vercel Inc.</strong> — Hosting applicazione web (Edge Network con PoP in EU). DPA: <a href="https://vercel.com/legal/dpa" className="text-indigo-600 hover:underline" target="_blank" rel="noopener">vercel.com/legal/dpa</a></li>
-                      <li><strong>Telegram FZ-LLC</strong> — Solo per le notifiche operative, se attivate dall&apos;Ente (nessun dato personale trasferito oltre il messaggio di notifica)</li>
+                      <li><strong>Oracle Cloud Infrastructure (OCI)</strong> — Hosting applicazione e database PostgreSQL in <strong>regione Unione Europea</strong> (es. eu-milan-1 / eu-frankfurt-1). DPA Oracle conforme GDPR art. 28</li>
+                      <li><strong>Upstash Inc.</strong> — Rate limiting Redis (solo se configurato; preferibile istanza in regione EU)</li>
+                      <li><strong>Intuition Machines Inc. (hCaptcha)</strong> — Protezione anti-bot sul login (può comportare trasferimento IP extra-UE con SCC)</li>
+                      <li><strong>Telegram FZ-LLC</strong> — Notifiche operative opzionali attivate dall&apos;Ente</li>
                     </ul>
                   </li>
                   <li><strong>Personale autorizzato dell&apos;Ente</strong> con ruolo di Amministratore, nei limiti delle proprie abilitazioni</li>
@@ -206,10 +207,8 @@ export default function PrivacyPolicyPage() {
                 <div className="bg-amber-50 border border-amber-100 rounded-xl p-5 mt-4">
                   <p className="text-sm font-bold text-amber-800 mb-2">⚠️ Trasferimenti extra-UE</p>
                   <p className="text-sm text-amber-700">
-                    I server database sono localizzati nell&apos;Unione Europea (AWS Frankfurt, DE).
-                    Vercel potrebbe processare richieste HTTP tramite edge nodes extra-UE: in tal caso,
-                    i trasferimenti sono coperti dalle Standard Contractual Clauses (SCC) ai sensi dell&apos;Art. 46(2)(c) GDPR
-                    e dal Data Privacy Framework UE-USA.
+                    Applicazione e database risiedono su infrastruttura <strong>Oracle Cloud nella regione UE</strong> contrattualizzata con il fornitore.
+                    Eventuali sub-responsabili extra-UE (es. Telegram, hCaptcha) sono coperti da SCC ai sensi dell&apos;Art. 46 GDPR ove applicabile.
                     <strong> Nessun dato viene venduto o condiviso con terze parti per finalità di marketing o profilazione.</strong>
                   </p>
                 </div>

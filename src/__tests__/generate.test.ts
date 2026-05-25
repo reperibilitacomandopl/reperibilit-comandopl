@@ -22,8 +22,25 @@ describe("Generation Engine Algorithm", () => {
     checkRestHours: true
   }
 
+  // Genera turni base fittizi "M7" (M o P richiesti) per evitare che vengano bloccati tutti i giorni
+  const generateBaseShifts = (agents: { id: string }[], year: number, month: number, days: number) => {
+    const shifts: any[] = []
+    // Popola fino a days + 1 per supportare il controllo del giorno successivo (d + 1)
+    for (const agent of agents) {
+      for (let d = 1; d <= days + 1; d++) {
+        shifts.push({
+          userId: agent.id,
+          date: new Date(Date.UTC(year, month - 1, d)),
+          type: "M7"
+        })
+      }
+    }
+    return shifts
+  }
+
   it("should respect individual massimali", () => {
-    const result = generateMonthShifts(mockAgents, [], options)
+    const baseShifts = generateBaseShifts(mockAgents, 2026, 4, 30)
+    const result = generateMonthShifts(mockAgents, baseShifts, options)
     expect(result.success).toBe(true)
     
     mockAgents.forEach(agent => {
@@ -42,7 +59,8 @@ describe("Generation Engine Algorithm", () => {
       { id: "A1", name: "Agt 1", isUfficiale: false, massimale: 5 },
       { id: "A2", name: "Agt 2", isUfficiale: false, massimale: 5 },
     ]
-    const result = generateMonthShifts(manyOfficers, [], options)
+    const baseShifts = generateBaseShifts(manyOfficers, 2026, 4, 30)
+    const result = generateMonthShifts(manyOfficers, baseShifts, options)
     
     for (let d = 1; d <= 30; d++) {
       const uffCount = result.newShifts.filter(s => {
@@ -54,12 +72,14 @@ describe("Generation Engine Algorithm", () => {
   })
 
   it("should respect the 11-hour rule (blocking adjacent Night shifts)", () => {
-    // Agente B ha un turno di Notte (N) il giorno 10
-    const existingShifts = [
-      { userId: "2", date: new Date(Date.UTC(2026, 3, 10)), type: "N" }
-    ]
+    // Agente B ha un turno di Notte (N) il giorno 10, gli altri giorni lavora di mattina M7
+    const baseShifts = generateBaseShifts(mockAgents, 2026, 4, 30)
+    const day10Shift = baseShifts.find(s => s.userId === "2" && new Date(s.date).getUTCDate() === 10)
+    if (day10Shift) {
+      day10Shift.type = "N"
+    }
     
-    const result = generateMonthShifts(mockAgents, existingShifts, options)
+    const result = generateMonthShifts(mockAgents, baseShifts, options)
     
     // Agente B non dovrebbe avere REP il giorno 10 (perché finisce la mattina dopo)
     // né il giorno 9 (perché inizierebbe la notte stessa)
@@ -68,22 +88,21 @@ describe("Generation Engine Algorithm", () => {
   })
 
   it("should allow adjacent shifts if checkRestHours is false", () => {
-    const existingShifts = [
-      { userId: "2", date: new Date(Date.UTC(2026, 3, 10)), type: "N" }
-    ]
+    const baseShifts = generateBaseShifts(mockAgents, 2026, 4, 30)
+    const day10Shift = baseShifts.find(s => s.userId === "2" && new Date(s.date).getUTCDate() === 10)
+    if (day10Shift) {
+      day10Shift.type = "N"
+    }
     const relaxedOptions = { ...options, checkRestHours: false }
     
-    const result = generateMonthShifts(mockAgents, existingShifts, relaxedOptions)
-    
-    // In questo caso, l'algoritmo potrebbe (se necessario) assegnare la REP 
-    // perché non stiamo controllando la vicinanza oraria dei turni base
-    // Nota: depends on algorithm priorities, but we verify it doesn't hard-block.
+    const result = generateMonthShifts(mockAgents, baseShifts, relaxedOptions)
     expect(result.success).toBe(true)
   })
 
   it("should handle months with different lengths correctly", () => {
     const febOptions = { ...options, month: 2, year: 2026 } // Febbraio (28 gg)
-    const result = generateMonthShifts(mockAgents, [], febOptions)
+    const baseShifts = generateBaseShifts(mockAgents, 2026, 2, 28)
+    const result = generateMonthShifts(mockAgents, baseShifts, febOptions)
     expect(result.success).toBe(true)
     
     const maxDay = Math.max(...result.newShifts.map(s => s.date.getUTCDate()))
@@ -91,7 +110,8 @@ describe("Generation Engine Algorithm", () => {
   })
 
   it("should respect the minimum spacing between shifts", () => {
-    const result = generateMonthShifts(mockAgents, [], options)
+    const baseShifts = generateBaseShifts(mockAgents, 2026, 4, 30)
+    const result = generateMonthShifts(mockAgents, baseShifts, options)
     
     mockAgents.forEach(agent => {
       const agentShifts = result.newShifts

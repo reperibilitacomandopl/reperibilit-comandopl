@@ -37,7 +37,7 @@ export async function GET(request: Request) {
       `2. NATURA E FINALITÀ: Gestione turni, presenze, ordini di servizio, timbrature GPS, interventi operativi.\n\n` +
       `3. CATEGORIE DI DATI: Dati anagrafici, matricola, qualifica, dati di contatto, dati GPS, timbrature, documenti.\n\n` +
       `4. DURATA: Per tutta la durata del contratto + periodo di retention legale (10 anni CAD).\n\n` +
-      `5. SUB-RESPONSABILI: Supabase (database), Upstash (Redis), Vercel (hosting). Tutti conformi GDPR.\n\n` +
+      `5. SUB-RESPONSABILI: Oracle Cloud Infrastructure EU (hosting e database PostgreSQL), Upstash Redis EU (se attivo), Telegram/hCaptcha (se attivi). Tutti con DPA/SCC ove richiesto.\n\n` +
       `6. MISURE DI SICUREZZA: Crittografia AES-256-GCM, TLS 1.3, MFA, audit logging, backup cifrati, penetration test periodici.\n\n` +
       `7. DIRITTI INTERESSATI: Il Responsabile assiste il Titolare nel rispondere alle richieste degli interessati (accesso, rettifica, cancellazione).\n\n` +
       `8. NOTIFICA VIOLAZIONI: Il Responsabile notifica al Titolare entro 24 ore dalla scoperta di qualsiasi violazione.\n\n` +

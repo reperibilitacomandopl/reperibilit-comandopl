@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
+import { blockInProduction } from "@/lib/dev-only"
 
 export async function GET(request: Request) {
+  const blocked = blockInProduction()
+  if (blocked) return blocked
+
   const { searchParams } = new URL(request.url)
   const slug = searchParams.get("slug") || "comando-test"
   const matricola = searchParams.get("matricola") || "CMD001"

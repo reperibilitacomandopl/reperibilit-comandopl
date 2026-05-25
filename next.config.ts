@@ -35,7 +35,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com",
               "font-src 'self' https://fonts.gstatic.com data:",
               "img-src 'self' data: blob: https:",
-              "connect-src 'self' https://*.supabase.co https://api.telegram.org wss://*.supabase.co https://*.basemaps.cartocdn.com",
+              "connect-src 'self' https://api.telegram.org https://hcaptcha.com https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.upstash.io",
               "media-src 'self' https://assets.mixkit.co",
               "frame-ancestors 'none'",
               "base-uri 'self'",

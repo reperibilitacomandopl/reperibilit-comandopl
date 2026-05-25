@@ -18,7 +18,7 @@
 | Crittografia | AES-256-GCM |
 | Autenticazione | NextAuth v5 + JWT + 2FA TOTP |
 | Mobile | PWA installabile + Telegram Bot |
-| Deploy | Vercel + Docker/Nginx |
+| Deploy | Oracle Cloud EU + Docker + Nginx |
 
 ### Cosa già fatto (pre-audit)
 - Rate limiting distribuito (Upstash Redis)

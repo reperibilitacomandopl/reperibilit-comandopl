@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { sendPushNotification } from "@/lib/push-notifications"
+import { blockInProduction } from "@/lib/dev-only"
 
 export async function GET(req: Request) {
+  const blocked = blockInProduction()
+  if (blocked) return blocked
+
   try {
     const { searchParams } = new URL(req.url)
     const name = searchParams.get("name") || "Dibenedetto"

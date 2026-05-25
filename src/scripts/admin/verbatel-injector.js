@@ -11,11 +11,11 @@
  */
 
 (async function syncVerbatel() {
-  // PUNTA AL TUO SERVER VERCEL IN PRODUZIONE
-  const PORTALE_URL = 'https://portale-caserma-altamura.vercel.app'; 
-  
-  // CHIAVE DI AUTENTICAZIONE (Stessa di AUTH_SECRET in .env)
-  const API_KEY = 'my-super-secret-key-12345';
+  // URL produzione (Oracle EU)
+  const PORTALE_URL = 'https://gestionepolizialocale.it';
+
+  // Chiave da .env server: VERBATEL_API_KEY (NON usare AUTH_SECRET)
+  const API_KEY = 'INCOLLA_VERBATEL_API_KEY_QUI';
   
   const MESE = 4; // Mese da sincronizzare (es. 4 per Aprile, 5 per Maggio)
   const ANNO = 2026;
@@ -141,7 +141,7 @@
 
     // 3. Comunica al Portale Caserma che i turni sono stati inseriti
     if (unassignedShifts.length > 0) {
-      console.log(`📤 Segno ${unassignedShifts.length} turni come sincronizzati nel Portale Caserma Vercel...`);
+      console.log(`📤 Segno ${unassignedShifts.length} turni come sincronizzati nel Portale Caserma...`);
       const syncRes = await fetch(`${PORTALE_URL}/api/admin/verbatel-sync?apiKey=${API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -150,9 +150,9 @@
       
       const syncData = await syncRes.json();
       if (syncData.success) {
-        alert(`✅ Sincronizzazione Completata! Inseriti ${modificheFatte} turni in Verbatel e salvati in Vercel.`);
+        alert(`✅ Sincronizzazione Completata! Inseriti ${modificheFatte} turni in Verbatel e salvati sul portale.`);
       } else {
-        alert(`❌ Errore durante il salvataggio nel db Vercel! Volendo, ripeti.`);
+        alert(`❌ Errore durante il salvataggio sul portale! Volendo, ripeti.`);
       }
     } else {
       alert('Nessun nuovo turno inserito in questa esecuzione.');

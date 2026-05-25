@@ -1,2 +1,14 @@
-*/5 * * * * curl -s http://localhost:3000/api/cron/shift-reminder > /dev/null 2>&1
-*/15 * * * * curl -s http://localhost:3000/api/cron/clock-reminder > /dev/null 2>&1
+# Sentinel — cron sul server Oracle (ubuntu)
+# Installare: copiare in /etc/cron.d/sentinel o crontab -e
+# Richiede CRON_SECRET nel file env caricato dal cron (es. source ~/app/.env)
+
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+
+*/5 * * * * ubuntu source /home/ubuntu/app/.env 2>/dev/null; curl -sf -H "Authorization: Bearer ${CRON_SECRET}" http://127.0.0.1:3000/api/cron/shift-reminder >/dev/null
+*/15 * * * * ubuntu source /home/ubuntu/app/.env 2>/dev/null; curl -sf -H "Authorization: Bearer ${CRON_SECRET}" http://127.0.0.1:3000/api/cron/clock-reminder >/dev/null
+0 8 * * * ubuntu source /home/ubuntu/app/.env 2>/dev/null; curl -sf -H "Authorization: Bearer ${CRON_SECRET}" http://127.0.0.1:3000/api/cron/daily-reminder >/dev/null
+0 7 * * * ubuntu source /home/ubuntu/app/.env 2>/dev/null; curl -sf -H "Authorization: Bearer ${CRON_SECRET}" http://127.0.0.1:3000/api/cron/expiry-alerts >/dev/null
+0 3 * * 0 ubuntu source /home/ubuntu/app/.env 2>/dev/null; curl -sf -H "Authorization: Bearer ${CRON_SECRET}" http://127.0.0.1:3000/api/cron/data-retention >/dev/null
+0 6 * * * ubuntu source /home/ubuntu/app/.env 2>/dev/null; curl -sf -H "Authorization: Bearer ${CRON_SECRET}" http://127.0.0.1:3000/api/cron/tenant-check >/dev/null
+0 * * * * ubuntu source /home/ubuntu/app/.env 2>/dev/null; curl -sf -H "Authorization: Bearer ${CRON_SECRET}" http://127.0.0.1:3000/api/cron/anomaly-check >/dev/null

@@ -64,8 +64,8 @@ describe('holidays utilities', () => {
     })
 
     it('riconosce weekend (Sabato e Domenica)', () => {
-      // 11 Aprile 2026 = Sabato
-      expect(isHoliday(new Date(2026, 3, 11))).toBe(true)
+      // 11 Aprile 2026 = Sabato (è prefestivo, non festivo tabellare)
+      expect(isHoliday(new Date(2026, 3, 11))).toBe(false)
       // 12 Aprile 2026 = Domenica
       expect(isHoliday(new Date(2026, 3, 12))).toBe(true)
     })

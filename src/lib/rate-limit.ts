@@ -14,12 +14,69 @@ const getRedis = () => {
   return redis
 }
 
-export const createRateLimiter = (limit: number, window: string) => {
-  // BYPASS: Upstash Free Tier limit reached, causing server to crash.
-  // Returning a dummy limiter that always allows traffic until the limit resets or is upgraded.
+type Limiter = {
+  limit: (identifier: string) => Promise<{
+    success: boolean
+    limit: number
+    remaining: number
+    reset: number
+  }>
+}
+
+const memoryBuckets = new Map<string, { count: number; resetAt: number }>()
+
+function parseWindowMs(window: string): number {
+  const m = window.trim().match(/^(\d+)\s*(s|m|h|d)$/i)
+  if (!m) return 60_000
+  const n = parseInt(m[1], 10)
+  const unit = m[2].toLowerCase()
+  if (unit === "s") return n * 1000
+  if (unit === "m") return n * 60_000
+  if (unit === "h") return n * 3_600_000
+  return n * 86_400_000
+}
+
+/** Fallback in-memory per VM singola (Oracle) quando Upstash non è configurato. */
+function createMemoryLimiter(limit: number, window: string): Limiter {
+  const windowMs = parseWindowMs(window)
   return {
-    limit: async (identifier: string) => ({ success: true, limit, remaining: limit, reset: 0 })
-  } as any
+    limit: async (identifier: string) => {
+      const now = Date.now()
+      const key = `${identifier}:${window}`
+      let entry = memoryBuckets.get(key)
+      if (!entry || now >= entry.resetAt) {
+        entry = { count: 1, resetAt: now + windowMs }
+        memoryBuckets.set(key, entry)
+        return { success: true, limit, remaining: limit - 1, reset: entry.resetAt }
+      }
+      entry.count += 1
+      const success = entry.count <= limit
+      return {
+        success,
+        limit,
+        remaining: Math.max(0, limit - entry.count),
+        reset: entry.resetAt,
+      }
+    },
+  }
+}
+
+export const createRateLimiter = (limit: number, window: string): Limiter => {
+  const r = getRedis()
+  if (r) {
+    return new Ratelimit({
+      redis: r,
+      limiter: Ratelimit.slidingWindow(limit, window as `${number} s` | `${number} m` | `${number} h` | `${number} d`),
+    }) as unknown as Limiter
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    console.warn(
+      `[RATE_LIMIT] Upstash non configurato: uso limiter in-memory (${limit}/${window}). Per cluster multi-VM configurare UPSTASH_REDIS_REST_* in regione EU.`
+    )
+  }
+
+  return createMemoryLimiter(limit, window)
 }
 
 // Limiter predefiniti
@@ -27,13 +84,12 @@ export const getGlobalLimiter = () => createRateLimiter(60, "1 m")
 export const getAuthLimiter = () => createRateLimiter(5, "10 m")
 export const getWriteLimiter = () => createRateLimiter(100, "1 m")
 export const getBulkLimiter = () => createRateLimiter(5000, "1 m")
-export const getUserLimiter = () => createRateLimiter(200, "1 m") // GET per utente
-export const getOdsLimiter = () => createRateLimiter(10, "1 h") // Generazione PDF OdS
+export const getUserLimiter = () => createRateLimiter(200, "1 m")
+export const getOdsLimiter = () => createRateLimiter(10, "1 h")
 
 export async function checkRateLimit(identifier: string, limit: number, windowMs: number): Promise<boolean> {
-  const seconds = Math.floor(windowMs / 1000)
+  const seconds = Math.max(1, Math.floor(windowMs / 1000))
   const limiter = createRateLimiter(limit, `${seconds} s`)
-  if (!limiter) return true // Fail-safe: se Redis non disponibile, lascia passare
   const { success } = await limiter.limit(identifier)
   return success
 }
@@ -42,13 +98,9 @@ export async function checkRateLimit(identifier: string, limit: number, windowMs
 // ANOMALY DETECTION — Monitoraggio consumi per tenant
 // ============================================================================
 
-const ANOMALY_WINDOW = 10 * 60 // 10 minuti in secondi
-const ANOMALY_THRESHOLD_MULTIPLIER = 3 // 3x il consumo medio
+const ANOMALY_WINDOW = 10 * 60
+const ANOMALY_THRESHOLD_MULTIPLIER = 3
 
-/**
- * Registra un'operazione e restituisce true se il volume è anomalo.
- * Da chiamare ad ogni richiesta API autenticata.
- */
 export async function trackOperation(tenantId: string, operation: string): Promise<{
   isAnomalous: boolean
   currentRate: number
@@ -62,22 +114,17 @@ export async function trackOperation(tenantId: string, operation: string): Promi
   const avgKey = `@sentinel/anomaly:${tenantId}:avg`
 
   try {
-    // Registra operazione nel sorted set con timestamp come score
     const windowStart = now - ANOMALY_WINDOW
     await r.zadd(windowKey, { score: now, member: `${now}:${operation}` })
-    // Rimuovi entry vecchie
     await r.zremrangebyscore(windowKey, 0, windowStart)
-    // Conta operazioni nella finestra
     const currentCount = await r.zcard(windowKey)
-    const currentRate = currentCount / (ANOMALY_WINDOW / 60) // ops/min
+    const currentRate = currentCount / (ANOMALY_WINDOW / 60)
 
-    // Recupera media storica
     const avgCount = await r.get(avgKey) as string | null
     const avgRate = avgCount ? parseFloat(avgCount) : currentRate
 
-    // Aggiorna media mobile (exponential moving average, alpha=0.1)
     const newAvg = avgRate * 0.9 + currentRate * 0.1
-    await r.set(avgKey, newAvg.toString(), { ex: 86400 }) // 24h TTL
+    await r.set(avgKey, newAvg.toString(), { ex: 86400 })
 
     const isAnomalous = avgRate > 0 && currentRate > avgRate * ANOMALY_THRESHOLD_MULTIPLIER
 
@@ -87,9 +134,6 @@ export async function trackOperation(tenantId: string, operation: string): Promi
   }
 }
 
-/**
- * Soglie di alert: restituisce un messaggio se il tenant supera la soglia di attenzione.
- */
 export async function getTenantUsageSummary(tenantId: string): Promise<{
   opsLast10Min: number
   avgOpsPerMin: number

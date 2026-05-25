@@ -2,7 +2,7 @@
 
 > **La Sala Operativa Digitale per la Polizia Locale** — Piattaforma SaaS cloud per la gestione completa dei Comandi di Polizia Locale italiani.
 
-[![Deploy on Vercel](https://img.shields.io/badge/Deploy-Vercel-black?logo=vercel)](https://portale-polizia-locale.vercel.app)
+[![Produzione Oracle EU](https://img.shields.io/badge/Hosting-Oracle%20Cloud%20EU-F80000)](https://gestionepolizialocale.it)
 [![Next.js](https://img.shields.io/badge/Next.js-16.2-black?logo=nextdotjs)](https://nextjs.org)
 [![Prisma](https://img.shields.io/badge/Prisma-6.4-2D3748?logo=prisma)](https://prisma.io)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://typescriptlang.org)
@@ -56,10 +56,10 @@ L'applicazione è costruita come **Progressive Web App (PWA)** ed è installabil
 │  NextAuth.js · RBAC · CSP Headers · Rate Limiting    │
 ├──────────────────────────────────────────────────────┤
 │                  DATABASE (PostgreSQL)                │
-│  Prisma ORM · Multi-Tenant · Neon/Supabase           │
+│  Prisma ORM · Multi-Tenant · PostgreSQL 15 (OCI EU)  │
 ├──────────────────────────────────────────────────────┤
 │               SERVIZI ESTERNI                        │
-│  Telegram Bot · Web Push · Vercel Cron · VAPID Keys  │
+│  Telegram · Web Push · Cron (server) · VAPID Keys   │
 └──────────────────────────────────────────────────────┘
 ```
 
@@ -186,7 +186,7 @@ src/
 ### Prerequisiti
 
 - **Node.js** 18+ (LTS consigliato)
-- **PostgreSQL** 15+ (o account Neon/Supabase)
+- **PostgreSQL** 15+ (locale o su VM Oracle)
 - **npm** 9+
 
 ### Installazione
@@ -247,24 +247,25 @@ SMTP_PASS="password"
 
 ---
 
-## 🌐 Deploy
+## 🌐 Deploy (produzione: Oracle Cloud EU)
 
-### Vercel (Consigliato)
+L'istanza di produzione è su **Oracle Cloud** (regione UE), con **Nginx** (TLS), **Docker** (Next.js standalone) e **PostgreSQL** sullo stesso server o in rete privata.
 
 ```bash
-# Deploy in produzione
-vercel --prod
-
-# Le variabili d'ambiente devono essere configurate su Vercel Dashboard
+# Sul server (es. gestionepolizialocale.it)
+ssh -i ssh-key.pem ubuntu@gestionepolizialocale.it
+cd ~/app && git pull origin master
+sudo docker compose up -d --build portale-caserma
+# Dopo modifiche schema Prisma:
+sudo docker exec app-portale-caserma-1 npx prisma@6.4.1 db push --skip-generate
 ```
 
-### Build manuale
+Vedi `CLAUDE.md` e `docs/STATO_SICUREZZA_ORACLE.md` per variabili `.env`, backup e crontab.
+
+### Build locale (verifica pre-commit)
 
 ```bash
-# Build di produzione
 npm run build
-
-# Avvia il server di produzione
 npm start
 ```
 

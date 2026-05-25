@@ -426,7 +426,7 @@ Alternativa gratuita: **Dependabot** nativo di GitHub (attivare in Settings → 
 ### 6.3 Secrets management — Alta priorità
 
 - **Mai** committare `.env` in git (verificare con `git-secrets` o `.gitignore` rigoroso)
-- In produzione usare: **Doppler**, **HashiCorp Vault**, o secrets nativi della piattaforma (Vercel, Railway, Render)
+- In produzione usare: file `.env` sul server Oracle (permessi 600), **OCI Vault**, o Doppler — mai in git
 - Ruotare le chiavi API/DB almeno ogni **90 giorni**
 - Separare secrets per ambiente: `development`, `staging`, `production`
 
