@@ -18,6 +18,12 @@ COPY . .
 # Next.js telemetry is disabled
 ENV NEXT_TELEMETRY_DISABLED 1
 
+# NEXT_PUBLIC_* va iniettato in build ( .env è in .dockerignore )
+ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
+ARG NEXT_PUBLIC_HCAPTCHA_SITE_KEY
+ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
+ENV NEXT_PUBLIC_HCAPTCHA_SITE_KEY=$NEXT_PUBLIC_HCAPTCHA_SITE_KEY
+
 # If using Prisma, generate client
 COPY prisma ./prisma
 RUN npx prisma@5 generate

@@ -21,6 +21,7 @@ import BachecaPanel from "@/components/BachecaPanel"
 import FloatingSosButton from "./FloatingSosButton"
 import AgentSosModal from "./AgentSosModal"
 import { ClockOutModal } from "@/components/ClockOutModal"
+import NotificationManager from "@/components/NotificationManager"
 import toast from "react-hot-toast"
 
 const MONTH_NAMES = [
@@ -118,6 +119,7 @@ function MobileAgentShellInner(props: Props) {
       <div className="lg:hidden -mx-4 sm:mx-0">
         {activeTab === "dashboard" && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-2">
+            <NotificationManager />
             <MobileAgentRiepilogo
               currentUser={session.user}
               tenantSlug={tenantSlug || ""}

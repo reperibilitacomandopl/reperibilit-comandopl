@@ -16,6 +16,8 @@ if (vapidPublic && vapidPrivate) {
   } catch (err) {
     console.error("[PUSH-SERVICE] Errore inizializzazione VAPID:", err);
   }
+} else if (process.env.NODE_ENV === "production") {
+  console.error("[PUSH-SERVICE] VAPID_PRIVATE_KEY o NEXT_PUBLIC_VAPID_PUBLIC_KEY mancanti — push disabilitate");
 }
 
 /**

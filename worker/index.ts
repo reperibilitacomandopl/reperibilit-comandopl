@@ -55,25 +55,15 @@ self.addEventListener('push', (event: PushEvent) => {
   try {
     const data = event.data ? event.data.json() : { title: 'Notifica Sentinel', body: 'Nuovo aggiornamento disponibile dal Comando.' };
     
-    // Pattern vibrazione SOS: Lunghi impulsi ripetuti
-    const sosVibration = [500, 100, 500, 100, 500, 100, 500];
-    const defaultVibration = [200, 100, 200];
     const isSos = data.title?.includes('SOS') || data.title?.includes('EMERGENZA') || data.type === 'ALERT';
 
-    // VERSION: 1.0.6 - iOS Robustness Update
-    const SW_VERSION = '1.0.6';
-
-    const options: any = {
+    // Opzioni minime: su iOS Safari/PWA azioni e vibrate possono far fallire showNotification
+    const options: NotificationOptions = {
       body: data.body,
       icon: '/icon-192.png',
       badge: '/icon-192.png',
-      vibrate: isSos ? sosVibration : defaultVibration,
-      requireInteraction: isSos,
-      data: { url: data.url || '/' },
-      actions: [
-        { action: 'CLOCK_OUT', title: '⏹ Timbra Uscita' },
-        { action: 'open', title: 'Apri App' }
-      ]
+      data: { url: data.url || '/', isSos },
+      tag: isSos ? 'sentinel-sos' : 'sentinel-push',
     };
 
     // Su iOS il Service Worker può morire improvvisamente. Uniamo le promesse per assicurarci

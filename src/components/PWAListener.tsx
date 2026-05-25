@@ -1,9 +1,20 @@
 "use client"
 import { useEffect } from "react"
+import { useSession } from "next-auth/react"
 import { syncOfflineRequests } from "@/lib/offline-sync"
+import { syncPushSubscriptionToServer } from "@/lib/push-subscription-client"
 import toast from "react-hot-toast"
 
 export default function PWAListener() {
+  const { status } = useSession()
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (status !== "authenticated") return;
+
+    syncPushSubscriptionToServer().catch(() => {})
+  }, [status])
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
