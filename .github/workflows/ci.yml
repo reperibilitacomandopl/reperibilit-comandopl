@@ -57,7 +57,9 @@ jobs:
 
     - name: Run Unit Tests (Vitest)
       run: npm test -- --run
-      continue-on-error: true
+
+    - name: Security guards (Verbatel + dev-only)
+      run: npx vitest run src/__tests__/security-guards.test.ts
 
   e2e-tests:
     runs-on: ubuntu-latest

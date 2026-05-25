@@ -1,8 +1,7 @@
 # Stato interventi sicurezza Oracle EU
 
-> **Ultimo aggiornamento:** 24 Maggio 2026  
-> **Ambiente modificato:** solo repository **locale** (PC sviluppo)  
-> **Produzione** (`gestionepolizialocale.it`): **NON ancora aggiornata** finché non fai deploy manuale
+> **Ultimo aggiornamento:** 25 Maggio 2026  
+> **Produzione** (`gestionepolizialocale.it`): deploy `4c0e2da+` (mobile + performance). SEC-01/backup/CSP: vedi sotto.
 
 ---
 
@@ -62,32 +61,33 @@
 
 ## Cosa NON è stato fatto (richiede te / server)
 
-### Deploy produzione (obbligatorio per avere effetto sul sito)
-- [x] `git commit` + `git push` delle modifiche locali
-- [ ] SSH su Oracle: `git pull` nella cartella app (es. `~/app`)
-- [ ] `npm run build` sul server **oppure** rebuild immagine Docker
-- [ ] `docker compose up -d --build` (o `docker-compose.prod.yml`)
-- [ ] Smoke test post-deploy (vedi sotto)
+### Deploy produzione
+- [x] `git commit` + `git push` (commit `4c0e2da` mobile/performance)
+- [x] SSH Oracle: `git pull` + `docker compose up -d --build portale-caserma`
 
 ### SEC-01 — Rotazione segreti (sul server, non in git)
-- [ ] Generare nuovi `AUTH_SECRET` / `NEXTAUTH_SECRET` (opzionale ma consigliato)
-- [ ] Verificare `CRON_SECRET` presente in `.env`
-- [ ] Aggiungere `VERBATEL_API_KEY` in `.env`
-- [ ] Ruotare `POSTGRES_PASSWORD` se in passato era quella committata nel vecchio `docker-compose.yml`
-- [ ] Aggiornare script Verbatel in console con la nuova `VERBATEL_API_KEY`
-- [ ] **Effetto:** tutti gli utenti dovranno rifare login se ruoti `AUTH_SECRET`
+- [x] Script audit: `scripts/sec-01-check-env.sh`
+- [x] Guida: `docs/SEC-01_ROTazione_Segreti.md`
+- [ ] Eseguire rotazione reale su `~/app/.env` (operazione manuale)
+- [ ] Aggiornare script Verbatel con `VERBATEL_API_KEY` dedicata
 
 ### SEC-06 — Crontab reale sul server
-- [x] Installare voci da `scripts/crontab.txt` in `crontab -e` (path `.env` corretto)
-- [ ] Verificare: `curl -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/shift-reminder` → `200`
+- [x] Template `scripts/crontab.txt` con `CRON_SECRET`
+- [x] Script verifica: `scripts/verify-cron.sh`
+- [ ] Eseguire sul server: `bash scripts/verify-cron.sh` → tutti 200
 
 ### INFRA — Backup automatico
-- [ ] Script `scripts/backup-db.sh` (ancora da creare)
-- [ ] Cron notturno backup + test restore documentato
+- [x] Script `scripts/backup-db.sh`
+- [x] Voce cron in `scripts/crontab.txt` (02:15 UTC)
+- [ ] Installare cron backup + test restore documentato
 
 ### SEC-08 — CSP Nginx
-- [ ] Allineare `nginx_config.conf` (rimuovere CSP permissiva o allinearla a Next)
-- [ ] `sudo nginx -t && sudo systemctl reload nginx`
+- [x] `nginx_config.conf`: rimossa CSP permissiva (gestita da Next middleware)
+- [ ] Sul server: copiare config + `sudo nginx -t && sudo systemctl reload nginx`
+
+### Documentazione legale / CI
+- [x] Template DPA: `docs/DPA_TEMPLATE.md`
+- [x] CI: test `security-guards` obbligatori in pipeline
 
 ### Documentazione legale
 - [x] Allineare `src/app/policy/page.tsx`, FAQ, README, BCP, capitolato (Oracle EU — no Vercel/Supabase)

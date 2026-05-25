@@ -1,32 +1,14 @@
 "use client"
 
-import React, { useState } from "react"
+import React from "react"
 import Link from "next/link"
 import { signOut } from "next-auth/react"
-import { LogOut, ClipboardList, RefreshCw, Smartphone } from "lucide-react"
+import { LogOut, ClipboardList } from "lucide-react"
 import NotificationHub from "@/components/NotificationHub"
 import DynamicAgentDashboard from "@/components/DynamicAgentDashboard"
 import AdminDashboard from "@/components/AdminDashboard"
-import MobileNavBar from "./agent/MobileNavBar"
-import PlanningMobileView from "@/components/PlanningMobileView"
-import AgentRequestForm from "./agent/AgentRequestForm"
-import AgentSwapBoard from "./agent/AgentSwapBoard"
-import FloatingSosButton from "./agent/FloatingSosButton"
-import AgentInterventions from "./agent/AgentInterventions"
-import PersonalBalances from "./agent/PersonalBalances"
-import AgentRotationView from "./agent/AgentRotationView"
-import AgentVerbalListView from "./agent/AgentVerbalListView"
-import MobileAgentLaunchpad from "./agent/MobileAgentLaunchpad"
-import MobileAgentRiepilogo from "./agent/MobileAgentRiepilogo"
-import AgentTimecardView from "./agent/AgentTimecardView"
-import BachecaPanel from "@/components/BachecaPanel"
-import AgentSosModal from "./agent/AgentSosModal"
+import MobileAgentShell from "./agent/MobileAgentShell"
 import { useAgentData } from "@/hooks/useAgentData"
-
-const MONTH_NAMES = [
-  "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
-  "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre",
-]
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode; fallback: React.ReactNode }> {
   state = { hasError: false }
@@ -74,32 +56,9 @@ export default function DashboardShell({
   tenant,
   certifiedDates,
   calendarToken,
-  initialView
+  initialView: _initialView
 }: DashboardShellProps & { initialView?: string }) {
-  const [activeTab, setActiveTab] = useState(initialView || 'dashboard')
-  const [showSosModal, setShowSosModal] = useState(false)
-  const [requestPreset, setRequestPreset] = useState<{ code?: string; notes?: string } | null>(null)
   const { role, name, matricola, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem } = session.user
-
-  // Sincronizza tab quando arriva da Launchpad (cambio query string)
-  React.useEffect(() => {
-    if (initialView) {
-      setActiveTab(initialView)
-    }
-  }, [initialView])
-
-  // Anchor #riepilogo-operativo dalla griglia moduli
-  React.useEffect(() => {
-    if (activeTab !== "dashboard") return
-    const scrollToRiepilogo = () => {
-      if (window.location.hash === "#riepilogo-operativo") {
-        document.getElementById("riepilogo-operativo")?.scrollIntoView({ behavior: "smooth", block: "start" })
-      }
-    }
-    scrollToRiepilogo()
-    window.addEventListener("hashchange", scrollToRiepilogo)
-    return () => window.removeEventListener("hashchange", scrollToRiepilogo)
-  }, [activeTab])
 
   const agentData = useAgentData({
     currentUser: session.user,
@@ -109,12 +68,6 @@ export default function DashboardShell({
     tenant
   })
   const containerClass = "w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
-
-  // Calculate Navigation Params
-  const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1
-  const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear
-  const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1
-  const nextYear = currentMonth === 12 ? currentYear + 1 : currentYear
 
   return (
     <div className={`min-h-screen bg-[#F8FAFC] flex flex-col ${role !== 'ADMIN' ? 'pb-24 lg:pb-0' : ''}`} suppressHydrationWarning>
@@ -213,163 +166,18 @@ export default function DashboardShell({
                   />
               </div>
 
-              {/* Mobile: riepilogo operativo (timbrature) + griglia moduli */}
-              <div className="lg:hidden -mx-4 sm:mx-0">
-                {activeTab === 'dashboard' && (
-                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-2" suppressHydrationWarning>
-                    <MobileAgentRiepilogo
-                      currentUser={session.user}
-                      tenantSlug={tenantSlug || ""}
-                      currentMonth={currentMonth}
-                      currentYear={currentYear}
-                      monthNames={MONTH_NAMES}
-                      shifts={shifts}
-                      myShifts={myShifts}
-                      allAgents={allAgents}
-                      certifiedDates={certifiedDates}
-                      isClockedIn={agentData.isClockedIn}
-                      lastClockTime={agentData.lastClockTime}
-                      clockLoading={agentData.clockLoading}
-                      handleClockAction={agentData.handleClockAction}
-                      onSos={() => setShowSosModal(true)}
-                    />
-                    <MobileAgentLaunchpad
-                      tenantSlug={tenantSlug || ""}
-                      isClockedIn={agentData.isClockedIn}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Mobile Only Tabs */}
-              <div className="lg:hidden">
-                {activeTab === 'planning' && (
-                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <PlanningMobileView 
-                      agents={(role === 'ADMIN' || canManageShifts) ? allAgents : allAgents.filter((a: any) => a.id === session.user.id)}
-                      shifts={shifts}
-                      dayInfo={dayInfo}
-                      currentYear={currentYear}
-                      currentMonth={currentMonth}
-                      prevMonth={prevMonth}
-                      prevYear={prevYear}
-                      nextMonth={nextMonth}
-                      nextYear={nextYear}
-                      tenantSlug={tenantSlug}
-                      isAdmin={false}
-                      userRole={role}
-                    />
-                  </div>
-                )}
-
-                {activeTab === 'requests' && (
-                  <div className="bg-white rounded-[2.5rem] p-4 border border-slate-200 shadow-xl overflow-hidden min-h-[550px] animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="tech-gradient -m-4 p-8 mb-8 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-400/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                      <ClipboardList className="text-cyan-400 mb-4" size={40} />
-                      <h3 className="text-2xl font-black text-white mb-1">Richieste Istanze</h3>
-                      <p className="text-slate-300 text-[10px] font-black uppercase tracking-[0.2em]">Ferie, Congedi e Permessi</p>
-                    </div>
-                    <div className="px-1">
-                      <AgentRequestForm
-                        key={requestPreset?.code ?? "default-request"}
-                        balances={agentData.balances}
-                        initialCode={requestPreset?.code}
-                        initialNotes={requestPreset?.notes}
-                        onClose={() => {
-                          setRequestPreset(null)
-                          setActiveTab("dashboard")
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'interventions' && (
-                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <AgentInterventions />
-                  </div>
-                )}
-
-                {activeTab === 'ferie' && (
-                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <PersonalBalances />
-                    <AgentRotationView />
-                  </div>
-                )}
-
-                {activeTab === 'verbali' && (
-                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <AgentVerbalListView tenantSlug={tenantSlug || ""} />
-                  </div>
-                )}
-
-                {activeTab === 'cartellino' && (
-                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-4">
-                    <AgentTimecardView
-                      admin={{ ...agentData, currentUser: session.user, myShifts }}
-                      onShowRequest={() => {
-                        setRequestPreset(null)
-                        setActiveTab("requests")
-                      }}
-                      onShowMancataTimb={() => {
-                        setRequestPreset({
-                          code: "TIMB_MANC",
-                          notes: "Segnalazione mancata timbratura del ...",
-                        })
-                        setActiveTab("requests")
-                      }}
-                      onShowUpload={() => {
-                        setRequestPreset({
-                          code: "ALLEGATO",
-                          notes: "Invio allegato relativo a ...",
-                        })
-                        setActiveTab("requests")
-                      }}
-                      onShowStraordinario={() => {
-                        setRequestPreset({
-                          code: "STR_EXTRA",
-                          notes:
-                            "Richiesta autorizzazione per straordinario imprevisto causa: ...\nOre richieste: ",
-                        })
-                        setActiveTab("requests")
-                      }}
-                    />
-                  </div>
-                )}
-
-                {activeTab === 'bacheca' && (
-                  <div className="bg-white rounded-[2.5rem] p-4 border border-slate-200 shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <BachecaPanel onClose={() => setActiveTab("dashboard")} />
-                  </div>
-                )}
-
-                {activeTab === 'swaps' && (
-                  <div className="bg-white rounded-[2.5rem] p-4 border border-slate-200 shadow-xl overflow-hidden min-h-[550px] animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="bg-indigo-900 -m-4 p-8 mb-8 relative overflow-hidden text-left">
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-400/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                      <RefreshCw className="text-indigo-400 mb-4" size={40} />
-                      <h3 className="text-2xl font-black text-white mb-1">Scambio Turni</h3>
-                      <p className="text-slate-300 text-[10px] font-black uppercase tracking-[0.2em]">Reperibilità e Servizio</p>
-                    </div>
-                    <AgentSwapBoard 
-                      currentUserId={session.user.id} 
-                      swapRequests={agentData.swapRequests} 
-                      swapLoading={agentData.swapLoading} 
-                      handleRespondSwap={agentData.handleRespondSwap}
-                      vacationSwapRequests={agentData.vacationSwapRequests}
-                      handleRespondVacationSwap={agentData.handleRespondVacationSwap}
-                      handleProposeVacationSwap={agentData.handleProposeVacationSwap}
-                    />
-                    <div className="mt-10 p-8 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 text-center">
-                       <Smartphone className="mx-auto text-slate-300 mb-4" size={32} />
-                       <p className="text-[11px] font-bold text-slate-400 leading-relaxed uppercase tracking-widest">
-                         Seleziona una data dal tuo calendario<br />per proporre un nuovo scambio
-                       </p>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <MobileAgentShell
+                session={session}
+                allAgents={allAgents}
+                shifts={shifts}
+                myShifts={myShifts}
+                currentMonth={currentMonth}
+                currentYear={currentYear}
+                dayInfo={dayInfo}
+                tenantSlug={tenantSlug || ""}
+                tenant={tenant}
+                certifiedDates={certifiedDates}
+              />
             </div>
           )}
         </div>
@@ -392,31 +200,6 @@ export default function DashboardShell({
         </div>
       </footer>
 
-      {/* Floating SOS Button — always accessible for non-admin users */}
-      {role !== "ADMIN" && (
-        <>
-          <FloatingSosButton onSendSos={agentData.handleSendFullSos} />
-          {showSosModal && (
-            <AgentSosModal
-              onClose={() => setShowSosModal(false)}
-              onSendSos={async (note, audio) => {
-                const ok = await agentData.handleSendFullSos(note, audio)
-                if (ok) setShowSosModal(false)
-                return ok
-              }}
-            />
-          )}
-        </>
-      )}
-
-      {/* Mobile Bottom Navigation */}
-      {role !== "ADMIN" && (
-        <MobileNavBar 
-          activeTab={activeTab} 
-          setActiveTab={setActiveTab} 
-          onSOS={() => setActiveTab('planning')} 
-        />
-      )}
     </div>
   )
 }

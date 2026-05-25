@@ -12,3 +12,4 @@ PATH=/usr/local/bin:/usr/bin:/bin
 0 3 * * 0 ubuntu source /home/ubuntu/app/.env 2>/dev/null; curl -sf -H "Authorization: Bearer ${CRON_SECRET}" http://127.0.0.1:3000/api/cron/data-retention >/dev/null
 0 6 * * * ubuntu source /home/ubuntu/app/.env 2>/dev/null; curl -sf -H "Authorization: Bearer ${CRON_SECRET}" http://127.0.0.1:3000/api/cron/tenant-check >/dev/null
 0 * * * * ubuntu source /home/ubuntu/app/.env 2>/dev/null; curl -sf -H "Authorization: Bearer ${CRON_SECRET}" http://127.0.0.1:3000/api/cron/anomaly-check >/dev/null
+15 2 * * * ubuntu bash /home/ubuntu/app/scripts/backup-db.sh >> /home/ubuntu/backups/backup.log 2>&1

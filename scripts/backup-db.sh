@@ -2,28 +2,25 @@
 # Backup PostgreSQL Sentinel — eseguire sul server Oracle (cron notturno)
 set -euo pipefail
 
+APP_DIR="${APP_DIR:-/home/ubuntu/app}"
 BACKUP_DIR="${BACKUP_DIR:-/home/ubuntu/backups}"
-RETENTION_DAYS="${RETENTION_DAYS:-30}"
-STAMP=$(date +%Y%m%d-%H%M%S)
-mkdir -p "$BACKUP_DIR"
+RETENTION_DAYS="${RETENTION_DAYS:-14}"
+TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
+DUMP_FILE="${BACKUP_DIR}/sentinel_${TIMESTAMP}.dump"
 
-# Rileva container DB (nome tipico docker compose)
-DB_CONTAINER="${DB_CONTAINER:-}"
-if [ -z "$DB_CONTAINER" ]; then
-  DB_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E 'db|postgres' | head -1 || true)
+mkdir -p "${BACKUP_DIR}"
+
+# Container DB del compose in ~/app
+DB_CONTAINER="${DB_CONTAINER:-app-db-1}"
+
+if ! docker ps --format '{{.Names}}' | grep -q "^${DB_CONTAINER}$"; then
+  echo "[backup-db] ERRORE: container ${DB_CONTAINER} non in esecuzione" >&2
+  exit 1
 fi
 
-OUT="$BACKUP_DIR/sentinel-${STAMP}.dump"
+docker exec "${DB_CONTAINER}" pg_dump -U postgres -Fc postgres > "${DUMP_FILE}"
+chmod 600 "${DUMP_FILE}"
 
-if [ -n "$DB_CONTAINER" ]; then
-  echo "[backup] Dump da container: $DB_CONTAINER"
-  docker exec "$DB_CONTAINER" pg_dump -U postgres -Fc postgres > "$OUT"
-else
-  echo "[backup] Dump via pg_dump locale"
-  pg_dump -h 127.0.0.1 -U postgres -Fc postgres > "$OUT"
-fi
+find "${BACKUP_DIR}" -name 'sentinel_*.dump' -type f -mtime +"${RETENTION_DAYS}" -delete
 
-gzip -f "$OUT"
-echo "[backup] OK: ${OUT}.gz ($(du -h "${OUT}.gz" | cut -f1))"
-
-find "$BACKUP_DIR" -name 'sentinel-*.dump.gz' -mtime +"$RETENTION_DAYS" -delete 2>/dev/null || true
+echo "[backup-db] OK ${DUMP_FILE} ($(du -h "${DUMP_FILE}" | cut -f1))"

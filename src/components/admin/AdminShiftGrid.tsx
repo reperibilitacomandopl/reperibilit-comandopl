@@ -564,7 +564,7 @@ export default function AdminShiftGrid({
 
       <div className="overflow-auto custom-scrollbar-horizontal max-h-[calc(100vh-320px)] border-b-2 border-slate-200 rounded-b-3xl" suppressHydrationWarning>
       <table className="w-full border-collapse text-xs">
-        <thead className="sticky top-0 z-[50] bg-white">
+        <thead className="sticky top-16 z-[50] bg-white shadow-sm">
           {/* ─── HEADER GIORNI ─── */}
           <tr className="border-b-2 border-slate-200">
             <th className="p-3 text-left font-black text-slate-900 w-52 min-w-[200px] sticky left-0 z-[60] bg-slate-50 border-r-2 border-slate-200 italic uppercase tracking-tighter">

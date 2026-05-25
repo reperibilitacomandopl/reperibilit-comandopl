@@ -24,12 +24,14 @@ type Props = {
   lastClockTime: string | null
   clockLoading: boolean
   handleClockAction: (type: "IN" | "OUT") => Promise<unknown>
+  onNavigateMonth: (month: number, year: number, view?: string) => void
+  onNavigate: (view: string) => void
   onSos: () => void
+  onGpsConsentRequired: () => void
 }
 
 export default function MobileAgentRiepilogo({
   currentUser,
-  tenantSlug,
   currentMonth,
   currentYear,
   monthNames,
@@ -41,7 +43,10 @@ export default function MobileAgentRiepilogo({
   lastClockTime,
   clockLoading,
   handleClockAction,
+  onNavigateMonth,
+  onNavigate,
   onSos,
+  onGpsConsentRequired,
 }: Props) {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [activeShiftIndex, setActiveShiftIndex] = useState(0)
@@ -75,8 +80,16 @@ export default function MobileAgentRiepilogo({
   const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1
   const nextYear = currentMonth === 12 ? currentYear + 1 : currentYear
 
+  const onClockIn = () => {
+    if (!currentUser.gpsConsent) {
+      onGpsConsentRequired()
+      return
+    }
+    void handleClockAction("IN")
+  }
+
   return (
-    <section id="riepilogo-operativo" className="px-4 pt-2 pb-4 space-y-4 scroll-mt-20">
+    <section id="riepilogo-operativo" className="px-4 pt-2 pb-4 space-y-4 scroll-mt-24">
       <div className="bg-[#0f172a] text-white rounded-3xl p-5 shadow-xl border border-white/10 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-40 h-40 bg-blue-600/20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
 
@@ -114,7 +127,7 @@ export default function MobileAgentRiepilogo({
               </div>
               <button
                 type="button"
-                onClick={() => handleClockAction("OUT")}
+                onClick={() => void handleClockAction("OUT")}
                 disabled={clockLoading}
                 className="shrink-0 bg-white text-emerald-800 px-4 py-2 rounded-xl text-[10px] font-black uppercase active:scale-95 disabled:opacity-50"
               >
@@ -126,13 +139,13 @@ export default function MobileAgentRiepilogo({
           <div className="flex gap-2 p-1 bg-white/5 rounded-2xl border border-white/10">
             <button
               type="button"
-              disabled={clockLoading || isClockedIn === "IN" || !currentUser.gpsConsent}
-              onClick={() => handleClockAction("IN")}
+              disabled={clockLoading || isClockedIn === "IN"}
+              onClick={onClockIn}
               className={`flex-1 py-3.5 rounded-xl text-[11px] font-black uppercase tracking-wide transition-all ${
                 isClockedIn === "IN"
                   ? "bg-white/5 text-white/30"
                   : !currentUser.gpsConsent
-                    ? "bg-amber-500/30 text-amber-200"
+                    ? "bg-amber-500/30 text-amber-200 active:scale-95"
                     : "bg-emerald-500 text-white shadow-lg active:scale-95"
               }`}
             >
@@ -147,7 +160,7 @@ export default function MobileAgentRiepilogo({
             <button
               type="button"
               disabled={clockLoading || isClockedIn !== "IN"}
-              onClick={() => handleClockAction("OUT")}
+              onClick={() => void handleClockAction("OUT")}
               className={`flex-1 py-3.5 rounded-xl text-[11px] font-black uppercase tracking-wide transition-all ${
                 isClockedIn !== "IN"
                   ? "bg-white/5 text-white/30"
@@ -165,9 +178,7 @@ export default function MobileAgentRiepilogo({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => {
-                window.location.href = `/${tenantSlug}?view=planning&month=${prevMonth}&year=${prevYear}`
-              }}
+              onClick={() => onNavigateMonth(prevMonth, prevYear, "dashboard")}
               className="p-2 rounded-xl bg-white/5 border border-white/10"
               aria-label="Mese precedente"
             >
@@ -178,9 +189,7 @@ export default function MobileAgentRiepilogo({
             </div>
             <button
               type="button"
-              onClick={() => {
-                window.location.href = `/${tenantSlug}?view=planning&month=${nextMonth}&year=${nextYear}`
-              }}
+              onClick={() => onNavigateMonth(nextMonth, nextYear, "dashboard")}
               className="p-2 rounded-xl bg-white/5 border border-white/10"
               aria-label="Mese successivo"
             >
@@ -193,12 +202,13 @@ export default function MobileAgentRiepilogo({
               <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">Reperibilità mese</p>
               <p className="text-3xl font-black">{repCount}</p>
             </div>
-            <a
-              href={`/${tenantSlug}?view=swaps`}
+            <button
+              type="button"
+              onClick={() => onNavigate("swaps")}
               className="px-4 py-2 rounded-xl bg-white/10 text-[10px] font-black uppercase tracking-wide border border-white/10"
             >
               Scambi
-            </a>
+            </button>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -209,12 +219,13 @@ export default function MobileAgentRiepilogo({
             >
               <Shield size={16} /> SOS
             </button>
-            <a
-              href={`/${tenantSlug}?view=planning`}
+            <button
+              type="button"
+              onClick={() => onNavigate("planning")}
               className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white/10 border border-white/10 text-[10px] font-black uppercase tracking-wide"
             >
               <CalendarDays size={16} /> Turni
-            </a>
+            </button>
           </div>
         </div>
       </div>
@@ -250,7 +261,13 @@ export default function MobileAgentRiepilogo({
         <div className="bg-white rounded-2xl border border-slate-200 p-4 text-center">
           <Clock className="mx-auto text-slate-300 mb-2" size={28} />
           <p className="text-sm font-bold text-slate-600">Nessun turno imminente</p>
-          <p className="text-[10px] text-slate-400 mt-1">Controlla la pianificazione mensile</p>
+          <button
+            type="button"
+            onClick={() => onNavigate("planning")}
+            className="mt-3 text-[10px] font-black uppercase text-blue-600 tracking-widest"
+          >
+            Apri pianificazione
+          </button>
         </div>
       )}
     </section>
