@@ -1,142 +1,113 @@
 'use client'
 
 import { useEffect, useState, Suspense, useRef, useCallback } from 'react'
-import { CheckCircle2, MapPinOff, Loader2, MapPin, LogIn, Fingerprint } from 'lucide-react'
+import { CheckCircle2, MapPinOff, Loader2, LogIn, Fingerprint } from 'lucide-react'
 import { ClockOutModal } from '@/components/ClockOutModal'
+import {
+  acquireGpsPosition,
+  postNfcStyleClock,
+  gpsErrorMessage,
+  type NfcJustificationPayload,
+} from '@/lib/agent-nfc-clock'
 
 function NFCClockContent() {
   const hasCheckedAuth = useRef(false)
-
-  // Salviamo tenantSlug e role dalla prima fetch per evitare seconda fetch (iOS NFC perde cookie)
   const tenantSlugRef = useRef<string | null>(null)
   const roleRef = useRef<string | null>(null)
 
-  const [status, setStatus] = useState<'checking_auth' | 'acquiring_gps' | 'loading' | 'success' | 'error' | 'justification_required' | 'no_session'>('checking_auth')
+  const [status, setStatus] = useState<
+    | 'checking_auth'
+    | 'acquiring_gps'
+    | 'loading'
+    | 'success'
+    | 'error'
+    | 'justification_required'
+    | 'no_session'
+  >('checking_auth')
   const [message, setMessage] = useState('Verifica autenticazione...')
   const [userName, setUserName] = useState<string | null>(null)
-  const [anomalyData, setAnomalyData] = useState<any>(null)
+  const [anomalyData, setAnomalyData] = useState<NfcJustificationPayload | null>(null)
 
-  // Redirect senza fetch — usa i ref salvati all'avvio
   function goToDashboard() {
     const base = window.location.origin
     if (tenantSlugRef.current) {
-      const dest = roleRef.current === 'ADMIN'
-        ? `/${tenantSlugRef.current}/admin`
-        : `/${tenantSlugRef.current}`
+      const dest =
+        roleRef.current === 'ADMIN'
+          ? `/${tenantSlugRef.current}/admin`
+          : `/${tenantSlugRef.current}`
       window.location.href = base + dest
     } else {
       window.location.href = base + '/'
     }
   }
 
-  const handleClockIn = useCallback(async (lat: number, lng: number, accuracy: number, overtimeReason?: string, shiftId?: string, isCorrection?: boolean, actualEndTimeStr?: string, actualStartTimeStr?: string) => {
-    setStatus('loading')
-    setMessage('Verifica e registrazione in corso...')
+  const runClock = useCallback(
+    async (gps: { lat: number; lng: number; accuracy: number }, extra?: {
+      overtimeReason?: string
+      shiftId?: string
+      isCorrection?: boolean
+      actualEndTimeStr?: string
+    }) => {
+      setStatus('loading')
+      setMessage('Verifica e registrazione in corso...')
 
-    try {
-      const res = await fetch('/api/admin/clock-in', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'AUTO',
-          lat, lng, accuracy,
-          isManual: false,
-          checkAnomaly: !overtimeReason && !isCorrection,
-          overtimeReason, shiftId, isCorrection,
-          actualEndTimeStr: actualEndTimeStr || actualStartTimeStr
-        })
+      const result = await postNfcStyleClock({
+        type: 'AUTO',
+        ...gps,
+        checkAnomaly: !extra?.overtimeReason && !extra?.isCorrection,
+        ...extra,
       })
 
-      const data = await res.json()
-
-      if (res.status === 428 && data.requiresJustification) {
-        setAnomalyData({
-          shiftId: data.shiftId, anomalyType: data.anomalyType,
-          diffMins: data.diffMins, plannedTime: data.plannedTime,
-          lat, lng, accuracy
-        })
+      if (!result.ok && 'needsJustification' in result && result.needsJustification) {
+        setAnomalyData(result.data)
         setStatus('justification_required')
         setMessage('Richiesta Giustificazione')
         return
       }
 
-      if (res.ok) {
+      if (result.ok) {
         setStatus('success')
-        const actionType = data.record?.type === 'IN' ? 'Entrata' : 'Uscita'
-        setMessage(`Timbratura di ${actionType} registrata con successo!`)
-      } else {
-        setStatus('error')
-        if (res.status === 401) {
-          setMessage('Sessione scaduta. Effettua nuovamente il login nell\'app Sentinel, poi riprova il tag NFC.')
-        } else if (res.status === 403 && data.distance) {
-          setMessage(`Troppo lontano dalla sede! Distanza: ${data.distance}m (limite: ${data.allowed}m)`)
-        } else if (data.error) {
-          setMessage(data.error)
-        } else {
-          setMessage('Si è verificato un problema durante la timbratura. Riprova.')
-        }
+        setMessage(result.message)
+        return
       }
-    } catch (err) {
-      setStatus('error')
-      setMessage('Impossibile connettersi al server. Verifica la connessione internet e riprova.')
-    }
-  }, [])
 
-  const startGpsAndClock = useCallback(() => {
+      if ('needsJustification' in result) {
+        return
+      }
+
+      setStatus('error')
+      setMessage(result.message)
+    },
+    []
+  )
+
+  const startGpsAndClock = useCallback(async () => {
     setStatus('acquiring_gps')
     setMessage('Acquisizione posizione GPS...')
-
-    if (!navigator.geolocation) {
+    try {
+      const gps = await acquireGpsPosition()
+      await runClock(gps)
+    } catch (err) {
       setStatus('error')
-      setMessage('Geolocalizzazione non supportata dal tuo browser.')
-      return
+      setMessage(gpsErrorMessage(err as GeolocationPositionError))
     }
+  }, [runClock])
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        handleClockIn(position.coords.latitude, position.coords.longitude, position.coords.accuracy)
-      },
-      (error) => {
-        setStatus('error')
-        switch(error.code) {
-          case error.PERMISSION_DENIED:
-            setMessage('Permesso GPS negato. Su iPhone: Impostazioni → Safari → Posizione → Consenti.')
-            break
-          case error.POSITION_UNAVAILABLE:
-            setMessage('Posizione non disponibile. Esci all\'aperto e riprova.')
-            break
-          case error.TIMEOUT:
-            setMessage('Timeout GPS. Riprova.')
-            break
-          default:
-            setMessage('Errore durante l\'acquisizione della posizione GPS.')
-            break
-        }
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-    )
-  }, [handleClockIn])
-
-  // Step 0: Verifica autenticazione UNA SOLA VOLTA, salva tenantSlug e role in ref
   useEffect(() => {
     if (hasCheckedAuth.current) return
     hasCheckedAuth.current = true
 
     fetch('/api/auth/session', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then(session => {
+      .then((r) => (r.ok ? r.json() : null))
+      .then((session) => {
         if (!session?.user?.id) {
           setStatus('no_session')
           setMessage('Nessuna sessione attiva.')
           return
         }
-
-        // Salviamo nei ref per il redirect (evita seconda fetch che fallisce su iOS NFC)
         tenantSlugRef.current = session.user.tenantSlug || null
         roleRef.current = session.user.role || null
-
         setUserName(session.user.name || session.user.matricola || 'Operatore')
-        // Badge mode: avvia automaticamente GPS + clock-in
         startGpsAndClock()
       })
       .catch(() => {
@@ -145,7 +116,6 @@ function NFCClockContent() {
       })
   }, [startGpsAndClock])
 
-  // Auto-redirect dopo successo — timeout 4 secondi (mobile ha bisogno di più tempo)
   useEffect(() => {
     if (status === 'success') {
       const timer = setTimeout(() => goToDashboard(), 4000)
@@ -156,8 +126,6 @@ function NFCClockContent() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white p-6 font-sans">
       <div className="bg-slate-800 p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-md w-full text-center border border-slate-700">
-
-        {/* Intestazione */}
         <div className="mb-8 w-full flex flex-col items-center">
           <div className="bg-blue-500/20 p-3 rounded-full mb-3">
             <Fingerprint className="h-8 w-8 text-blue-400" />
@@ -166,71 +134,62 @@ function NFCClockContent() {
           <p className="text-slate-400 text-sm mt-1 font-medium">Badge automatico — avvicina e vai</p>
         </div>
 
-        {/* Stato: Verifica auth / GPS / Timbratura */}
         {(status === 'checking_auth' || status === 'acquiring_gps' || status === 'loading') && (
           <div className="flex flex-col items-center my-6">
             <Loader2 className="h-16 w-16 text-blue-500 animate-spin mb-4" />
             <p className="text-slate-300 font-medium text-lg">{message}</p>
             {userName && <p className="text-slate-500 text-sm mt-2">{userName}</p>}
-            {status === 'acquiring_gps' && (
-              <p className="text-slate-500 text-xs mt-2">Consenti l'accesso alla posizione se richiesto</p>
-            )}
           </div>
         )}
 
-        {/* Success */}
         {status === 'success' && (
           <div className="flex flex-col items-center my-6 animate-in fade-in zoom-in duration-300">
             <div className="bg-green-500/20 p-5 rounded-full mb-4 ring-4 ring-green-500/10">
               <CheckCircle2 className="h-16 w-16 text-green-500" />
             </div>
-            <h1 className="text-3xl font-bold mb-2 text-green-400">Confermato!</h1>
+            <h2 className="text-3xl font-bold mb-2 text-green-400">Confermato!</h2>
             <p className="text-slate-300 text-lg mb-2 text-center px-4">{message}</p>
-            <p className="text-slate-500 text-sm mb-4">Reindirizzamento in corso...</p>
-            <button onClick={goToDashboard} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all">
+            <button
+              onClick={goToDashboard}
+              className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all"
+            >
               Vai alla Dashboard
             </button>
           </div>
         )}
 
-        {/* No Session */}
         {status === 'no_session' && (
-          <div className="flex flex-col items-center my-6 animate-in fade-in zoom-in duration-300">
-            <div className="bg-amber-500/20 p-5 rounded-full mb-4 ring-4 ring-amber-500/10">
-              <LogIn className="h-16 w-16 text-amber-400" />
-            </div>
-            <h1 className="text-2xl font-bold mb-2 text-amber-400">Accesso Richiesto</h1>
-            <p className="text-slate-300 mb-4 text-center px-4">Su iPhone il tag NFC apre una finestra separata. Devi prima aver fatto login nell'app.</p>
-            <div className="bg-slate-700/50 rounded-2xl p-4 mb-6 text-left text-sm text-slate-400 space-y-2 w-full">
-              <p className="font-bold text-white text-center mb-2">🔧 Come risolvere:</p>
-              <p>1. Apri <b>Safari</b> e vai su <b>gestionepolizialocale.it</b></p>
-              <p>2. Fai login con le tue credenziali</p>
-              <p className="text-amber-300">3. TORNA QUI e ricarica la pagina</p>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => window.location.reload()} className="bg-amber-600 hover:bg-amber-500 text-white px-6 py-3 rounded-xl font-semibold transition-all">
-                Ho fatto il Login — Ricarica
-              </button>
-              <a href="/login" className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-xl font-semibold transition-all inline-block">
-                Vai al Login
-              </a>
-            </div>
+          <div className="flex flex-col items-center my-6">
+            <LogIn className="h-16 w-16 text-amber-400 mb-4" />
+            <h2 className="text-2xl font-bold mb-2 text-amber-400">Accesso Richiesto</h2>
+            <p className="text-slate-300 mb-4 text-center px-4">
+              Su iPhone il tag NFC apre una finestra separata. Devi prima aver fatto login nell&apos;app.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-amber-600 hover:bg-amber-500 text-white px-6 py-3 rounded-xl font-semibold"
+            >
+              Ho fatto il Login — Ricarica
+            </button>
+            <a href="/login" className="mt-3 text-blue-400 text-sm font-bold">
+              Vai al Login
+            </a>
           </div>
         )}
 
-        {/* Error */}
         {status === 'error' && (
-          <div className="flex flex-col items-center my-6 animate-in fade-in zoom-in duration-300">
-            <div className="bg-red-500/20 p-5 rounded-full mb-4 ring-4 ring-red-500/10">
-              <MapPinOff className="h-16 w-16 text-red-500" />
-            </div>
-            <h1 className="text-2xl font-bold mb-2 text-red-400">Operazione Negata</h1>
+          <div className="flex flex-col items-center my-6">
+            <MapPinOff className="h-16 w-16 text-red-500 mb-4" />
+            <h2 className="text-2xl font-bold mb-2 text-red-400">Operazione Negata</h2>
             <p className="text-slate-300 mb-8 text-center px-4 whitespace-pre-line">{message}</p>
             <div className="flex gap-3">
-              <button onClick={startGpsAndClock} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all">
+              <button
+                onClick={() => void startGpsAndClock()}
+                className="bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold"
+              >
                 Riprova
               </button>
-              <button onClick={goToDashboard} className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-xl font-semibold transition-all">
+              <button onClick={goToDashboard} className="bg-slate-700 text-white px-6 py-3 rounded-xl font-semibold">
                 Dashboard
               </button>
             </div>
@@ -240,29 +199,48 @@ function NFCClockContent() {
 
       {status === 'justification_required' && anomalyData && (
         <ClockOutModal
-          type={anomalyData.anomalyType}
+          type={anomalyData.anomalyType as "LATE_IN" | "OVERTIME" | "EARLY_EXIT"}
           diffMins={anomalyData.diffMins}
           plannedEndTime={anomalyData.plannedTime}
           onConfirm={(data) => {
             const overtimeReason = `${data.code} ${data.notes}`
-            const isLateIn = anomalyData.anomalyType === "LATE_IN"
-            handleClockIn(
-              anomalyData.lat, anomalyData.lng, anomalyData.accuracy,
-              overtimeReason, anomalyData.shiftId,
-              false, isLateIn ? data.actualStartTimeStr : data.actualEndTimeStr
+            const isLateIn = anomalyData.anomalyType === 'LATE_IN'
+            void runClock(
+              {
+                lat: anomalyData.lat,
+                lng: anomalyData.lng,
+                accuracy: anomalyData.accuracy,
+              },
+              {
+                overtimeReason,
+                shiftId: anomalyData.shiftId,
+                actualEndTimeStr: isLateIn ? data.actualStartTimeStr : data.actualEndTimeStr,
+              }
             )
           }}
           onCancel={() => {
             setStatus('error')
             setMessage("Operazione annullata dall'utente.")
+            setAnomalyData(null)
           }}
-          onCorrectionOnly={anomalyData.anomalyType === "OVERTIME" ? () => {
-            handleClockIn(
-              anomalyData.lat, anomalyData.lng, anomalyData.accuracy,
-              undefined, anomalyData.shiftId,
-              true, anomalyData.plannedTime
-            )
-          } : undefined}
+          onCorrectionOnly={
+            anomalyData.anomalyType === 'OVERTIME'
+              ? () => {
+                  void runClock(
+                    {
+                      lat: anomalyData.lat,
+                      lng: anomalyData.lng,
+                      accuracy: anomalyData.accuracy,
+                    },
+                    {
+                      shiftId: anomalyData.shiftId,
+                      isCorrection: true,
+                      actualEndTimeStr: anomalyData.plannedTime,
+                    }
+                  )
+                }
+              : undefined
+          }
         />
       )}
     </div>
@@ -271,12 +249,14 @@ function NFCClockContent() {
 
 export default function NFCClockPage() {
   return (
-    <Suspense fallback={
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white">
-        <Loader2 className="animate-spin text-blue-500 h-12 w-12 mb-4" />
-        <p className="font-medium text-slate-400">Inizializzazione NFC...</p>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white">
+          <Loader2 className="animate-spin text-blue-500 h-12 w-12 mb-4" />
+          <p className="font-medium text-slate-400">Inizializzazione NFC...</p>
+        </div>
+      }
+    >
       <NFCClockContent />
     </Suspense>
   )

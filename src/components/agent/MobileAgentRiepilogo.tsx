@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Clock, RefreshCw, Shield, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react"
+import { Clock, RefreshCw, Shield, CalendarDays, ChevronLeft, ChevronRight, Fingerprint } from "lucide-react"
 import NextShiftCard from "./NextShiftCard"
 import { isAssenza } from "@/utils/shift-logic"
 
@@ -24,6 +24,7 @@ type Props = {
   lastClockTime: string | null
   clockLoading: boolean
   handleClockAction: (type: "IN" | "OUT") => Promise<unknown>
+  onBadgeClock: () => Promise<void>
   onNavigateMonth: (month: number, year: number, view?: string) => void
   onNavigate: (view: string) => void
   onSos: () => void
@@ -43,6 +44,7 @@ export default function MobileAgentRiepilogo({
   lastClockTime,
   clockLoading,
   handleClockAction,
+  onBadgeClock,
   onNavigateMonth,
   onNavigate,
   onSos,
@@ -136,42 +138,54 @@ export default function MobileAgentRiepilogo({
             </div>
           )}
 
+          <button
+            type="button"
+            disabled={clockLoading}
+            onClick={() => void onBadgeClock()}
+            className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-sm font-black uppercase tracking-wide shadow-lg shadow-blue-900/40 active:scale-[0.98] disabled:opacity-60"
+          >
+            {clockLoading ? (
+              <RefreshCw size={20} className="animate-spin" />
+            ) : (
+              <Fingerprint size={22} />
+            )}
+            {clockLoading
+              ? "Timbratura..."
+              : isClockedIn === "IN"
+                ? "Timbra uscita (tag NFC)"
+                : "Timbra entrata (tag NFC)"}
+          </button>
+
+          <p className="text-[9px] text-center text-white/40 font-bold uppercase tracking-widest">
+            Stessa logica del tag NFC — alterna entrata/uscita automaticamente
+          </p>
+
           <div className="flex gap-2 p-1 bg-white/5 rounded-2xl border border-white/10">
             <button
               type="button"
               disabled={clockLoading || isClockedIn === "IN"}
               onClick={onClockIn}
-              className={`flex-1 py-3.5 rounded-xl text-[11px] font-black uppercase tracking-wide transition-all ${
+              className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wide transition-all ${
                 isClockedIn === "IN"
                   ? "bg-white/5 text-white/30"
                   : !currentUser.gpsConsent
-                    ? "bg-amber-500/30 text-amber-200 active:scale-95"
-                    : "bg-emerald-500 text-white shadow-lg active:scale-95"
+                    ? "bg-amber-500/30 text-amber-200"
+                    : "bg-white/10 text-white border border-white/10 active:scale-95"
               }`}
             >
-              {clockLoading && isClockedIn !== "OUT" ? (
-                <RefreshCw size={16} className="animate-spin mx-auto" />
-              ) : !currentUser.gpsConsent ? (
-                "Consenso GPS"
-              ) : (
-                "Entra in servizio"
-              )}
+              Entra manuale
             </button>
             <button
               type="button"
               disabled={clockLoading || isClockedIn !== "IN"}
               onClick={() => void handleClockAction("OUT")}
-              className={`flex-1 py-3.5 rounded-xl text-[11px] font-black uppercase tracking-wide transition-all ${
+              className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wide transition-all ${
                 isClockedIn !== "IN"
                   ? "bg-white/5 text-white/30"
-                  : "bg-rose-500 text-white shadow-lg active:scale-95"
+                  : "bg-white/10 text-white border border-white/10 active:scale-95"
               }`}
             >
-              {clockLoading && isClockedIn === "IN" ? (
-                <RefreshCw size={16} className="animate-spin mx-auto" />
-              ) : (
-                "Esci"
-              )}
+              Esci manuale
             </button>
           </div>
 

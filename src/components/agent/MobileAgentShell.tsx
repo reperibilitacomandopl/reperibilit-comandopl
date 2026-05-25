@@ -20,6 +20,7 @@ import AgentTimecardView from "./AgentTimecardView"
 import BachecaPanel from "@/components/BachecaPanel"
 import FloatingSosButton from "./FloatingSosButton"
 import AgentSosModal from "./AgentSosModal"
+import { ClockOutModal } from "@/components/ClockOutModal"
 import toast from "react-hot-toast"
 
 const MONTH_NAMES = [
@@ -94,6 +95,14 @@ function MobileAgentShellInner(props: Props) {
     await agentData.handleClockAction(type)
   }
 
+  const handleBadgeClock = async () => {
+    if (!session.user.gpsConsent) {
+      openGpsConsentHint()
+      return
+    }
+    await agentData.handleBadgeClock()
+  }
+
   React.useEffect(() => {
     if (activeTab !== "dashboard") return
     if (window.location.hash !== "#riepilogo-operativo") return
@@ -122,8 +131,9 @@ function MobileAgentShellInner(props: Props) {
               isClockedIn={agentData.isClockedIn}
               lastClockTime={agentData.lastClockTime}
               clockLoading={agentData.clockLoading}
-              handleClockAction={handleClock}
-              onNavigateMonth={navigateMonth}
+                      handleClockAction={handleClock}
+                      onBadgeClock={handleBadgeClock}
+                      onNavigateMonth={navigateMonth}
               onNavigate={navigate}
               onSos={() => setShowSosModal(true)}
               onGpsConsentRequired={openGpsConsentHint}
@@ -275,6 +285,26 @@ function MobileAgentShellInner(props: Props) {
           </div>
         )}
       </div>
+
+      {agentData.clockOutModalConfig && (
+        <ClockOutModal
+          type={agentData.clockOutModalConfig.type}
+          diffMins={agentData.clockOutModalConfig.diffMins}
+          plannedEndTime={agentData.clockOutModalConfig.plannedEndTime}
+          onConfirm={(data) => agentData.submitClockOutWithModal(data)}
+          onCancel={() => agentData.setClockOutModalConfig(null)}
+          onCorrectionOnly={
+            agentData.clockOutModalConfig.type === "OVERTIME"
+              ? () =>
+                  agentData.submitClockOutWithModal({
+                    code: "CORREZIONE",
+                    notes: "Uscita orario ufficiale",
+                    isCorrection: true,
+                  })
+              : undefined
+          }
+        />
+      )}
 
       <FloatingSosButton onSendSos={agentData.handleSendFullSos} />
       {showSosModal && (

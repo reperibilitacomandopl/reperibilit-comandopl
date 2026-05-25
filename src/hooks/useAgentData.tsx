@@ -18,6 +18,13 @@ import {
 } from "@/types/dashboard"
 import { AGENDA_CATEGORIES } from "@/utils/agenda-codes"
 import { isAssenza } from "@/utils/shift-logic"
+import {
+  acquireGpsPosition,
+  postNfcStyleClock,
+  gpsCoordsToPosition,
+  gpsErrorMessage,
+  type NfcJustificationPayload,
+} from "@/lib/agent-nfc-clock"
 
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371e3
@@ -488,10 +495,27 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
 
       const data = await res.json()
 
+      if (res.status === 428 && data.requiresJustification) {
+        setClockOutModalConfig({
+          type: data.anomalyType,
+          diffMins: data.diffMins,
+          plannedEndTime: data.plannedTime,
+          activeShiftId: data.shiftId,
+          pos: gpsCoordsToPosition({
+            lat: params.lat,
+            lng: params.lng,
+            accuracy: params.accuracy,
+          }),
+        })
+        return
+      }
+
       if (res.ok) {
-        setIsClockedIn(params.type)
+        const recordedType = (data.record?.type === "OUT" ? "OUT" : params.type) as "IN" | "OUT"
+        setIsClockedIn(recordedType)
         setLastClockTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
-        toast.success(`Timbratura ${params.type === 'IN' ? 'Entrata' : 'Uscita'} registrata!`, { id: params.toastId })
+        toast.success(`Timbratura ${recordedType === 'IN' ? 'Entrata' : 'Uscita'} registrata!`, { id: params.toastId })
+        fetchClockRecords()
       } else {
         const errorMsg = data.distance ? 
           `Troppo lontano! Sei a ${data.distance}m (Limite: ${data.allowed}m)` : 
@@ -505,6 +529,47 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
     }
   }
 
+
+  /** Timbratura come tag NFC: tipo AUTO (alterna IN/OUT) + checkAnomaly lato server. */
+  const handleBadgeClock = async () => {
+    if (!navigator.geolocation) {
+      return toast.error("Il tuo browser non supporta la geolocalizzazione.")
+    }
+
+    setClockLoading(true)
+    const toastId = toast.loading("Timbratura badge in corso...")
+
+    try {
+      const gps = await acquireGpsPosition()
+      const result = await postNfcStyleClock({ type: "AUTO", ...gps, checkAnomaly: true })
+
+      if (!result.ok && "needsJustification" in result && result.needsJustification) {
+        const d = result.data as NfcJustificationPayload
+        setClockOutModalConfig({
+          type: d.anomalyType as "OVERTIME" | "EARLY_EXIT" | "LATE_IN",
+          diffMins: d.diffMins,
+          plannedEndTime: d.plannedTime,
+          activeShiftId: d.shiftId,
+          pos: gpsCoordsToPosition(gps),
+        })
+        toast.dismiss(toastId)
+        return
+      }
+
+      if (result.ok) {
+        setIsClockedIn(result.recordType)
+        setLastClockTime(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+        toast.success(result.message, { id: toastId })
+        fetchClockRecords()
+      } else if (!("needsJustification" in result)) {
+        toast.error(result.message, { id: toastId })
+      }
+    } catch (err) {
+      toast.error(gpsErrorMessage(err as GeolocationPositionError), { id: toastId })
+    } finally {
+      setClockLoading(false)
+    }
+  }
 
   const handleRespondSwap = async (id: string, status: "ACCEPTED" | "REJECTED") => {
     setSwapLoading(true)
@@ -702,6 +767,7 @@ export function useAgentData({ currentUser, currentYear, currentMonth, shifts, t
     requests,
     vacationSwapRequests,
     handleClockAction,
+    handleBadgeClock,
     handleRespondSwap,
     handleRespondVacationSwap,
     handleProposeVacationSwap,
