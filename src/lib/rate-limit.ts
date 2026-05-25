@@ -61,18 +61,54 @@ function createMemoryLimiter(limit: number, window: string): Limiter {
   }
 }
 
+/** Disabilita Upstash per il processo se quota esaurita o errore di rete. */
+let upstashDisabled = false
+
+function disableUpstash(reason: string) {
+  if (!upstashDisabled) {
+    upstashDisabled = true
+    console.warn(`[RATE_LIMIT] Upstash disattivato: ${reason}. Fallback in-memory attivo.`)
+  }
+}
+
+function createUpstashLimiter(limit: number, window: string): Limiter {
+  const memory = createMemoryLimiter(limit, window)
+  const r = getRedis()
+  if (!r || upstashDisabled) return memory
+
+  const ratelimit = new Ratelimit({
+    redis: r,
+    limiter: Ratelimit.slidingWindow(limit, window as `${number} s` | `${number} m` | `${number} h` | `${number} d`),
+  })
+
+  return {
+    limit: async (identifier: string) => {
+      try {
+        const result = await ratelimit.limit(identifier)
+        return {
+          success: result.success,
+          limit: result.limit,
+          remaining: result.remaining,
+          reset: result.reset,
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        disableUpstash(msg)
+        return memory.limit(identifier)
+      }
+    },
+  }
+}
+
 export const createRateLimiter = (limit: number, window: string): Limiter => {
   const r = getRedis()
-  if (r) {
-    return new Ratelimit({
-      redis: r,
-      limiter: Ratelimit.slidingWindow(limit, window as `${number} s` | `${number} m` | `${number} h` | `${number} d`),
-    }) as unknown as Limiter
+  if (r && !upstashDisabled) {
+    return createUpstashLimiter(limit, window)
   }
 
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV === "production" && !r) {
     console.warn(
-      `[RATE_LIMIT] Upstash non configurato: uso limiter in-memory (${limit}/${window}). Per cluster multi-VM configurare UPSTASH_REDIS_REST_* in regione EU.`
+      `[RATE_LIMIT] Upstash non configurato: uso limiter in-memory (${limit}/${window}).`
     )
   }
 
