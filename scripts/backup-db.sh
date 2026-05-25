@@ -10,15 +10,16 @@ DUMP_FILE="${BACKUP_DIR}/sentinel_${TIMESTAMP}.dump"
 
 mkdir -p "${BACKUP_DIR}"
 
-# Container DB del compose in ~/app
+# Container DB del compose in ~/app (sudo se l'utente non è nel gruppo docker)
+DOCKER="${DOCKER_CMD:-sudo docker}"
 DB_CONTAINER="${DB_CONTAINER:-app-db-1}"
 
-if ! docker ps --format '{{.Names}}' | grep -q "^${DB_CONTAINER}$"; then
+if ! ${DOCKER} ps --format '{{.Names}}' | grep -q "^${DB_CONTAINER}$"; then
   echo "[backup-db] ERRORE: container ${DB_CONTAINER} non in esecuzione" >&2
   exit 1
 fi
 
-docker exec "${DB_CONTAINER}" pg_dump -U postgres -Fc postgres > "${DUMP_FILE}"
+${DOCKER} exec "${DB_CONTAINER}" pg_dump -U postgres -Fc postgres > "${DUMP_FILE}"
 chmod 600 "${DUMP_FILE}"
 
 find "${BACKUP_DIR}" -name 'sentinel_*.dump' -type f -mtime +"${RETENTION_DAYS}" -delete
