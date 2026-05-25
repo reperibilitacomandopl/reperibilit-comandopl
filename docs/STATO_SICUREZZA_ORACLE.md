@@ -66,8 +66,9 @@
 - [x] SSH Oracle: `git pull` + `docker compose up -d --build portale-caserma`
 
 ### SEC-01 — Rotazione segreti (sul server, non in git)
-- [x] Script audit: `scripts/sec-01-check-env.sh`
+- [x] Script audit: `scripts/sec-01-check-env.sh` (VAPID, hCaptcha site+secret, storage)
 - [x] Guida: `docs/SEC-01_ROTazione_Segreti.md`
+- [x] API admin: `GET /api/admin/security-status` + tab **Sicurezza** in Impostazioni
 - [ ] Eseguire rotazione reale su `~/app/.env` (operazione manuale)
 - [ ] Aggiornare script Verbatel con `VERBATEL_API_KEY` dedicata
 
@@ -92,7 +93,8 @@
 - [x] E2E isolamento tenant su push master (opzionale su PR)
 
 ### UX pianificazione admin
-- [x] Toolbar sticky + griglia scrollabile (`AdminDashboard`)
+- [x] Toolbar sticky opaca (z-50) + scroll solo nella griglia (`AdminDashboard` / `AdminShiftGrid`)
+- [x] Intestazione tabella `sticky top-0` nel contenitore scroll (no overlap celle)
 - [x] Barra operativa collassabile su mobile (`AdminToolbar`)
 - [x] Evidenziazione celle REP oltre massimale (bordo rosso)
 

@@ -10,7 +10,7 @@ import Link from "next/link"
 
 export default function ImpostazioniPanel({ tenantSlug }: { tenantSlug?: string }) {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<"settings" | "audit" | "verbatel" | "schools" | "backup">("settings")
+  const [activeTab, setActiveTab] = useState<"settings" | "audit" | "verbatel" | "schools" | "backup" | "security">("settings")
   const searchParams = useSearchParams()
 
   interface AuditLog {
@@ -40,6 +40,25 @@ export default function ImpostazioniPanel({ tenantSlug }: { tenantSlug?: string 
   const [verbatelTestMode, setVerbatelTestMode] = useState(true)
   const [verbatelScript, setVerbatelScript] = useState("")
   const [isLoadingVerbatel, setIsLoadingVerbatel] = useState(false)
+  const [securityStatus, setSecurityStatus] = useState<{
+    ok?: boolean
+    missing?: string[]
+    checks?: Record<string, boolean>
+    hints?: string | null
+  } | null>(null)
+  const [loadingSecurity, setLoadingSecurity] = useState(false)
+
+  const loadSecurityStatus = useCallback(async () => {
+    setLoadingSecurity(true)
+    try {
+      const res = await fetch("/api/admin/security-status")
+      if (res.ok) setSecurityStatus(await res.json())
+      else setSecurityStatus({ ok: false, hints: "Errore caricamento audit" })
+    } catch {
+      setSecurityStatus({ ok: false, hints: "Errore di rete" })
+    }
+    setLoadingSecurity(false)
+  }, [])
 
   const loadAuditLogs = useCallback(async () => {
     setIsLoadingAudit(true)
@@ -69,11 +88,16 @@ export default function ImpostazioniPanel({ tenantSlug }: { tenantSlug?: string 
       const t = setTimeout(() => loadAuditLogs(), 0);
       return () => clearTimeout(t);
     }
-  }, [activeTab, loadAuditLogs])
+    if (activeTab === "security") {
+      const t = setTimeout(() => loadSecurityStatus(), 0);
+      return () => clearTimeout(t);
+    }
+  }, [activeTab, loadAuditLogs, loadSecurityStatus])
 
   const tabs = [
     { id: "settings" as const, label: "Configurazione", icon: Settings, accent: "indigo" },
     { id: "schools" as const, label: "Gestione Scuole", icon: GraduationCap, accent: "blue" },
+    { id: "security" as const, label: "Sicurezza", icon: Shield, accent: "rose" },
     { id: "backup" as const, label: "Disaster Recovery", icon: Database, accent: "emerald" },
     { id: "audit" as const, label: "Audit Log", icon: ClipboardList, accent: "slate" },
     { id: "verbatel" as const, label: "Integrazione Verbatel", icon: FileDown, accent: "orange" },
@@ -130,6 +154,52 @@ export default function ImpostazioniPanel({ tenantSlug }: { tenantSlug?: string 
       {activeTab === "schools" && (
         <div className="slide-in-from-right-4 animate-in duration-500">
            <SchoolsManager />
+        </div>
+      )}
+
+      {/* Security Tab */}
+      {activeTab === "security" && (
+        <div className="space-y-6 slide-in-from-right-4 animate-in duration-500">
+          <div className="flex items-center justify-between px-2">
+            <h2 className="text-xl font-black text-slate-900 tracking-tight">Audit configurazione SEC-01</h2>
+            <button
+              type="button"
+              onClick={loadSecurityStatus}
+              className="px-5 py-2.5 bg-white border-2 border-slate-100 hover:border-rose-200 rounded-xl text-[10px] font-black text-slate-600 uppercase tracking-widest flex items-center gap-3 shadow-sm active:scale-95"
+            >
+              <RefreshCw size={14} className={loadingSecurity ? "animate-spin" : ""} /> Aggiorna
+            </button>
+          </div>
+          <div className={`premium-card p-8 border-t-4 ${securityStatus?.ok ? "border-t-emerald-500 bg-emerald-50/30" : "border-t-rose-500 bg-rose-50/30"}`}>
+            {securityStatus?.ok ? (
+              <p className="text-sm font-bold text-emerald-800">Configurazione sicurezza completa sul server.</p>
+            ) : (
+              <p className="text-sm font-bold text-rose-800 mb-4">
+                {securityStatus?.hints || "Completare le variabili in ~/app/.env e ribuild Docker."}
+              </p>
+            )}
+            {securityStatus?.checks && (
+              <ul className="grid sm:grid-cols-2 gap-2 mt-4">
+                {Object.entries(securityStatus.checks).map(([key, val]) => {
+                  if (key === "nodeEnv" || key === "debugBlocked") return null
+                  return (
+                    <li
+                      key={key}
+                      className={`flex items-center justify-between px-4 py-2 rounded-xl text-xs font-bold border ${
+                        val ? "bg-white border-emerald-100 text-emerald-700" : "bg-white border-rose-100 text-rose-700"
+                      }`}
+                    >
+                      <span className="uppercase tracking-wide">{key}</span>
+                      <span>{val ? "OK" : "MANCA"}</span>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+            <p className="text-[10px] text-slate-500 font-bold mt-6 uppercase tracking-widest">
+              Rotazione segreti: docs/SEC-01_ROTazione_Segreti.md · Script: bash scripts/sec-01-check-env.sh
+            </p>
+          </div>
         </div>
       )}
 

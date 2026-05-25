@@ -13,6 +13,7 @@ Al primo accesso dovrai cambiare password e, se richiesto, attivare la 2FA con G
 
 ### 2. La tua Dashboard
 Appena entri vedi:
+- **Prossimi servizi** (fino a 3 giorni): scorri con le frecce; se l’**OdS è certificato** compaiono mezzo, radio, pattuglia e note
 - **Prossimo turno** in alto (orario, servizio, colleghi)
 - **Calendario mensile** con tutti i tuoi turni
 - **Bacheca comando** con annunci e comunicazioni

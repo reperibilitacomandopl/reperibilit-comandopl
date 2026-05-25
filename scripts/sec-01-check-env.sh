@@ -28,7 +28,11 @@ require_var "AUTH_SECRET"
 require_var "NEXTAUTH_SECRET"
 require_var "CRON_SECRET"
 require_var "HCAPTCHA_SECRET_KEY"
+require_var "NEXT_PUBLIC_HCAPTCHA_SITE_KEY"
 require_var "VERBATEL_API_KEY"
+require_var "STORAGE_SIGNING_SECRET"
+require_var "NEXT_PUBLIC_VAPID_PUBLIC_KEY"
+require_var "VAPID_PRIVATE_KEY"
 require_var "POSTGRES_PASSWORD"
 
 if [[ "${MISSING}" -eq 1 ]]; then

@@ -93,7 +93,7 @@ export default function AdminDashboard({
           hasPecConfig={!!settings?.pecHost}
         />
 
-        <div className="sticky top-16 z-40 -mx-2 sm:mx-0 px-2 sm:px-0 pb-3 bg-[#F8FAFC]/95 backdrop-blur-md border-b border-slate-200/60 rounded-b-2xl">
+        <div className="sticky top-16 z-50 -mx-2 sm:mx-0 px-2 sm:px-0 pb-2 bg-[#F8FAFC] border-b border-slate-200 shadow-md isolate">
         <AdminToolbar 
           currentUser={currentUser}
           currentMonth={currentMonth} 
@@ -150,7 +150,7 @@ export default function AdminDashboard({
         />
         </div>
 
-        <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden max-h-[calc(100vh-14rem)] overflow-auto">
+        <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden flex flex-col max-h-[calc(100vh-11rem)] min-h-[420px]">
           <AdminShiftGrid 
             agents={admin.sortedAgents}
             shifts={admin.shifts}

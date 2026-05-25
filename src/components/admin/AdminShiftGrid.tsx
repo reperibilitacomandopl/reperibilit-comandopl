@@ -498,9 +498,9 @@ export default function AdminShiftGrid({
   ]
 
   return (
-    <>
+    <div className="flex flex-col flex-1 min-h-0">
       {/* ─── LEGENDA COLORI ─── */}
-      <div className="mb-2">
+      <div className="mb-2 shrink-0 px-2 pt-2">
         <button
           onClick={() => setShowLegend(!showLegend)}
           className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors px-2 py-1"
@@ -526,7 +526,7 @@ export default function AdminShiftGrid({
       </div>
 
       {/* ─── TOOLBAR FILTRI ─── */}
-      <div className="px-6 py-4 bg-white border-b border-slate-200 flex flex-wrap items-center gap-3">
+      <div className="shrink-0 px-6 py-4 bg-white border-b border-slate-200 flex flex-wrap items-center gap-3 z-20">
         <div className="relative flex-1 max-w-xs">
           <input
             type="text"
@@ -582,9 +582,9 @@ export default function AdminShiftGrid({
         </div>
       </div>
 
-      <div className="overflow-auto custom-scrollbar-horizontal max-h-[calc(100vh-320px)] border-b-2 border-slate-200 rounded-b-3xl" suppressHydrationWarning>
+      <div className="flex-1 min-h-0 overflow-auto custom-scrollbar-horizontal border-b-2 border-slate-200 rounded-b-3xl" suppressHydrationWarning>
       <table className="w-full border-collapse text-xs">
-        <thead className="sticky top-16 z-[50] bg-white shadow-sm">
+        <thead className="sticky top-0 z-30 bg-white shadow-sm">
           {/* ─── HEADER GIORNI ─── */}
           <tr className="border-b-2 border-slate-200">
             <th className="p-3 text-left font-black text-slate-900 w-52 min-w-[200px] sticky left-0 z-[60] bg-slate-50 border-r-2 border-slate-200 italic uppercase tracking-tighter">
@@ -1046,6 +1046,6 @@ export default function AdminShiftGrid({
         </div>
       )}
     </div>
-    </>
+    </div>
   )
 }
