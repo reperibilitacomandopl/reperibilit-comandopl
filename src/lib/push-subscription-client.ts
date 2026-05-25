@@ -53,7 +53,7 @@ export async function subscribeToPush(): Promise<PushSubscription | null> {
   if (!sub) {
     sub = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
     })
   }
 
