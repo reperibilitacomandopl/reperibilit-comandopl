@@ -93,6 +93,7 @@ export default function AdminDashboard({
           hasPecConfig={!!settings?.pecHost}
         />
 
+        <div className="sticky top-16 z-40 -mx-2 sm:mx-0 px-2 sm:px-0 pb-3 bg-[#F8FAFC]/95 backdrop-blur-md border-b border-slate-200/60 rounded-b-2xl">
         <AdminToolbar 
           currentUser={currentUser}
           currentMonth={currentMonth} 
@@ -147,8 +148,9 @@ export default function AdminDashboard({
           onShowSezioni={() => router.push(`/${tenantSlug}/admin/sezioni`)}
           onShowBacheca={() => setShowBacheca(true)}
         />
+        </div>
 
-        <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden max-h-[calc(100vh-14rem)] overflow-auto">
           <AdminShiftGrid 
             agents={admin.sortedAgents}
             shifts={admin.shifts}

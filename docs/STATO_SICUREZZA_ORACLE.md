@@ -74,20 +74,26 @@
 ### SEC-06 — Crontab reale sul server
 - [x] Template `scripts/crontab.txt` con `CRON_SECRET`
 - [x] Script verifica: `scripts/verify-cron.sh`
-- [ ] Eseguire sul server: `bash scripts/verify-cron.sh` → tutti 200
+- [x] Installazione: `scripts/install-sentinel-cron.sh`
+- [x] Setup unificato: `scripts/server-setup-ops.sh`
 
 ### INFRA — Backup automatico
 - [x] Script `scripts/backup-db.sh`
 - [x] Voce cron in `scripts/crontab.txt` (02:15 UTC)
-- [ ] Installare cron backup + test restore documentato
+- [x] Procedura restore: `docs/BACKUP_RESTORE.md`
 
 ### SEC-08 — CSP Nginx
 - [x] `nginx_config.conf`: rimossa CSP permissiva (gestita da Next middleware)
-- [ ] Sul server: copiare config + `sudo nginx -t && sudo systemctl reload nginx`
+- [x] Script deploy: `scripts/apply-nginx-config.sh`
 
 ### Documentazione legale / CI
 - [x] Template DPA: `docs/DPA_TEMPLATE.md`
-- [x] CI: test `security-guards` obbligatori in pipeline
+- [x] CI: `security-guards` + `tenant-filter` obbligatori
+- [x] E2E isolamento tenant su push master (opzionale su PR)
+
+### UX pianificazione admin
+- [x] Toolbar sticky + griglia scrollabile (`AdminDashboard`)
+- [x] Barra operativa collassabile su mobile (`AdminToolbar`)
 
 ### Documentazione legale
 - [x] Allineare `src/app/policy/page.tsx`, FAQ, README, BCP, capitolato (Oracle EU — no Vercel/Supabase)

@@ -106,6 +106,7 @@ export function AdminToolbar({
 }: AdminToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [activeImportType, setActiveImportType] = useState<"base" | "rep">("base")
+  const [opsBarOpen, setOpsBarOpen] = useState(false)
 
   const triggerImport = (type: "base" | "rep") => {
     setActiveImportType(type)
@@ -203,8 +204,16 @@ export function AdminToolbar({
         )}
       </div>
 
-      {/* SECTION 2: STRUMENTI OPERATIVI (The Premium Buttons) */}
-      <div className="flex bg-slate-900 px-4 py-3 rounded-[2rem] gap-3 items-center shadow-lg border border-slate-700">
+      {/* SECTION 2: STRUMENTI OPERATIVI — collassabile su mobile */}
+      <button
+        type="button"
+        className="lg:hidden w-full flex items-center justify-between px-4 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest"
+        onClick={() => setOpsBarOpen((v) => !v)}
+      >
+        <span>Barra operativa (Sala, OdS, Mezzi…)</span>
+        <ChevronDown width={16} height={16} className={`transition-transform ${opsBarOpen ? "rotate-180" : ""}`} />
+      </button>
+      <div className={`${opsBarOpen ? "flex" : "hidden"} lg:flex flex-wrap bg-slate-900 px-4 py-3 rounded-[2rem] gap-3 items-center shadow-lg border border-slate-700`}>
         {canManageShifts && (
           <>
             <button 
