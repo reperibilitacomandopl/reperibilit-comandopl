@@ -5,11 +5,12 @@ import { Ratelimit } from "@upstash/ratelimit"
 let redis: Redis | null = null
 
 const getRedis = () => {
-  if (!redis && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    redis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    })
+  if (process.env.DISABLE_UPSTASH === "1") return null
+  const url = process.env.UPSTASH_REDIS_REST_URL?.trim()
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim()
+  if (!url || !token) return null
+  if (!redis) {
+    redis = new Redis({ url, token })
   }
   return redis
 }
