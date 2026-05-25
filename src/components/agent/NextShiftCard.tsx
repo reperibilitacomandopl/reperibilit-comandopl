@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect } from "react"
-import { Clock, Car, Radio, Users, ChevronRight, MapPin, CalendarDays, Timer, MessageSquare } from "lucide-react"
+import { Clock, Car, Radio, Users, MapPin, Timer, MessageSquare, FileCheck } from "lucide-react"
 
 interface NextShiftProps {
   shift: any
@@ -113,10 +113,20 @@ export default function NextShiftCard({ shift, allAgents, allShifts, certifiedDa
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl -mr-16 -mt-16"></div>
             
             <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex flex-wrap items-center gap-2 mb-3">
                 <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${isToday ? 'bg-emerald-500 text-white animate-pulse' : 'bg-blue-600 text-white'}`}>
                   {isToday ? 'Oggi' : 'Prossimo Turno'}
                 </div>
+                {isOdsCertified ? (
+                  <div className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-400/20 text-emerald-200 border border-emerald-400/40 flex items-center gap-1">
+                    <FileCheck size={12} />
+                    OdS certificato
+                  </div>
+                ) : (
+                  <div className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-amber-500/20 text-amber-100 border border-amber-400/30">
+                    OdS in attesa
+                  </div>
+                )}
               </div>
               <h4 className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Data Servizio</h4>
               <p className="text-white text-lg lg:text-xl font-black capitalize leading-tight">{formattedDate}</p>

@@ -27,7 +27,7 @@ import AgentSyncModal from "./agent/AgentSyncModal"
 import AgentSosModal from "./agent/AgentSosModal"
 import ChatPanel from "./agent/ChatPanel"
 import OfficerDutyPanel from "./agent/OfficerDutyPanel"
-import NextShiftCard from "./agent/NextShiftCard"
+import AgentFeaturedShiftsCarousel from "./agent/AgentFeaturedShiftsCarousel"
 import PersonalBalances from "./agent/PersonalBalances"
 import PersonalClockHistory from "./agent/PersonalClockHistory"
 import ClockHistoryModal from "./agent/ClockHistoryModal"
@@ -136,7 +136,6 @@ export default function AgentDashboard({
   const [selectedShiftForSwap, setSelectedShiftForSwap] = useState<DashboardShift | null>(null)
   const [agendaDate, setAgendaDate] = useState('')
   const [showClockHistory, setShowClockHistory] = useState(false)
-  const [activeShiftIndex, setActiveShiftIndex] = useState(0)
   const [chatPatrolGroupId, setChatPatrolGroupId] = useState<string | null>(null)
   const [requestFormInitialCode, setRequestFormInitialCode] = useState("")
   const [requestFormInitialNotes, setRequestFormInitialNotes] = useState("")
@@ -211,64 +210,17 @@ export default function AgentDashboard({
         />
       </div>
 
-      {/* FEATURED SHIFTS CAROUSEL (TODAY + NEXT) - FULL WIDTH */}
-      {(() => {
-        const now = new Date()
-        const featuredShifts = admin.myShifts
-          .filter((s: any) => {
-            const d = new Date(s.date)
-            d.setHours(0,0,0,0)
-            const today = new Date()
-            today.setHours(0,0,0,0)
-            return d >= today && !isAssenza(s.type)
-          })
-          .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
-          .slice(0, 3);
-
-        if (featuredShifts.length === 0) return null;
-
-        const currentShift = featuredShifts[activeShiftIndex] || featuredShifts[0];
-
-        return (
-          <div className="relative group px-1">
-            <NextShiftCard 
-              shift={currentShift} 
-              allAgents={allAgents} 
-              allShifts={shifts}
-              certifiedDates={certifiedDates}
-              onOpenChat={(patrolGroupId) => {
-                setChatPatrolGroupId(patrolGroupId)
-                setShowChat(true)
-              }}
-            />
-            
-            {featuredShifts.length > 1 && (
-              <div className="absolute top-1/2 -translate-y-1/2 w-[calc(100%+1rem)] -left-2 flex justify-between pointer-events-none z-20">
-                <button 
-                  onClick={() => setActiveShiftIndex(prev => (prev > 0 ? prev - 1 : featuredShifts.length - 1))}
-                  className="w-10 h-10 bg-white shadow-2xl rounded-full flex items-center justify-center text-slate-900 pointer-events-auto hover:bg-slate-50 transition-all active:scale-90 border border-slate-200"
-                >
-                  <ChevronLeft size={22} />
-                </button>
-                <button 
-                  onClick={() => setActiveShiftIndex(prev => (prev < featuredShifts.length - 1 ? prev + 1 : 0))}
-                  className="w-10 h-10 bg-white shadow-2xl rounded-full flex items-center justify-center text-slate-900 pointer-events-auto hover:bg-slate-50 transition-all active:scale-90 border border-slate-200"
-                >
-                  <ChevronRight size={22} />
-                </button>
-              </div>
-            )}
-
-            {featuredShifts.length > 1 && (
-              <div className="flex justify-center gap-2 -mt-4 mb-6">
-                {featuredShifts.map((_: any, i: number) => (
-                  <div key={i} className={`h-1.5 rounded-full transition-all ${i === activeShiftIndex ? 'w-6 bg-blue-600' : 'w-1.5 bg-slate-300'}`} />
-                ))}
-              </div>
-            )}
-          </div>
-        )
-      })()}
+      <AgentFeaturedShiftsCarousel
+        myShifts={admin.myShifts}
+        allAgents={allAgents}
+        allShifts={shifts}
+        certifiedDates={certifiedDates}
+        onOpenChat={(patrolGroupId) => {
+          setChatPatrolGroupId(patrolGroupId)
+          setShowChat(true)
+        }}
+        className="px-1 mb-2"
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
         <div className="lg:col-span-1 space-y-6">

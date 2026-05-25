@@ -2,9 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { Clock, RefreshCw, Shield, CalendarDays, ChevronLeft, ChevronRight, Fingerprint, Phone } from "lucide-react"
-import NextShiftCard from "./NextShiftCard"
+import AgentFeaturedShiftsCarousel from "./AgentFeaturedShiftsCarousel"
 import OfficerDutyPanel from "./OfficerDutyPanel"
-import { isAssenza } from "@/utils/shift-logic"
 import { formatRepTypeLabel, getRepDaysForMonth } from "@/lib/agent-rep-utils"
 
 type Props = {
@@ -56,8 +55,6 @@ export default function MobileAgentRiepilogo({
   isPublished = true,
 }: Props) {
   const [currentTime, setCurrentTime] = useState(new Date())
-  const [activeShiftIndex, setActiveShiftIndex] = useState(0)
-
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date()), 1000)
     return () => clearInterval(t)
@@ -68,21 +65,6 @@ export default function MobileAgentRiepilogo({
     [myShifts, currentYear, currentMonth]
   )
   const repCount = repDays.length
-
-  const featuredShifts = useMemo(() => {
-    const now = new Date()
-    now.setHours(0, 0, 0, 0)
-    return myShifts
-      .filter((s: any) => {
-        const d = new Date(s.date)
-        d.setHours(0, 0, 0, 0)
-        return d >= now && !isAssenza(s.type)
-      })
-      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .slice(0, 3)
-  }, [myShifts])
-
-  const currentShift = featuredShifts[activeShiftIndex] || featuredShifts[0]
 
   const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1
   const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear
@@ -99,6 +81,14 @@ export default function MobileAgentRiepilogo({
 
   return (
     <section id="riepilogo-operativo" className="px-4 pt-2 pb-4 space-y-4 scroll-mt-24">
+      {/* Carosello 3 giorni servizio + dettaglio OdS (come desktop) */}
+      <AgentFeaturedShiftsCarousel
+        myShifts={myShifts}
+        allAgents={allAgents}
+        allShifts={shifts}
+        certifiedDates={certifiedDates}
+      />
+
       <div className="bg-[#0f172a] text-white rounded-3xl p-5 shadow-xl border border-white/10 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-40 h-40 bg-blue-600/20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
 
@@ -276,47 +266,6 @@ export default function MobileAgentRiepilogo({
       {currentUser.isUfficiale && (
         <div className="-mx-1">
           <OfficerDutyPanel />
-        </div>
-      )}
-
-      {currentShift ? (
-        <div className="space-y-2">
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">
-            Prossimo impegno
-          </p>
-          <NextShiftCard
-            shift={currentShift}
-            allAgents={allAgents}
-            allShifts={shifts}
-            certifiedDates={certifiedDates}
-          />
-          {featuredShifts.length > 1 && (
-            <div className="flex justify-center gap-1.5">
-              {featuredShifts.map((_: any, i: number) => (
-                <button
-                  key={i}
-                  type="button"
-                  aria-label={`Turno ${i + 1}`}
-                  onClick={() => setActiveShiftIndex(i)}
-                  className={`h-1.5 rounded-full transition-all ${
-                    i === activeShiftIndex ? "w-6 bg-blue-600" : "w-1.5 bg-slate-300"
-                  }`}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 text-center">
-          <Clock className="mx-auto text-slate-300 mb-2" size={28} />
-          <p className="text-sm font-bold text-slate-600">Nessun turno imminente</p>
-          <button
-            type="button"
-            onClick={() => onNavigate("planning")}
-            className="mt-3 text-[10px] font-black uppercase text-blue-600 tracking-widest"
-          >
-            Apri pianificazione
-          </button>
         </div>
       )}
     </section>
