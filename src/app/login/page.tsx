@@ -57,7 +57,7 @@ function LoginForm() {
     const formData = new FormData(e.currentTarget)
     const matricola = formData.get("matricola")
     const password = formData.get("password")
-    const slug = formData.get("tenantSlug")
+    const slug = String(formData.get("tenantSlug") || "").trim().toLowerCase()
 
     // Se richiesto captcha, verifica che il token esista
     if (showCaptcha && !captchaToken) {
@@ -81,13 +81,17 @@ function LoginForm() {
       sessionStorage.setItem("login_failed_time", Date.now().toString())
       setCaptchaToken(null)
       captchaRef.current?.resetCaptcha()
-      setError(res.error === "CredentialsSignin" ? "Credenziali non valide. Verifica matricola e password." : res.error)
+      setError(
+        res.error === "CredentialsSignin"
+          ? "Accesso negato. Usa il codice comando corretto (es. altamura), matricola e password."
+          : res.error
+      )
       setLoading(false)
     } else {
       // Reset su successo
       sessionStorage.removeItem("login_failed_attempts")
       setFailedAttempts(0)
-      router.push("/")
+      router.push(slug ? `/${slug}` : "/")
       router.refresh()
     }
   }

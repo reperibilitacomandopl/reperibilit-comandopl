@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import AdminDashboard from "@/components/AdminDashboard"
 import { resolveTheoreticalShift } from "@/utils/theoretical-shift"
+import { mapAgentForPlanningGrid, mapShiftForPlanningGrid } from "@/lib/serialize-for-client"
 
 export const dynamic = "force-dynamic"
 
@@ -46,6 +47,13 @@ export default async function PianificazionePage({ params, searchParams }: { par
           lt: new Date(Date.UTC(currentYear, currentMonth, 2)),
         },
       },
+      select: {
+        id: true,
+        userId: true,
+        date: true,
+        type: true,
+        repType: true,
+      },
     }),
     prisma.monthStatus.findUnique({
       where: { 
@@ -64,10 +72,14 @@ export default async function PianificazionePage({ params, searchParams }: { par
 
   // === INIEZIONE TURNI TEORICI PER IL 1° DEL MESE SUCCESSIVO ===
   const nextMonthFirst = new Date(Date.UTC(currentYear, currentMonth, 1))
+  const nextDayKey = nextMonthFirst.getTime()
+  const shiftByUserDay = new Set(
+    shifts.map((s) => `${s.userId}:${new Date(s.date).getTime()}`)
+  )
   const augmentedShifts = [...shifts]
-  
+
   users.forEach(user => {
-    const hasNextDay = shifts.some(s => s.userId === user.id && new Date(s.date).getTime() === nextMonthFirst.getTime())
+    const hasNextDay = shiftByUserDay.has(`${user.id}:${nextDayKey}`)
     if (!hasNextDay) {
       const theoretical = resolveTheoreticalShift({
         user: { ...user, rotationGroup: rotationGroups.find(g => g.id === user.rotationGroupId) },
@@ -91,8 +103,8 @@ export default async function PianificazionePage({ params, searchParams }: { par
   return (
     <div className="p-2 sm:p-4 lg:p-6 relative z-10 h-full">
       <AdminDashboard
-        allAgents={users as any}
-        shifts={augmentedShifts as any}
+        allAgents={users.map(mapAgentForPlanningGrid)}
+        shifts={augmentedShifts.map(mapShiftForPlanningGrid)}
         currentYear={currentYear}
         currentMonth={currentMonth}
         isPublished={isPublished}
@@ -101,7 +113,11 @@ export default async function PianificazionePage({ params, searchParams }: { par
         rotationGroups={rotationGroups}
         categories={categories}
         tenantSlug={tenantSlug}
-        currentUser={session.user}
+        currentUser={{
+          ...session.user,
+          privacyAcceptedAt: session.user.privacyAcceptedAt ?? null,
+          gpsAcceptedAt: session.user.gpsAcceptedAt ?? null,
+        }}
         logoUrl={tenant?.logoUrl}
       />
     </div>

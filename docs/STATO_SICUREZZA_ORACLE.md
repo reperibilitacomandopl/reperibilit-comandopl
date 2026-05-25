@@ -63,7 +63,7 @@
 ## Cosa NON è stato fatto (richiede te / server)
 
 ### Deploy produzione (obbligatorio per avere effetto sul sito)
-- [ ] `git commit` + `git push` delle modifiche locali
+- [x] `git commit` + `git push` delle modifiche locali
 - [ ] SSH su Oracle: `git pull` nella cartella app (es. `~/app`)
 - [ ] `npm run build` sul server **oppure** rebuild immagine Docker
 - [ ] `docker compose up -d --build` (o `docker-compose.prod.yml`)
@@ -78,7 +78,7 @@
 - [ ] **Effetto:** tutti gli utenti dovranno rifare login se ruoti `AUTH_SECRET`
 
 ### SEC-06 — Crontab reale sul server
-- [ ] Installare voci da `scripts/crontab.txt` in `crontab -e` (path `.env` corretto)
+- [x] Installare voci da `scripts/crontab.txt` in `crontab -e` (path `.env` corretto)
 - [ ] Verificare: `curl -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/shift-reminder` → `200`
 
 ### INFRA — Backup automatico

@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useCallback, startTransition } from "react"
 import { RefreshCw, Trash2, Calendar, X, AlertCircle, ArrowUpDown, ChevronUp, ChevronDown, Shield } from "lucide-react"
 import { useAdminState } from "./AdminStateContext"
 import { isAssenza } from "@/utils/shift-logic"
-import { AGENDA_CATEGORIES } from "@/utils/agenda-codes"
+import { AGENDA_CATEGORIES, HOURS_SHORT_CODES } from "@/utils/agenda-codes"
 import { showUndoToast } from "../ui/UndoToast"
 import PlanningMobileView from "../PlanningMobileView"
 
@@ -119,6 +119,15 @@ function getCellStyle(sType: string, rType: string, isWeekend: boolean) {
   return { badge: "", bg: isWeekend ? "bg-red-50/30" : "", badgeClass: "" }
 }
 
+function toDateKey(date: Date | string): string {
+  const d = new Date(date)
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`
+}
+
+function userDateKey(userId: string, year: number, month: number, day: number): string {
+  return `${userId}|${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+}
+
 /* ─── COLORI PER CATEGORIA AGENDA ─── */
 const CAT_THEME: Record<string, { border: string; bg: string; text: string; btnBg: string; btnText: string; btnHover: string }> = {
   amber:  { border: "border-yellow-300", bg: "bg-yellow-50",  text: "text-yellow-800", btnBg: "bg-yellow-500",  btnText: "text-white", btnHover: "hover:bg-yellow-600" },
@@ -190,6 +199,28 @@ export default function AdminShiftGrid({
     })
   }, [dayInfo, dateFrom, dateTo, currentYear, currentMonth])
 
+  /** Indice turni per cella — evita shifts.find() su ogni render (51×31×N) */
+  const shiftByUserDate = useMemo(() => {
+    const map = new Map<string, (typeof shifts)[0]>()
+    for (const s of shifts) {
+      if (!s?.userId || !s?.date) continue
+      map.set(`${s.userId}|${toDateKey(s.date)}`, s)
+    }
+    return map
+  }, [shifts])
+
+  const shiftsByDate = useMemo(() => {
+    const map = new Map<string, (typeof shifts)[0][]>()
+    for (const s of shifts) {
+      if (!s?.date) continue
+      const k = toDateKey(s.date)
+      const list = map.get(k)
+      if (list) list.push(s)
+      else map.set(k, [s])
+    }
+    return map
+  }, [shifts])
+
   const massimaliWarnings = useMemo(() => {
     if (!editingCell || !editingCell.isBulk || !editValue.toLowerCase().includes("rep")) return []
     
@@ -230,14 +261,10 @@ export default function AdminShiftGrid({
       const targetM = di.isNextMonth ? (currentMonth === 12 ? 1 : currentMonth + 1) : currentMonth
       const targetD = di.day
 
-      const repsForDay = shifts.filter(s => {
-        const d = new Date(s.date)
-        const matchDate = (
-          (d.getFullYear() === targetY && d.getMonth() + 1 === targetM && d.getDate() === targetD) ||
-          (d.getUTCFullYear() === targetY && d.getUTCMonth() + 1 === targetM && d.getUTCDate() === targetD)
-        )
-        return matchDate && (s.repType || "").toLowerCase().includes("rep")
-      })
+      const dateKey = `${targetY}-${String(targetM).padStart(2, "0")}-${String(targetD).padStart(2, "0")}`
+      const repsForDay = (shiftsByDate.get(dateKey) || []).filter((s) =>
+        (s.repType || "").toLowerCase().includes("rep")
+      )
 
       const presentAgents = repsForDay.map(s => {
         return allAgents.find(a => a.id === s.userId)
@@ -247,7 +274,7 @@ export default function AdminShiftGrid({
       stats[dKey] = { total: repsForDay.length, officers, agents: presentAgents }
     })
     return stats
-  }, [filteredDayInfo, shifts, allAgents, currentYear, currentMonth])
+  }, [filteredDayInfo, shiftsByDate, allAgents, currentYear, currentMonth])
 
   /* ─── SORT ─── */
   const toggleSort = (field: string) => {
@@ -262,26 +289,30 @@ export default function AdminShiftGrid({
   }
 
   /* ─── CELL EDITOR ─── */
-  // Determina se un codice è basato su ore
-  const isHoursCode = (code: string): boolean => {
-    for (const cat of AGENDA_CATEGORIES) {
-      const item = cat.items.find(i => i.shortCode === code || i.code === code)
-      if (item && item.unit === 'HOURS') return true
-    }
-    return false
-  }
+  const isHoursCode = (code: string): boolean => HOURS_SHORT_CODES.has(code)
 
-  const openCellEditor = (agentId: string, agentName: string, day: number, currentType: string, baseType?: string, canBeRep?: boolean) => {
-    setEditingCell({ agentId, agentName, day, currentType, baseType, canBeRep })
-    setEditValue(currentType)
-    setEditHours("")
-  }
+  const openCellEditor = useCallback((
+    agentId: string,
+    agentName: string,
+    day: number,
+    currentType: string,
+    baseType?: string,
+    canBeRep?: boolean
+  ) => {
+    startTransition(() => {
+      setEditingCell({ agentId, agentName, day, currentType, baseType, canBeRep })
+      setEditValue(currentType)
+      setEditHours("")
+    })
+  }, [])
 
-  const openBulkEditor = () => {
-    setEditingCell({ isBulk: true, size: selectedCells.size })
-    setEditValue("")
-    setEditHours("")
-  }
+  const openBulkEditor = useCallback(() => {
+    startTransition(() => {
+      setEditingCell({ isBulk: true, size: selectedCells.size })
+      setEditValue("")
+      setEditHours("")
+    })
+  }, [selectedCells.size])
 
   const handleSave = async (val: string, hours?: number) => {
     if (editingCell?.isBulk) {
@@ -317,17 +348,7 @@ export default function AdminShiftGrid({
         const dayNum = parseInt(cellKey.substring(sepIdx + 1), 10)
         const dateIso = new Date(Date.UTC(currentYear, currentMonth - 1, dayNum)).toISOString().split('T')[0]
         
-        const existing = shifts.find(s => {
-          if (!s || !s.date) return false
-          try {
-            const sDate = new Date(s.date)
-            // Usa UTC per essere consistente con la data isolata
-            const sDateStr = `${sDate.getUTCFullYear()}-${String(sDate.getUTCMonth() + 1).padStart(2, '0')}-${String(sDate.getUTCDate()).padStart(2, '0')}`
-            return s.userId === aId && sDateStr === dateIso.split('T')[0]
-          } catch {
-            return false
-          }
-        })
+        const existing = shiftByUserDate.get(`${aId}|${dateIso.split("T")[0]}`)
         return { userId: aId, date: dateIso, type: existing?.type || "", dayNum }
       })
 
@@ -415,12 +436,7 @@ export default function AdminShiftGrid({
       if (selectedCells.size === 1) {
         const nextDateObj = new Date(Date.UTC(currentYear, currentMonth - 1, day + 1))
         const nextDateStr = `${nextDateObj.getUTCFullYear()}-${String(nextDateObj.getUTCMonth() + 1).padStart(2, '0')}-${String(nextDateObj.getUTCDate()).padStart(2, '0')}`
-        const nextDayShift = shifts.find(s => {
-          if (!s || !s.date) return false
-          const d = new Date(s.date)
-          const sDateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
-          return s.userId === agentId && sDateStr === nextDateStr
-        })
+        const nextDayShift = shiftByUserDate.get(`${agentId}|${nextDateStr}`)
         const nextSType = (nextDayShift?.type || "").toUpperCase()
         const isTodayMOrP = sType.startsWith('M') || sType.startsWith('P')
         const isTomorrowMOrP = nextSType.startsWith('M') || nextSType.startsWith('P')
@@ -701,11 +717,7 @@ export default function AdminShiftGrid({
                   const targetDayStr = String(di.day).padStart(2, '0');
                   const targetDateStr = `${targetYearStr}-${targetMonthStr}-${targetDayStr}`;
 
-                  const shift = shifts.find(s => {
-                    const d = new Date(s.date);
-                    const sDateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
-                    return s.userId === agent.id && sDateStr === targetDateStr;
-                  })
+                  const shift = shiftByUserDate.get(userDateKey(agent.id, targetYear, targetMonth, di.day))
                   const sType = (shift?.type || "").toUpperCase()
                   const rType = (shift?.repType || "")
 

@@ -17,7 +17,16 @@ import PersonalBalances from "./agent/PersonalBalances"
 import AgentRotationView from "./agent/AgentRotationView"
 import AgentVerbalListView from "./agent/AgentVerbalListView"
 import MobileAgentLaunchpad from "./agent/MobileAgentLaunchpad"
+import MobileAgentRiepilogo from "./agent/MobileAgentRiepilogo"
+import AgentTimecardView from "./agent/AgentTimecardView"
+import BachecaPanel from "@/components/BachecaPanel"
+import AgentSosModal from "./agent/AgentSosModal"
 import { useAgentData } from "@/hooks/useAgentData"
+
+const MONTH_NAMES = [
+  "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+  "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre",
+]
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode; fallback: React.ReactNode }> {
   state = { hasError: false }
@@ -68,14 +77,29 @@ export default function DashboardShell({
   initialView
 }: DashboardShellProps & { initialView?: string }) {
   const [activeTab, setActiveTab] = useState(initialView || 'dashboard')
+  const [showSosModal, setShowSosModal] = useState(false)
+  const [requestPreset, setRequestPreset] = useState<{ code?: string; notes?: string } | null>(null)
   const { role, name, matricola, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem } = session.user
 
   // Sincronizza tab quando arriva da Launchpad (cambio query string)
   React.useEffect(() => {
-    if (initialView && initialView !== 'dashboard') {
+    if (initialView) {
       setActiveTab(initialView)
     }
   }, [initialView])
+
+  // Anchor #riepilogo-operativo dalla griglia moduli
+  React.useEffect(() => {
+    if (activeTab !== "dashboard") return
+    const scrollToRiepilogo = () => {
+      if (window.location.hash === "#riepilogo-operativo") {
+        document.getElementById("riepilogo-operativo")?.scrollIntoView({ behavior: "smooth", block: "start" })
+      }
+    }
+    scrollToRiepilogo()
+    window.addEventListener("hashchange", scrollToRiepilogo)
+    return () => window.removeEventListener("hashchange", scrollToRiepilogo)
+  }, [activeTab])
 
   const agentData = useAgentData({
     currentUser: session.user,
@@ -189,10 +213,26 @@ export default function DashboardShell({
                   />
               </div>
 
-              {/* Mobile: Launchpad con quadretti (solo Link, niente eventi) */}
-              <div className="lg:hidden">
+              {/* Mobile: riepilogo operativo (timbrature) + griglia moduli */}
+              <div className="lg:hidden -mx-4 sm:mx-0">
                 {activeTab === 'dashboard' && (
-                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500" suppressHydrationWarning>
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-2" suppressHydrationWarning>
+                    <MobileAgentRiepilogo
+                      currentUser={session.user}
+                      tenantSlug={tenantSlug || ""}
+                      currentMonth={currentMonth}
+                      currentYear={currentYear}
+                      monthNames={MONTH_NAMES}
+                      shifts={shifts}
+                      myShifts={myShifts}
+                      allAgents={allAgents}
+                      certifiedDates={certifiedDates}
+                      isClockedIn={agentData.isClockedIn}
+                      lastClockTime={agentData.lastClockTime}
+                      clockLoading={agentData.clockLoading}
+                      handleClockAction={agentData.handleClockAction}
+                      onSos={() => setShowSosModal(true)}
+                    />
                     <MobileAgentLaunchpad
                       tenantSlug={tenantSlug || ""}
                       isClockedIn={agentData.isClockedIn}
@@ -231,7 +271,16 @@ export default function DashboardShell({
                       <p className="text-slate-300 text-[10px] font-black uppercase tracking-[0.2em]">Ferie, Congedi e Permessi</p>
                     </div>
                     <div className="px-1">
-                      <AgentRequestForm balances={null} onClose={() => setActiveTab('dashboard')} />
+                      <AgentRequestForm
+                        key={requestPreset?.code ?? "default-request"}
+                        balances={agentData.balances}
+                        initialCode={requestPreset?.code}
+                        initialNotes={requestPreset?.notes}
+                        onClose={() => {
+                          setRequestPreset(null)
+                          setActiveTab("dashboard")
+                        }}
+                      />
                     </div>
                   </div>
                 )}
@@ -252,6 +301,46 @@ export default function DashboardShell({
                 {activeTab === 'verbali' && (
                   <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <AgentVerbalListView tenantSlug={tenantSlug || ""} />
+                  </div>
+                )}
+
+                {activeTab === 'cartellino' && (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-4">
+                    <AgentTimecardView
+                      admin={{ ...agentData, currentUser: session.user, myShifts }}
+                      onShowRequest={() => {
+                        setRequestPreset(null)
+                        setActiveTab("requests")
+                      }}
+                      onShowMancataTimb={() => {
+                        setRequestPreset({
+                          code: "TIMB_MANC",
+                          notes: "Segnalazione mancata timbratura del ...",
+                        })
+                        setActiveTab("requests")
+                      }}
+                      onShowUpload={() => {
+                        setRequestPreset({
+                          code: "ALLEGATO",
+                          notes: "Invio allegato relativo a ...",
+                        })
+                        setActiveTab("requests")
+                      }}
+                      onShowStraordinario={() => {
+                        setRequestPreset({
+                          code: "STR_EXTRA",
+                          notes:
+                            "Richiesta autorizzazione per straordinario imprevisto causa: ...\nOre richieste: ",
+                        })
+                        setActiveTab("requests")
+                      }}
+                    />
+                  </div>
+                )}
+
+                {activeTab === 'bacheca' && (
+                  <div className="bg-white rounded-[2.5rem] p-4 border border-slate-200 shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <BachecaPanel onClose={() => setActiveTab("dashboard")} />
                   </div>
                 )}
 
@@ -304,7 +393,21 @@ export default function DashboardShell({
       </footer>
 
       {/* Floating SOS Button — always accessible for non-admin users */}
-      {role !== "ADMIN" && <FloatingSosButton />}
+      {role !== "ADMIN" && (
+        <>
+          <FloatingSosButton onSendSos={agentData.handleSendFullSos} />
+          {showSosModal && (
+            <AgentSosModal
+              onClose={() => setShowSosModal(false)}
+              onSendSos={async (note, audio) => {
+                const ok = await agentData.handleSendFullSos(note, audio)
+                if (ok) setShowSosModal(false)
+                return ok
+              }}
+            />
+          )}
+        </>
+      )}
 
       {/* Mobile Bottom Navigation */}
       {role !== "ADMIN" && (

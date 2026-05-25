@@ -101,28 +101,40 @@ function createUpstashLimiter(limit: number, window: string): Limiter {
   }
 }
 
+let loggedMemoryFallback = false
+
 export const createRateLimiter = (limit: number, window: string): Limiter => {
   const r = getRedis()
   if (r && !upstashDisabled) {
     return createUpstashLimiter(limit, window)
   }
 
-  if (process.env.NODE_ENV === "production" && !r) {
-    console.warn(
-      `[RATE_LIMIT] Upstash non configurato: uso limiter in-memory (${limit}/${window}).`
-    )
+  if (process.env.NODE_ENV === "production" && !r && !loggedMemoryFallback) {
+    loggedMemoryFallback = true
+    console.warn("[RATE_LIMIT] Upstash non configurato: limiter in-memory su tutte le finestre.")
   }
 
   return createMemoryLimiter(limit, window)
 }
 
-// Limiter predefiniti
-export const getGlobalLimiter = () => createRateLimiter(60, "1 m")
-export const getAuthLimiter = () => createRateLimiter(5, "10 m")
-export const getWriteLimiter = () => createRateLimiter(100, "1 m")
-export const getBulkLimiter = () => createRateLimiter(5000, "1 m")
-export const getUserLimiter = () => createRateLimiter(200, "1 m")
-export const getOdsLimiter = () => createRateLimiter(10, "1 h")
+const limiterCache = new Map<string, Limiter>()
+
+function cachedLimiter(key: string, limit: number, window: string): Limiter {
+  let limiter = limiterCache.get(key)
+  if (!limiter) {
+    limiter = createRateLimiter(limit, window)
+    limiterCache.set(key, limiter)
+  }
+  return limiter
+}
+
+// Limiter predefiniti (singleton — evita nuovo Map + log a ogni richiesta middleware)
+export const getGlobalLimiter = () => cachedLimiter("global", 60, "1 m")
+export const getAuthLimiter = () => cachedLimiter("auth", 5, "10 m")
+export const getWriteLimiter = () => cachedLimiter("write", 100, "1 m")
+export const getBulkLimiter = () => cachedLimiter("bulk", 5000, "1 m")
+export const getUserLimiter = () => cachedLimiter("user", 200, "1 m")
+export const getOdsLimiter = () => cachedLimiter("ods", 10, "1 h")
 
 export async function checkRateLimit(identifier: string, limit: number, windowMs: number): Promise<boolean> {
   const seconds = Math.max(1, Math.floor(windowMs / 1000))

@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import PannelloOverview from "@/components/PannelloOverview"
+import { serializeForClient } from "@/lib/serialize-for-client"
 
 export const dynamic = "force-dynamic"
 
@@ -43,29 +44,35 @@ export default async function PannelloPage() {
     prisma.shiftSwapRequest.count({ where: { status: "PENDING", ...tf } })
   ])
 
-  // Copertura ultimi 7 giorni (per mini-grafico)
+  // Copertura ultimi 7 giorni — una sola query invece di 7 round-trip al DB
+  const weekStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() - 6))
+  const weekEnd = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() + 1))
+  const weekShifts = await prisma.shift.findMany({
+    where: { ...tf, date: { gte: weekStart, lt: weekEnd } },
+    select: { type: true, date: true },
+  })
+  const isAssenzaType = (type: string | null) => {
+    const t = (type || "").toUpperCase()
+    return t === "FERIE" || t.startsWith("FERIE_") || t === "MAL" || t === "MALATT" || t === "MALATTIA" ||
+           t === "RR" || t === "RP" || t === "RPS" || t.startsWith("CONG") || t === "104" ||
+           t.startsWith("104_") || t === "MOT_PE" || t === "MOT_PERS" || t === "ALLATT" || t === "BR" ||
+           t === "DON_SA" || t === "DON_SANGUE" || t.startsWith("FEST_")
+  }
   const weekDays: { date: string; dayLabel: string; operativi: number; totale: number }[] = []
   for (let i = 6; i >= 0; i--) {
     const d = new Date(now)
     d.setDate(d.getDate() - i)
     const dayStart = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
     const dayEnd = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate() + 1))
-    const dayShifts = await prisma.shift.findMany({
-      where: { ...tf, date: { gte: dayStart, lt: dayEnd } },
-      select: { type: true }
-    })
-    const assenti = dayShifts.filter((s: { type: string | null }) => {
-      const t = (s.type || "").toUpperCase()
-      return t === "FERIE" || t.startsWith("FERIE_") || t === "MAL" || t === "MALATT" || t === "MALATTIA" ||
-             t === "RR" || t === "RP" || t === "RPS" || t.startsWith("CONG") || t === "104" ||
-             t.startsWith("104_") || t === "MOT_PE" || t === "MOT_PERS" || t === "ALLATT" || t === "BR" ||
-             t === "DON_SA" || t === "DON_SANGUE" || t.startsWith("FEST_")
-    }).length
+    const assenti = weekShifts.filter(
+      (s: { date: Date; type: string | null }) =>
+        s.date >= dayStart && s.date < dayEnd && isAssenzaType(s.type)
+    ).length
     weekDays.push({
       date: dayStart.toISOString(),
-      dayLabel: d.toLocaleDateString('it-IT', { weekday: 'short' }).substring(0, 3).toUpperCase(),
+      dayLabel: d.toLocaleDateString("it-IT", { weekday: "short" }).substring(0, 3).toUpperCase(),
       operativi: totalAgents - assenti,
-      totale: totalAgents
+      totale: totalAgents,
     })
   }
 
@@ -83,7 +90,7 @@ export default async function PannelloPage() {
     <div className="p-6 lg:p-8 relative z-10">
       <PannelloOverview
         totalAgents={totalAgents}
-        todayShifts={todayShifts as any}
+        todayShifts={serializeForClient(todayShifts)}
         isPublished={monthStatus?.isPublished ?? false}
         currentMonth={currentMonth}
         currentYear={currentYear}

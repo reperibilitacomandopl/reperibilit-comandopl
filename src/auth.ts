@@ -35,6 +35,12 @@ export function verify2FAProof(proof: string, userId: string): boolean {
 const HCAPTCHA_SECRET = process.env.HCAPTCHA_SECRET_KEY
 const HCAPTCHA_VERIFY_URL = "https://hcaptcha.com/siteverify"
 
+function toConsentIso(v: unknown): string | null {
+  if (v == null) return null
+  if (typeof v === "string") return v
+  return new Date(v as string | number).toISOString()
+}
+
 async function verifyHCaptcha(token: string): Promise<boolean> {
   if (!HCAPTCHA_SECRET) {
     if (process.env.NODE_ENV === "production") {
@@ -229,8 +235,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           twoFactorEnabled: user.twoFactorEnabled,
           twoFactorVerified: false,
           trustedIps: user.trustedIps || [],
-          privacyAcceptedAt: user.privacyAcceptedAt,
-          gpsAcceptedAt: user.gpsAcceptedAt,
+          privacyAcceptedAt: toConsentIso(user.privacyAcceptedAt),
+          gpsAcceptedAt: toConsentIso(user.gpsAcceptedAt),
           squadra: user.squadra,
           isUfficiale: user.isUfficiale
         }
@@ -268,8 +274,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.twoFactorEnabled = (user as any).twoFactorEnabled as boolean | undefined
         token.twoFactorVerified = false
         token.trustedIps = (user as any).trustedIps as string[] | undefined
-        token.privacyAcceptedAt = (user as any).privacyAcceptedAt as Date | null | undefined
-        token.gpsAcceptedAt = (user as any).gpsAcceptedAt as Date | null | undefined
+        token.privacyAcceptedAt = toConsentIso((user as any).privacyAcceptedAt)
+        token.gpsAcceptedAt = toConsentIso((user as any).gpsAcceptedAt)
         token.squadra = (user as any).squadra as string | undefined
         token.isUfficiale = (user as any).isUfficiale as boolean | undefined
       }
@@ -314,8 +320,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.twoFactorEnabled = token.twoFactorEnabled as boolean
         session.user.twoFactorVerified = token.twoFactorVerified as boolean
         session.user.trustedIps = (token.trustedIps as string[]) || []
-        session.user.privacyAcceptedAt = token.privacyAcceptedAt as Date | null
-        session.user.gpsAcceptedAt = token.gpsAcceptedAt as Date | null
+        session.user.privacyAcceptedAt = toConsentIso(token.privacyAcceptedAt)
+        session.user.gpsAcceptedAt = toConsentIso(token.gpsAcceptedAt)
         session.user.squadra = token.squadra as string | undefined
         session.user.isUfficiale = (token.isUfficiale as boolean) || false
         

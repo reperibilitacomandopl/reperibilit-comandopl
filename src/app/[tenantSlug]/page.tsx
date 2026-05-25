@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import DashboardShell from "@/components/DashboardShell"
 import { isHoliday } from "@/utils/holidays"
 import { generateCalendarToken } from "@/lib/calendar-token"
+import { serializeForClient } from "@/lib/serialize-for-client"
 
 export default async function Home({ 
   params,
@@ -62,8 +63,6 @@ export default async function Home({
     }
   })
 
-  const myShifts = shifts.filter((s: any) => s.userId === session.user.id)
-
   const agendaEntries = await prisma.agendaEntry.findMany({
     where: { 
       userId: session.user.id,
@@ -108,21 +107,24 @@ export default async function Home({
     return { day: d, name: dayNames[date.getDay()], isWeekend: isHoliday(date), isNextMonth: false }
   })
 
+  const clientShifts = serializeForClient(shifts)
+  const myShifts = clientShifts.filter((s: { userId: string }) => s.userId === session.user.id)
+
   return (
     <DashboardShell 
-      session={session}
+      session={serializeForClient(session)}
       allAgents={users}
-      shifts={shifts}
+      shifts={clientShifts}
       myShifts={myShifts}
-      agendaEntries={agendaEntries}
+      agendaEntries={serializeForClient(agendaEntries)}
       currentMonth={currentMonth}
       currentYear={currentYear}
       isPublished={isPublished}
-      settings={settings}
+      settings={settings ? serializeForClient(settings) : null}
       tenantSlug={urlSlug}
       dayInfo={dayInfo}
       logoUrl={tenant?.logoUrl}
-      tenant={tenant}
+      tenant={tenant ? { lat: tenant.lat, lng: tenant.lng, clockInRadius: tenant.clockInRadius } : null}
       certifiedDates={certifiedDates}
       calendarToken={generateCalendarToken(session.user.id)}
       initialView={view || undefined}

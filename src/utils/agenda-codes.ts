@@ -123,6 +123,13 @@ export const AGENDA_CATEGORIES: AgendaCategory[] = RAW_AGENDA_CATEGORIES.map(cat
   }))
 })) as AgendaCategory[]
 
+/** Codici a ore — lookup O(1) nel modale pianificazione */
+export const HOURS_SHORT_CODES = new Set(
+  AGENDA_CATEGORIES.flatMap((cat) =>
+    cat.items.filter((item) => item.unit === "HOURS").map((item) => item.shortCode)
+  )
+)
+
 export function getCategoryColor(codeOrShortCode: string) {
   for (const cat of AGENDA_CATEGORIES) {
     if (cat.items.some(item => item.code === codeOrShortCode || item.shortCode === codeOrShortCode)) {
