@@ -18,7 +18,7 @@ export default async function PannelloPage() {
   // Fetch lightweight data for overview
   const tf = tenantId ? { tenantId } : {}
 
-  const [totalAgents, todayShifts, monthStatus, settings, totalVehicles, pendingSwaps] = await Promise.all([
+  const [totalAgents, todayShifts, monthStatus, settings, totalVehicles, pendingSwaps, pendingRequests] = await Promise.all([
     prisma.user.count({ where: { role: "AGENTE", ...tf } }),
     prisma.shift.findMany({
       where: {
@@ -41,7 +41,13 @@ export default async function PannelloPage() {
     }),
     prisma.globalSettings.findFirst({ where: { ...tf } }),
     prisma.vehicle.count({ where: { ...tf } }),
-    prisma.shiftSwapRequest.count({ where: { status: "PENDING", ...tf } })
+    prisma.shiftSwapRequest.count({ where: { status: "PENDING", ...tf } }),
+    prisma.agentRequest.count({
+      where: {
+        ...tf,
+        status: { in: ["PENDING", "PENDING_OFFICER", "PENDING_ADMIN"] },
+      },
+    }),
   ])
 
   // Copertura ultimi 7 giorni — una sola query invece di 7 round-trip al DB
@@ -97,6 +103,7 @@ export default async function PannelloPage() {
         settings={settings as any}
         totalVehicles={totalVehicles}
         pendingSwaps={pendingSwaps}
+        pendingRequests={pendingRequests}
         tenantSlug={session.user.tenantSlug || ""}
         tenantName={session.user.tenantName || ""}
         totalScadenze={totalScadenze}

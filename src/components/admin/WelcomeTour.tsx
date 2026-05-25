@@ -12,7 +12,9 @@ interface WelcomeTourProps {
   hasPecConfig: boolean
 }
 
-const TOUR_STORAGE_KEY = "sentinel_tour_completed"
+function tourStorageKey(tenantSlug?: string) {
+  return tenantSlug ? `sentinel_tour_completed_${tenantSlug}` : "sentinel_tour_completed"
+}
 
 export default function WelcomeTour({ 
   tenantSlug, hasAgents, hasGroups, hasSchools, hasCategories, hasPecConfig 
@@ -22,15 +24,15 @@ export default function WelcomeTour({
 
   useEffect(() => {
     let completed = null
-    try { completed = localStorage.getItem(TOUR_STORAGE_KEY) } catch (e) {}
+    try { completed = localStorage.getItem(tourStorageKey(tenantSlug)) } catch (e) {}
     if (!completed) {
       setIsVisible(true)
     }
-  }, [])
+  }, [tenantSlug])
 
   const handleDismiss = () => {
     setDismissed(true)
-    try { localStorage.setItem(TOUR_STORAGE_KEY, "true") } catch (e) {}
+    try { localStorage.setItem(tourStorageKey(tenantSlug), "true") } catch (e) {}
     setIsVisible(false)
   }
 

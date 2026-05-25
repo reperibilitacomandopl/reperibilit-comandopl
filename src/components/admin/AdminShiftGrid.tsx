@@ -221,6 +221,26 @@ export default function AdminShiftGrid({
     return map
   }, [shifts])
 
+  /** Agenti che superano il massimale reperibilità nel mese corrente */
+  const agentsOverMassimale = useMemo(() => {
+    const over = new Set<string>()
+    for (const agent of filteredAgents) {
+      const effectiveMassimale = agent.isUfficiale
+        ? (settings?.massimaleUfficiale ?? 6)
+        : (settings?.massimaleAgente ?? 5)
+      const repTotal =
+        typeof agent.repTotal === "number"
+          ? agent.repTotal
+          : shifts.filter(
+              (s) =>
+                s.userId === agent.id &&
+                (s.repType || "").toLowerCase().includes("rep")
+            ).length
+      if (repTotal > effectiveMassimale) over.add(agent.id)
+    }
+    return over
+  }, [filteredAgents, shifts, settings])
+
   const massimaliWarnings = useMemo(() => {
     if (!editingCell || !editingCell.isBulk || !editValue.toLowerCase().includes("rep")) return []
     
@@ -731,10 +751,11 @@ export default function AdminShiftGrid({
                   const hasRep = rType.toLowerCase().includes("rep")
                   const baseShift = hasRep && sType && !sType.includes("REP") && sType !== "RP" ? sType : ""
                   const isSelected = selectedCells.has(`${agent.id}|${di.day}`)
+                  const overMassimale = agentsOverMassimale.has(agent.id) && hasRep && !di.isNextMonth
 
                     return (
                       <td key={di.isNextMonth ? `next-${di.day}` : `day-${agent.id}-${di.day}`}
-                        className={`px-0 py-0.5 text-center border-r border-slate-100/80 ${style.bg} ${di.isNextMonth ? "opacity-30 grayscale" : (readOnly ? "cursor-default select-none" : "cursor-pointer hover:brightness-95 select-none")} ${isSelected ? "ring-2 ring-indigo-500 ring-inset bg-indigo-50/50" : ""}`}
+                        className={`px-0 py-0.5 text-center border-r border-slate-100/80 ${style.bg} ${di.isNextMonth ? "opacity-30 grayscale" : (readOnly ? "cursor-default select-none" : "cursor-pointer hover:brightness-95 select-none")} ${isSelected ? "ring-2 ring-indigo-500 ring-inset bg-indigo-50/50" : ""} ${overMassimale ? "ring-2 ring-red-500 ring-inset" : ""}`}
                         onMouseDown={() => !di.isNextMonth && handleMouseDown(agent.id, idx, di.day, rType, sType)}
                         onMouseEnter={() => !di.isNextMonth && handleMouseEnter(agent.id, idx, di.day)}
                         onMouseUp={() => !di.isNextMonth && handleMouseUp(agent.id, agent.name, di.day, rType, sType)}>

@@ -1,7 +1,7 @@
 # Stato interventi sicurezza Oracle EU
 
 > **Ultimo aggiornamento:** 25 Maggio 2026  
-> **Produzione** (`gestionepolizialocale.it`): deploy `4c0e2da+` (mobile + performance). SEC-01/backup/CSP: vedi sotto.
+> **Produzione** (`gestionepolizialocale.it`): deploy `fd56151` (push iPhone, KPI pannello, OdS push). SEC-01 rotazione: ancora manuale.
 
 ---
 
@@ -10,7 +10,7 @@
 | Dove | Stato |
 |------|--------|
 | Codice in locale (questo repo) | Modifiche applicate, `npm run build` OK |
-| Server Oracle | **Da fare da te** (git pull + .env + docker + crontab) |
+| Server Oracle | Allineato a `fd56151` (maggio 2026) |
 | Documentazione operativa completa | [`SCALETTA_ORACLE_EU.md`](./SCALETTA_ORACLE_EU.md) |
 
 ---
@@ -94,6 +94,16 @@
 ### UX pianificazione admin
 - [x] Toolbar sticky + griglia scrollabile (`AdminDashboard`)
 - [x] Barra operativa collassabile su mobile (`AdminToolbar`)
+- [x] Evidenziazione celle REP oltre massimale (bordo rosso)
+
+### Push iPhone / PWA
+- [x] `NotificationManager` su mobile + riconnessione dopo aggiornamento
+- [x] `NEXT_PUBLIC_VAPID_PUBLIC_KEY` iniettata al **build** Docker (`Dockerfile` + `docker-compose` build args)
+- [x] Service worker semplificato per compatibilità iOS
+- [ ] Ogni agente deve toccare **Riconnetti notifiche** una volta dopo il deploy
+
+### Pannello Overview
+- [x] KPI **Approvazioni pendenti** (assenze + scambi turno)
 
 ### Documentazione legale
 - [x] Allineare `src/app/policy/page.tsx`, FAQ, README, BCP, capitolato (Oracle EU — no Vercel/Supabase)

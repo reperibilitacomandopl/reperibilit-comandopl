@@ -234,9 +234,10 @@ NEXTAUTH_URL="http://localhost:3000"
 # TELEGRAM BOT
 TELEGRAM_BOT_TOKEN="123456:ABCdefGHIjklMNOpqrSTUvwxyz"
 
-# PUSH NOTIFICATIONS (VAPID)
+# PUSH NOTIFICATIONS (VAPID) — la chiave pubblica va anche nel build Docker
 NEXT_PUBLIC_VAPID_PUBLIC_KEY="BDxxxxxx..."
 VAPID_PRIVATE_KEY="xxxxxxxx..."
+VAPID_SUBJECT="mailto:admin@comune.it"
 
 # (Opzionale) Email PEC
 SMTP_HOST="smtp.pec.provider.it"
@@ -255,6 +256,7 @@ L'istanza di produzione è su **Oracle Cloud** (regione UE), con **Nginx** (TLS)
 # Sul server (es. gestionepolizialocale.it)
 ssh -i ssh-key.pem ubuntu@gestionepolizialocale.it
 cd ~/app && git pull origin master
+# Il compose legge .env per passare NEXT_PUBLIC_VAPID_PUBLIC_KEY al build (obbligatorio per push su iPhone)
 sudo docker compose up -d --build portale-caserma
 # Dopo modifiche schema Prisma:
 sudo docker exec app-portale-caserma-1 npx prisma@6.4.1 db push --skip-generate

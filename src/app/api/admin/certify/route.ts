@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { sendTelegramMessage } from "@/lib/telegram"
+import { sendPushNotification } from "@/lib/push-notifications"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { requestTimestamp } from "@/lib/timestamp"
 import { signData } from "@/lib/certificate"
@@ -111,6 +112,20 @@ export async function POST(req: Request) {
         for (const shift of recipients) {
           const text = `📋 <b>ORDINE DI SERVIZIO EMESSO</b>\n\n📅 ${dateFormatted}\n🔒 Certificato da: ${session.user.name}\n\n⚠️ Controlla i dettagli del tuo servizio nell'app.`
           await sendTelegramMessage((shift as any).user.telegramChatId, text)
+        }
+
+        const slug = session.user.tenantSlug || ""
+        const pushUrl = slug ? `/${slug}?view=planning` : "/"
+        const notifiedUserIds = new Set<string>()
+        for (const shift of shiftsForDay) {
+          if (!shift.userId || notifiedUserIds.has(shift.userId)) continue
+          notifiedUserIds.add(shift.userId)
+          await sendPushNotification(shift.userId, {
+            title: "📋 Ordine di Servizio emesso",
+            body: `${dateFormatted} — certificato da ${session.user.name || "Comando"}`,
+            url: pushUrl,
+            type: "ODS",
+          })
         }
       } catch (notifyErr) {
         console.error("[Certify] Errore notifica Telegram:", notifyErr)

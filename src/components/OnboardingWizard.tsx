@@ -424,7 +424,13 @@ export default function OnboardingWizard({ tenantSlug, tenantName, onComplete }:
                 <ChevronLeft className="w-4 h-4" /> Indietro
               </button>
             ) : (
-              <button onClick={onComplete} className="text-xs text-slate-400 hover:text-slate-600 font-medium transition-colors">
+              <button
+                onClick={() => {
+                  try { localStorage.setItem(`sentinel_onboarding_skipped_${tenantSlug}`, "true") } catch { /* ignore */ }
+                  onComplete()
+                }}
+                className="text-xs text-slate-400 hover:text-slate-600 font-medium transition-colors"
+              >
                 Salta configurazione →
               </button>
             )}

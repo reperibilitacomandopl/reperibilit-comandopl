@@ -24,6 +24,7 @@ interface PannelloOverviewProps {
   totalAgents: number
   totalVehicles: number
   pendingSwaps: number
+  pendingRequests?: number
   todayShifts: { 
     userId: string; 
     type: string; 
@@ -47,11 +48,20 @@ interface PannelloOverviewProps {
 
 const MESI = ["", "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
 
-export default function PannelloOverview({ totalAgents, todayShifts, isPublished, currentMonth, currentYear, settings, totalVehicles, pendingSwaps, tenantSlug, tenantName, totalScadenze = 0, weekCoverage = [] }: PannelloOverviewProps) {
+export default function PannelloOverview({ totalAgents, todayShifts, isPublished, currentMonth, currentYear, settings, totalVehicles, pendingSwaps, pendingRequests = 0, tenantSlug, tenantName, totalScadenze = 0, weekCoverage = [] }: PannelloOverviewProps) {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [collapsedPattuglie, setCollapsedPattuglie] = useState(false)
   const [collapsedEccezioni, setCollapsedEccezioni] = useState(false)
-  const [showOnboarding, setShowOnboarding] = useState(totalAgents === 0)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+
+  useEffect(() => {
+    try {
+      const skipped = localStorage.getItem(`sentinel_onboarding_skipped_${tenantSlug}`)
+      setShowOnboarding(totalAgents === 0 && !skipped)
+    } catch {
+      setShowOnboarding(totalAgents === 0)
+    }
+  }, [totalAgents, tenantSlug])
 
   const [mounted, setMounted] = useState(false)
 
@@ -72,7 +82,8 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
   const ufficialiStatusOk = ufficialiOggi >= targetUfficiali
 
   const coperturaPercent = totalAgents > 0 ? Math.round((operativiOggi / totalAgents) * 100) : 0
-  
+  const pendingTotal = pendingSwaps + pendingRequests
+
   const cards = [
     {
       label: "Forze sul Campo",
@@ -105,12 +116,14 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
       action: "Gestisci Autoparco"
     },
     {
-      label: pendingSwaps > 0 ? "Eccezioni / Scambi" : "Eccezioni / Malattie",
-      value: pendingSwaps > 0 ? pendingSwaps : malattieOggi,
+      label: pendingTotal > 0 ? "Approvazioni Pendenti" : "Eccezioni / Malattie",
+      value: pendingTotal > 0 ? pendingTotal : malattieOggi,
       icon: AlertTriangle,
-      color: pendingSwaps > 0 ? "from-amber-500 to-amber-700" : (malattieOggi > 0 ? "from-rose-500 to-rose-700" : "from-teal-500 to-teal-700"),
+      color: pendingTotal > 0 ? "from-amber-500 to-amber-700" : (malattieOggi > 0 ? "from-rose-500 to-rose-700" : "from-teal-500 to-teal-700"),
       textColor: "text-white",
-      sub: pendingSwaps > 0 ? "Richieste in attesa di approvazione" : (malattieOggi > 0 ? "Malattie registrate oggi" : "Tutto regolare"),
+      sub: pendingTotal > 0
+        ? `${pendingRequests} assenze · ${pendingSwaps} scambi turno`
+        : (malattieOggi > 0 ? "Malattie registrate oggi" : "Tutto regolare"),
       href: `/${tenantSlug}/admin/richieste`,
       action: "Gestisci Richieste"
     },
@@ -123,7 +136,11 @@ export default function PannelloOverview({ totalAgents, todayShifts, isPublished
         <OnboardingWizard
           tenantSlug={tenantSlug}
           tenantName={tenantName}
-          onComplete={() => { setShowOnboarding(false); window.location.reload() }}
+          onComplete={() => {
+            try { localStorage.setItem(`sentinel_onboarding_skipped_${tenantSlug}`, "true") } catch { /* ignore */ }
+            setShowOnboarding(false)
+            window.location.reload()
+          }}
         />
       )}
 

@@ -37,6 +37,12 @@ Menu ☰ → **Saldi** → vedi ferie residue, permessi, ore L.104, ore studio d
 Su iPhone: tocca **Condividi** (in Safari) → **Aggiungi a Home**.
 Su Android: tocca i **tre puntini** (in Chrome) → **Installa app**.
 
+### 8. Notifiche Push (SOS, turni, OdS)
+- Su **iPhone** le push funzionano solo aprendo l'app dall'**icona Home** (PWA), non da una tab Safari normale.
+- Dopo ogni aggiornamento dell'app: dalla **Home agente** tocca **«RICONNETTI NOTIFICHE»** o **«ATTIVA ORA»**.
+- Verifica in iPhone → **Impostazioni → Sentinel → Notifiche** che siano attive.
+- In alternativa usa **Telegram** (collega l'account dal profilo agente).
+
 ---
 
 ## 🖥️ Per l'Admin / Comandante (10 minuti)
