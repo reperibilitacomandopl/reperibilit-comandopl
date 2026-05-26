@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { FileText, Calendar, User, ChevronRight, Filter, Download } from "lucide-react"
+import { FileText, ChevronRight, Download } from "lucide-react"
 import { format } from "date-fns"
 import { it } from "date-fns/locale"
 
@@ -15,10 +15,7 @@ export default function AdminServiceReportsList() {
   const [filterAuthor, setFilterAuthor] = useState("")
   const [agents, setAgents] = useState<any[]>([])
 
-  useEffect(() => {
-    fetchReports()
-    fetchAgents()
-  }, [filterStatus, filterAuthor])
+  useEffect(() => { fetchReports(); fetchAgents() }, [filterStatus, filterAuthor])
 
   const fetchReports = async () => {
     setLoading(true)
@@ -27,15 +24,9 @@ export default function AdminServiceReportsList() {
       if (filterStatus) query.set("status", filterStatus)
       if (filterAuthor) query.set("authorId", filterAuthor)
       const res = await fetch(`/api/admin/service-reports?${query.toString()}`)
-      if (res.ok) {
-        const data = await res.json()
-        setReports(data)
-      }
-    } catch (error) {
-      console.error("Error fetching reports", error)
-    } finally {
-      setLoading(false)
-    }
+      if (res.ok) setReports(await res.json())
+    } catch (error) { console.error("Error fetching reports", error) }
+    finally { setLoading(false) }
   }
 
   const fetchAgents = async () => {
@@ -48,13 +39,13 @@ export default function AdminServiceReportsList() {
     } catch {}
   }
 
-  const getStatusColor = (status: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
-      case "BOZZA": return "bg-gray-100 text-gray-700"
-      case "COMPILATO": return "bg-blue-100 text-blue-700"
-      case "REVISIONATO": return "bg-yellow-100 text-yellow-700"
-      case "APPROVATO": return "bg-green-100 text-green-700"
-      default: return "bg-gray-100 text-gray-700"
+      case "BOZZA": return <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded font-bold text-xs">BOZZA</span>
+      case "COMPILATO": return <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded font-bold text-xs">COMPILATO</span>
+      case "REVISIONATO": return <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded font-bold text-xs">REVISIONATO</span>
+      case "APPROVATO": return <span className="px-2 py-1 bg-green-100 text-green-700 rounded font-bold text-xs">APPROVATO</span>
+      default: return <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded font-bold text-xs">{status}</span>
     }
   }
 
@@ -82,100 +73,79 @@ export default function AdminServiceReportsList() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-teal-500/20 flex items-center justify-center">
-            <FileText className="text-teal-500" size={20} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-black text-white tracking-tight">Relazioni di Servizio</h1>
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Rapporti giornalieri agenti</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+            <FileText className="w-7 h-7 text-teal-600" /> Relazioni di Servizio
+          </h1>
+          <p className="text-gray-500">Rapporti giornalieri compilati dagli agenti.</p>
         </div>
-        <button
-          onClick={exportCSV}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-white/10 rounded-xl text-sm text-slate-300 hover:bg-slate-700 transition-all"
-        >
-          <Download size={14} />
-          Export CSV
+        <button onClick={exportCSV}
+          className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-xl text-sm font-bold hover:bg-teal-500 transition-all shadow-sm">
+          <Download size={14} /> Export CSV
         </button>
       </div>
 
-      {/* Filters */}
       <div className="flex gap-3 flex-wrap">
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white"
-        >
-          <option value="">Tutti gli stati</option>
-          <option value="BOZZA">Bozza</option>
-          <option value="COMPILATO">Compilato</option>
-          <option value="REVISIONATO">Revisionato</option>
-          <option value="APPROVATO">Approvato</option>
-        </select>
-        <select
-          value={filterAuthor}
-          onChange={(e) => setFilterAuthor(e.target.value)}
-          className="bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white"
-        >
-          <option value="">Tutti gli agenti</option>
-          {agents.map((a) => (
-            <option key={a.id} value={a.id}>{a.name}</option>
-          ))}
-        </select>
+        <div>
+          <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Stato</label>
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+            className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-slate-700">
+            <option value="">Tutti gli stati</option>
+            <option value="BOZZA">Bozza</option>
+            <option value="COMPILATO">Compilato</option>
+            <option value="REVISIONATO">Revisionato</option>
+            <option value="APPROVATO">Approvato</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Agente</label>
+          <select value={filterAuthor} onChange={e => setFilterAuthor(e.target.value)}
+            className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-slate-700">
+            <option value="">Tutti gli agenti</option>
+            {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        </div>
       </div>
 
-      {/* Table */}
       {loading ? (
-        <div className="text-center p-12 text-slate-400">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-teal-500 mx-auto"></div>
-        </div>
+        <div className="p-8 text-center text-gray-500">Caricamento in corso...</div>
       ) : reports.length === 0 ? (
-        <div className="text-center p-12 bg-slate-900/50 border border-white/5 rounded-3xl">
-          <FileText className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-400">Nessuna relazione trovata</p>
+        <div className="p-12 text-center">
+          <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-bold text-gray-800">Nessuna relazione trovata</h3>
+          <p className="text-gray-500">Non ci sono relazioni che corrispondono ai filtri selezionati.</p>
         </div>
       ) : (
-        <div className="bg-slate-900/50 border border-white/5 rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-white/5">
-                  <th className="text-left p-3 text-[10px] font-black text-slate-500 uppercase tracking-widest">Data</th>
-                  <th className="text-left p-3 text-[10px] font-black text-slate-500 uppercase tracking-widest">Agente</th>
-                  <th className="text-left p-3 text-[10px] font-black text-slate-500 uppercase tracking-widest">Attivita</th>
-                  <th className="text-left p-3 text-[10px] font-black text-slate-500 uppercase tracking-widest">Stato</th>
-                  <th className="text-left p-3 text-[10px] font-black text-slate-500 uppercase tracking-widest">Rif.</th>
-                  <th className="w-8"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {reports.map((r) => (
-                  <tr
-                    key={r.id}
-                    onClick={() => router.push(`/${params.tenantSlug}/admin/relazioni/${r.id}`)}
-                    className="border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors"
-                  >
-                    <td className="p-3 text-sm text-white whitespace-nowrap">
-                      {format(new Date(r.reportDate), "dd/MM/yy HH:mm")}
-                    </td>
-                    <td className="p-3 text-sm text-slate-300">{r.author?.name || "-"}</td>
-                    <td className="p-3 text-sm text-slate-300 max-w-[200px] truncate">{r.activities}</td>
-                    <td className="p-3">
-                      <span className={`text-[10px] px-2 py-1 rounded-full font-bold ${getStatusColor(r.status)}`}>
-                        {r.status}
-                      </span>
-                    </td>
-                    <td className="p-3 text-xs text-slate-400">
-                      I:{r.interventionIds?.length || 0} S:{r.accidentReportIds?.length || 0}
-                    </td>
-                    <td className="p-3"><ChevronRight className="w-4 h-4 text-slate-500" /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-slate-50 border-b border-gray-200 text-sm text-slate-600">
+              <th className="p-4 font-bold">Data</th>
+              <th className="p-4 font-bold">Agente</th>
+              <th className="p-4 font-bold">Attivita</th>
+              <th className="p-4 font-bold">Stato</th>
+              <th className="p-4 font-bold">Rif.</th>
+              <th className="w-8"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {reports.map(r => (
+              <tr key={r.id}
+                onClick={() => router.push(`/${params.tenantSlug}/admin/relazioni/${r.id}`)}
+                className="border-b border-gray-100 hover:bg-slate-50 cursor-pointer transition-colors">
+                <td className="p-4 text-sm text-slate-700 whitespace-nowrap">{format(new Date(r.reportDate), "dd/MM/yy HH:mm")}</td>
+                <td className="p-4 text-sm text-slate-700">{r.author?.name || "-"}</td>
+                <td className="p-4 text-sm text-slate-600 max-w-[200px] truncate">{r.activities}</td>
+                <td className="p-4">{getStatusBadge(r.status)}</td>
+                <td className="p-4 text-sm text-slate-500">I:{r.interventionIds?.length || 0} S:{r.accidentReportIds?.length || 0}</td>
+                <td className="p-4 text-right">
+                  <button className="p-2 text-teal-600 hover:bg-teal-100 rounded-full">
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </div>
   )
