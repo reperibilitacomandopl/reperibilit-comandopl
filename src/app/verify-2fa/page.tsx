@@ -3,9 +3,11 @@
 import { useState } from "react"
 import { Shield, Lock, AlertCircle, Smartphone } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 
 export default function Verify2FAPage() {
   const router = useRouter()
+  const { update } = useSession()
   const [token, setToken] = useState("")
   const [error, setError] = useState("")
   const [isVerifying, setIsVerifying] = useState(false)
@@ -22,11 +24,14 @@ export default function Verify2FAPage() {
         body: JSON.stringify({ token })
       })
 
+      const data = await res.json()
+
       if (res.ok) {
+        // Aggiorna il cookie di sessione locale prima di navigare
+        await update({ twoFactorVerified: true, twoFactorProof: data.proof })
         // Redirigi alla home o alla pagina precedente
         window.location.href = "/" 
       } else {
-        const data = await res.json()
         setError(data.error || "Codice non valido")
       }
     } catch (err) {

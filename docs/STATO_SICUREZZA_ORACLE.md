@@ -62,7 +62,7 @@
 ## Cosa NON è stato fatto (richiede te / server)
 
 ### Deploy produzione
-- [x] `git commit` + `git push` (commit `4c0e2da` mobile/performance)
+- [x] `git commit` + `git push` (commit sicurezza/cron/mfa)
 - [x] SSH Oracle: `git pull` + `docker compose up -d --build portale-caserma`
 
 ### SEC-01 — Rotazione segreti (sul server, non in git)
@@ -75,17 +75,22 @@
 ### SEC-06 — Crontab reale sul server
 - [x] Template `scripts/crontab.txt` con `CRON_SECRET`
 - [x] Script verifica: `scripts/verify-cron.sh`
-- [x] Installazione: `scripts/install-sentinel-cron.sh`
+- [x] Installazione: `scripts/install-sentinel-cron.sh` (eseguito)
 - [x] Setup unificato: `scripts/server-setup-ops.sh`
 
 ### INFRA — Backup automatico
 - [x] Script `scripts/backup-db.sh`
-- [x] Voce cron in `scripts/crontab.txt` (02:15 UTC)
+- [x] Voce cron in `/etc/cron.d/sentinel` installata (02:15 UTC)
 - [x] Procedura restore: `docs/BACKUP_RESTORE.md`
 
 ### SEC-08 — CSP Nginx
-- [x] `nginx_config.conf`: rimossa CSP permissiva (gestita da Next middleware)
+- [x] Verificata assenza di header CSP in `/etc/nginx/sites-available` (gestito interamente dal middleware Next.js)
 - [x] Script deploy: `scripts/apply-nginx-config.sh`
+
+### SEC-09 — MFA Grace Period
+- [x] `src/middleware.ts` aggiornato: rimosso auto-trust IP per admin senza MFA
+- [x] Implementato periodo di grazia di 30 giorni per i tenant esistenti
+- [x] Push in produzione effettuato
 
 ### Documentazione legale / CI
 - [x] Template DPA: `docs/DPA_TEMPLATE.md`
