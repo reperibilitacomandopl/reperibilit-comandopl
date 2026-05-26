@@ -30,7 +30,8 @@ import {
   Activity,
   Target,
   Sun,
-  Moon
+  Moon,
+  ShieldAlert
 } from "lucide-react"
 
 type NavSection = {
@@ -48,6 +49,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Registro Interventi", href: "/admin/registro-interventi", icon: FileText, description: "Storico e accesso atti" },
       { label: "Timbrature GPS", href: "/admin/timbrature", icon: Clock, description: "Registro ingressi e uscite" },
       { label: "Registro Verbali CDS", href: "/admin/verbali", icon: FileText, description: "Contravvenzioni e incassi" },
+      { label: "Ufficio Infortunistica", href: "/admin/infortunistica", icon: ShieldAlert, description: "Gestione Sinistri Stradali" },
     ],
   },
   {
