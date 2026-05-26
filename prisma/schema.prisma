@@ -61,6 +61,7 @@ model Tenant {
   streets                 Street[]
   trainingRecords         TrainingRecord[]
   users                   User[]
+  accidentReports         AccidentReport[]
   userDocuments           UserDocument[]
   vacationPlans           VacationPlan[]
   vacationRotationGroups  VacationRotationGroup[]
@@ -197,6 +198,7 @@ model User {
   resetPasswordToken        String?                   @unique
   resetPasswordExpires      DateTime?
   absences                  Absence[]
+  accidentReports           AccidentReport[]
   agendaEntries             AgendaEntry[]             @relation("agendaEntries")
   agentBalances             AgentBalance[]            @relation("AgentBalances")
   agentRequests             AgentRequest[]            @relation("AgentRequests")
@@ -916,28 +918,29 @@ model DailyOdsNote {
 }
 
 model Intervention {
-  id           String    @id @default(uuid())
-  tenantId     String?
-  assignedToId String?
-  type         String
-  priority     String
-  status       String    @default("PENDING")
-  address      String
-  lat          Float?
-  lng          Float?
-  description  String?
-  callerName   String?
-  callerPhone  String?
-  notes        String?
-  outcome      String?
-  outcomeNotes String?
-  createdAt    DateTime  @default(now())
-  dispatchedAt DateTime?
-  acceptedAt   DateTime?
-  arrivedAt    DateTime?
-  completedAt  DateTime?
-  assignedTo   User?     @relation("UserInterventions", fields: [assignedToId], references: [id])
-  tenant       Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id              String           @id @default(uuid())
+  tenantId        String?
+  assignedToId    String?
+  type            String
+  priority        String
+  status          String           @default("PENDING")
+  address         String
+  lat             Float?
+  lng             Float?
+  description     String?
+  callerName      String?
+  callerPhone     String?
+  notes           String?
+  outcome         String?
+  outcomeNotes    String?
+  createdAt       DateTime         @default(now())
+  dispatchedAt    DateTime?
+  acceptedAt      DateTime?
+  arrivedAt       DateTime?
+  completedAt     DateTime?
+  assignedTo      User?            @relation("UserInterventions", fields: [assignedToId], references: [id])
+  tenant          Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  accidentReports AccidentReport[]
 
   @@index([tenantId, status])
   @@index([assignedToId, status])
@@ -1057,4 +1060,66 @@ model CdsViolation {
   createdAt          DateTime    @default(now())
   articolo           CdsArticle  @relation(fields: [articoloId], references: [id], onDelete: Cascade)
   violazioniEmesse   Violation[] @relation("ViolationToCdsViolation")
+}
+
+model AccidentReport {
+  id                 String   @id @default(uuid())
+  tenantId           String
+  protocolNumber     String
+  date               DateTime
+  address            String
+  lat                Float?
+  lng                Float?
+  severity           String
+  weatherCondition   String?
+  roadCondition      String?
+  trafficCondition   String?
+  dynamicDescription String?
+  status             String   @default("BOZZA")
+  interventionId     String?
+  reportingOfficerId String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  intervention     Intervention?     @relation(fields: [interventionId], references: [id])
+  reportingOfficer User?             @relation(fields: [reportingOfficerId], references: [id])
+  vehicles         AccidentVehicle[]
+  people           AccidentPerson[]
+
+  @@index([tenantId, date])
+  @@index([status])
+}
+
+model AccidentVehicle {
+  id                String   @id @default(uuid())
+  accidentReportId  String
+  licensePlate      String
+  vehicleType       String
+  insuranceCompany  String?
+  insurancePolicy   String?
+  damageDescription String?
+  createdAt         DateTime @default(now())
+
+  accidentReport AccidentReport   @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
+  occupants      AccidentPerson[]
+
+  @@index([accidentReportId])
+}
+
+model AccidentPerson {
+  id                String   @id @default(uuid())
+  accidentReportId  String
+  accidentVehicleId String?
+  role              String
+  firstName         String
+  lastName          String
+  fiscalCode        String?
+  injuries          String?
+  createdAt         DateTime @default(now())
+
+  accidentReport AccidentReport   @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
+  vehicle        AccidentVehicle? @relation(fields: [accidentVehicleId], references: [id])
+
+  @@index([accidentReportId])
 }
