@@ -80,6 +80,7 @@ function createUpstashLimiter(limit: number, window: string): Limiter {
   const ratelimit = new Ratelimit({
     redis: r,
     limiter: Ratelimit.slidingWindow(limit, window as `${number} s` | `${number} m` | `${number} h` | `${number} d`),
+    ephemeralCache: new Map(),
   })
 
   return {

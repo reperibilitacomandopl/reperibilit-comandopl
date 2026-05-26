@@ -8,7 +8,7 @@ import React, { useState } from "react"
 import { 
   X, Users, Search, Phone, Eye, Settings2, FileEdit, Trash2, 
   Calendar as CalendarIcon, Save, RefreshCw, AlertCircle, Briefcase,
-  Award, Hash, FileText, Shield, Mail, ChevronRight, Star, Clock, Filter
+  Award, Hash, FileText, Shield, Mail, ChevronRight, Star, Clock, Filter, Lock, CheckCircle
 } from "lucide-react"
 import { useAdminState } from "./AdminStateContext"
 import toast from "react-hot-toast"
@@ -383,6 +383,52 @@ export function AdminPersonnelModal({ isOpen, onClose }: AdminPersonnelModalProp
                                     </div>
                                  </div>
                               </div>
+                           </div>
+                        </div>
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 md:col-span-2">
+                           <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-5"><Lock width={14} height={14} className="text-rose-500" /> Sicurezza & Accessi</h3>
+                           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-100 gap-4">
+                              <div className="space-y-1">
+                                 <p className="text-xs font-bold text-slate-600">Stato Account</p>
+                                 {(selectedAgentForDetails.failedLoginAttempts > 0 || selectedAgentForDetails.lockoutUntil) ? (
+                                    <div className="flex items-center gap-2 text-rose-600 text-[10px] font-black uppercase">
+                                       <AlertCircle width={12} height={12} />
+                                       Bloccato ({selectedAgentForDetails.failedLoginAttempts} tentativi errati)
+                                       {selectedAgentForDetails.lockoutUntil && ` fino al ${new Date(selectedAgentForDetails.lockoutUntil).toLocaleString('it-IT')}`}
+                                    </div>
+                                 ) : (
+                                    <div className="flex items-center gap-2 text-emerald-600 text-[10px] font-black uppercase">
+                                       <CheckCircle width={12} height={12} /> Attivo e Regolare
+                                    </div>
+                                 )}
+                                 {selectedAgentForDetails.lockoutReason && <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">Motivo: {selectedAgentForDetails.lockoutReason}</p>}
+                              </div>
+                              
+                              {(selectedAgentForDetails.failedLoginAttempts > 0 || selectedAgentForDetails.lockoutUntil) && (
+                                 <button 
+                                   onClick={async () => {
+                                     try {
+                                        const res = await fetch("/api/admin/users/unlock", {
+                                           method: "POST",
+                                           headers: { "Content-Type": "application/json" },
+                                           body: JSON.stringify({ userId: selectedAgentForDetails.id })
+                                        })
+                                        if (res.ok) {
+                                           toast.success("Account sbloccato con successo")
+                                           setSelectedAgentForDetails((prev: any) => ({ ...prev, failedLoginAttempts: 0, lockoutUntil: null, lockoutReason: null }))
+                                           router.refresh()
+                                        } else {
+                                           toast.error("Errore durante lo sblocco")
+                                        }
+                                     } catch (e) {
+                                        toast.error("Errore di connessione")
+                                     }
+                                   }}
+                                   className="shrink-0 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-md active:scale-95 flex items-center gap-2"
+                                 >
+                                    <RefreshCw width={12} height={12} /> Sblocca Ora
+                                 </button>
+                              )}
                            </div>
                         </div>
                     </div>

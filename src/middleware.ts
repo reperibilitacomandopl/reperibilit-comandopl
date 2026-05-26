@@ -199,8 +199,8 @@ export default auth(async (req) => {
       }
     }
 
-    // Tracking operazioni per anomaly detection
-    trackOperation(u.tenantId, pathname).catch(() => {})
+    // Tracking operazioni per anomaly detection (await necessario per evitare Hanging Promise in Edge Runtime)
+    await trackOperation(u.tenantId, pathname).catch(() => {})
   }
 
   // 5. Route SuperAdmin

@@ -68,14 +68,15 @@ export default function Verify2FAPage() {
                 <input
                   type="text"
                   value={token}
-                  onChange={(e) => setToken(e.target.value.replace(/[^0-9]/g, ""))}
+                  onChange={(e) => setToken(e.target.value.replace(/[^0-9A-Z]/gi, "").toUpperCase())}
                   placeholder="000000"
-                  className="w-full bg-slate-950/50 border border-white/10 rounded-2xl p-6 text-center text-4xl font-black tracking-[0.5em] text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-800"
-                  maxLength={6}
+                  className="w-full bg-slate-950/50 border border-white/10 rounded-2xl p-6 text-center text-3xl sm:text-4xl font-black tracking-[0.2em] sm:tracking-[0.4em] text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-800 uppercase"
+                  maxLength={8}
                   required
                   autoFocus
                 />
               </div>
+              <p className="text-center text-xs text-white/40 font-medium">Oppure usa un codice di recupero (8 caratteri)</p>
             </div>
 
             {error && (

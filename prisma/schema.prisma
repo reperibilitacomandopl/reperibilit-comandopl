@@ -194,6 +194,8 @@ model User {
   lockoutUntil              DateTime?
   lockoutReason             String?
   unlockedBy                String?
+  resetPasswordToken        String?                   @unique
+  resetPasswordExpires      DateTime?
   absences                  Absence[]
   agendaEntries             AgendaEntry[]             @relation("agendaEntries")
   agentBalances             AgentBalance[]            @relation("AgentBalances")

@@ -177,6 +177,11 @@ function LoginForm() {
                   />
                   <Lock size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/15" />
                 </div>
+                <div className="flex justify-end mt-2">
+                  <a href="/forgot-password" className="text-[10px] text-blue-300 hover:text-blue-200 transition-colors font-bold uppercase tracking-widest">
+                    Password dimenticata?
+                  </a>
+                </div>
               </div>
 
               {showCaptcha && (
