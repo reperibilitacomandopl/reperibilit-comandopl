@@ -238,7 +238,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           privacyAcceptedAt: toConsentIso(user.privacyAcceptedAt),
           gpsAcceptedAt: toConsentIso(user.gpsAcceptedAt),
           squadra: user.squadra,
-          isUfficiale: user.isUfficiale
+          isUfficiale: user.isUfficiale,
+          tenantCreatedAt: tenant.createdAt.toISOString()
         }
       }
     })
@@ -278,6 +279,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.gpsAcceptedAt = toConsentIso((user as any).gpsAcceptedAt)
         token.squadra = (user as any).squadra as string | undefined
         token.isUfficiale = (user as any).isUfficiale as boolean | undefined
+        token.tenantCreatedAt = (user as any).tenantCreatedAt as string | undefined
       }
 
       if (trigger === "update") {
@@ -323,7 +325,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.privacyAcceptedAt = toConsentIso(token.privacyAcceptedAt)
         session.user.gpsAcceptedAt = toConsentIso(token.gpsAcceptedAt)
         session.user.squadra = token.squadra as string | undefined
-        session.user.isUfficiale = (token.isUfficiale as boolean) || false
+        session.user.isUfficiale = (token.isUfficiale as boolean) || false;
+        (session.user as any).tenantCreatedAt = token.tenantCreatedAt as string | undefined
         
         // Se è SuperAdmin, NON ci fidiamo della cache del token. Leggiamo SEMPRE il DB in tempo reale
         // per permettere allo switch (impersonification) di funzionare istantaneamente tramite cookie.

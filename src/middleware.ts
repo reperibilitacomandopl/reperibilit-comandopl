@@ -134,14 +134,18 @@ export default auth(async (req) => {
     return NextResponse.redirect(new URL("/verify-2fa", req.url))
   }
 
-  // ENFORCEMENT MFA: admin senza 2FA da IP noto → aggiungi IP a trusted, non forzare setup
+  // ENFORCEMENT MFA: admin senza 2FA -> obbligatorio con periodo di grazia 30 gg per tenant esistenti
   const securityPath = `/${u.tenantSlug}/admin/sicurezza`
-  if (u.role === "ADMIN" && !u.twoFactorEnabled && !isIpTrusted && pathname !== securityPath && !pathname.startsWith("/api/")) {
-    try {
-      const { prisma } = await import("@/lib/prisma")
-      const updatedIps = [...new Set([...(u.trustedIps || []), currentIp])]
-      await prisma.user.update({ where: { id: u.id }, data: { trustedIps: updatedIps } })
-    } catch (_) { /* non bloccare */ }
+  if (u.role === "ADMIN" && !u.twoFactorEnabled && pathname !== securityPath && !pathname.startsWith("/api/")) {
+    const isExistingTenant = !(u as any).tenantCreatedAt || new Date((u as any).tenantCreatedAt) < new Date("2026-05-26T00:00:00Z")
+    const gracePeriodEnd = new Date("2026-06-25T00:00:00Z")
+    
+    if (isExistingTenant && new Date() < gracePeriodEnd) {
+      // Periodo di grazia: lascialo navigare, ma vedrà banner in frontend (da implementare se necessario)
+    } else {
+      // Forza il setup 2FA bloccando la navigazione verso altre pagine
+      return NextResponse.redirect(new URL(securityPath, req.url))
+    }
   }
 
   // 4. ISOLAMENTO MULTI-TENANT (⚠ Critico)
