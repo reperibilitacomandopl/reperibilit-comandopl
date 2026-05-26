@@ -34,13 +34,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true })
     }
 
-    // 2. Recupera le configurazioni PEC/SMTP del tenant
+    // 2. Recupera le configurazioni PEC/SMTP del tenant o usa quelle di sistema
     const pecSettings = await prisma.pecSettings.findUnique({
       where: { tenantId: user.tenantId }
     })
 
-    if (!pecSettings || !pecSettings.user || !pecSettings.pass) {
-      console.warn(`[Forgot Password] Tenant ${user.tenantId} non ha credenziali email configurate.`)
+    const smtpUser = pecSettings?.user || process.env.PEC_SMTP_USER
+    const smtpPass = pecSettings?.pass ? decrypt(pecSettings.pass) : process.env.PEC_SMTP_PASS
+
+    if (!smtpUser || !smtpPass) {
+      console.warn(`[Forgot Password] Tenant ${user.tenantId} non ha credenziali email configurate e manca la config globale.`)
       return NextResponse.json({ success: true }) // Simula successo per sicurezza
     }
 
@@ -59,13 +62,16 @@ export async function POST(req: Request) {
     })
 
     // 4. Configura il transporter
+    const smtpHost = pecSettings?.host || process.env.PEC_SMTP_HOST || "smtps.pec.aruba.it"
+    const smtpPort = pecSettings?.port ? Number(pecSettings.port) : (Number(process.env.PEC_SMTP_PORT) || 465)
+    
     const transporter = nodemailer.createTransport({
-      host: pecSettings.host || "smtps.pec.aruba.it",
-      port: Number(pecSettings.port) || 465,
-      secure: Number(pecSettings.port) === 465,
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
       auth: {
-        user: pecSettings.user,
-        pass: decrypt(pecSettings.pass),
+        user: smtpUser,
+        pass: smtpPass,
       },
     })
 
@@ -111,8 +117,9 @@ export async function POST(req: Request) {
     `
 
     try {
+      const fromAddress = pecSettings?.fromAddr || process.env.PEC_FROM || "comando@pec.it"
       await transporter.sendMail({
-        from: pecSettings.fromAddr || "comando@pec.it",
+        from: fromAddress,
         to: user.email,
         subject: "Recupero Password - Portale Caserma",
         html: htmlBody,
