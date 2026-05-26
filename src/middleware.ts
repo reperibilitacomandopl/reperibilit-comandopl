@@ -16,6 +16,11 @@ const PUBLIC_ROUTES = new Set([
   "/terms",
   "/faq",
   "/verify",
+  "/forgot-password",
+  "/reset-password",
+  "/accessibilita",
+  "/cookie-policy",
+  "/trasparenza",
 ])
 
 const PUBLIC_PREFIXES = [
