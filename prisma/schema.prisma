@@ -62,6 +62,7 @@ model Tenant {
   trainingRecords         TrainingRecord[]
   users                   User[]
   accidentReports         AccidentReport[]
+  serviceReports          ServiceReport[]
   userDocuments           UserDocument[]
   vacationPlans           VacationPlan[]
   vacationRotationGroups  VacationRotationGroup[]
@@ -199,6 +200,7 @@ model User {
   resetPasswordExpires      DateTime?
   absences                  Absence[]
   accidentReports           AccidentReport[]
+  serviceReports            ServiceReport[]
   agendaEntries             AgendaEntry[]             @relation("agendaEntries")
   agentBalances             AgentBalance[]            @relation("AgentBalances")
   agentRequests             AgentRequest[]            @relation("AgentRequests")
@@ -280,6 +282,7 @@ model Shift {
   vehicle            Vehicle?           @relation(fields: [vehicleId], references: [id])
   weapon             Weapon?            @relation(fields: [weaponId], references: [id])
   swaps              ShiftSwapRequest[]
+  serviceReports     ServiceReport[]
 
   @@unique([userId, date, tenantId])
 }
@@ -1071,6 +1074,8 @@ model AccidentReport {
   lat                Float?
   lng                Float?
   severity           String
+  roadType           String?
+  lighting           String?
   weatherCondition   String?
   roadCondition      String?
   trafficCondition   String?
@@ -1096,6 +1101,9 @@ model AccidentVehicle {
   accidentReportId  String
   licensePlate      String
   vehicleType       String
+  directionOfTravel String?
+  maneuver          String?
+  isFugitive        Boolean  @default(false)
   insuranceCompany  String?
   insurancePolicy   String?
   damageDescription String?
@@ -1115,11 +1123,41 @@ model AccidentPerson {
   firstName         String
   lastName          String
   fiscalCode        String?
+  licenseCategory   String?
+  seatbeltUsed      Boolean?
+  isFugitive        Boolean  @default(false)
   injuries          String?
+  injuriesDetail    String?
+  alcoholTest       String?
+  drugTest          String?
   createdAt         DateTime @default(now())
 
   accidentReport AccidentReport   @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
   vehicle        AccidentVehicle? @relation(fields: [accidentVehicleId], references: [id])
 
   @@index([accidentReportId])
+}
+
+model ServiceReport {
+  id                String     @id @default(uuid())
+  tenantId          String
+  authorId          String
+  shiftId           String?
+  reportDate        DateTime
+  activities        String
+  outcome           String?
+  notes             String?
+  status            String     @default("BOZZA")
+  interventionIds   String[]   @default([])
+  accidentReportIds String[]   @default([])
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  tenant           Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  author           User            @relation(fields: [authorId], references: [id])
+  shift            Shift?          @relation(fields: [shiftId], references: [id])
+
+  @@index([tenantId, reportDate])
+  @@index([tenantId, status])
+  @@index([authorId])
 }

@@ -54,6 +54,7 @@ export default function MobileAgentLaunchpad({
     { id: "scambi", title: "Scambi Turno", desc: "Proponi o accetta", icon: RefreshCw, color: "from-cyan-500 to-blue-500", view: "swaps" },
     { id: "interventi", title: "Interventi", desc: "Missioni assegnate", icon: MapPin, color: "from-indigo-500 to-violet-500", view: "interventions" },
     { id: "sinistri", title: "Sinistri", desc: "Rilievo incidenti", icon: ShieldAlert, color: "from-red-500 to-orange-500", href: `/${tenantSlug}/agent/sinistri` },
+    { id: "relazioni", title: "Relazioni", desc: "Rapporto giornaliero", icon: FileText, color: "from-teal-500 to-cyan-600", href: `/${tenantSlug}/agent/relazioni` },
     { id: "verbali", title: "Verbali CDS", desc: "Emetti contravvenzioni", icon: FileText, color: "from-rose-500 to-pink-500", href: `/${tenantSlug}/agent/verbale/nuovo` },
     { id: "bacheca", title: "Bacheca", desc: "Avvisi del comando", icon: Megaphone, color: "from-sky-500 to-blue-600", view: "bacheca" },
     { id: "calendario", title: "Vista Annuale", desc: "Panoramica anno", icon: LayoutGrid, color: "from-teal-500 to-emerald-600", view: "planning" },

@@ -20,6 +20,8 @@ export default function NewAccidentReport() {
     lat: "",
     lng: "",
     severity: "SOLO_DANNI",
+    roadType: "",
+    lighting: "",
     weatherCondition: "SERENO",
     roadCondition: "ASCIUTTA",
     trafficCondition: "REGOLARE",
@@ -164,6 +166,38 @@ export default function NewAccidentReport() {
           {formData.severity === "MORTALE" && (
             <p className="text-xs text-red-600 font-bold mt-1">⚠️ Attenzione: Procedura Omicidio Stradale art. 589-bis</p>
           )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 pt-2">
+          {/* Tipo Strada */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Tipo Strada</label>
+            <select
+              value={formData.roadType}
+              onChange={(e) => setFormData({...formData, roadType: e.target.value})}
+              className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+            >
+              <option value="">Seleziona</option>
+              <option value="URBANA">Urbana</option>
+              <option value="EXTRAURBANA">Extraurbana</option>
+              <option value="AUTOSTRADA">Autostrada</option>
+            </select>
+          </div>
+          {/* Illuminazione */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Illuminazione</label>
+            <select
+              value={formData.lighting}
+              onChange={(e) => setFormData({...formData, lighting: e.target.value})}
+              className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+            >
+              <option value="">Seleziona</option>
+              <option value="GIORNO">Giorno</option>
+              <option value="NOTTE_CON_LUCE">Notte con illuminazione</option>
+              <option value="NOTTE_SENZA_LUCE">Notte senza illuminazione</option>
+              <option value="ALBA_TRAMONTO">Alba/Tramonto</option>
+            </select>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3 pt-2">

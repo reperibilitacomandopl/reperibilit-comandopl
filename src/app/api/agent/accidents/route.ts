@@ -78,6 +78,8 @@ export async function POST(req: Request) {
         lat: body.lat,
         lng: body.lng,
         severity: body.severity,
+        roadType: body.roadType,
+        lighting: body.lighting,
         weatherCondition: body.weatherCondition,
         roadCondition: body.roadCondition,
         trafficCondition: body.trafficCondition,
@@ -89,6 +91,9 @@ export async function POST(req: Request) {
           create: body.vehicles?.map(v => ({
             licensePlate: v.licensePlate,
             vehicleType: v.vehicleType,
+            directionOfTravel: v.directionOfTravel,
+            maneuver: v.maneuver,
+            isFugitive: v.isFugitive || false,
             insuranceCompany: v.insuranceCompany,
             insurancePolicy: v.insurancePolicy,
             damageDescription: v.damageDescription
@@ -104,7 +109,7 @@ export async function POST(req: Request) {
     if (body.people && body.people.length > 0) {
       for (const person of body.people) {
         let vehicleId = null
-        if (person.vehicleIndex !== undefined && accident.vehicles[person.vehicleIndex]) {
+        if (person.vehicleIndex != null && person.vehicleIndex >= 0 && accident.vehicles[person.vehicleIndex]) {
           vehicleId = accident.vehicles[person.vehicleIndex].id
         }
 
@@ -116,7 +121,13 @@ export async function POST(req: Request) {
             firstName: person.firstName,
             lastName: person.lastName,
             fiscalCode: person.fiscalCode,
-            injuries: person.injuries
+            licenseCategory: person.licenseCategory,
+            seatbeltUsed: person.seatbeltUsed,
+            isFugitive: person.isFugitive || false,
+            injuries: person.injuries,
+            injuriesDetail: person.injuriesDetail,
+            alcoholTest: person.alcoholTest,
+            drugTest: person.drugTest,
           }
         })
       }

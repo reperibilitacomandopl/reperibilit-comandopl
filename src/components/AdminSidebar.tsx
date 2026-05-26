@@ -50,6 +50,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Timbrature GPS", href: "/admin/timbrature", icon: Clock, description: "Registro ingressi e uscite" },
       { label: "Registro Verbali CDS", href: "/admin/verbali", icon: FileText, description: "Contravvenzioni e incassi" },
       { label: "Ufficio Infortunistica", href: "/admin/infortunistica", icon: ShieldAlert, description: "Gestione Sinistri Stradali" },
+      { label: "Relazioni di Servizio", href: "/admin/relazioni", icon: FileText, description: "Rapporti giornalieri agenti" },
     ],
   },
   {
