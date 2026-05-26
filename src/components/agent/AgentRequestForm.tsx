@@ -120,46 +120,101 @@ export default function AgentRequestForm({ balances, onClose, initialCode = "", 
     }
   }
 
+  // Build dynamic balance cards based on user's actual data
+  const buildBalanceCards = () => {
+    const details = balances?.details || []
+    const cards: { label: string; color: string; residue: number; total: number; unit?: string }[] = []
+
+    // Ferie (always show)
+    const ferieDetail = details.find(d => d.code === "0015" || d.code === "F" || d.code === "FERIE")
+    cards.push({
+      label: "Ferie",
+      color: "text-amber-500",
+      residue: ferieDetail?.residue ?? balances?.ferieResidue ?? 0,
+      total: ferieDetail?.initialValue ?? balances?.ferieTotali ?? 0,
+      unit: "gg"
+    })
+
+    // L.104 — solo se l'operatore ha il diritto
+    if (entitlements?.hasL104) {
+      const l104Residue = Math.max(0, (entitlements.l104Limit || 0) - (entitlements.l104Used || 0))
+      cards.push({
+        label: "L. 104",
+        color: "text-blue-500",
+        residue: l104Residue,
+        total: entitlements.l104Limit || 0,
+        unit: entitlements.l104Mode === "HOURS" ? "h" : "gg"
+      })
+    }
+
+    // Festività — solo se configurata nei saldi
+    const festivitaDetail = details.find(d => d.code === "FEST_SOP")
+    if (festivitaDetail && festivitaDetail.initialValue > 0) {
+      cards.push({
+        label: "Festività",
+        color: "text-teal-500",
+        residue: festivitaDetail.residue ?? balances?.festivitaResidue ?? 0,
+        total: festivitaDetail.initialValue ?? balances?.festivitaTotali ?? 0,
+        unit: "gg"
+      })
+    }
+
+    // Altre voci personalizzate (ROL, Permessi retribuiti, ecc.) — fino a riempire max 4
+    const SKIP_CODES = ["0015", "F", "FERIE", "FEST_SOP"]
+    const otherDetails = details
+      .filter(d => !SKIP_CODES.includes(d.code) && d.initialValue > 0)
+      .slice(0, Math.max(0, 4 - cards.length))
+
+    otherDetails.forEach(d => {
+      cards.push({
+        label: d.label.length > 12 ? d.label.substring(0, 11) + "…" : d.label,
+        color: "text-violet-500",
+        residue: d.residue,
+        total: d.initialValue,
+        unit: d.unit === "HOURS" ? "h" : "gg"
+      })
+    })
+
+    return cards
+  }
+
   return (
     <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="relative w-full max-w-md bg-white rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden animate-in slide-in-from-bottom-8 sm:zoom-in-95 duration-300">
-        <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 sm:p-8 text-white relative">
+      <div className="relative w-full max-w-md bg-white rounded-t-[1.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden animate-in slide-in-from-bottom-8 sm:zoom-in-95 duration-300">
+        <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-4 sm:p-8 text-white relative">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full -mr-10 -mt-10 blur-2xl"></div>
           <div className="flex justify-between items-start relative z-10">
-            <div className="p-3 bg-white/20 rounded-2xl border border-white/20 shadow-inner">
-              <CalendarDays size={24} />
+            <div className="p-2.5 sm:p-3 bg-white/20 rounded-2xl border border-white/20 shadow-inner">
+              <CalendarDays size={22} />
             </div>
             <button onClick={onClose} className="text-white/80 hover:text-white transition-colors bg-black/10 rounded-full p-1">
               <X size={20} />
             </button>
           </div>
-          <h3 className="text-2xl font-black tracking-tight mt-4 relative z-10">Inoltra Richiesta</h3>
-          <p className="text-amber-50 text-sm mt-1 opacity-90 relative z-10 font-medium">
-            Le richieste inserite qui verranno notificate al Comando Centrale per l&apos;approvazione automatica.
+          <h3 className="text-xl sm:text-2xl font-black tracking-tight mt-3 sm:mt-4 relative z-10">Inoltra Richiesta</h3>
+          <p className="text-amber-50 text-xs sm:text-sm mt-1 opacity-90 relative z-10 font-medium">
+            Le richieste verranno notificate al Comando per l&apos;approvazione.
           </p>
         </div>
 
-        <div className="p-6 sm:p-8 bg-slate-50 overflow-y-auto max-h-[70vh] custom-scrollbar">
-          {balances && (
-            <div className="mb-6 grid grid-cols-3 gap-2">
-              <div className="bg-white rounded-xl p-3 border border-slate-200 text-center shadow-sm">
-                <p className="text-[9px] font-black uppercase text-amber-500 tracking-wider">Ferie</p>
-                <p className="text-xl font-black text-slate-800">{(balances.ferieResidue ?? 0)}</p>
-                <p className="text-[8px] text-slate-400 font-bold uppercase">di {(balances.ferieTotali ?? 0)}</p>
+        <div className="p-4 sm:p-8 bg-slate-50 overflow-y-auto max-h-[78vh] sm:max-h-[70vh] custom-scrollbar">
+          {balances && (() => {
+            const cards = buildBalanceCards()
+            if (cards.length === 0) return null
+            const gridCols = cards.length <= 2 ? "grid-cols-2" : cards.length === 3 ? "grid-cols-3" : "grid-cols-4"
+            return (
+              <div className={`mb-4 sm:mb-6 grid ${gridCols} gap-1.5 sm:gap-2`}>
+                {cards.map((card, i) => (
+                  <div key={i} className="bg-white rounded-xl p-2 sm:p-3 border border-slate-200 text-center shadow-sm">
+                    <p className={`text-[8px] sm:text-[9px] font-black uppercase ${card.color} tracking-wider leading-tight`}>{card.label}</p>
+                    <p className="text-lg sm:text-xl font-black text-slate-800">{card.residue}<span className="text-[8px] text-slate-400 font-bold ml-0.5">{card.unit}</span></p>
+                    <p className="text-[7px] sm:text-[8px] text-slate-400 font-bold uppercase">di {card.total}</p>
+                  </div>
+                ))}
               </div>
-              <div className="bg-white rounded-xl p-3 border border-slate-200 text-center shadow-sm">
-                <p className="text-[9px] font-black uppercase text-blue-500 tracking-wider">L. 104</p>
-                <p className="text-xl font-black text-slate-800">{(balances.permessi104Residui ?? 0)}</p>
-                <p className="text-[8px] text-slate-400 font-bold uppercase">di {(balances.permessi104Totali ?? 0)}</p>
-              </div>
-              <div className="bg-white rounded-xl p-3 border border-slate-200 text-center shadow-sm">
-                <p className="text-[9px] font-black uppercase text-teal-500 tracking-wider">Festività</p>
-                <p className="text-xl font-black text-slate-800">{(balances.festivitaResidue ?? 0)}</p>
-                <p className="text-[8px] text-slate-400 font-bold uppercase">di {(balances.festivitaTotali ?? 0)}</p>
-              </div>
-            </div>
-          )}
+            )
+          })()}
           <div className="space-y-5">
             <div>
               <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Data Inizio</label>
