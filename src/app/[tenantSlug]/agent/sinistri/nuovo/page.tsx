@@ -5,6 +5,7 @@ import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { ShieldAlert, MapPin, Navigation, ArrowRight, ArrowLeft } from "lucide-react"
 import toast from "react-hot-toast"
 import { format } from "date-fns"
+import { StreetSearchAutocomplete } from "@/components/StreetSearchAutocomplete"
 
 export default function NewAccidentReport() {
   const router = useRouter()
@@ -139,14 +140,14 @@ export default function NewAccidentReport() {
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">Luogo del Sinistro *</label>
           <div className="flex gap-2">
-            <input
-              type="text"
-              required
-              placeholder="Via Roma 10, Altamura"
-              value={formData.address}
-              onChange={(e) => setFormData({...formData, address: e.target.value})}
-              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:outline-none text-gray-900"
-            />
+            <div className="flex-1">
+              <StreetSearchAutocomplete
+                value={formData.address}
+                onChange={(val) => setFormData({...formData, address: val})}
+                placeholder="Via Roma 10, Altamura"
+                theme="light"
+              />
+            </div>
             <button
               type="button"
               onClick={getLocation}

@@ -1100,6 +1100,7 @@ model AccidentReport {
   vehicles         AccidentVehicle[]
   people           AccidentPerson[]
   traces           AccidentTrace[]
+  photos           String[]          @default([])
 
   @@index([tenantId, date])
   @@index([status])

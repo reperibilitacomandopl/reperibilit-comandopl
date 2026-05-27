@@ -15,9 +15,10 @@ interface MunicipalitySearchProps {
   onChange: (value: string) => void
   placeholder?: string
   className?: string
+  theme?: "light" | "dark"
 }
 
-export function MunicipalityAutocomplete({ value, onChange, placeholder = "Es. Roma", className = "" }: MunicipalitySearchProps) {
+export function MunicipalityAutocomplete({ value, onChange, placeholder = "Es. Roma", className = "", theme = "dark" }: MunicipalitySearchProps) {
   const [query, setQuery] = useState(value)
   const [results, setResults] = useState<Municipality[]>([])
   const [loading, setLoading] = useState(false)
@@ -104,9 +105,9 @@ export function MunicipalityAutocomplete({ value, onChange, placeholder = "Es. R
             if (results.length > 0) setShowDropdown(true)
           }}
           placeholder={placeholder}
-          className={`w-full bg-slate-900 border border-white/10 rounded-2xl p-4 pl-10 pr-10 text-sm focus:ring-2 focus:ring-blue-500 outline-none text-white ${className}`}
+          className={`w-full ${theme === 'dark' ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'} border rounded-2xl p-4 pl-10 pr-10 text-sm focus:ring-2 focus:ring-blue-500 outline-none ${className}`}
         />
-        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Search size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-400'}`} />
         
         {loading && (
           <div className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -124,20 +125,20 @@ export function MunicipalityAutocomplete({ value, onChange, placeholder = "Es. R
       </div>
 
       {showDropdown && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-white/10 rounded-2xl shadow-2xl z-50 max-h-60 overflow-y-auto animate-in slide-in-from-top-2">
+        <div className={`absolute top-full left-0 right-0 mt-2 ${theme === 'dark' ? 'bg-slate-800 border-white/10' : 'bg-white border-slate-200'} border rounded-2xl shadow-2xl z-[100] max-h-60 overflow-y-auto animate-in slide-in-from-top-2`}>
           {results.map((mun, index) => (
             <button
               key={mun.id}
               type="button"
               onClick={() => handleSelect(mun)}
-              className={`w-full text-left p-3 hover:bg-white/5 transition-all flex items-center gap-3 ${index !== results.length - 1 ? 'border-b border-white/5' : ''}`}
+              className={`w-full text-left p-3 hover:bg-black/5 dark:hover:bg-white/5 transition-all flex items-center gap-3 ${index !== results.length - 1 ? (theme === 'dark' ? 'border-b border-white/5' : 'border-b border-slate-100') : ''}`}
             >
-              <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl shrink-0">
+              <div className="p-2 bg-emerald-500/20 text-emerald-500 rounded-xl shrink-0">
                 <MapPin size={14} />
               </div>
               <div className="flex-1 truncate">
-                <p className="text-sm font-bold text-white">{mun.denominazione} ({mun.provincia})</p>
-                <p className="text-[10px] text-slate-400">Cod. {mun.codiceBelfiore}</p>
+                <p className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{mun.denominazione} ({mun.provincia})</p>
+                <p className={`text-[10px] ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Cod. {mun.codiceBelfiore}</p>
               </div>
             </button>
           ))}
