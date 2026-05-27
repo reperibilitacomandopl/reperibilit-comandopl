@@ -57,10 +57,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         drugTest: body.drugTest || null,
         statement: body.statement || null,
         contactPhone: body.contactPhone || null,
-        injuries: body.injuries || null,
-        injuriesDetail: body.injuriesDetail || null,
-        alcoholTest: body.alcoholTest || null,
-        drugTest: body.drugTest || null,
       },
     })
 
