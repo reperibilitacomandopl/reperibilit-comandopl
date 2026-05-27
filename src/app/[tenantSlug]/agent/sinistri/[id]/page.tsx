@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation"
 import { ArrowLeft, Car, Users, Camera, Info, CheckCircle, Upload, X, AlertTriangle, ShieldAlert, Ruler, ClipboardCheck, Plus, Trash2, FileText, Save } from "lucide-react"
 import toast from "react-hot-toast"
 import { format } from "date-fns"
+import { SignaturePad } from "@/components/SignaturePad"
 
 // --- ISTAT constants ---
 const VEHICLE_TYPES = ["Autovettura", "Motociclo", "Ciclomotore", "Autocarro", "Autobus", "Bicicletta", "Veicolo Commerciale", "Macchina Agricola", "Altro"]
@@ -58,6 +59,10 @@ export default function AccidentDetail() {
   const [traceForm, setTraceForm] = useState({ code: "", type: "", position: "", measurement: "", dimensions: "", description: "" })
   const [savingTrace, setSavingTrace] = useState(false)
 
+  // Security
+  const [safetyChecklist, setSafetyChecklist] = useState<string[]>([])
+  const [safetySignature, setSafetySignature] = useState("")
+
   const fetchAccident = async () => {
     try {
       const res = await fetch(`/api/agent/accidents/${accidentId}`)
@@ -65,6 +70,8 @@ export default function AccidentDetail() {
         const data = await res.json()
         setAccident(data)
         setNarrative(data.narrativeReport || "")
+        setSafetyChecklist(data.safetyChecklist || [])
+        setSafetySignature(data.safetySignature || "")
       }
       else toast.error("Errore nel caricamento")
     } catch { toast.error("Errore di rete") }
@@ -252,6 +259,67 @@ export default function AccidentDetail() {
     } catch { toast.error("Errore di rete") }
   }
 
+  const handleSaveSecurity = async () => {
+    if (!safetySignature) { toast.error("La firma è obbligatoria per completare la messa in sicurezza"); return }
+    try {
+      const res = await fetch(`/api/agent/accidents/${accidentId}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ safetyChecklist, safetySignature }),
+      })
+      if (res.ok) { toast.success("Messa in Sicurezza salvata"); fetchAccident(); setActiveTab("tracce") }
+      else toast.error("Impossibile salvare la sicurezza")
+    } catch { toast.error("Errore di rete") }
+  }
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setLoading(true)
+    try {
+      const arrayBuffer = await file.arrayBuffer()
+      const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer)
+      const hashArray = Array.from(new Uint8Array(hashBuffer))
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+
+      const reader = new FileReader()
+      reader.onloadend = async () => {
+        const url = reader.result as string
+        const res = await fetch(`/api/agent/accidents/${accidentId}/photos`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url,
+            hashSha256: hashHex,
+            category: "PANORAMICA",
+            gpsLat: accident.lat,
+            gpsLng: accident.lng
+          })
+        })
+        if (res.ok) {
+          toast.success("Foto forense acquisita")
+          fetchAccident()
+        } else {
+          toast.error("Errore salvataggio foto")
+          setLoading(false)
+        }
+      }
+      reader.readAsDataURL(file)
+    } catch (error) {
+      toast.error("Errore durante il caricamento")
+      setLoading(false)
+    }
+  }
+
+  const handleDeletePhoto = async (photoId: string) => {
+    if (!confirm("Eliminare questa foto? L'hash andrà perso.")) return
+    try {
+      const res = await fetch(`/api/agent/accidents/${accidentId}/photos?photoId=${photoId}`, { method: "DELETE" })
+      if (res.ok) { toast.success("Foto rimossa"); fetchAccident() }
+      else toast.error("Impossibile eliminare")
+    } catch { toast.error("Errore di rete") }
+  }
+
   const TRACE_TYPES = ["FRENATA", "ABRASIONE", "INCISIONE", "SCALFITTURA", "LIQUIDO", "SANGUE", "VETRO", "PLASTICA", "PARTE_MECCANICA", "DETRITO", "ALTRO"]
   const DAMAGE_AREAS = ["Frontale", "Laterale DX", "Laterale SX", "Posteriore", "Tetto", "Sottoscocca"]
 
@@ -275,11 +343,28 @@ export default function AccidentDetail() {
           </div>
         </div>
 
-        <div className="flex justify-between mt-6 text-sm font-medium">
-          {["info", "relazione", "veicoli", "persone", "sicurezza", "tracce", "foto"].map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`pb-2 px-2 border-b-2 text-xs ${activeTab === tab ? "border-red-500 text-white" : "border-transparent text-slate-400"}`}>
-              {tab === "info" ? "Info" : tab === "relazione" ? "Relazione" : tab === "veicoli" ? `Veicoli (${accident.vehicles?.length || 0})` : tab === "persone" ? `Persone (${accident.people?.length || 0})` : tab === "sicurezza" ? "Sicurezza" : tab === "tracce" ? `Tracce (${traces.length})` : "Foto"}
+        <div className="flex justify-between mt-6 text-sm font-medium overflow-x-auto gap-4 pb-2 px-1 scrollbar-hide">
+          {[
+            { id: "info", label: "1. Info", done: true },
+            { id: "sicurezza", label: "2. Sicurezza", done: accident.safetyChecklist?.length > 0 && !!accident.safetySignature },
+            { id: "tracce", label: "3. Tracce", done: traces.length > 0 },
+            { id: "foto", label: "4. Foto", done: accident.photos?.length >= 4 },
+            { id: "veicoli", label: `5. Veicoli (${accident.vehicles?.length || 0})`, done: accident.vehicles?.length > 0 },
+            { id: "persone", label: `6. Persone (${accident.people?.length || 0})`, done: accident.people?.length > 0 },
+            { id: "relazione", label: "7. Relazione", done: !!narrative }
+          ].map((step, idx) => (
+            <button key={step.id} onClick={() => setActiveTab(step.id)}
+              className="flex-shrink-0 flex flex-col items-center gap-1 min-w-[60px] hover:opacity-80 transition-opacity">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 ${
+                activeTab === step.id ? "bg-red-500 border-red-500 text-white shadow-lg shadow-red-500/30" : 
+                step.done ? "bg-green-500 border-green-500 text-white" : 
+                "bg-slate-800 border-slate-600 text-slate-300"
+              }`}>
+                {step.done && activeTab !== step.id ? "✓" : (idx + 1)}
+              </div>
+              <span className={`text-[10px] uppercase font-bold text-center leading-tight ${activeTab === step.id ? "text-white" : "text-slate-400"}`}>
+                {step.label.split('. ')[1]}
+              </span>
             </button>
           ))}
         </div>
@@ -310,10 +395,44 @@ export default function AccidentDetail() {
             </div>
 
             {accident.status === "BOZZA" && (
-              <button onClick={submitCompilation}
-                className="w-full bg-green-600 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2">
-                <CheckCircle className="w-5 h-5" /> Invia in Revisione (richiede min 1 veicolo + 1 persona)
-              </button>
+              <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-500" /> Riepilogo Requisiti UNI 11472
+                </h3>
+                <ul className="space-y-2 text-sm mb-4">
+                  <li className="flex items-center gap-2">
+                    <span className={accident.safetyChecklist?.length > 0 && !!accident.safetySignature ? "text-green-500" : "text-gray-400"}>{accident.safetyChecklist?.length > 0 && !!accident.safetySignature ? "✓" : "○"}</span>
+                    <span className={!(accident.safetyChecklist?.length > 0 && !!accident.safetySignature) ? "text-red-600 font-medium" : "text-gray-600"}>Messa in Sicurezza (Checklist e Firma)</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className={traces.length > 0 ? "text-green-500" : "text-gray-400"}>{traces.length > 0 ? "✓" : "○"}</span>
+                    <span className={traces.length === 0 ? "text-amber-600 font-medium" : "text-gray-600"}>Almeno 1 Traccia / Reperto catalogato</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className={(accident.forensicPhotos?.length || 0) >= 4 ? "text-green-500" : "text-gray-400"}>{(accident.forensicPhotos?.length || 0) >= 4 ? "✓" : "○"}</span>
+                    <span className={(accident.forensicPhotos?.length || 0) < 4 ? "text-red-600 font-medium" : "text-gray-600"}>Almeno 4 Foto Panoramiche</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className={accident.vehicles?.length > 0 ? "text-green-500" : "text-gray-400"}>{accident.vehicles?.length > 0 ? "✓" : "○"}</span>
+                    <span className={!accident.vehicles?.length ? "text-red-600 font-medium" : "text-gray-600"}>Almeno 1 Veicolo inserito</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className={accident.people?.length > 0 ? "text-green-500" : "text-gray-400"}>{accident.people?.length > 0 ? "✓" : "○"}</span>
+                    <span className={!accident.people?.length ? "text-red-600 font-medium" : "text-gray-600"}>Almeno 1 Persona inserita</span>
+                  </li>
+                </ul>
+
+                {accident.safetyChecklist?.length > 0 && !!accident.safetySignature && (accident.forensicPhotos?.length || 0) >= 4 && accident.vehicles?.length > 0 && accident.people?.length > 0 ? (
+                  <button onClick={submitCompilation}
+                    className="w-full bg-green-600 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2">
+                    <CheckCircle className="w-5 h-5" /> Invia in Revisione
+                  </button>
+                ) : (
+                  <div className="text-center p-3 bg-red-50 text-red-600 rounded-lg text-xs font-bold border border-red-200">
+                    Completa i requisiti mancanti (in rosso) per inviare in revisione.
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -475,19 +594,41 @@ export default function AccidentDetail() {
                   { key: "RISCHIO_CARBURANTE", label: "Rischio Carburante" },
                   { key: "RISCHIO_ELETTRICO", label: "Rischio Elettrico" },
                 ].map(item => {
-                  const checked = accident.safetyChecklist?.includes(item.key)
+                  const checked = safetyChecklist.includes(item.key)
                   return (
-                    <div key={item.key} className={`flex items-center gap-2 p-2 rounded-lg text-xs font-medium border ${
-                      checked ? "bg-green-50 border-green-200 text-green-700" : "bg-gray-50 border-gray-100 text-gray-500"
+                    <label key={item.key} className={`flex items-center gap-2 p-2 rounded-lg text-xs font-medium cursor-pointer border transition-colors ${
+                      checked ? "bg-green-50 border-green-200 text-green-700" : "bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100"
                     }`}>
-                      <div className={`w-4 h-4 rounded flex items-center justify-center text-[10px] ${checked ? "bg-green-500 text-white" : "bg-gray-200"}`}>
-                        {checked ? "✓" : ""}
-                      </div>
+                      <input type="checkbox" checked={checked} disabled={accident.status === "CHIUSO"}
+                        onChange={e => {
+                          const updated = e.target.checked ? [...safetyChecklist, item.key] : safetyChecklist.filter(i => i !== item.key)
+                          setSafetyChecklist(updated)
+                        }}
+                        className="w-3.5 h-3.5 rounded" />
                       {item.label}
-                    </div>
+                    </label>
                   )
                 })}
               </div>
+
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <h4 className="text-sm font-bold text-gray-700 mb-2">Firma Agente (obbligatoria)</h4>
+                <SignaturePad 
+                  onSave={(sig) => setSafetySignature(sig)} 
+                  onClear={() => setSafetySignature("")} 
+                  disabled={accident.status === "CHIUSO"}
+                  initialValue={safetySignature}
+                />
+                {!safetySignature && <p className="text-xs text-red-500 mt-1 font-medium">Attenzione: traccia la firma prima di salvare.</p>}
+              </div>
+
+              {accident.status !== "CHIUSO" && (
+                <button onClick={handleSaveSecurity}
+                  className="w-full mt-4 py-3 bg-green-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-md">
+                  <Save size={18} />
+                  Conferma e Sblocca Workflow
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -529,14 +670,41 @@ export default function AccidentDetail() {
         {activeTab === "foto" && (
           <div className="space-y-4">
             <div className="bg-orange-50 p-4 rounded-xl border border-orange-200 text-sm text-orange-800">
-              Usa la fotocamera per scattare foto ai veicoli o alla planimetria. Le immagini vengono caricate in modo sicuro (S3 pre-signed).
+              <b>Rilievo Fotografico Forense (UNI 11472)</b>: Acquisendo una foto verrà generato un hash SHA-256 che ne garantirà l'immutabilità. Sono richieste almeno 4 panoramiche.
             </div>
-            <button className="w-full bg-slate-800 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md">
-              <Camera className="w-5 h-5" /> Scatta Foto
-            </button>
-            <button className="w-full bg-white text-slate-800 border border-slate-200 py-4 rounded-xl font-bold flex items-center justify-center gap-2">
-              <Upload className="w-5 h-5" /> Scegli dalla Galleria
-            </button>
+
+            {accident.status !== "CHIUSO" && (
+              <div className="flex gap-2">
+                <label className="flex-1 bg-slate-800 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-md cursor-pointer hover:bg-slate-700 transition">
+                  <Camera className="w-5 h-5" /> Scatta / Allega
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} disabled={loading} />
+                </label>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              {accident.forensicPhotos?.map((p: any, idx: number) => (
+                <div key={p.id} className="relative group rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+                  {accident.status !== "CHIUSO" && (
+                    <button onClick={() => handleDeletePhoto(p.id)} className="absolute top-1 right-1 p-1.5 bg-red-500 text-white rounded-full z-10 hover:bg-red-600 shadow-md">
+                      <Trash2 size={12} />
+                    </button>
+                  )}
+                  <img src={p.url} alt={`Foto ${idx+1}`} className="w-full h-32 object-cover" />
+                  <div className="p-2 bg-white">
+                    <p className="text-[10px] font-bold text-gray-700">{p.category}</p>
+                    <p className="text-[8px] text-gray-400 font-mono truncate" title={p.hashSha256}>SHA: {p.hashSha256}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {!accident.forensicPhotos?.length && (
+              <div className="text-center p-8 bg-white rounded-xl border border-gray-100">
+                <Camera className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm text-gray-400">Nessuna foto acquisita</p>
+              </div>
+            )}
           </div>
         )}
       </div>

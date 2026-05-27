@@ -124,6 +124,74 @@ export async function generateAccidentReportPDF({
       theme: "grid",
       headStyles: { fillColor: navelBlue }
     })
+    finalY = doc.lastAutoTable.finalY + 15
+  }
+
+  // Section 5: Sicurezza
+  if (accident.safetyChecklist && accident.safetyChecklist.length > 0) {
+    if (finalY > 250) { doc.addPage(); finalY = 20; }
+    doc.setFontSize(12)
+    doc.setTextColor(...titleColor)
+    doc.setFont("helvetica", "bold")
+    doc.text("5. MESSA IN SICUREZZA", 14, finalY)
+    doc.setFontSize(10)
+    doc.setFont("helvetica", "normal")
+    doc.setTextColor(50, 50, 50)
+    doc.text(`Checklist completata: ${accident.safetyChecklist.join(", ")}`, 14, finalY + 7)
+    if (accident.safetySignature) {
+      doc.text("Firma Agente apposta digitalmente", 14, finalY + 12)
+    }
+    finalY += 20
+  }
+
+  // Section 6: Tracce
+  if (accident.traces && accident.traces.length > 0) {
+    if (finalY > 250) { doc.addPage(); finalY = 20; }
+    doc.setFontSize(12)
+    doc.setTextColor(...titleColor)
+    doc.setFont("helvetica", "bold")
+    doc.text("6. TRACCE E REPERTI", 14, finalY)
+
+    const traceRows = accident.traces.map((t: any) => [
+      t.code,
+      t.type,
+      t.position || "-",
+      t.measurement || "-",
+      t.description || "-"
+    ])
+
+    doc.autoTable({
+      startY: finalY + 5,
+      head: [["Codice", "Tipo", "Posizione", "Misura", "Descrizione"]],
+      body: traceRows,
+      theme: "grid",
+      headStyles: { fillColor: navelBlue }
+    })
+    finalY = doc.lastAutoTable.finalY + 15
+  }
+
+  // Section 7: Foto Forensi
+  if (accident.forensicPhotos && accident.forensicPhotos.length > 0) {
+    if (finalY > 250) { doc.addPage(); finalY = 20; }
+    doc.setFontSize(12)
+    doc.setTextColor(...titleColor)
+    doc.setFont("helvetica", "bold")
+    doc.text("7. RILIEVO FOTOGRAFICO FORENSE", 14, finalY)
+
+    const photoRows = accident.forensicPhotos.map((p: any) => [
+      p.category,
+      p.hashSha256 || "N/D",
+      p.gpsLat && p.gpsLng ? `${p.gpsLat}, ${p.gpsLng}` : "N/D"
+    ])
+
+    doc.autoTable({
+      startY: finalY + 5,
+      head: [["Categoria", "Hash SHA-256 (Integrità)", "Coordinate GPS"]],
+      body: photoRows,
+      theme: "grid",
+      headStyles: { fillColor: navelBlue }
+    })
+    finalY = doc.lastAutoTable.finalY + 15
   }
 
   // Footer & Status watermark

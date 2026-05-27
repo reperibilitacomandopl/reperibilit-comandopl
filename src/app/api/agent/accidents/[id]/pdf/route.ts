@@ -20,6 +20,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       include: {
         vehicles: { include: { occupants: true } },
         people: true,
+        traces: true,
+        forensicPhotos: true,
         reportingOfficer: { select: { name: true } },
         tenant: { select: { name: true } }
       }

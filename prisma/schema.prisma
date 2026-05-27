@@ -200,6 +200,7 @@ model User {
   resetPasswordExpires      DateTime?
   absences                  Absence[]
   accidentReports           AccidentReport[]
+  accidentAuditLogs         AccidentAuditLog[]
   serviceReports            ServiceReport[]
   agendaEntries             AgendaEntry[]             @relation("agendaEntries")
   agentBalances             AgentBalance[]            @relation("AgentBalances")
@@ -1101,6 +1102,9 @@ model AccidentReport {
   people           AccidentPerson[]
   traces           AccidentTrace[]
   photos           String[]          @default([])
+  forensicPhotos   AccidentPhoto[]
+  auditLogs        AccidentAuditLog[]
+  safetySignature  String?
 
   @@index([tenantId, date])
   @@index([status])
@@ -1150,6 +1154,7 @@ model AccidentPerson {
   statement         String?
   contactPhone      String?
   email             String?
+  signature         String?
   createdAt         DateTime @default(now())
 
   accidentReport AccidentReport   @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
@@ -1198,4 +1203,35 @@ model AccidentTrace {
   accidentReport AccidentReport @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
 
   @@index([accidentReportId])
+}
+
+model AccidentPhoto {
+  id               String   @id @default(uuid())
+  accidentReportId String
+  url              String
+  hashSha256       String?
+  gpsLat           Float?
+  gpsLng           Float?
+  category         String   @default("PANORAMICA")
+  timestamp        DateTime @default(now())
+  createdAt        DateTime @default(now())
+
+  accidentReport AccidentReport @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
+
+  @@index([accidentReportId])
+}
+
+model AccidentAuditLog {
+  id               String   @id @default(uuid())
+  accidentReportId String
+  userId           String
+  action           String
+  details          String?
+  timestamp        DateTime @default(now())
+
+  accidentReport   AccidentReport @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([accidentReportId])
+  @@index([userId])
 }
