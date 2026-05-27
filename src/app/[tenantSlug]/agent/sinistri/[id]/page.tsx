@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { ArrowLeft, Car, Users, Camera, Info, CheckCircle, Upload, X, AlertTriangle, ShieldAlert, Ruler, ClipboardCheck, Plus, Trash2, FileText, Save, MessageSquareText, MapPin, Building2, Mail } from "lucide-react"
+import { ArrowLeft, Car, Users, Camera, Info, CheckCircle, Upload, X, AlertTriangle, ShieldAlert, Ruler, ClipboardCheck, Plus, Trash2, FileText, Save, MessageSquareText, MapPin, Building2, Mail, Pencil } from "lucide-react"
 import toast from "react-hot-toast"
 import { format } from "date-fns"
 import { SignaturePad } from "@/components/SignaturePad"
@@ -31,6 +31,7 @@ export default function AccidentDetail() {
 
   // Vehicle modal
   const [showVehicleModal, setShowVehicleModal] = useState(false)
+  const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null)
   const [vehicleForm, setVehicleForm] = useState({
     licensePlate: "", vehicleType: "Autovettura", vin: "", directionOfTravel: "", maneuver: "",
     isFugitive: false, insuranceCompany: "", insurancePolicy: "", revisionDate: "",
@@ -40,6 +41,7 @@ export default function AccidentDetail() {
 
   // Person modal
   const [showPersonModal, setShowPersonModal] = useState(false)
+  const [editingPersonId, setEditingPersonId] = useState<string | null>(null)
   const [personForm, setPersonForm] = useState({
     role: "CONDUCENTE", firstName: "", lastName: "", fiscalCode: "", documentType: "",
     licenseCategory: "", seatbeltUsed: false, isFugitive: false,
@@ -151,23 +153,49 @@ export default function AccidentDetail() {
     } catch { toast.error("Errore di rete") }
   }
 
-  // --- Vehicle save ---
+  // --- Vehicle save (create or update) ---
+  const openEditVehicle = (v: any) => {
+    setEditingVehicleId(v.id)
+    setVehicleForm({
+      licensePlate: v.licensePlate || "",
+      vehicleType: v.vehicleType || "Autovettura",
+      vin: v.vin || "",
+      directionOfTravel: v.directionOfTravel || "",
+      maneuver: v.maneuver || "",
+      isFugitive: v.isFugitive || false,
+      insuranceCompany: v.insuranceCompany || "",
+      insurancePolicy: v.insurancePolicy || "",
+      revisionDate: v.revisionDate || "",
+      damageDescription: v.damageDescription || "",
+      damageAreas: v.damageAreas || [],
+      deformationType: v.deformationType || "",
+      airbagDeployed: v.airbagDeployed || false,
+      tireCondition: v.tireCondition || "",
+    })
+    setShowVehicleModal(true)
+  }
+
   const handleSaveVehicle = async () => {
     if (!vehicleForm.licensePlate.trim() && !vehicleForm.isFugitive) {
       toast.error("Inserire targa o selezionare Veicolo in Fuga"); return
     }
     setSavingVehicle(true)
     try {
-      const res = await fetch(`/api/agent/accidents/${accidentId}/vehicles`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+      const method = editingVehicleId ? "PUT" : "POST"
+      const url = editingVehicleId
+        ? `/api/agent/accidents/${accidentId}/vehicles?vehicleId=${editingVehicleId}`
+        : `/api/agent/accidents/${accidentId}/vehicles`
+      const res = await fetch(url, {
+        method, headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...vehicleForm,
           licensePlate: vehicleForm.isFugitive ? "FUGITIVO" : vehicleForm.licensePlate,
         }),
       })
       if (res.ok) {
-        toast.success("Veicolo aggiunto")
+        toast.success(editingVehicleId ? "Veicolo aggiornato" : "Veicolo aggiunto")
         setShowVehicleModal(false)
+        setEditingVehicleId(null)
         setVehicleForm({ licensePlate: "", vehicleType: "Autovettura", vin: "", directionOfTravel: "", maneuver: "", isFugitive: false, insuranceCompany: "", insurancePolicy: "", revisionDate: "", damageDescription: "", damageAreas: [], deformationType: "", airbagDeployed: false, tireCondition: "" })
         fetchAccident()
       } else toast.error((await res.json()).error || "Errore")
@@ -175,20 +203,49 @@ export default function AccidentDetail() {
     finally { setSavingVehicle(false) }
   }
 
-  // --- Person save ---
+  // --- Person save (create or update) ---
+  const openEditPerson = (p: any) => {
+    const vehicleIndex = accident?.vehicles?.findIndex((v: any) => v.id === p.accidentVehicleId) ?? -1
+    setEditingPersonId(p.id)
+    setPersonForm({
+      role: p.role || "CONDUCENTE",
+      firstName: p.firstName || "",
+      lastName: p.lastName || "",
+      fiscalCode: p.fiscalCode || "",
+      documentType: p.documentType || "",
+      licenseCategory: p.licenseCategory || "",
+      seatbeltUsed: p.seatbeltUsed || false,
+      isFugitive: p.isFugitive || false,
+      injuries: p.injuries || "",
+      injuriesDetail: p.injuriesDetail || "",
+      alcoholTest: p.alcoholTest || "",
+      drugTest: p.drugTest || "",
+      statement: p.statement || "",
+      contactPhone: p.contactPhone || "",
+      email: p.email || "",
+      vehicleIndex,
+    })
+    setShowPersonModal(true)
+  }
+
   const handleSavePerson = async () => {
     if (!personForm.firstName.trim() && !personForm.isFugitive) {
       toast.error("Inserire nome o selezionare Fuga"); return
     }
     setSavingPerson(true)
     try {
-      const res = await fetch(`/api/agent/accidents/${accidentId}/people`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+      const method = editingPersonId ? "PUT" : "POST"
+      const url = editingPersonId
+        ? `/api/agent/accidents/${accidentId}/people?personId=${editingPersonId}`
+        : `/api/agent/accidents/${accidentId}/people`
+      const res = await fetch(url, {
+        method, headers: { "Content-Type": "application/json" },
         body: JSON.stringify(personForm),
       })
       if (res.ok) {
-        toast.success("Persona aggiunta")
+        toast.success(editingPersonId ? "Persona aggiornata" : "Persona aggiunta")
         setShowPersonModal(false)
+        setEditingPersonId(null)
         setPersonForm({ role: "CONDUCENTE", firstName: "", lastName: "", fiscalCode: "", documentType: "", licenseCategory: "", seatbeltUsed: false, isFugitive: false, injuries: "", injuriesDetail: "", alcoholTest: "", drugTest: "", statement: "", contactPhone: "", email: "", vehicleIndex: null })
         fetchAccident()
       } else toast.error((await res.json()).error || "Errore")
@@ -389,42 +446,63 @@ export default function AccidentDetail() {
     } catch { toast.error("Errore di rete") }
   }
 
+  const compressImage = (file: File, maxW = 1920, maxH = 1080, quality = 0.7): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => {
+        let { width, height } = img
+        if (width > maxW) { height = height * (maxW / width); width = maxW }
+        if (height > maxH) { width = width * (maxH / height); height = maxH }
+        const canvas = document.createElement("canvas")
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext("2d")
+        if (!ctx) { reject(new Error("Canvas context failed")); return }
+        ctx.drawImage(img, 0, 0, width, height)
+        resolve(canvas.toDataURL("image/jpeg", quality))
+      }
+      img.onerror = () => reject(new Error("Image load failed"))
+      img.src = URL.createObjectURL(file)
+    })
+  }
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     setLoading(true)
     try {
-      const arrayBuffer = await file.arrayBuffer()
-      const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer)
+      // Compress image to JPEG before hashing and uploading
+      const compressedUrl = await compressImage(file)
+
+      // Hash the compressed version
+      const compressedBytes = await fetch(compressedUrl).then(r => r.arrayBuffer())
+      const hashBuffer = await crypto.subtle.digest('SHA-256', compressedBytes)
       const hashArray = Array.from(new Uint8Array(hashBuffer))
       const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 
-      const reader = new FileReader()
-      reader.onloadend = async () => {
-        const url = reader.result as string
-        const res = await fetch(`/api/agent/accidents/${accidentId}/photos`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            url,
-            hashSha256: hashHex,
-            category: "PANORAMICA",
-            gpsLat: accident.lat,
-            gpsLng: accident.lng
-          })
+      const res = await fetch(`/api/agent/accidents/${accidentId}/photos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: compressedUrl,
+          hashSha256: hashHex,
+          category: "PANORAMICA",
+          gpsLat: accident.lat,
+          gpsLng: accident.lng
         })
-        if (res.ok) {
-          toast.success("Foto forense acquisita")
-          fetchAccident()
-        } else {
-          toast.error("Errore salvataggio foto")
-          setLoading(false)
-        }
+      })
+      if (res.ok) {
+        toast.success("Foto forense acquisita")
+        fetchAccident()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        toast.error((err as any).error || "Errore salvataggio foto")
+        setLoading(false)
       }
-      reader.readAsDataURL(file)
+      URL.revokeObjectURL(compressedUrl)
     } catch (error) {
-      toast.error("Errore durante il caricamento")
+      toast.error("Errore durante il caricamento della foto")
       setLoading(false)
     }
   }
@@ -515,6 +593,60 @@ export default function AccidentDetail() {
               )}
             </div>
 
+            {/* Fascicolo separato + Invio */}
+            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+              <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                <Mail className="w-5 h-5 text-indigo-500" /> Fascicolo e Invio
+              </h3>
+
+              <label className="flex items-center gap-2 mb-3 p-3 bg-indigo-50 border border-indigo-200 rounded-xl cursor-pointer">
+                <input type="checkbox" checked={accident.separateFascicolo || false}
+                  onChange={async () => {
+                    try {
+                      const res = await fetch(`/api/agent/accidents/${accidentId}`, {
+                        method: "PUT", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ separateFascicolo: !accident.separateFascicolo }),
+                      })
+                      if (res.ok) fetchAccident()
+                    } catch {}
+                  }}
+                  className="w-4 h-4" />
+                <span className="text-sm font-bold text-indigo-700">Crea fascicolo separato</span>
+              </label>
+
+              {accident.status !== "BOZZA" && (
+                <button
+                  onClick={async () => {
+                    const recipients = accident.people
+                      ?.filter((p: any) => p.email)
+                      .map((p: any) => ({
+                        email: p.email,
+                        recipientType: p.role === "CONDUCENTE" ? "CONDUCENTE" : "PROPRIETARIO",
+                        name: `${p.firstName} ${p.lastName}`
+                      })) || []
+                    if (recipients.length === 0) {
+                      toast.error("Nessuna email disponibile tra le persone coinvolte")
+                      return
+                    }
+                    if (!confirm(`Inviare il fascicolo a ${recipients.length} destinatari?`)) return
+                    try {
+                      const res = await fetch(`/api/agent/accidents/${accidentId}/send-email`, {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ recipients, subject: `Fascicolo Sinistro ${accident.protocolNumber}` }),
+                      })
+                      if (res.ok) toast.success("Fascicolo inviato!")
+                      else toast.error((await res.json()).error || "Errore invio")
+                    } catch { toast.error("Errore di rete") }
+                  }}
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all">
+                  <Mail size={16} /> Invia Fascicolo alle Parti
+                </button>
+              )}
+              {accident.status === "BOZZA" && (
+                <p className="text-xs text-gray-400 text-center">L'invio è disponibile dopo l'invio in revisione</p>
+              )}
+            </div>
+
             {accident.status === "BOZZA" && (
               <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                 <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
@@ -598,7 +730,7 @@ export default function AccidentDetail() {
         {activeTab === "veicoli" && (
           <div className="space-y-4">
             {(accident.status !== "CHIUSO") && (
-              <button onClick={() => setShowVehicleModal(true)}
+              <button onClick={() => { setEditingVehicleId(null); setVehicleForm({ licensePlate: "", vehicleType: "Autovettura", vin: "", directionOfTravel: "", maneuver: "", isFugitive: false, insuranceCompany: "", insurancePolicy: "", revisionDate: "", damageDescription: "", damageAreas: [], deformationType: "", airbagDeployed: false, tireCondition: "" }); setShowVehicleModal(true) }}
                 className="w-full bg-blue-50 text-blue-700 border border-blue-200 border-dashed py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-100 transition-colors">
                 <Car className="w-5 h-5" /> Aggiungi Veicolo
               </button>
@@ -607,9 +739,14 @@ export default function AccidentDetail() {
             {accident.vehicles?.map((v: any, idx: number) => (
               <div key={v.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 relative">
                 {accident.status !== "CHIUSO" && (
-                  <button onClick={() => handleDeleteVehicle(v.id)} className="absolute top-2 right-2 p-1.5 rounded-full bg-gray-100 hover:bg-red-100 text-gray-400 hover:text-red-500 transition-colors z-10">
-                    <Trash2 size={14} />
-                  </button>
+                  <div className="absolute top-2 right-2 flex gap-1 z-10">
+                    <button onClick={() => openEditVehicle(v)} className="p-1.5 rounded-full bg-gray-100 hover:bg-blue-100 text-gray-400 hover:text-blue-500 transition-colors">
+                      <Pencil size={14} />
+                    </button>
+                    <button onClick={() => handleDeleteVehicle(v.id)} className="p-1.5 rounded-full bg-gray-100 hover:bg-red-100 text-gray-400 hover:text-red-500 transition-colors">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 )}
                 <div className="flex items-center gap-3">
                   <div className={`p-3 rounded-full ${v.isFugitive ? 'bg-red-100' : 'bg-blue-100'}`}>
@@ -649,7 +786,7 @@ export default function AccidentDetail() {
         {activeTab === "persone" && (
           <div className="space-y-4">
             {(accident.status !== "CHIUSO") && (
-              <button onClick={() => setShowPersonModal(true)}
+              <button onClick={() => { setEditingPersonId(null); setPersonForm({ role: "CONDUCENTE", firstName: "", lastName: "", fiscalCode: "", documentType: "", licenseCategory: "", seatbeltUsed: false, isFugitive: false, injuries: "", injuriesDetail: "", alcoholTest: "", drugTest: "", statement: "", contactPhone: "", email: "", vehicleIndex: null }); setShowPersonModal(true) }}
                 className="w-full bg-purple-50 text-purple-700 border border-purple-200 border-dashed py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-purple-100 transition-colors">
                 <Users className="w-5 h-5" /> Aggiungi Persona
               </button>
@@ -660,9 +797,14 @@ export default function AccidentDetail() {
               return (
                 <div key={p.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 relative">
                   {accident.status !== "CHIUSO" && (
-                    <button onClick={() => handleDeletePerson(p.id)} className="absolute top-2 right-2 p-1.5 rounded-full bg-gray-100 hover:bg-red-100 text-gray-400 hover:text-red-500 transition-colors z-10">
-                      <Trash2 size={14} />
-                    </button>
+                    <div className="absolute top-2 right-2 flex gap-1 z-10">
+                      <button onClick={() => openEditPerson(p)} className="p-1.5 rounded-full bg-gray-100 hover:bg-purple-100 text-gray-400 hover:text-purple-500 transition-colors">
+                        <Pencil size={14} />
+                      </button>
+                      <button onClick={() => handleDeletePerson(p.id)} className="p-1.5 rounded-full bg-gray-100 hover:bg-red-100 text-gray-400 hover:text-red-500 transition-colors">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   )}
                   <div className="flex items-center gap-3">
                     <div className={`p-3 rounded-full ${p.isFugitive ? 'bg-red-100' : 'bg-purple-100'}`}>
@@ -949,7 +1091,7 @@ export default function AccidentDetail() {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center" onClick={() => setShowVehicleModal(false)}>
           <div className="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-5 max-h-[85vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-black text-slate-800 flex items-center gap-2"><Car size={20} className="text-blue-600" /> Nuovo Veicolo</h2>
+              <h2 className="text-lg font-black text-slate-800 flex items-center gap-2"><Car size={20} className="text-blue-600" /> {editingVehicleId ? "Modifica Veicolo" : "Nuovo Veicolo"}</h2>
               <button onClick={() => setShowVehicleModal(false)} className="p-2 rounded-full bg-gray-100"><X size={18} /></button>
             </div>
 
@@ -1070,7 +1212,7 @@ export default function AccidentDetail() {
             <button onClick={handleSaveVehicle} disabled={savingVehicle}
               className="w-full mt-4 py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all">
               {savingVehicle ? <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div> : <Car size={18} />}
-              Salva Veicolo
+              {editingVehicleId ? "Aggiorna Veicolo" : "Salva Veicolo"}
             </button>
           </div>
         </div>
@@ -1081,7 +1223,7 @@ export default function AccidentDetail() {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center" onClick={() => setShowPersonModal(false)}>
           <div className="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-5 max-h-[85vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-black text-slate-800 flex items-center gap-2"><Users size={20} className="text-purple-600" /> Nuova Persona</h2>
+              <h2 className="text-lg font-black text-slate-800 flex items-center gap-2"><Users size={20} className="text-purple-600" /> {editingPersonId ? "Modifica Persona" : "Nuova Persona"}</h2>
               <button onClick={() => setShowPersonModal(false)} className="p-2 rounded-full bg-gray-100"><X size={18} /></button>
             </div>
 
@@ -1194,7 +1336,7 @@ export default function AccidentDetail() {
             <button onClick={handleSavePerson} disabled={savingPerson}
               className="w-full mt-4 py-4 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all">
               {savingPerson ? <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div> : <Users size={18} />}
-              Salva Persona
+              {editingPersonId ? "Aggiorna Persona" : "Salva Persona"}
             </button>
           </div>
         </div>

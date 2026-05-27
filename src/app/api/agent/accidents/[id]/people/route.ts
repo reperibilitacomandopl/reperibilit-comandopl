@@ -86,6 +86,59 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 }
 
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+  const { id: accidentId } = await params
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const tenantId = session.user.tenantId
+
+  try {
+    const url = new URL(req.url)
+    const personId = url.searchParams.get("personId")
+    if (!personId) return NextResponse.json({ error: "personId required" }, { status: 400 })
+
+    const accident = await prisma.accidentReport.findUnique({ where: { id: accidentId }, include: { vehicles: true } })
+    if (!accident || accident.tenantId !== tenantId) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    if (accident.status === "CHIUSO") return NextResponse.json({ error: "Cannot modify closed accident" }, { status: 400 })
+
+    const json = await req.json()
+    const body = accidentPersonSchema.parse(json)
+
+    let vehicleId: string | null = null
+    if (body.vehicleIndex !== null && body.vehicleIndex !== undefined && body.vehicleIndex >= 0) {
+      if (accident.vehicles[body.vehicleIndex]) vehicleId = accident.vehicles[body.vehicleIndex].id
+    }
+
+    const updated = await prisma.accidentPerson.update({
+      where: { id: personId },
+      data: {
+        accidentVehicleId: vehicleId, role: body.role, firstName: body.firstName, lastName: body.lastName,
+        fiscalCode: body.fiscalCode, birthDate: body.birthDate ? new Date(body.birthDate) : null,
+        birthPlace: body.birthPlace, nationality: body.nationality,
+        documentType: body.documentType, documentNumber: body.documentNumber,
+        address: body.address, contactPhone: body.contactPhone, email: body.email,
+        licenseNumber: body.licenseNumber, licenseCategory: body.licenseCategory,
+        licenseExpiry: body.licenseExpiry ? new Date(body.licenseExpiry) : null, licenseValid: body.licenseValid,
+        seatbeltUsed: body.seatbeltUsed, isFugitive: body.isFugitive || false,
+        injuries: body.injuries, injuriesDetail: body.injuriesDetail, injuryDescription: body.injuryDescription,
+        hospitalSentTo: body.hospitalSentTo, transportedBy: body.transportedBy,
+        alcoholTestDone: body.alcoholTestDone, alcoholTestResult: body.alcoholTestResult,
+        drugTestDone: body.drugTestDone, drugTestResult: body.drugTestResult,
+        statement: body.statement, refused689: body.refused689 || false,
+        notified689At: body.notified689At ? new Date(body.notified689At) : null,
+      },
+    })
+
+    return NextResponse.json(updated)
+  } catch (error) {
+    console.error("[PUT_ACCIDENT_PERSON_ERROR]", error)
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: (error as any).errors }, { status: 400 })
+    }
+    return NextResponse.json({ error: "Internal error" }, { status: 500 })
+  }
+}
+
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   const { id: accidentId } = await params

@@ -1127,7 +1127,8 @@ model AccidentReport {
   surveys          AccidentSurvey[]
   externalUnits    AccidentExternalUnit[]
   emailLogs        AccidentEmailLog[]
-  safetySignature  String?
+  safetySignature   String?
+  separateFascicolo  Boolean  @default(false)
 
   @@index([tenantId, date])
   @@index([status])
