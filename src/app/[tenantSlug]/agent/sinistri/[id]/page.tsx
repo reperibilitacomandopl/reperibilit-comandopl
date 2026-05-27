@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { ArrowLeft, Car, Users, Camera, Info, CheckCircle, Upload, X, AlertTriangle, ShieldAlert } from "lucide-react"
+import { ArrowLeft, Car, Users, Camera, Info, CheckCircle, Upload, X, AlertTriangle, ShieldAlert, Ruler, ClipboardCheck, Plus, Trash2 } from "lucide-react"
 import toast from "react-hot-toast"
 import { format } from "date-fns"
 
@@ -31,20 +31,28 @@ export default function AccidentDetail() {
   // Vehicle modal
   const [showVehicleModal, setShowVehicleModal] = useState(false)
   const [vehicleForm, setVehicleForm] = useState({
-    licensePlate: "", vehicleType: "Autovettura", directionOfTravel: "", maneuver: "",
-    isFugitive: false, insuranceCompany: "", insurancePolicy: "", damageDescription: "",
+    licensePlate: "", vehicleType: "Autovettura", vin: "", directionOfTravel: "", maneuver: "",
+    isFugitive: false, insuranceCompany: "", insurancePolicy: "", revisionDate: "",
+    damageDescription: "", damageAreas: [] as string[], deformationType: "", airbagDeployed: false, tireCondition: "",
   })
   const [savingVehicle, setSavingVehicle] = useState(false)
 
   // Person modal
   const [showPersonModal, setShowPersonModal] = useState(false)
   const [personForm, setPersonForm] = useState({
-    role: "CONDUCENTE", firstName: "", lastName: "", fiscalCode: "",
+    role: "CONDUCENTE", firstName: "", lastName: "", fiscalCode: "", documentType: "",
     licenseCategory: "", seatbeltUsed: false, isFugitive: false,
     injuries: "", injuriesDetail: "", alcoholTest: "", drugTest: "",
+    statement: "", contactPhone: "",
     vehicleIndex: -1 as number | null,
   })
   const [savingPerson, setSavingPerson] = useState(false)
+
+  // Traces
+  const [traces, setTraces] = useState<any[]>([])
+  const [showTraceModal, setShowTraceModal] = useState(false)
+  const [traceForm, setTraceForm] = useState({ code: "", type: "", position: "", measurement: "", dimensions: "", description: "" })
+  const [savingTrace, setSavingTrace] = useState(false)
 
   const fetchAccident = async () => {
     try {
@@ -55,7 +63,14 @@ export default function AccidentDetail() {
     finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchAccident() }, [accidentId])
+  useEffect(() => { fetchAccident(); fetchTraces() }, [accidentId])
+
+  const fetchTraces = async () => {
+    try {
+      const res = await fetch(`/api/agent/accidents/${accidentId}/traces`)
+      if (res.ok) setTraces(await res.json())
+    } catch {}
+  }
 
   const submitCompilation = async () => {
     try {
@@ -85,7 +100,7 @@ export default function AccidentDetail() {
       if (res.ok) {
         toast.success("Veicolo aggiunto")
         setShowVehicleModal(false)
-        setVehicleForm({ licensePlate: "", vehicleType: "Autovettura", directionOfTravel: "", maneuver: "", isFugitive: false, insuranceCompany: "", insurancePolicy: "", damageDescription: "" })
+        setVehicleForm({ licensePlate: "", vehicleType: "Autovettura", vin: "", directionOfTravel: "", maneuver: "", isFugitive: false, insuranceCompany: "", insurancePolicy: "", revisionDate: "", damageDescription: "", damageAreas: [], deformationType: "", airbagDeployed: false, tireCondition: "" })
         fetchAccident()
       } else toast.error((await res.json()).error || "Errore")
     } catch { toast.error("Errore di rete") }
@@ -106,12 +121,34 @@ export default function AccidentDetail() {
       if (res.ok) {
         toast.success("Persona aggiunta")
         setShowPersonModal(false)
-        setPersonForm({ role: "CONDUCENTE", firstName: "", lastName: "", fiscalCode: "", licenseCategory: "", seatbeltUsed: false, isFugitive: false, injuries: "", injuriesDetail: "", alcoholTest: "", drugTest: "", vehicleIndex: null })
+        setPersonForm({ role: "CONDUCENTE", firstName: "", lastName: "", fiscalCode: "", documentType: "", licenseCategory: "", seatbeltUsed: false, isFugitive: false, injuries: "", injuriesDetail: "", alcoholTest: "", drugTest: "", statement: "", contactPhone: "", vehicleIndex: null })
         fetchAccident()
       } else toast.error((await res.json()).error || "Errore")
     } catch { toast.error("Errore di rete") }
     finally { setSavingPerson(false) }
   }
+
+  // --- Trace save ---
+  const handleSaveTrace = async () => {
+    if (!traceForm.code.trim() || !traceForm.type.trim()) { toast.error("Codice e tipo obbligatori"); return }
+    setSavingTrace(true)
+    try {
+      const res = await fetch(`/api/agent/accidents/${accidentId}/traces`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(traceForm),
+      })
+      if (res.ok) {
+        toast.success("Traccia aggiunta")
+        setShowTraceModal(false)
+        setTraceForm({ code: "", type: "", position: "", measurement: "", dimensions: "", description: "" })
+        fetchTraces()
+      } else toast.error((await res.json()).error || "Errore")
+    } catch { toast.error("Errore di rete") }
+    finally { setSavingTrace(false) }
+  }
+
+  const TRACE_TYPES = ["FRENATA", "ABRASIONE", "INCISIONE", "SCALFITTURA", "LIQUIDO", "SANGUE", "VETRO", "PLASTICA", "PARTE_MECCANICA", "DETRITO", "ALTRO"]
+  const DAMAGE_AREAS = ["Frontale", "Laterale DX", "Laterale SX", "Posteriore", "Tetto", "Sottoscocca"]
 
   if (loading) return <div className="p-4 text-center text-gray-500"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500 mx-auto"></div></div>
   if (!accident) return <div className="p-4 text-center text-gray-500">Sinistro non trovato</div>
@@ -134,10 +171,10 @@ export default function AccidentDetail() {
         </div>
 
         <div className="flex justify-between mt-6 text-sm font-medium">
-          {["info", "veicoli", "persone", "foto"].map(tab => (
+          {["info", "veicoli", "persone", "sicurezza", "tracce", "foto"].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`pb-2 px-2 border-b-2 ${activeTab === tab ? "border-red-500 text-white" : "border-transparent text-slate-400"}`}>
-              {tab === "info" ? "Info" : tab === "veicoli" ? `Veicoli (${accident.vehicles?.length || 0})` : tab === "persone" ? `Persone (${accident.people?.length || 0})` : "Foto"}
+              className={`pb-2 px-2 border-b-2 text-xs ${activeTab === tab ? "border-red-500 text-white" : "border-transparent text-slate-400"}`}>
+              {tab === "info" ? "Info" : tab === "veicoli" ? `Veicoli (${accident.vehicles?.length || 0})` : tab === "persone" ? `Persone (${accident.people?.length || 0})` : tab === "sicurezza" ? "Sicurezza" : tab === "tracce" ? `Tracce (${traces.length})` : "Foto"}
             </button>
           ))}
         </div>
@@ -267,6 +304,74 @@ export default function AccidentDetail() {
           </div>
         )}
 
+        {/* TAB SICUREZZA */}
+        {activeTab === "sicurezza" && (
+          <div className="space-y-3">
+            <div className="bg-white rounded-xl border border-gray-100 p-4">
+              <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                <ClipboardCheck size={18} className="text-green-600" /> Checklist Messa in Sicurezza
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { key: "STRADA_CHIUSA", label: "Strada Chiusa" },
+                  { key: "TRAFFICO_DEVIATO", label: "Traffico Deviato" },
+                  { key: "VVF_PRESENTI", label: "VVF Presenti" },
+                  { key: "118_PRESENTE", label: "118 Presente" },
+                  { key: "AREA_SICURA", label: "Area Sicura" },
+                  { key: "RISCHIO_INCENDIO", label: "Rischio Incendio" },
+                  { key: "RISCHIO_CARBURANTE", label: "Rischio Carburante" },
+                  { key: "RISCHIO_ELETTRICO", label: "Rischio Elettrico" },
+                ].map(item => {
+                  const checked = accident.safetyChecklist?.includes(item.key)
+                  return (
+                    <div key={item.key} className={`flex items-center gap-2 p-2 rounded-lg text-xs font-medium border ${
+                      checked ? "bg-green-50 border-green-200 text-green-700" : "bg-gray-50 border-gray-100 text-gray-500"
+                    }`}>
+                      <div className={`w-4 h-4 rounded flex items-center justify-center text-[10px] ${checked ? "bg-green-500 text-white" : "bg-gray-200"}`}>
+                        {checked ? "✓" : ""}
+                      </div>
+                      {item.label}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB TRACCE */}
+        {activeTab === "tracce" && (
+          <div className="space-y-3">
+            {(accident.status === "BOZZA" || accident.status === "IN_COMPILAZIONE") && (
+              <button onClick={() => setShowTraceModal(true)}
+                className="w-full bg-amber-50 text-amber-700 border border-amber-200 border-dashed py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-amber-100 transition-colors">
+                <Ruler size={18} /> Aggiungi Traccia / Reperto
+              </button>
+            )}
+
+            {traces.length === 0 ? (
+              <div className="text-center p-8 bg-white rounded-xl border border-gray-100">
+                <Ruler className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm text-gray-400">Nessuna traccia catalogata</p>
+                <p className="text-[10px] text-gray-300 mt-1">UNI 11472: frenate, abrasioni, detriti, liquidi, vetri</p>
+              </div>
+            ) : (
+              traces.map((t: any) => (
+                <div key={t.id} className="bg-white rounded-xl border border-gray-100 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-700">{t.code}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{t.type}</span>
+                  </div>
+                  {t.position && <p className="text-xs text-gray-500 mt-1">Posizione: {t.position}</p>}
+                  {t.measurement && <p className="text-xs text-gray-500">Misura: {t.measurement}</p>}
+                  {t.dimensions && <p className="text-xs text-gray-500">Dimensioni: {t.dimensions}</p>}
+                  {t.description && <p className="text-xs text-gray-600 mt-1">{t.description}</p>}
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
         {/* TAB FOTO */}
         {activeTab === "foto" && (
           <div className="space-y-4">
@@ -304,6 +409,16 @@ export default function AccidentDetail() {
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">Targa *</label>
                   <input type="text" value={vehicleForm.licensePlate} onChange={e => setVehicleForm({...vehicleForm, licensePlate: e.target.value})} placeholder="AB123CD" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Telaio/VIN</label>
+                    <input type="text" value={vehicleForm.vin} onChange={e => setVehicleForm({...vehicleForm, vin: e.target.value})} placeholder="ZFA..." className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Revisione (scadenza)</label>
+                    <input type="text" value={vehicleForm.revisionDate} onChange={e => setVehicleForm({...vehicleForm, revisionDate: e.target.value})} placeholder="MM/AAAA" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">Compagnia Assicurativa</label>
@@ -343,6 +458,57 @@ export default function AccidentDetail() {
                 <label className="block text-xs font-bold text-gray-500 mb-1">Descrizione Danni</label>
                 <textarea rows={2} value={vehicleForm.damageDescription} onChange={e => setVehicleForm({...vehicleForm, damageDescription: e.target.value})} placeholder="Danni visibili sul veicolo..." className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
               </div>
+
+              {/* Damage Areas */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Aree Danneggiate</label>
+                <div className="flex flex-wrap gap-2">
+                  {DAMAGE_AREAS.map(area => {
+                    const active = vehicleForm.damageAreas.includes(area)
+                    return (
+                      <button key={area} type="button" onClick={() => {
+                        const updated = active ? vehicleForm.damageAreas.filter(a => a !== area) : [...vehicleForm.damageAreas, area]
+                        setVehicleForm({...vehicleForm, damageAreas: updated})
+                      }}
+                        className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-colors ${
+                          active ? "bg-red-100 border-red-300 text-red-700" : "bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100"
+                        }`}>
+                        {area}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Tipo Deformazione</label>
+                  <select value={vehicleForm.deformationType} onChange={e => setVehicleForm({...vehicleForm, deformationType: e.target.value})}
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900">
+                    <option value="">—</option>
+                    <option value="LEGGERA">Leggera</option>
+                    <option value="MEDIA">Media</option>
+                    <option value="GRAVE">Grave</option>
+                    <option value="INTRUSIONE_ABITACOLO">Intrusione Abitacolo</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Condizione Pneumatici</label>
+                  <select value={vehicleForm.tireCondition} onChange={e => setVehicleForm({...vehicleForm, tireCondition: e.target.value})}
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900">
+                    <option value="">—</option>
+                    <option value="BUONO">Buono</option>
+                    <option value="USURATO">Usurato</option>
+                    <option value="LISCIO">Liscio</option>
+                    <option value="SCOPPIATO">Scoppiato</option>
+                  </select>
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={vehicleForm.airbagDeployed} onChange={e => setVehicleForm({...vehicleForm, airbagDeployed: e.target.checked})} className="w-4 h-4" />
+                <span className="text-sm text-gray-600">Airbag attivati</span>
+              </label>
             </div>
 
             <button onClick={handleSaveVehicle} disabled={savingVehicle}
@@ -450,12 +616,83 @@ export default function AccidentDetail() {
                 <label className="block text-xs font-bold text-gray-500 mb-1">Dettaglio Lesioni</label>
                 <textarea rows={2} value={personForm.injuriesDetail} onChange={e => setPersonForm({...personForm, injuriesDetail: e.target.value})} placeholder="Descrizione dettagliata delle lesioni riportate..." className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
               </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Documento (tipo/n.)</label>
+                <input type="text" value={personForm.documentType} onChange={e => setPersonForm({...personForm, documentType: e.target.value})} placeholder="Es. CI AB1234567" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Telefono Contatto</label>
+                <input type="text" value={personForm.contactPhone} onChange={e => setPersonForm({...personForm, contactPhone: e.target.value})} placeholder="+39 ..." className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Dichiarazione / Testimonianza</label>
+                <textarea rows={2} value={personForm.statement} onChange={e => setPersonForm({...personForm, statement: e.target.value})} placeholder="Dichiarazione resa sul posto..." className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+              </div>
             </div>
 
             <button onClick={handleSavePerson} disabled={savingPerson}
               className="w-full mt-4 py-4 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all">
               {savingPerson ? <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div> : <Users size={18} />}
               Salva Persona
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== TRACE MODAL ===== */}
+      {showTraceModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center" onClick={() => setShowTraceModal(false)}>
+          <div className="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-5 max-h-[85vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-black text-slate-800 flex items-center gap-2"><Ruler size={20} className="text-amber-600" /> Nuova Traccia</h2>
+              <button onClick={() => setShowTraceModal(false)} className="p-2 rounded-full bg-gray-100"><X size={18} /></button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Codice *</label>
+                  <input type="text" value={traceForm.code} onChange={e => setTraceForm({...traceForm, code: e.target.value})}
+                    placeholder="Es. TR-001" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Tipo *</label>
+                  <select value={traceForm.type} onChange={e => setTraceForm({...traceForm, type: e.target.value})}
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900">
+                    <option value="">Seleziona</option>
+                    {TRACE_TYPES.map(t => <option key={t} value={t}>{t.replace(/_/g, " ")}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Posizione</label>
+                  <input type="text" value={traceForm.position} onChange={e => setTraceForm({...traceForm, position: e.target.value})}
+                    placeholder="Es. 2m da palo luce" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Misura (es. 14.3m)</label>
+                  <input type="text" value={traceForm.measurement} onChange={e => setTraceForm({...traceForm, measurement: e.target.value})}
+                    placeholder="Es. 14.3" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Dimensioni (es. 2.5m x 0.3m)</label>
+                <input type="text" value={traceForm.dimensions} onChange={e => setTraceForm({...traceForm, dimensions: e.target.value})}
+                  placeholder="Es. 2.5m x 0.3m" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Descrizione</label>
+                <textarea rows={2} value={traceForm.description} onChange={e => setTraceForm({...traceForm, description: e.target.value})}
+                  placeholder="Descrizione dettagliata del reperto..." className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+              </div>
+            </div>
+
+            <button onClick={handleSaveTrace} disabled={savingTrace}
+              className="w-full mt-4 py-4 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all">
+              {savingTrace ? <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div> : <Ruler size={18} />}
+              Cataloga Traccia
             </button>
           </div>
         </div>

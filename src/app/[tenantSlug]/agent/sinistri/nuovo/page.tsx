@@ -19,12 +19,19 @@ export default function NewAccidentReport() {
     address: "",
     lat: "",
     lng: "",
+    eventType: "",
     severity: "SOLO_DANNI",
     roadType: "",
+    roadGeometry: "",
+    roadSignage: "",
+    lanesNumber: "",
+    speedLimit: "",
+    trafficLight: "",
     lighting: "",
     weatherCondition: "SERENO",
     roadCondition: "ASCIUTTA",
     trafficCondition: "REGOLARE",
+    safetyChecklist: [] as string[],
   })
 
   // Se veniamo da un intervento, pre-compiliamo
@@ -79,6 +86,8 @@ export default function NewAccidentReport() {
         date: new Date(formData.date).toISOString(),
         lat: formData.lat ? parseFloat(formData.lat) : undefined,
         lng: formData.lng ? parseFloat(formData.lng) : undefined,
+        lanesNumber: formData.lanesNumber ? parseInt(formData.lanesNumber) : undefined,
+        speedLimit: formData.speedLimit ? parseInt(formData.speedLimit) : undefined,
         interventionId: interventionId || undefined
       }
 
@@ -166,6 +175,106 @@ export default function NewAccidentReport() {
           {formData.severity === "MORTALE" && (
             <p className="text-xs text-red-600 font-bold mt-1">⚠️ Attenzione: Procedura Omicidio Stradale art. 589-bis</p>
           )}
+        </div>
+
+        {/* Tipo Evento UNI 11472 */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Tipo Evento</label>
+          <select value={formData.eventType} onChange={e => setFormData({...formData, eventType: e.target.value})}
+            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900">
+            <option value="">Seleziona tipologia</option>
+            <option value="TAMPONAMENTO">Tamponamento</option>
+            <option value="SCONTRO_FRONTALE">Scontro Frontale</option>
+            <option value="SCONTRO_LATERALE">Scontro Laterale</option>
+            <option value="INVESTIMENTO_PEDONE">Investimento Pedone</option>
+            <option value="USCITA_AUTONOMA">Uscita Autonoma</option>
+            <option value="MOTO">Coinvolgimento Moto</option>
+            <option value="BICICLETTA">Coinvolgimento Bicicletta</option>
+            <option value="FUGA">Veicolo in Fuga</option>
+            <option value="MORTALE">Incidente Mortale</option>
+          </select>
+        </div>
+
+        {/* Dettagli Strada UNI 11472 */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Geometria Strada</label>
+            <select value={formData.roadGeometry} onChange={e => setFormData({...formData, roadGeometry: e.target.value})}
+              className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900">
+              <option value="">Seleziona</option>
+              <option value="RETTILINEO">Rettilineo</option>
+              <option value="CURVA">Curva</option>
+              <option value="INCROCIO">Incrocio</option>
+              <option value="ROTATORIA">Rotatoria</option>
+              <option value="CAVALCAVIA">Cavalcavia/Sottopasso</option>
+              <option value="GALLERIA">Galleria</option>
+              <option value="RAMPA">Rampa/Uscita</option>
+              <option value="PENDENZA">In Pendenza</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Segnaletica</label>
+            <select value={formData.roadSignage} onChange={e => setFormData({...formData, roadSignage: e.target.value})}
+              className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900">
+              <option value="">Seleziona</option>
+              <option value="PRESENTE">Presente e Visibile</option>
+              <option value="USURATA">Usurata/Sbiadita</option>
+              <option value="ASSENTE">Assente</option>
+              <option value="COPERTA">Coperta da detriti/neve</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">N. Corsie</label>
+            <input type="number" min="1" max="8" value={formData.lanesNumber}
+              onChange={e => setFormData({...formData, lanesNumber: e.target.value})}
+              placeholder="2" className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Limite (km/h)</label>
+            <input type="number" min="10" max="150" value={formData.speedLimit}
+              onChange={e => setFormData({...formData, speedLimit: e.target.value})}
+              placeholder="50" className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Semaforo</label>
+            <select value={formData.trafficLight} onChange={e => setFormData({...formData, trafficLight: e.target.value})}
+              className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900">
+              <option value="">N/D</option>
+              <option value="ASSENTE">Assente</option>
+              <option value="FUNZIONANTE">Funzionante</option>
+              <option value="GUASTO">Guasto/Lampeggiante</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Checklist Sicurezza */}
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Checklist Sicurezza</label>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              "STRADA_CHIUSA", "TRAFFICO_DEVIATO", "VVF_PRESENTI", "118_PRESENTE",
+              "AREA_SICURA", "RISCHIO_INCENDIO", "RISCHIO_CARBURANTE", "RISCHIO_ELETTRICO"
+            ].map(item => (
+              <label key={item} className={`flex items-center gap-2 p-2 rounded-lg text-xs font-medium cursor-pointer border transition-colors ${
+                formData.safetyChecklist.includes(item)
+                  ? "bg-green-50 border-green-300 text-green-800"
+                  : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
+              }`}>
+                <input type="checkbox" checked={formData.safetyChecklist.includes(item)}
+                  onChange={e => {
+                    const updated = e.target.checked
+                      ? [...formData.safetyChecklist, item]
+                      : formData.safetyChecklist.filter(i => i !== item)
+                    setFormData({...formData, safetyChecklist: updated})
+                  }}
+                  className="w-3.5 h-3.5 rounded" />
+                {item.replace(/_/g, " ")}
+              </label>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3 pt-2">
