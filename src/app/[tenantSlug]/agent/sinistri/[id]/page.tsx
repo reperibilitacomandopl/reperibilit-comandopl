@@ -43,7 +43,7 @@ export default function AccidentDetail() {
     role: "CONDUCENTE", firstName: "", lastName: "", fiscalCode: "", documentType: "",
     licenseCategory: "", seatbeltUsed: false, isFugitive: false,
     injuries: "", injuriesDetail: "", alcoholTest: "", drugTest: "",
-    statement: "", contactPhone: "",
+    statement: "", contactPhone: "", email: "",
     vehicleIndex: -1 as number | null,
   })
   const [savingPerson, setSavingPerson] = useState(false)
@@ -121,7 +121,7 @@ export default function AccidentDetail() {
       if (res.ok) {
         toast.success("Persona aggiunta")
         setShowPersonModal(false)
-        setPersonForm({ role: "CONDUCENTE", firstName: "", lastName: "", fiscalCode: "", documentType: "", licenseCategory: "", seatbeltUsed: false, isFugitive: false, injuries: "", injuriesDetail: "", alcoholTest: "", drugTest: "", statement: "", contactPhone: "", vehicleIndex: null })
+        setPersonForm({ role: "CONDUCENTE", firstName: "", lastName: "", fiscalCode: "", documentType: "", licenseCategory: "", seatbeltUsed: false, isFugitive: false, injuries: "", injuriesDetail: "", alcoholTest: "", drugTest: "", statement: "", contactPhone: "", email: "", vehicleIndex: null })
         fetchAccident()
       } else toast.error((await res.json()).error || "Errore")
     } catch { toast.error("Errore di rete") }
@@ -145,6 +145,24 @@ export default function AccidentDetail() {
       } else toast.error((await res.json()).error || "Errore")
     } catch { toast.error("Errore di rete") }
     finally { setSavingTrace(false) }
+  }
+
+  const handleDeleteVehicle = async (vehicleId: string) => {
+    if (!confirm("Eliminare questo veicolo?")) return
+    try {
+      const res = await fetch(`/api/agent/accidents/${accidentId}/vehicles?vehicleId=${vehicleId}`, { method: "DELETE" })
+      if (res.ok) { toast.success("Veicolo rimosso"); fetchAccident() }
+      else toast.error("Impossibile eliminare")
+    } catch { toast.error("Errore di rete") }
+  }
+
+  const handleDeletePerson = async (personId: string) => {
+    if (!confirm("Eliminare questa persona?")) return
+    try {
+      const res = await fetch(`/api/agent/accidents/${accidentId}/people?personId=${personId}`, { method: "DELETE" })
+      if (res.ok) { toast.success("Persona rimossa"); fetchAccident() }
+      else toast.error("Impossibile eliminare")
+    } catch { toast.error("Errore di rete") }
   }
 
   const TRACE_TYPES = ["FRENATA", "ABRASIONE", "INCISIONE", "SCALFITTURA", "LIQUIDO", "SANGUE", "VETRO", "PLASTICA", "PARTE_MECCANICA", "DETRITO", "ALTRO"]
@@ -216,7 +234,7 @@ export default function AccidentDetail() {
         {/* TAB VEICOLI */}
         {activeTab === "veicoli" && (
           <div className="space-y-4">
-            {(accident.status === "BOZZA" || accident.status === "IN_COMPILAZIONE") && (
+            {(accident.status !== "CHIUSO") && (
               <button onClick={() => setShowVehicleModal(true)}
                 className="w-full bg-blue-50 text-blue-700 border border-blue-200 border-dashed py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-100 transition-colors">
                 <Car className="w-5 h-5" /> Aggiungi Veicolo
@@ -224,7 +242,12 @@ export default function AccidentDetail() {
             )}
 
             {accident.vehicles?.map((v: any, idx: number) => (
-              <div key={v.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+              <div key={v.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 relative">
+                {accident.status !== "CHIUSO" && (
+                  <button onClick={() => handleDeleteVehicle(v.id)} className="absolute top-2 right-2 p-1.5 rounded-full bg-gray-100 hover:bg-red-100 text-gray-400 hover:text-red-500 transition-colors z-10">
+                    <Trash2 size={14} />
+                  </button>
+                )}
                 <div className="flex items-center gap-3">
                   <div className={`p-3 rounded-full ${v.isFugitive ? 'bg-red-100' : 'bg-blue-100'}`}>
                     {v.isFugitive ? <ShieldAlert className="w-6 h-6 text-red-600" /> : <Car className="w-6 h-6 text-blue-600" />}
@@ -262,7 +285,7 @@ export default function AccidentDetail() {
         {/* TAB PERSONE */}
         {activeTab === "persone" && (
           <div className="space-y-4">
-            {(accident.status === "BOZZA" || accident.status === "IN_COMPILAZIONE") && (
+            {(accident.status !== "CHIUSO") && (
               <button onClick={() => setShowPersonModal(true)}
                 className="w-full bg-purple-50 text-purple-700 border border-purple-200 border-dashed py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-purple-100 transition-colors">
                 <Users className="w-5 h-5" /> Aggiungi Persona
@@ -272,7 +295,12 @@ export default function AccidentDetail() {
             {accident.people?.map((p: any) => {
               const vehicle = accident.vehicles?.find((v: any) => v.id === p.accidentVehicleId)
               return (
-                <div key={p.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                <div key={p.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 relative">
+                  {accident.status !== "CHIUSO" && (
+                    <button onClick={() => handleDeletePerson(p.id)} className="absolute top-2 right-2 p-1.5 rounded-full bg-gray-100 hover:bg-red-100 text-gray-400 hover:text-red-500 transition-colors z-10">
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                   <div className="flex items-center gap-3">
                     <div className={`p-3 rounded-full ${p.isFugitive ? 'bg-red-100' : 'bg-purple-100'}`}>
                       <Users className={`w-6 h-6 ${p.isFugitive ? 'text-red-600' : 'text-purple-600'}`} />
@@ -295,7 +323,9 @@ export default function AccidentDetail() {
                         {p.alcoholTest && <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded">Alcol: {p.alcoholTest}</span>}
                         {p.drugTest && <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded">Droghe: {p.drugTest}</span>}
                       </div>
+                      {p.email && <p className="text-xs text-gray-400 mt-1">Email: {p.email}</p>}
                       {p.injuriesDetail && <p className="text-xs text-gray-400 mt-1">Dettaglio: {p.injuriesDetail}</p>}
+                      {p.statement && <p className="text-xs text-gray-500 mt-1 italic">"{p.statement.substring(0, 100)}"</p>}
                     </div>
                   </div>
                 </div>
@@ -342,7 +372,7 @@ export default function AccidentDetail() {
         {/* TAB TRACCE */}
         {activeTab === "tracce" && (
           <div className="space-y-3">
-            {(accident.status === "BOZZA" || accident.status === "IN_COMPILAZIONE") && (
+            {(accident.status !== "CHIUSO") && (
               <button onClick={() => setShowTraceModal(true)}
                 className="w-full bg-amber-50 text-amber-700 border border-amber-200 border-dashed py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-amber-100 transition-colors">
                 <Ruler size={18} /> Aggiungi Traccia / Reperto
@@ -624,6 +654,10 @@ export default function AccidentDetail() {
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Telefono Contatto</label>
                 <input type="text" value={personForm.contactPhone} onChange={e => setPersonForm({...personForm, contactPhone: e.target.value})} placeholder="+39 ..." className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Email</label>
+                <input type="email" value={personForm.email} onChange={e => setPersonForm({...personForm, email: e.target.value})} placeholder="email@esempio.it" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Dichiarazione / Testimonianza</label>

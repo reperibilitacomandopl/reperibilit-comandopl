@@ -32,6 +32,7 @@ export const accidentPersonSchema = z.object({
   drugTest: z.string().optional(),
   statement: z.string().optional(),
   contactPhone: z.string().optional(),
+  email: z.string().email().optional().or(z.literal("")),
   vehicleIndex: z.number().optional().nullable(),
 })
 

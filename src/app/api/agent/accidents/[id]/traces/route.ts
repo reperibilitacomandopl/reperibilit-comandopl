@@ -34,8 +34,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   try {
     const accident = await prisma.accidentReport.findUnique({ where: { id: accidentId } })
     if (!accident || accident.tenantId !== tenantId) return NextResponse.json({ error: "Not found" }, { status: 404 })
-    if (accident.status !== "BOZZA" && accident.status !== "IN_COMPILAZIONE") {
-      return NextResponse.json({ error: "Cannot modify submitted accident" }, { status: 400 })
+    if (accident.status === "CHIUSO") {
+      return NextResponse.json({ error: "Cannot modify closed accident" }, { status: 400 })
     }
 
     const json = await req.json()

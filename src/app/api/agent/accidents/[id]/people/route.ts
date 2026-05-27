@@ -24,8 +24,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Accident not found" }, { status: 404 })
     }
 
-    if (accident.status !== "BOZZA" && accident.status !== "IN_COMPILAZIONE") {
-      return NextResponse.json({ error: "Cannot modify submitted accident" }, { status: 400 })
+    if (accident.status === "CHIUSO") {
+      return NextResponse.json({ error: "Cannot modify closed accident" }, { status: 400 })
     }
 
     const json = await req.json()
@@ -57,6 +57,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         drugTest: body.drugTest || null,
         statement: body.statement || null,
         contactPhone: body.contactPhone || null,
+        email: body.email || null,
       },
     })
 
@@ -66,6 +67,29 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: (error as any).errors }, { status: 400 })
     }
+    return NextResponse.json({ error: "Internal error" }, { status: 500 })
+  }
+}
+
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+  const { id: accidentId } = await params
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const tenantId = session.user.tenantId
+
+  try {
+    const url = new URL(req.url)
+    const personId = url.searchParams.get("personId")
+    if (!personId) return NextResponse.json({ error: "personId required" }, { status: 400 })
+
+    const accident = await prisma.accidentReport.findUnique({ where: { id: accidentId } })
+    if (!accident || accident.tenantId !== tenantId) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    if (accident.status === "CHIUSO") return NextResponse.json({ error: "Cannot modify closed accident" }, { status: 400 })
+
+    await prisma.accidentPerson.delete({ where: { id: personId } })
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("[DELETE_ACCIDENT_PERSON_ERROR]", error)
     return NextResponse.json({ error: "Internal error" }, { status: 500 })
   }
 }

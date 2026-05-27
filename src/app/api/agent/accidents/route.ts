@@ -144,6 +144,7 @@ export async function POST(req: Request) {
             drugTest: person.drugTest,
             statement: person.statement,
             contactPhone: person.contactPhone,
+            email: person.email,
           }
         })
       }
