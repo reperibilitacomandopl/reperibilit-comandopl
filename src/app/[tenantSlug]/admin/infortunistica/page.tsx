@@ -64,6 +64,19 @@ export default function AdminInfortunistica() {
           </h1>
           <p className="text-gray-500">Gestione e revisione dei fascicoli di sinistro stradale.</p>
         </div>
+        <button
+          onClick={async () => {
+            const searchParams = new URLSearchParams()
+            if (statusFilter) searchParams.append("status", statusFilter)
+            if (severityFilter) searchParams.append("severity", severityFilter)
+            searchParams.append("format", "csv")
+            const url = `/api/admin/accidents/export/istat?${searchParams.toString()}`
+            window.open(url, "_blank")
+          }}
+          className="px-4 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold text-sm flex items-center gap-2 transition-all shadow-md"
+        >
+          <FileText size={16} /> Export ISTAT CSV
+        </button>
       </div>
 
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex gap-4">

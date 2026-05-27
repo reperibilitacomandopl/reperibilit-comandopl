@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { ArrowLeft, Car, Users, Camera, Info, CheckCircle, Upload, X, AlertTriangle, ShieldAlert, Ruler, ClipboardCheck, Plus, Trash2, FileText, Save } from "lucide-react"
+import { ArrowLeft, Car, Users, Camera, Info, CheckCircle, Upload, X, AlertTriangle, ShieldAlert, Ruler, ClipboardCheck, Plus, Trash2, FileText, Save, MessageSquareText, MapPin, Building2, Mail } from "lucide-react"
 import toast from "react-hot-toast"
 import { format } from "date-fns"
 import { SignaturePad } from "@/components/SignaturePad"
@@ -63,6 +63,38 @@ export default function AccidentDetail() {
   const [safetyChecklist, setSafetyChecklist] = useState<string[]>([])
   const [safetySignature, setSafetySignature] = useState("")
 
+  // Declarations
+  const [declarations, setDeclarations] = useState<any[]>([])
+  const [showDeclarationModal, setShowDeclarationModal] = useState(false)
+  const [declarationForm, setDeclarationForm] = useState({
+    personId: "", type: "SPONTANEA", content: "",
+    signedByPerson: false, legalWarningGiven: false, refused: false,
+  })
+  const [savingDeclaration, setSavingDeclaration] = useState(false)
+
+  // Survey
+  const [surveys, setSurveys] = useState<any[]>([])
+  const [showSurveyModal, setShowSurveyModal] = useState(false)
+  const [surveyForm, setSurveyForm] = useState({
+    roadType: "", roadName: "", roadWidth: "", laneCount: "", speedLimit: "",
+    slopeType: "", slopePercent: "", impactZoneDesc: "",
+    impactMeasures: [] as { label: string; value: string; unit: string; fromReference: string }[],
+    skidMarksLength: "", debrisDescription: "",
+    signagePresent: [] as string[], signageDamaged: false,
+    roadMarkingsPresent: false, trafficLightPresent: false, trafficLightWorking: false,
+    guardRailDamaged: false, publicLightingDamaged: false, otherDamages: "",
+  })
+  const [savingSurvey, setSavingSurvey] = useState(false)
+
+  // External Units
+  const [externalUnits, setExternalUnits] = useState<any[]>([])
+  const [showUnitModal, setShowUnitModal] = useState(false)
+  const [unitForm, setUnitForm] = useState({
+    unitType: "VVF", unitName: "", unitIdentifier: "", arrivedAt: "", leftAt: "",
+    officerInCharge: "", actionsPerformed: "", reportNumber: "", notes: "",
+  })
+  const [savingUnit, setSavingUnit] = useState(false)
+
   const fetchAccident = async () => {
     try {
       const res = await fetch(`/api/agent/accidents/${accidentId}`)
@@ -78,12 +110,33 @@ export default function AccidentDetail() {
     finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchAccident(); fetchTraces() }, [accidentId])
+  useEffect(() => { fetchAccident(); fetchTraces(); fetchDeclarations(); fetchSurveys(); fetchExternalUnits() }, [accidentId])
 
   const fetchTraces = async () => {
     try {
       const res = await fetch(`/api/agent/accidents/${accidentId}/traces`)
       if (res.ok) setTraces(await res.json())
+    } catch {}
+  }
+
+  const fetchDeclarations = async () => {
+    try {
+      const res = await fetch(`/api/agent/accidents/${accidentId}/declarations`)
+      if (res.ok) setDeclarations(await res.json())
+    } catch {}
+  }
+
+  const fetchSurveys = async () => {
+    try {
+      const res = await fetch(`/api/agent/accidents/${accidentId}/survey`)
+      if (res.ok) setSurveys(await res.json())
+    } catch {}
+  }
+
+  const fetchExternalUnits = async () => {
+    try {
+      const res = await fetch(`/api/agent/accidents/${accidentId}/external-units`)
+      if (res.ok) setExternalUnits(await res.json())
     } catch {}
   }
 
@@ -162,7 +215,72 @@ export default function AccidentDetail() {
     finally { setSavingTrace(false) }
   }
 
-  // --- Auto-generate narrative ---
+  // --- Declaration save ---
+  const handleSaveDeclaration = async () => {
+    if (!declarationForm.personId || !declarationForm.content.trim()) { toast.error("Persona e contenuto obbligatori"); return }
+    if (declarationForm.type === "S.I.T." && !declarationForm.legalWarningGiven) { toast.error("S.I.T. richiede ammonizione art. 64 C.p.p."); return }
+    setSavingDeclaration(true)
+    try {
+      const res = await fetch(`/api/agent/accidents/${accidentId}/declarations`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(declarationForm),
+      })
+      if (res.ok) {
+        toast.success("Dichiarazione registrata")
+        setShowDeclarationModal(false)
+        setDeclarationForm({ personId: "", type: "SPONTANEA", content: "", signedByPerson: false, legalWarningGiven: false, refused: false })
+        fetchDeclarations()
+      } else toast.error((await res.json()).error || "Errore")
+    } catch { toast.error("Errore di rete") }
+    finally { setSavingDeclaration(false) }
+  }
+
+  // --- Survey save ---
+  const handleSaveSurvey = async () => {
+    setSavingSurvey(true)
+    try {
+      const payload = {
+        ...surveyForm,
+        roadWidth: surveyForm.roadWidth ? parseFloat(surveyForm.roadWidth) : undefined,
+        laneCount: surveyForm.laneCount ? parseInt(surveyForm.laneCount) : undefined,
+        speedLimit: surveyForm.speedLimit ? parseInt(surveyForm.speedLimit) : undefined,
+        slopePercent: surveyForm.slopePercent ? parseFloat(surveyForm.slopePercent) : undefined,
+        skidMarksLength: surveyForm.skidMarksLength ? parseFloat(surveyForm.skidMarksLength) : undefined,
+      }
+      const res = await fetch(`/api/agent/accidents/${accidentId}/survey`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      if (res.ok) {
+        toast.success("Rilievi salvati")
+        setShowSurveyModal(false)
+        setSurveyForm({ roadType: "", roadName: "", roadWidth: "", laneCount: "", speedLimit: "", slopeType: "", slopePercent: "", impactZoneDesc: "", impactMeasures: [], skidMarksLength: "", debrisDescription: "", signagePresent: [], signageDamaged: false, roadMarkingsPresent: false, trafficLightPresent: false, trafficLightWorking: false, guardRailDamaged: false, publicLightingDamaged: false, otherDamages: "" })
+        fetchSurveys()
+      } else toast.error((await res.json()).error || "Errore")
+    } catch { toast.error("Errore di rete") }
+    finally { setSavingSurvey(false) }
+  }
+
+  // --- External Unit save ---
+  const handleSaveUnit = async () => {
+    setSavingUnit(true)
+    try {
+      const payload = { ...unitForm, arrivedAt: unitForm.arrivedAt ? new Date(unitForm.arrivedAt).toISOString() : undefined, leftAt: unitForm.leftAt ? new Date(unitForm.leftAt).toISOString() : undefined }
+      const res = await fetch(`/api/agent/accidents/${accidentId}/external-units`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      if (res.ok) {
+        toast.success("Ente esterno aggiunto")
+        setShowUnitModal(false)
+        setUnitForm({ unitType: "VVF", unitName: "", unitIdentifier: "", arrivedAt: "", leftAt: "", officerInCharge: "", actionsPerformed: "", reportNumber: "", notes: "" })
+        fetchExternalUnits()
+      } else toast.error((await res.json()).error || "Errore")
+    } catch { toast.error("Errore di rete") }
+    finally { setSavingUnit(false) }
+  }
+
+  // --- Narrative ---
   const autoGenerateNarrative = () => {
     if (!accident) return
     const lines: string[] = []
@@ -343,7 +461,7 @@ export default function AccidentDetail() {
           </div>
         </div>
 
-        <div className="flex justify-between mt-6 text-sm font-medium overflow-x-auto gap-4 pb-2 px-1 scrollbar-hide">
+        <div className="flex justify-between mt-6 text-sm font-medium overflow-x-auto gap-3 pb-2 px-1 scrollbar-hide">
           {[
             { id: "info", label: "1. Info", done: true },
             { id: "sicurezza", label: "2. Sicurezza", done: accident.safetyChecklist?.length > 0 && !!accident.safetySignature },
@@ -351,7 +469,10 @@ export default function AccidentDetail() {
             { id: "foto", label: "4. Foto", done: accident.photos?.length >= 4 },
             { id: "veicoli", label: `5. Veicoli (${accident.vehicles?.length || 0})`, done: accident.vehicles?.length > 0 },
             { id: "persone", label: `6. Persone (${accident.people?.length || 0})`, done: accident.people?.length > 0 },
-            { id: "relazione", label: "7. Relazione", done: !!narrative }
+            { id: "dichiarazioni", label: `7. Dich. (${declarations.length})`, done: declarations.length > 0 },
+            { id: "rilievi", label: `8. Rilievi (${surveys.length})`, done: surveys.length > 0 },
+            { id: "enti", label: `9. Enti (${externalUnits.length})`, done: externalUnits.length > 0 },
+            { id: "relazione", label: "10. Relazione", done: !!narrative }
           ].map((step, idx) => (
             <button key={step.id} onClick={() => setActiveTab(step.id)}
               className="flex-shrink-0 flex flex-col items-center gap-1 min-w-[60px] hover:opacity-80 transition-opacity">
@@ -709,6 +830,120 @@ export default function AccidentDetail() {
         )}
       </div>
 
+      {/* TAB DICHIARAZIONI */}
+        {activeTab === "dichiarazioni" && (
+          <div className="space-y-4">
+            {(accident.status !== "CHIUSO") && (
+              <button onClick={() => setShowDeclarationModal(true)}
+                className="w-full bg-sky-50 text-sky-700 border border-sky-200 border-dashed py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-sky-100 transition-colors">
+                <MessageSquareText size={18} /> Aggiungi Dichiarazione
+              </button>
+            )}
+
+            {declarations.length === 0 ? (
+              <div className="text-center p-8 bg-white rounded-xl border border-gray-100">
+                <MessageSquareText className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm text-gray-400">Nessuna dichiarazione registrata</p>
+              </div>
+            ) : (
+              declarations.map((d: any) => (
+                <div key={d.id} className="bg-white rounded-xl border border-gray-100 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-sky-700">{d.type}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">
+                      {d.legalWarningGiven ? "Ammonizione resa" : "No avviso"}
+                    </span>
+                  </div>
+                  <p className="text-sm font-semibold">{d.person?.firstName} {d.person?.lastName} <span className="text-xs text-gray-400">({d.person?.role})</span></p>
+                  <p className="text-xs text-gray-600 mt-1 italic line-clamp-3">"{d.content}"</p>
+                  <div className="flex gap-2 mt-2 text-[10px] text-gray-400">
+                    <span>{d.signedByPerson ? "Firmata" : d.refused ? "Rifiutata" : "Non firmata"}</span>
+                    <span>| Agente: {d.recordedBy?.name}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* TAB RILIEVI */}
+        {activeTab === "rilievi" && (
+          <div className="space-y-4">
+            {(accident.status !== "CHIUSO") && (
+              <button onClick={() => setShowSurveyModal(true)}
+                className="w-full bg-teal-50 text-teal-700 border border-teal-200 border-dashed py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-teal-100 transition-colors">
+                <MapPin size={18} /> Aggiungi Rilievi Tecnici
+              </button>
+            )}
+
+            {surveys.length === 0 ? (
+              <div className="text-center p-8 bg-white rounded-xl border border-gray-100">
+                <MapPin className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm text-gray-400">Nessun rilievo tecnico registrato</p>
+                <p className="text-[10px] text-gray-300 mt-1">Misure, geometria stradale, segnaletica</p>
+              </div>
+            ) : (
+              surveys.map((s: any) => (
+                <div key={s.id} className="bg-white rounded-xl border border-gray-100 p-4">
+                  <h4 className="font-bold text-sm text-teal-700 mb-2">Rilievo del {new Date(s.surveyedAt).toLocaleString("it-IT")}</h4>
+                  <div className="grid grid-cols-2 gap-y-1 text-xs text-gray-600">
+                    {s.roadType && <p>Tipo strada: {s.roadType}</p>}
+                    {s.roadName && <p>Nome: {s.roadName}</p>}
+                    {s.roadWidth && <p>Larghezza: {s.roadWidth}m</p>}
+                    {s.laneCount && <p>Corsie: {s.laneCount}</p>}
+                    {s.speedLimit && <p>Limite: {s.speedLimit} km/h</p>}
+                    {s.slopeType && <p>Pendenza: {s.slopeType}</p>}
+                    {s.skidMarksLength && <p>Frenata: {s.skidMarksLength}m</p>}
+                  </div>
+                  {s.impactZoneDesc && <p className="text-xs text-gray-600 mt-2">Zona impatto: {s.impactZoneDesc}</p>}
+                  {s.signagePresent?.length > 0 && <p className="text-xs text-gray-500 mt-1">Segnaletica: {s.signagePresent.join(", ")}</p>}
+                  {s.otherDamages && <p className="text-xs text-red-500 mt-1">Danni: {s.otherDamages}</p>}
+                  <p className="text-[10px] text-gray-400 mt-2">Agente rilevatore: {s.surveyedBy?.name}</p>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* TAB ENTI ESTERNI */}
+        {activeTab === "enti" && (
+          <div className="space-y-4">
+            {(accident.status !== "CHIUSO") && (
+              <button onClick={() => setShowUnitModal(true)}
+                className="w-full bg-indigo-50 text-indigo-700 border border-indigo-200 border-dashed py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-100 transition-colors">
+                <Building2 size={18} /> Aggiungi Ente Intervenuto
+              </button>
+            )}
+
+            {externalUnits.length === 0 ? (
+              <div className="text-center p-8 bg-white rounded-xl border border-gray-100">
+                <Building2 className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm text-gray-400">Nessun ente esterno registrato</p>
+                <p className="text-[10px] text-gray-300 mt-1">VVF, 118, Polizia di Stato, Carabinieri, ANAS...</p>
+              </div>
+            ) : (
+              externalUnits.map((u: any) => (
+                <div key={u.id} className="bg-white rounded-xl border border-gray-100 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-indigo-100">
+                      <Building2 className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-sm">{u.unitType} {u.unitName ? `— ${u.unitName}` : ""}</h4>
+                      {u.unitIdentifier && <p className="text-xs text-gray-500">ID: {u.unitIdentifier}</p>}
+                      <div className="flex gap-3 text-[10px] text-gray-400 mt-1">
+                        {u.arrivedAt && <span>Arrivo: {new Date(u.arrivedAt).toLocaleTimeString("it-IT")}</span>}
+                        {u.leftAt && <span>Partenza: {new Date(u.leftAt).toLocaleTimeString("it-IT")}</span>}
+                      </div>
+                      {u.actionsPerformed && <p className="text-xs text-gray-600 mt-1">{u.actionsPerformed}</p>}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
       {/* ===== VEHICLE MODAL ===== */}
       {showVehicleModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center" onClick={() => setShowVehicleModal(false)}>
@@ -1018,6 +1253,255 @@ export default function AccidentDetail() {
               className="w-full mt-4 py-4 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all">
               {savingTrace ? <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div> : <Ruler size={18} />}
               Cataloga Traccia
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== DECLARATION MODAL ===== */}
+      {showDeclarationModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center" onClick={() => setShowDeclarationModal(false)}>
+          <div className="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-5 max-h-[85vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-black text-slate-800 flex items-center gap-2"><MessageSquareText size={20} className="text-sky-600" /> Nuova Dichiarazione</h2>
+              <button onClick={() => setShowDeclarationModal(false)} className="p-2 rounded-full bg-gray-100"><X size={18} /></button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Persona</label>
+                <select value={declarationForm.personId} onChange={e => setDeclarationForm({...declarationForm, personId: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900">
+                  <option value="">Seleziona persona</option>
+                  {accident.people?.map((p: any) => (
+                    <option key={p.id} value={p.id}>{p.firstName} {p.lastName} ({p.role})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Tipo</label>
+                <select value={declarationForm.type} onChange={e => setDeclarationForm({...declarationForm, type: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900">
+                  <option value="SPONTANEA">Spontanea</option>
+                  <option value="SU_INVITO">Su Invito (L.689/81)</option>
+                  <option value="S.I.T.">S.I.T. (art. 351 C.p.p.)</option>
+                  <option value="RIFIUTO">Rifiuto a dichiarare</option>
+                </select>
+              </div>
+
+              {declarationForm.type === "S.I.T." && (
+                <label className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl cursor-pointer">
+                  <input type="checkbox" checked={declarationForm.legalWarningGiven} onChange={e => setDeclarationForm({...declarationForm, legalWarningGiven: e.target.checked})} className="w-4 h-4" />
+                  <span className="text-sm font-bold text-red-700">Ammonizione art. 64 C.p.p. resa</span>
+                </label>
+              )}
+
+              {(declarationForm.type === "SU_INVITO" || declarationForm.type === "SPONTANEA") && (
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={declarationForm.refused} onChange={e => setDeclarationForm({...declarationForm, refused: e.target.checked})} className="w-4 h-4" />
+                  <span className="text-sm text-gray-600">Il soggetto rifiuta di dichiarare</span>
+                </label>
+              )}
+
+              {!declarationForm.refused && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Dichiarazione *</label>
+                  <textarea rows={5} value={declarationForm.content} onChange={e => setDeclarationForm({...declarationForm, content: e.target.value})} placeholder="Testo integrale della dichiarazione..." className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+                </div>
+              )}
+
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={declarationForm.signedByPerson} onChange={e => setDeclarationForm({...declarationForm, signedByPerson: e.target.checked})} className="w-4 h-4" />
+                <span className="text-sm text-gray-600">Firmata dall'interessato</span>
+              </label>
+            </div>
+
+            <button onClick={handleSaveDeclaration} disabled={savingDeclaration}
+              className="w-full mt-4 py-4 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all">
+              {savingDeclaration ? <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div> : <MessageSquareText size={18} />}
+              Registra Dichiarazione
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== SURVEY MODAL ===== */}
+      {showSurveyModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center" onClick={() => setShowSurveyModal(false)}>
+          <div className="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-5 max-h-[85vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-black text-slate-800 flex items-center gap-2"><MapPin size={20} className="text-teal-600" /> Rilievi Tecnici</h2>
+              <button onClick={() => setShowSurveyModal(false)} className="p-2 rounded-full bg-gray-100"><X size={18} /></button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Tipo Strada</label>
+                  <select value={surveyForm.roadType} onChange={e => setSurveyForm({...surveyForm, roadType: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900">
+                    <option value="">—</option><option value="URBANA">Urbana</option><option value="EXTRAURBANA">Extraurbana</option><option value="AUTOSTRADA">Autostrada</option><option value="PISTA_CICLABILE">Pista Ciclabile</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Nome Strada</label>
+                  <input type="text" value={surveyForm.roadName} onChange={e => setSurveyForm({...surveyForm, roadName: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Larghezza (m)</label>
+                  <input type="number" step="0.1" value={surveyForm.roadWidth} onChange={e => setSurveyForm({...surveyForm, roadWidth: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Corsie</label>
+                  <input type="number" value={surveyForm.laneCount} onChange={e => setSurveyForm({...surveyForm, laneCount: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Limite (km/h)</label>
+                  <input type="number" value={surveyForm.speedLimit} onChange={e => setSurveyForm({...surveyForm, speedLimit: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Pendenza</label>
+                  <select value={surveyForm.slopeType} onChange={e => setSurveyForm({...surveyForm, slopeType: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900">
+                    <option value="">—</option><option value="PIANO">Piano</option><option value="SALITA">Salita</option><option value="DISCESA">Discesa</option><option value="CURVA">Curva</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Percentuale (%)</label>
+                  <input type="number" step="0.1" value={surveyForm.slopePercent} onChange={e => setSurveyForm({...surveyForm, slopePercent: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Zona d'Impatto</label>
+                <input type="text" value={surveyForm.impactZoneDesc} onChange={e => setSurveyForm({...surveyForm, impactZoneDesc: e.target.value})} placeholder="Es. Incrocio via Roma / via Milano" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Tracce Frenata (m)</label>
+                <input type="number" step="0.1" value={surveyForm.skidMarksLength} onChange={e => setSurveyForm({...surveyForm, skidMarksLength: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Detriti/Frammenti</label>
+                <input type="text" value={surveyForm.debrisDescription} onChange={e => setSurveyForm({...surveyForm, debrisDescription: e.target.value})} placeholder="Vetri, plastiche, liquidi..." className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+              </div>
+
+              {/* Impact Measures */}
+              <div className="bg-gray-50 rounded-xl p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-gray-500">Misure Impatto</label>
+                  <button type="button" onClick={() => setSurveyForm({...surveyForm, impactMeasures: [...surveyForm.impactMeasures, { label: "", value: "", unit: "m", fromReference: "" }]})} className="text-[10px] bg-teal-600 text-white px-2 py-1 rounded-lg font-bold">+ Aggiungi</button>
+                </div>
+                {surveyForm.impactMeasures.map((m, i) => (
+                  <div key={i} className="grid grid-cols-4 gap-1 mb-2">
+                    <input type="text" placeholder="Label" value={m.label} onChange={e => { const n = [...surveyForm.impactMeasures]; n[i].label = e.target.value; setSurveyForm({...surveyForm, impactMeasures: n}) }} className="p-2 bg-white border border-gray-200 rounded text-xs" />
+                    <input type="text" placeholder="Valore" value={m.value} onChange={e => { const n = [...surveyForm.impactMeasures]; n[i].value = e.target.value; setSurveyForm({...surveyForm, impactMeasures: n}) }} className="p-2 bg-white border border-gray-200 rounded text-xs" />
+                    <input type="text" placeholder="Udm" value={m.unit} onChange={e => { const n = [...surveyForm.impactMeasures]; n[i].unit = e.target.value; setSurveyForm({...surveyForm, impactMeasures: n}) }} className="p-2 bg-white border border-gray-200 rounded text-xs" />
+                    <div className="flex gap-1">
+                      <input type="text" placeholder="Da" value={m.fromReference} onChange={e => { const n = [...surveyForm.impactMeasures]; n[i].fromReference = e.target.value; setSurveyForm({...surveyForm, impactMeasures: n}) }} className="p-2 bg-white border border-gray-200 rounded text-xs flex-1" />
+                      <button type="button" onClick={() => setSurveyForm({...surveyForm, impactMeasures: surveyForm.impactMeasures.filter((_, j) => j !== i)})} className="p-1 bg-red-100 text-red-500 rounded"><X size={12} /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Damage checkboxes */}
+              <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                <label className="text-xs font-bold text-gray-500 block">Danni / Segnaletica</label>
+                {[
+                  { key: "signageDamaged", label: "Segnaletica danneggiata" },
+                  { key: "roadMarkingsPresent", label: "Segnaletica orizzontale presente" },
+                  { key: "trafficLightPresent", label: "Semaforo presente" },
+                  { key: "trafficLightWorking", label: "Semaforo funzionante" },
+                  { key: "guardRailDamaged", label: "Guard-rail danneggiato" },
+                  { key: "publicLightingDamaged", label: "Illuminazione pubblica danneggiata" },
+                ].map(item => (
+                  <label key={item.key} className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={(surveyForm as any)[item.key] || false} onChange={e => setSurveyForm({...surveyForm, [item.key]: e.target.checked})} className="w-4 h-4" />
+                    <span className="text-sm text-gray-600">{item.label}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Altri Danni / Note</label>
+                <textarea rows={2} value={surveyForm.otherDamages} onChange={e => setSurveyForm({...surveyForm, otherDamages: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+              </div>
+            </div>
+
+            <button onClick={handleSaveSurvey} disabled={savingSurvey}
+              className="w-full mt-4 py-4 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all">
+              {savingSurvey ? <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div> : <MapPin size={18} />}
+              Salva Rilievi
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== EXTERNAL UNIT MODAL ===== */}
+      {showUnitModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center" onClick={() => setShowUnitModal(false)}>
+          <div className="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-5 max-h-[85vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-black text-slate-800 flex items-center gap-2"><Building2 size={20} className="text-indigo-600" /> Ente Intervenuto</h2>
+              <button onClick={() => setShowUnitModal(false)} className="p-2 rounded-full bg-gray-100"><X size={18} /></button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Tipo Ente</label>
+                <select value={unitForm.unitType} onChange={e => setUnitForm({...unitForm, unitType: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900">
+                  <option value="VVF">Vigili del Fuoco</option>
+                  <option value="118">Servizio 118 / SUEM</option>
+                  <option value="POLIZIA_STATO">Polizia di Stato</option>
+                  <option value="CARABINIERI">Carabinieri</option>
+                  <option value="GDF">Guardia di Finanza</option>
+                  <option value="ANAS">ANAS / Autostrade</option>
+                  <option value="COMUNE">Ufficio Tecnico Comune</option>
+                  <option value="ALTRO">Altro Ente</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Nome / Distaccamento</label>
+                  <input type="text" value={unitForm.unitName} onChange={e => setUnitForm({...unitForm, unitName: e.target.value})} placeholder="Es. Distaccamento Nord" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">ID Mezzo/Squadra</label>
+                  <input type="text" value={unitForm.unitIdentifier} onChange={e => setUnitForm({...unitForm, unitIdentifier: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Ora Arrivo</label>
+                  <input type="datetime-local" value={unitForm.arrivedAt} onChange={e => setUnitForm({...unitForm, arrivedAt: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Ora Partenza</label>
+                  <input type="datetime-local" value={unitForm.leftAt} onChange={e => setUnitForm({...unitForm, leftAt: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Responsabile Ente</label>
+                <input type="text" value={unitForm.officerInCharge} onChange={e => setUnitForm({...unitForm, officerInCharge: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Operazioni Svolte</label>
+                <textarea rows={2} value={unitForm.actionsPerformed} onChange={e => setUnitForm({...unitForm, actionsPerformed: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">N. Rapporto (ente esterno)</label>
+                <input type="text" value={unitForm.reportNumber} onChange={e => setUnitForm({...unitForm, reportNumber: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Note</label>
+                <textarea rows={2} value={unitForm.notes} onChange={e => setUnitForm({...unitForm, notes: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
+              </div>
+            </div>
+
+            <button onClick={handleSaveUnit} disabled={savingUnit}
+              className="w-full mt-4 py-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all">
+              {savingUnit ? <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div> : <Building2 size={18} />}
+              Registra Ente
             </button>
           </div>
         </div>

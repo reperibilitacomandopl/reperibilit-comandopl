@@ -38,8 +38,16 @@ export async function GET(req: Request) {
         vehicles: true,
         people: true,
         reportingOfficer: {
-          select: { id: true, name: true, matricola: true }
-        }
+          select: { id: true, name: true, matricola: true, qualifica: true }
+        },
+        secondOfficer: {
+          select: { id: true, name: true, matricola: true, qualifica: true }
+        },
+        supervisor: {
+          select: { id: true, name: true, matricola: true, qualifica: true }
+        },
+        externalUnits: true,
+        surveys: true,
       },
       orderBy: { date: 'desc' }
     })

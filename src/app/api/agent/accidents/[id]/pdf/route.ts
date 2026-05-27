@@ -22,7 +22,21 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         people: true,
         traces: true,
         forensicPhotos: true,
-        reportingOfficer: { select: { name: true } },
+        declarations: {
+          include: {
+            person: { select: { id: true, firstName: true, lastName: true, role: true } },
+            recordedBy: { select: { id: true, name: true, matricola: true, qualifica: true } }
+          }
+        },
+        surveys: {
+          include: {
+            surveyedBy: { select: { id: true, name: true, matricola: true, qualifica: true } }
+          }
+        },
+        externalUnits: true,
+        reportingOfficer: { select: { id: true, name: true, matricola: true, qualifica: true } },
+        secondOfficer: { select: { id: true, name: true, matricola: true, qualifica: true } },
+        supervisor: { select: { id: true, name: true, matricola: true, qualifica: true } },
         tenant: { select: { name: true } }
       }
     })

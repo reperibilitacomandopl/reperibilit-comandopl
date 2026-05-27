@@ -30,23 +30,40 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const json = await req.json()
     const body = accidentVehicleSchema.parse(json)
 
+    const vehicleCount = await prisma.accidentVehicle.count({ where: { accidentReportId: accidentId } })
     const vehicle = await prisma.accidentVehicle.create({
       data: {
         accidentReportId: accidentId,
+        vehicleNumber: body.vehicleNumber || vehicleCount + 1,
         licensePlate: body.licensePlate,
         vehicleType: body.vehicleType,
+        brand: body.brand || null,
+        model: body.model || null,
+        color: body.color || null,
+        registrationYear: body.registrationYear ?? null,
         vin: body.vin || null,
         directionOfTravel: body.directionOfTravel || null,
         maneuver: body.maneuver || null,
         isFugitive: body.isFugitive || false,
         insuranceCompany: body.insuranceCompany || null,
         insurancePolicy: body.insurancePolicy || null,
+        insuranceExpiry: body.insuranceExpiry ? new Date(body.insuranceExpiry) : null,
+        insuranceValid: body.insuranceValid ?? null,
         revisionDate: body.revisionDate || null,
         damageDescription: body.damageDescription || null,
         damageAreas: body.damageAreas || [],
+        damageZones: body.damageZones as any,
         deformationType: body.deformationType || null,
         airbagDeployed: body.airbagDeployed ?? null,
         tireCondition: body.tireCondition || null,
+        ownerName: body.ownerName || null,
+        ownerFiscalCode: body.ownerFiscalCode || null,
+        ownerAddress: body.ownerAddress || null,
+        towingRequired: body.towingRequired || false,
+        towingCompany: body.towingCompany || null,
+        towingAt: body.towingAt ? new Date(body.towingAt) : null,
+        depositLocation: body.depositLocation || null,
+        position: body.position || null,
       },
     })
 

@@ -199,7 +199,11 @@ model User {
   resetPasswordToken        String?                   @unique
   resetPasswordExpires      DateTime?
   absences                  Absence[]
-  accidentReports           AccidentReport[]
+  accidentReports           AccidentReport[]         @relation("AccidentReportingOfficer")
+  secondOfficerAccidents    AccidentReport[]         @relation("AccidentSecondOfficer")
+  supervisedAccidents       AccidentReport[]         @relation("AccidentSupervisor")
+  declarations              AccidentDeclaration[]    @relation("DeclarationRecordedBy")
+  surveys                   AccidentSurvey[]         @relation("SurveySurveyedBy")
   accidentAuditLogs         AccidentAuditLog[]
   serviceReports            ServiceReport[]
   agendaEntries             AgendaEntry[]             @relation("agendaEntries")
@@ -1074,6 +1078,7 @@ model AccidentReport {
   address            String
   lat                Float?
   lng                Float?
+  locationNotes      String?
   eventType          String?
   severity           String
   roadType           String?
@@ -1088,22 +1093,40 @@ model AccidentReport {
   trafficCondition   String?
   safetyChecklist    String[] @default([])
   dynamicDescription String?
+  dynamicDiagramUrl  String?
   narrativeReport    String?
   status             String   @default("BOZZA")
+  legalFramework     String?
+  penalArticles      String[] @default([])
+  administrativeRef  String?
   interventionId     String?
   reportingOfficerId String?
+  secondOfficerId    String?
+  supervisorId       String?
+  receivedAt         DateTime?
+  arrivedAt          DateTime?
+  closedAt           DateTime?
+  istatCode          String?
+  istatExportedAt    DateTime?
+  notes              String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   intervention     Intervention?     @relation(fields: [interventionId], references: [id])
-  reportingOfficer User?             @relation(fields: [reportingOfficerId], references: [id])
+  reportingOfficer User?             @relation("AccidentReportingOfficer", fields: [reportingOfficerId], references: [id])
+  secondOfficer    User?             @relation("AccidentSecondOfficer", fields: [secondOfficerId], references: [id])
+  supervisor       User?             @relation("AccidentSupervisor", fields: [supervisorId], references: [id])
   vehicles         AccidentVehicle[]
   people           AccidentPerson[]
   traces           AccidentTrace[]
   photos           String[]          @default([])
   forensicPhotos   AccidentPhoto[]
   auditLogs        AccidentAuditLog[]
+  declarations     AccidentDeclaration[]
+  surveys          AccidentSurvey[]
+  externalUnits    AccidentExternalUnit[]
+  emailLogs        AccidentEmailLog[]
   safetySignature  String?
 
   @@index([tenantId, date])
@@ -1113,20 +1136,37 @@ model AccidentReport {
 model AccidentVehicle {
   id                String   @id @default(uuid())
   accidentReportId  String
+  vehicleNumber     Int?
   licensePlate      String
   vehicleType       String
+  brand             String?
+  model             String?
+  color             String?
+  registrationYear  Int?
   vin               String?
   directionOfTravel String?
   maneuver          String?
   isFugitive        Boolean  @default(false)
   insuranceCompany  String?
   insurancePolicy   String?
+  insuranceExpiry   DateTime?
+  insuranceValid    Boolean?
   revisionDate      String?
+  mitDataFetchedAt   DateTime?
   damageDescription String?
   damageAreas       String[] @default([])
+  damageZones       Json?
   deformationType   String?
   airbagDeployed    Boolean?
   tireCondition     String?
+  ownerName         String?
+  ownerFiscalCode   String?
+  ownerAddress      String?
+  towingRequired    Boolean  @default(false)
+  towingCompany     String?
+  towingAt          DateTime?
+  depositLocation   String?
+  position          String?
   createdAt         DateTime @default(now())
 
   accidentReport AccidentReport   @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
@@ -1143,24 +1183,131 @@ model AccidentPerson {
   firstName         String
   lastName          String
   fiscalCode        String?
+  birthDate         DateTime?
+  birthPlace        String?
+  nationality       String?
   documentType      String?
+  documentNumber    String?
+  address           String?
+  contactPhone      String?
+  email             String?
+  licenseNumber     String?
   licenseCategory   String?
+  licenseExpiry     DateTime?
+  licenseValid      Boolean?
   seatbeltUsed      Boolean?
   isFugitive        Boolean  @default(false)
   injuries          String?
   injuriesDetail    String?
-  alcoholTest       String?
-  drugTest          String?
+  injuryDescription String?
+  hospitalSentTo    String?
+  transportedBy     String?
+  alcoholTestDone   Boolean?
+  alcoholTestResult Float?
+  drugTestDone      Boolean?
+  drugTestResult    String?
   statement         String?
-  contactPhone      String?
-  email             String?
+  refused689        Boolean  @default(false)
+  notified689At     DateTime?
   signature         String?
   createdAt         DateTime @default(now())
 
-  accidentReport AccidentReport   @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
-  vehicle        AccidentVehicle? @relation(fields: [accidentVehicleId], references: [id])
+  accidentReport AccidentReport     @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
+  vehicle        AccidentVehicle?   @relation(fields: [accidentVehicleId], references: [id])
+  declarations   AccidentDeclaration[]
 
   @@index([accidentReportId])
+}
+
+model AccidentDeclaration {
+  id                  String   @id @default(uuid())
+  accidentReportId    String
+  personId            String
+  type                String
+  content             String
+  recordedAt          DateTime
+  recordedByOfficerId String
+  signedByPerson      Boolean  @default(false)
+  signatureImageUrl   String?
+  legalWarningGiven   Boolean  @default(false)
+  refused             Boolean  @default(false)
+  createdAt           DateTime @default(now())
+
+  accidentReport AccidentReport @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
+  person         AccidentPerson @relation(fields: [personId], references: [id])
+  recordedBy     User           @relation("DeclarationRecordedBy", fields: [recordedByOfficerId], references: [id])
+
+  @@index([accidentReportId])
+  @@index([personId])
+}
+
+model AccidentSurvey {
+  id                    String    @id @default(uuid())
+  accidentReportId      String
+  roadType              String?
+  roadName              String?
+  roadWidth             Float?
+  laneCount             Int?
+  speedLimit            Int?
+  slopeType             String?
+  slopePercent          Float?
+  impactZoneDesc        String?
+  impactMeasures        Json?
+  skidMarksLength       Float?
+  debrisDescription     String?
+  signagePresent        String[]  @default([])
+  signageDamaged        Boolean   @default(false)
+  roadMarkingsPresent   Boolean   @default(false)
+  trafficLightPresent   Boolean   @default(false)
+  trafficLightWorking   Boolean?
+  guardRailDamaged      Boolean   @default(false)
+  publicLightingDamaged Boolean   @default(false)
+  otherDamages          String?
+  surveyedByOfficerId   String
+  surveyedAt            DateTime
+  createdAt             DateTime  @default(now())
+
+  accidentReport AccidentReport @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
+  surveyedBy     User           @relation("SurveySurveyedBy", fields: [surveyedByOfficerId], references: [id])
+
+  @@index([accidentReportId])
+}
+
+model AccidentExternalUnit {
+  id               String    @id @default(uuid())
+  accidentReportId String
+  unitType         String
+  unitName         String?
+  unitIdentifier   String?
+  arrivedAt        DateTime?
+  leftAt           DateTime?
+  officerInCharge  String?
+  actionsPerformed String?
+  reportNumber     String?
+  notes            String?
+  createdAt        DateTime  @default(now())
+
+  accidentReport AccidentReport @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
+
+  @@index([accidentReportId])
+}
+
+model AccidentEmailLog {
+  id               String   @id @default(uuid())
+  accidentReportId String
+  sentAt           DateTime
+  recipient        String
+  recipientType    String
+  subject          String
+  body             String?
+  status           String   @default("PENDING")
+  errorMessage     String?
+  createdAt        DateTime @default(now())
+
+  accidentReport AccidentReport @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
+
+  @@index([accidentReportId])
+  @@index([status])
 }
 
 model ServiceReport {

@@ -18,6 +18,24 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       include: {
         vehicles: { include: { occupants: true } },
         people: true,
+        declarations: {
+          include: {
+            person: { select: { id: true, firstName: true, lastName: true, role: true } },
+            recordedBy: { select: { id: true, name: true, matricola: true, qualifica: true } }
+          },
+          orderBy: { recordedAt: 'desc' }
+        },
+        surveys: {
+          include: {
+            surveyedBy: { select: { id: true, name: true, matricola: true, qualifica: true } }
+          },
+          orderBy: { surveyedAt: 'desc' }
+        },
+        externalUnits: { orderBy: { arrivedAt: 'asc' } },
+        emailLogs: { orderBy: { sentAt: 'desc' } },
+        reportingOfficer: { select: { id: true, name: true, matricola: true, qualifica: true } },
+        secondOfficer: { select: { id: true, name: true, matricola: true, qualifica: true } },
+        supervisor: { select: { id: true, name: true, matricola: true, qualifica: true } },
       }
     })
 
@@ -58,6 +76,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     // STATE MACHINE LOGIC
     let newStatus = existing.status
+    const statusData: any = {}
 
     if (action === "SUBMIT_COMPILATION") {
       if (existing.status !== "BOZZA") {
@@ -71,20 +90,22 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       if (existing.status !== "IN_COMPILAZIONE") {
         return NextResponse.json({ error: "Invalid status transition" }, { status: 400 })
       }
-      // Dobbiamo verificare dinamica compilata
       if (!existing.dynamicDescription || existing.dynamicDescription.trim() === "") {
         return NextResponse.json({ error: "Dinamica mancante" }, { status: 400 })
       }
       newStatus = "REVISIONATO"
     } else if (action === "CLOSE") {
-      // Solo Ufficiale/Comandante
       if (!session.user.isUfficiale && session.user.role !== "ADMIN") {
         return NextResponse.json({ error: "Solo ufficiali possono chiudere il verbale" }, { status: 403 })
       }
       if (existing.status !== "REVISIONATO") {
         return NextResponse.json({ error: "Invalid status transition" }, { status: 400 })
       }
+      if (!updateData.supervisorId && !existing.supervisorId) {
+        return NextResponse.json({ error: "Assegnare un supervisore validatore prima della chiusura" }, { status: 400 })
+      }
       newStatus = "CHIUSO"
+      statusData.closedAt = new Date()
     } else if (action === "REOPEN") {
       if (!session.user.isUfficiale && session.user.role !== "ADMIN") {
         return NextResponse.json({ error: "Solo ufficiali possono riaprire il verbale" }, { status: 403 })
@@ -96,14 +117,32 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         return NextResponse.json({ error: "Motivazione richiesta per riapertura" }, { status: 400 })
       }
       newStatus = "REVISIONATO"
-      // TODO: Audit log of reopening
-      await prisma.auditLog.create({
+      statusData.closedAt = null
+      await prisma.accidentAuditLog.create({
         data: {
-          tenantId,
-          adminId: session.user.id,
-          action: "REOPEN_ACCIDENT",
-          targetId: accidentId,
-          details: `Motivo: ${body.reason}`
+          accidentReportId: accidentId,
+          userId: session.user.id,
+          action: "REOPENED",
+          details: `Riaperto da ${session.user.name || session.user.id}. Motivo: ${body.reason}`
+        }
+      })
+    } else if (action === "ANNULLA") {
+      if (session.user.role !== "ADMIN") {
+        return NextResponse.json({ error: "Solo ADMIN può annullare un sinistro" }, { status: 403 })
+      }
+      if (!["BOZZA", "IN_COMPILAZIONE"].includes(existing.status)) {
+        return NextResponse.json({ error: "Si può annullare solo in stato BOZZA o IN_COMPILAZIONE" }, { status: 400 })
+      }
+      if (!body.reason) {
+        return NextResponse.json({ error: "Motivazione richiesta per annullamento" }, { status: 400 })
+      }
+      newStatus = "ANNULLATO"
+      await prisma.accidentAuditLog.create({
+        data: {
+          accidentReportId: accidentId,
+          userId: session.user.id,
+          action: "CANCELLED",
+          details: `Annullato da ADMIN. Motivo: ${body.reason}`
         }
       })
     }
@@ -112,7 +151,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       where: { id: accidentId },
       data: {
         ...updateData,
-        status: newStatus
+        status: newStatus,
+        ...statusData
       }
     })
 
