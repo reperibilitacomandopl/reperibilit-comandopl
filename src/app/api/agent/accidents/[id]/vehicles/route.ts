@@ -35,12 +35,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         accidentReportId: accidentId,
         licensePlate: body.licensePlate,
         vehicleType: body.vehicleType,
+        vin: body.vin || null,
         directionOfTravel: body.directionOfTravel || null,
         maneuver: body.maneuver || null,
         isFugitive: body.isFugitive || false,
         insuranceCompany: body.insuranceCompany || null,
         insurancePolicy: body.insurancePolicy || null,
+        revisionDate: body.revisionDate || null,
         damageDescription: body.damageDescription || null,
+        damageAreas: body.damageAreas || [],
+        deformationType: body.deformationType || null,
+        airbagDeployed: body.airbagDeployed ?? null,
+        tireCondition: body.tireCondition || null,
       },
     })
 

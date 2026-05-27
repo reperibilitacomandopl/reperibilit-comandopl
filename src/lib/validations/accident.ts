@@ -3,19 +3,26 @@ import { z } from "zod"
 export const accidentVehicleSchema = z.object({
   licensePlate: z.string().min(1),
   vehicleType: z.string(),
+  vin: z.string().optional(),
   directionOfTravel: z.string().optional(),
   maneuver: z.string().optional(),
   isFugitive: z.boolean().optional().default(false),
   insuranceCompany: z.string().optional(),
   insurancePolicy: z.string().optional(),
+  revisionDate: z.string().optional(),
   damageDescription: z.string().optional(),
+  damageAreas: z.array(z.string()).optional().default([]),
+  deformationType: z.string().optional(),
+  airbagDeployed: z.boolean().optional(),
+  tireCondition: z.string().optional(),
 })
 
 export const accidentPersonSchema = z.object({
-  role: z.string(), // CONDUCENTE, PASSEGGERO, PEDONE, TESTIMONE
+  role: z.string(),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   fiscalCode: z.string().optional(),
+  documentType: z.string().optional(),
   licenseCategory: z.string().optional(),
   seatbeltUsed: z.boolean().optional(),
   isFugitive: z.boolean().optional().default(false),
@@ -23,7 +30,19 @@ export const accidentPersonSchema = z.object({
   injuriesDetail: z.string().optional(),
   alcoholTest: z.string().optional(),
   drugTest: z.string().optional(),
-  vehicleIndex: z.number().optional().nullable(), // Per legarlo a un veicolo nel payload (-1 = fuga conducente)
+  statement: z.string().optional(),
+  contactPhone: z.string().optional(),
+  vehicleIndex: z.number().optional().nullable(),
+})
+
+export const accidentTraceSchema = z.object({
+  code: z.string().min(1),
+  type: z.string(),
+  photoUrl: z.string().optional(),
+  position: z.string().optional(),
+  measurement: z.string().optional(),
+  dimensions: z.string().optional(),
+  description: z.string().optional(),
 })
 
 export const createAccidentSchema = z.object({
@@ -31,12 +50,19 @@ export const createAccidentSchema = z.object({
   address: z.string().min(1),
   lat: z.number().optional(),
   lng: z.number().optional(),
+  eventType: z.string().optional(),
   severity: z.enum(["SOLO_DANNI", "FERITI", "MORTALE", "RISERVA_PROGNOSI"]),
   roadType: z.string().optional(),
+  roadGeometry: z.string().optional(),
+  roadSignage: z.string().optional(),
+  lanesNumber: z.number().optional(),
+  speedLimit: z.number().optional(),
+  trafficLight: z.string().optional(),
   lighting: z.string().optional(),
   weatherCondition: z.string().optional(),
   roadCondition: z.string().optional(),
   trafficCondition: z.string().optional(),
+  safetyChecklist: z.array(z.string()).optional().default([]),
   dynamicDescription: z.string().optional(),
   interventionId: z.string().optional(),
   vehicles: z.array(accidentVehicleSchema).optional(),

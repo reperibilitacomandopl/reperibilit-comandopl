@@ -303,15 +303,15 @@ export default function AccidentDetail() {
               <div className="space-y-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">Targa *</label>
-                  <input type="text" value={vehicleForm.licensePlate} onChange={e => setVehicleForm({...vehicleForm, licensePlate: e.target.value})} placeholder="AB123CD" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm" />
+                  <input type="text" value={vehicleForm.licensePlate} onChange={e => setVehicleForm({...vehicleForm, licensePlate: e.target.value})} placeholder="AB123CD" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">Compagnia Assicurativa</label>
-                  <input type="text" value={vehicleForm.insuranceCompany} onChange={e => setVehicleForm({...vehicleForm, insuranceCompany: e.target.value})} placeholder="Es. UnipolSai" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm" />
+                  <input type="text" value={vehicleForm.insuranceCompany} onChange={e => setVehicleForm({...vehicleForm, insuranceCompany: e.target.value})} placeholder="Es. UnipolSai" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">Numero Polizza</label>
-                  <input type="text" value={vehicleForm.insurancePolicy} onChange={e => setVehicleForm({...vehicleForm, insurancePolicy: e.target.value})} placeholder="Es. 12345678" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm" />
+                  <input type="text" value={vehicleForm.insurancePolicy} onChange={e => setVehicleForm({...vehicleForm, insurancePolicy: e.target.value})} placeholder="Es. 12345678" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
                 </div>
               </div>
             )}
@@ -319,21 +319,21 @@ export default function AccidentDetail() {
             <div className="space-y-3 mt-3">
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Tipo Veicolo</label>
-                <select value={vehicleForm.vehicleType} onChange={e => setVehicleForm({...vehicleForm, vehicleType: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm">
+                <select value={vehicleForm.vehicleType} onChange={e => setVehicleForm({...vehicleForm, vehicleType: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900">
                   {VEHICLE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">Direzione di Marcia</label>
-                  <select value={vehicleForm.directionOfTravel} onChange={e => setVehicleForm({...vehicleForm, directionOfTravel: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm">
+                  <select value={vehicleForm.directionOfTravel} onChange={e => setVehicleForm({...vehicleForm, directionOfTravel: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900">
                     <option value="">—</option>
                     {DIRECTIONS.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">Manovra in Atto</label>
-                  <select value={vehicleForm.maneuver} onChange={e => setVehicleForm({...vehicleForm, maneuver: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm">
+                  <select value={vehicleForm.maneuver} onChange={e => setVehicleForm({...vehicleForm, maneuver: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900">
                     <option value="">—</option>
                     {MANEUVERS.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
@@ -341,7 +341,7 @@ export default function AccidentDetail() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Descrizione Danni</label>
-                <textarea rows={2} value={vehicleForm.damageDescription} onChange={e => setVehicleForm({...vehicleForm, damageDescription: e.target.value})} placeholder="Danni visibili sul veicolo..." className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm" />
+                <textarea rows={2} value={vehicleForm.damageDescription} onChange={e => setVehicleForm({...vehicleForm, damageDescription: e.target.value})} placeholder="Danni visibili sul veicolo..." className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
               </div>
             </div>
 
@@ -373,7 +373,7 @@ export default function AccidentDetail() {
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Ruolo</label>
-                <select value={personForm.role} onChange={e => setPersonForm({...personForm, role: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm">
+                <select value={personForm.role} onChange={e => setPersonForm({...personForm, role: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900">
                   {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
@@ -382,11 +382,11 @@ export default function AccidentDetail() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-gray-500 mb-1">Nome *</label>
-                    <input type="text" value={personForm.firstName} onChange={e => setPersonForm({...personForm, firstName: e.target.value})} placeholder="Mario" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm" />
+                    <input type="text" value={personForm.firstName} onChange={e => setPersonForm({...personForm, firstName: e.target.value})} placeholder="Mario" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-500 mb-1">Cognome *</label>
-                    <input type="text" value={personForm.lastName} onChange={e => setPersonForm({...personForm, lastName: e.target.value})} placeholder="Rossi" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm" />
+                    <input type="text" value={personForm.lastName} onChange={e => setPersonForm({...personForm, lastName: e.target.value})} placeholder="Rossi" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
                   </div>
                 </div>
               )}
@@ -395,11 +395,11 @@ export default function AccidentDetail() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-gray-500 mb-1">Codice Fiscale</label>
-                    <input type="text" value={personForm.fiscalCode} onChange={e => setPersonForm({...personForm, fiscalCode: e.target.value})} placeholder="RSSMRA80A01H501K" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm" />
+                    <input type="text" value={personForm.fiscalCode} onChange={e => setPersonForm({...personForm, fiscalCode: e.target.value})} placeholder="RSSMRA80A01H501K" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-500 mb-1">Patente</label>
-                    <select value={personForm.licenseCategory} onChange={e => setPersonForm({...personForm, licenseCategory: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm">
+                    <select value={personForm.licenseCategory} onChange={e => setPersonForm({...personForm, licenseCategory: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900">
                       <option value="">—</option>
                       {LICENSE_CATEGORIES.map(l => <option key={l} value={l}>{l}</option>)}
                     </select>
@@ -410,7 +410,7 @@ export default function AccidentDetail() {
               {(personForm.role === "CONDUCENTE" || personForm.role === "PASSEGGERO") && (
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">Abbina a Veicolo</label>
-                  <select value={personForm.vehicleIndex ?? -1} onChange={e => setPersonForm({...personForm, vehicleIndex: parseInt(e.target.value)})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm">
+                  <select value={personForm.vehicleIndex ?? -1} onChange={e => setPersonForm({...personForm, vehicleIndex: parseInt(e.target.value)})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900">
                     <option value={-1}>Nessuno (pedone/testimone / fuga)</option>
                     {accident.vehicles?.map((v: any, idx: number) => (
                       <option key={v.id} value={idx}>{v.isFugitive ? 'Veicolo in FUGA' : v.licensePlate} ({v.vehicleType})</option>
@@ -429,14 +429,14 @@ export default function AccidentDetail() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">Lesioni</label>
-                  <select value={personForm.injuries} onChange={e => setPersonForm({...personForm, injuries: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm">
+                  <select value={personForm.injuries} onChange={e => setPersonForm({...personForm, injuries: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900">
                     <option value="">Seleziona</option>
                     {INJURIES.map(i => <option key={i} value={i}>{i}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">Test Alcol</label>
-                  <select value={personForm.alcoholTest} onChange={e => setPersonForm({...personForm, alcoholTest: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm">
+                  <select value={personForm.alcoholTest} onChange={e => setPersonForm({...personForm, alcoholTest: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900">
                     <option value="">—</option>
                     <option value="NEGATIVO">Negativo</option>
                     <option value="POSITIVO">Positivo</option>
@@ -448,7 +448,7 @@ export default function AccidentDetail() {
 
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Dettaglio Lesioni</label>
-                <textarea rows={2} value={personForm.injuriesDetail} onChange={e => setPersonForm({...personForm, injuriesDetail: e.target.value})} placeholder="Descrizione dettagliata delle lesioni riportate..." className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm" />
+                <textarea rows={2} value={personForm.injuriesDetail} onChange={e => setPersonForm({...personForm, injuriesDetail: e.target.value})} placeholder="Descrizione dettagliata delle lesioni riportate..." className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900" />
               </div>
             </div>
 

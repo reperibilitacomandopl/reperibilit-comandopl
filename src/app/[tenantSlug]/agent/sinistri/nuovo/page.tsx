@@ -122,7 +122,7 @@ export default function NewAccidentReport() {
             required
             value={formData.date}
             onChange={(e) => setFormData({...formData, date: e.target.value})}
-            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:outline-none"
+            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:outline-none text-gray-900"
           />
         </div>
 
@@ -136,7 +136,7 @@ export default function NewAccidentReport() {
               placeholder="Via Roma 10, Altamura"
               value={formData.address}
               onChange={(e) => setFormData({...formData, address: e.target.value})}
-              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:outline-none"
+              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:outline-none text-gray-900"
             />
             <button
               type="button"
@@ -175,7 +175,7 @@ export default function NewAccidentReport() {
             <select
               value={formData.roadType}
               onChange={(e) => setFormData({...formData, roadType: e.target.value})}
-              className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+              className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900"
             >
               <option value="">Seleziona</option>
               <option value="URBANA">Urbana</option>
@@ -189,7 +189,7 @@ export default function NewAccidentReport() {
             <select
               value={formData.lighting}
               onChange={(e) => setFormData({...formData, lighting: e.target.value})}
-              className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+              className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900"
             >
               <option value="">Seleziona</option>
               <option value="GIORNO">Giorno</option>
@@ -207,7 +207,7 @@ export default function NewAccidentReport() {
             <select
               value={formData.weatherCondition}
               onChange={(e) => setFormData({...formData, weatherCondition: e.target.value})}
-              className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+              className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900"
             >
               <option value="SERENO">Sereno</option>
               <option value="PIOGGIA">Pioggia</option>
@@ -221,7 +221,7 @@ export default function NewAccidentReport() {
             <select
               value={formData.roadCondition}
               onChange={(e) => setFormData({...formData, roadCondition: e.target.value})}
-              className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+              className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900"
             >
               <option value="ASCIUTTA">Asciutta</option>
               <option value="BAGNATA">Bagnata</option>

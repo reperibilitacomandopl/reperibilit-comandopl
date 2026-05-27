@@ -1073,12 +1073,19 @@ model AccidentReport {
   address            String
   lat                Float?
   lng                Float?
+  eventType          String?
   severity           String
   roadType           String?
+  roadGeometry       String?
+  roadSignage        String?
+  lanesNumber        Int?
+  speedLimit         Int?
+  trafficLight       String?
   lighting           String?
   weatherCondition   String?
   roadCondition      String?
   trafficCondition   String?
+  safetyChecklist    String[] @default([])
   dynamicDescription String?
   status             String   @default("BOZZA")
   interventionId     String?
@@ -1091,6 +1098,7 @@ model AccidentReport {
   reportingOfficer User?             @relation(fields: [reportingOfficerId], references: [id])
   vehicles         AccidentVehicle[]
   people           AccidentPerson[]
+  traces           AccidentTrace[]
 
   @@index([tenantId, date])
   @@index([status])
@@ -1101,12 +1109,18 @@ model AccidentVehicle {
   accidentReportId  String
   licensePlate      String
   vehicleType       String
+  vin               String?
   directionOfTravel String?
   maneuver          String?
   isFugitive        Boolean  @default(false)
   insuranceCompany  String?
   insurancePolicy   String?
+  revisionDate      String?
   damageDescription String?
+  damageAreas       String[] @default([])
+  deformationType   String?
+  airbagDeployed    Boolean?
+  tireCondition     String?
   createdAt         DateTime @default(now())
 
   accidentReport AccidentReport   @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
@@ -1123,6 +1137,7 @@ model AccidentPerson {
   firstName         String
   lastName          String
   fiscalCode        String?
+  documentType      String?
   licenseCategory   String?
   seatbeltUsed      Boolean?
   isFugitive        Boolean  @default(false)
@@ -1130,6 +1145,8 @@ model AccidentPerson {
   injuriesDetail    String?
   alcoholTest       String?
   drugTest          String?
+  statement         String?
+  contactPhone      String?
   createdAt         DateTime @default(now())
 
   accidentReport AccidentReport   @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
@@ -1160,4 +1177,22 @@ model ServiceReport {
   @@index([tenantId, reportDate])
   @@index([tenantId, status])
   @@index([authorId])
+}
+
+model AccidentTrace {
+  id               String   @id @default(uuid())
+  accidentReportId String
+  code             String
+  type             String
+  photoUrl         String?
+  position         String?
+  measurement      String?
+  dimensions       String?
+  description      String?
+  operatorId       String?
+  createdAt        DateTime @default(now())
+
+  accidentReport AccidentReport @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
+
+  @@index([accidentReportId])
 }

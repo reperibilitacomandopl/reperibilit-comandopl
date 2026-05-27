@@ -127,7 +127,7 @@ export default function NewServiceReport() {
             placeholder="Descrivi le attivita svolte durante il turno (min 10 caratteri)..."
             value={formData.activities}
             onChange={(e) => setFormData({ ...formData, activities: e.target.value })}
-            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm"
+            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm text-gray-900"
           />
           <p className="text-[10px] text-gray-400 mt-1">{formData.activities.length} caratteri (min 10)</p>
         </div>
@@ -139,7 +139,7 @@ export default function NewServiceReport() {
             placeholder="Esito complessivo del turno (opzionale)..."
             value={formData.outcome}
             onChange={(e) => setFormData({ ...formData, outcome: e.target.value })}
-            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm"
+            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm text-gray-900"
           />
         </div>
 
@@ -150,7 +150,7 @@ export default function NewServiceReport() {
             placeholder="Note aggiuntive (opzionale)..."
             value={formData.notes}
             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm"
+            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm text-gray-900"
           />
         </div>
 

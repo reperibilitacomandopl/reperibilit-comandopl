@@ -78,11 +78,18 @@ export async function POST(req: Request) {
         lat: body.lat,
         lng: body.lng,
         severity: body.severity,
+        eventType: body.eventType,
         roadType: body.roadType,
+        roadGeometry: body.roadGeometry,
+        roadSignage: body.roadSignage,
+        lanesNumber: body.lanesNumber,
+        speedLimit: body.speedLimit,
+        trafficLight: body.trafficLight,
         lighting: body.lighting,
         weatherCondition: body.weatherCondition,
         roadCondition: body.roadCondition,
         trafficCondition: body.trafficCondition,
+        safetyChecklist: body.safetyChecklist || [],
         dynamicDescription: body.dynamicDescription,
         interventionId: body.interventionId,
         reportingOfficerId: session.user.id,
@@ -91,12 +98,18 @@ export async function POST(req: Request) {
           create: body.vehicles?.map(v => ({
             licensePlate: v.licensePlate,
             vehicleType: v.vehicleType,
+            vin: v.vin,
             directionOfTravel: v.directionOfTravel,
             maneuver: v.maneuver,
             isFugitive: v.isFugitive || false,
             insuranceCompany: v.insuranceCompany,
             insurancePolicy: v.insurancePolicy,
-            damageDescription: v.damageDescription
+            revisionDate: v.revisionDate,
+            damageDescription: v.damageDescription,
+            damageAreas: v.damageAreas || [],
+            deformationType: v.deformationType,
+            airbagDeployed: v.airbagDeployed,
+            tireCondition: v.tireCondition
           })) || []
         }
       },
@@ -121,6 +134,7 @@ export async function POST(req: Request) {
             firstName: person.firstName,
             lastName: person.lastName,
             fiscalCode: person.fiscalCode,
+            documentType: person.documentType,
             licenseCategory: person.licenseCategory,
             seatbeltUsed: person.seatbeltUsed,
             isFugitive: person.isFugitive || false,
@@ -128,6 +142,8 @@ export async function POST(req: Request) {
             injuriesDetail: person.injuriesDetail,
             alcoholTest: person.alcoholTest,
             drugTest: person.drugTest,
+            statement: person.statement,
+            contactPhone: person.contactPhone,
           }
         })
       }
