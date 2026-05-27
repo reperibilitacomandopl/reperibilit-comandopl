@@ -1087,6 +1087,7 @@ model AccidentReport {
   trafficCondition   String?
   safetyChecklist    String[] @default([])
   dynamicDescription String?
+  narrativeReport    String?
   status             String   @default("BOZZA")
   interventionId     String?
   reportingOfficerId String?

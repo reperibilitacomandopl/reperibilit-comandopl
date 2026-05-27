@@ -65,6 +65,7 @@ export const createAccidentSchema = z.object({
   trafficCondition: z.string().optional(),
   safetyChecklist: z.array(z.string()).optional().default([]),
   dynamicDescription: z.string().optional(),
+  narrativeReport: z.string().optional(),
   interventionId: z.string().optional(),
   vehicles: z.array(accidentVehicleSchema).optional(),
   people: z.array(accidentPersonSchema).optional(),

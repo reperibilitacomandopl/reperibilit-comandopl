@@ -91,6 +91,7 @@ export async function POST(req: Request) {
         trafficCondition: body.trafficCondition,
         safetyChecklist: body.safetyChecklist || [],
         dynamicDescription: body.dynamicDescription,
+        narrativeReport: body.narrativeReport,
         interventionId: body.interventionId,
         reportingOfficerId: session.user.id,
         status,

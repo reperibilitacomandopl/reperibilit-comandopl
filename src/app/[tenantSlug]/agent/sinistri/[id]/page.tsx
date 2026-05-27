@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { ArrowLeft, Car, Users, Camera, Info, CheckCircle, Upload, X, AlertTriangle, ShieldAlert, Ruler, ClipboardCheck, Plus, Trash2 } from "lucide-react"
+import { ArrowLeft, Car, Users, Camera, Info, CheckCircle, Upload, X, AlertTriangle, ShieldAlert, Ruler, ClipboardCheck, Plus, Trash2, FileText, Save } from "lucide-react"
 import toast from "react-hot-toast"
 import { format } from "date-fns"
 
@@ -48,6 +48,10 @@ export default function AccidentDetail() {
   })
   const [savingPerson, setSavingPerson] = useState(false)
 
+  // Narrative
+  const [narrative, setNarrative] = useState("")
+  const [savingNarrative, setSavingNarrative] = useState(false)
+
   // Traces
   const [traces, setTraces] = useState<any[]>([])
   const [showTraceModal, setShowTraceModal] = useState(false)
@@ -57,7 +61,11 @@ export default function AccidentDetail() {
   const fetchAccident = async () => {
     try {
       const res = await fetch(`/api/agent/accidents/${accidentId}`)
-      if (res.ok) setAccident(await res.json())
+      if (res.ok) {
+        const data = await res.json()
+        setAccident(data)
+        setNarrative(data.narrativeReport || "")
+      }
       else toast.error("Errore nel caricamento")
     } catch { toast.error("Errore di rete") }
     finally { setLoading(false) }
@@ -147,6 +155,85 @@ export default function AccidentDetail() {
     finally { setSavingTrace(false) }
   }
 
+  // --- Auto-generate narrative ---
+  const autoGenerateNarrative = () => {
+    if (!accident) return
+    const lines: string[] = []
+    lines.push(`RELAZIONE DI SINISTRO STRADALE`)
+    lines.push(`Protocollo: ${accident.protocolNumber || "Bozza"}`)
+    lines.push(`Data: ${new Date(accident.date).toLocaleString("it-IT")}`)
+    lines.push(`Luogo: ${accident.address}`)
+    lines.push(`Tipo Evento: ${accident.eventType || "n/d"} | Gravità: ${accident.severity || "n/d"}`)
+    lines.push("")
+    lines.push("=== CONDIZIONI AMBIENTALI ===")
+    lines.push(`Strada: ${accident.roadType || "n/d"} | Geometria: ${accident.roadGeometry || "n/d"} | Corsie: ${accident.lanesNumber || "n/d"}`)
+    lines.push(`Segnaletica: ${accident.roadSignage || "n/d"} | Semaforo: ${accident.trafficLight || "n/d"} | Limite: ${accident.speedLimit ? accident.speedLimit + " km/h" : "n/d"}`)
+    lines.push(`Meteo: ${accident.weatherCondition || "n/d"} | Fondo: ${accident.roadCondition || "n/d"} | Illuminazione: ${accident.lighting || "n/d"} | Traffico: ${accident.trafficCondition || "n/d"}`)
+    if (accident.safetyChecklist?.length > 0) {
+      lines.push(`Messa in sicurezza: ${accident.safetyChecklist.map((s: string) => s.replace(/_/g, " ")).join(", ")}`)
+    }
+    lines.push("")
+    lines.push("=== VEICOLI COINVOLTI ===")
+    if (accident.vehicles?.length > 0) {
+      accident.vehicles.forEach((v: any, i: number) => {
+        lines.push(`Veicolo ${i + 1}: ${v.isFugitive ? "IN FUGA" : v.licensePlate} - ${v.vehicleType}`)
+        if (!v.isFugitive && v.vin) lines.push(`  Telaio/VIN: ${v.vin}`)
+        lines.push(`  Direzione: ${v.directionOfTravel || "n/d"} | Manovra: ${v.maneuver || "n/d"}`)
+        if (v.insuranceCompany) lines.push(`  Assicurazione: ${v.insuranceCompany}${v.insurancePolicy ? " (Pol. " + v.insurancePolicy + ")" : ""}`)
+        if (v.damageAreas?.length > 0) lines.push(`  Aree danneggiate: ${v.damageAreas.join(", ")}`)
+        if (v.deformationType) lines.push(`  Deformazione: ${v.deformationType}`)
+        if (v.airbagDeployed) lines.push(`  Airbag attivati: SI`)
+        if (v.tireCondition) lines.push(`  Pneumatici: ${v.tireCondition}`)
+        if (v.damageDescription) lines.push(`  Descrizione danni: ${v.damageDescription}`)
+        const occupants = accident.people?.filter((p: any) => p.accidentVehicleId === v.id)
+        if (occupants?.length > 0) {
+          lines.push(`  Occupanti:`)
+          occupants.forEach((p: any) => {
+            lines.push(`    - ${p.role}: ${p.isFugitive ? "IN FUGA" : p.firstName + " " + p.lastName}${p.injuries && p.injuries !== "NESSUNA" ? " (Lesioni: " + p.injuries + ")" : ""}${p.seatbeltUsed !== null ? (p.seatbeltUsed ? " [Cintura/Casco: SI]" : " [Cintura/Casco: NO]") : ""}`)
+          })
+        }
+        lines.push("")
+      })
+    } else { lines.push("Nessun veicolo inserito."); lines.push("") }
+    lines.push("=== PERSONE COINVOLTE (PEDONI/TESTIMONI) ===")
+    const others = accident.people?.filter((p: any) => !p.accidentVehicleId) || []
+    if (others.length > 0) {
+      others.forEach((p: any) => {
+        lines.push(`- ${p.role}: ${p.isFugitive ? "IN FUGA" : p.firstName + " " + p.lastName} | CF: ${p.fiscalCode || "n/d"}${p.injuries && p.injuries !== "NESSUNA" ? " | Lesioni: " + p.injuries : ""}${p.contactPhone ? " | Tel: " + p.contactPhone : ""}${p.email ? " | Email: " + p.email : ""}`)
+        if (p.statement) lines.push(`  Dichiarazione: "${p.statement}"`)
+      })
+      lines.push("")
+    } else { lines.push("Nessun pedone/testimone."); lines.push("") }
+    lines.push("=== TRACCE E REPERTI ===")
+    if (traces.length > 0) {
+      traces.forEach((t: any) => {
+        lines.push(`- ${t.code}: ${t.type.replace(/_/g, " ")} | Pos: ${t.position || "n/d"} | Misura: ${t.measurement || "n/d"} | Dim: ${t.dimensions || "n/d"}`)
+        if (t.description) lines.push(`  ${t.description}`)
+      })
+      lines.push("")
+    } else { lines.push("Nessuna traccia catalogata."); lines.push("") }
+    lines.push("=== DINAMICA DEL SINISTRO ===")
+    lines.push(accident.dynamicDescription || "(Da compilare)")
+    lines.push("")
+    lines.push("=== NOTE E OSSERVAZIONI ===")
+    lines.push("")
+    setNarrative(lines.join("\n"))
+    toast.success("Relazione generata dai dati raccolti")
+  }
+
+  const saveNarrative = async () => {
+    setSavingNarrative(true)
+    try {
+      const res = await fetch(`/api/agent/accidents/${accidentId}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ narrativeReport: narrative }),
+      })
+      if (res.ok) toast.success("Relazione salvata")
+      else toast.error("Errore nel salvataggio")
+    } catch { toast.error("Errore di rete") }
+    finally { setSavingNarrative(false) }
+  }
+
   const handleDeleteVehicle = async (vehicleId: string) => {
     if (!confirm("Eliminare questo veicolo?")) return
     try {
@@ -189,10 +276,10 @@ export default function AccidentDetail() {
         </div>
 
         <div className="flex justify-between mt-6 text-sm font-medium">
-          {["info", "veicoli", "persone", "sicurezza", "tracce", "foto"].map(tab => (
+          {["info", "relazione", "veicoli", "persone", "sicurezza", "tracce", "foto"].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`pb-2 px-2 border-b-2 text-xs ${activeTab === tab ? "border-red-500 text-white" : "border-transparent text-slate-400"}`}>
-              {tab === "info" ? "Info" : tab === "veicoli" ? `Veicoli (${accident.vehicles?.length || 0})` : tab === "persone" ? `Persone (${accident.people?.length || 0})` : tab === "sicurezza" ? "Sicurezza" : tab === "tracce" ? `Tracce (${traces.length})` : "Foto"}
+              {tab === "info" ? "Info" : tab === "relazione" ? "Relazione" : tab === "veicoli" ? `Veicoli (${accident.vehicles?.length || 0})` : tab === "persone" ? `Persone (${accident.people?.length || 0})` : tab === "sicurezza" ? "Sicurezza" : tab === "tracce" ? `Tracce (${traces.length})` : "Foto"}
             </button>
           ))}
         </div>
@@ -227,6 +314,42 @@ export default function AccidentDetail() {
                 className="w-full bg-green-600 text-white font-bold py-4 rounded-xl shadow-md flex items-center justify-center gap-2">
                 <CheckCircle className="w-5 h-5" /> Invia in Revisione (richiede min 1 veicolo + 1 persona)
               </button>
+            )}
+          </div>
+        )}
+
+        {/* TAB RELAZIONE */}
+        {activeTab === "relazione" && (
+          <div className="space-y-3">
+            <div className="flex gap-2 flex-wrap">
+              {accident.status !== "CHIUSO" && (
+                <button onClick={autoGenerateNarrative}
+                  className="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all">
+                  <FileText size={14} /> Auto-genera dai dati
+                </button>
+              )}
+              {accident.status !== "CHIUSO" && (
+                <button onClick={saveNarrative} disabled={savingNarrative}
+                  className="flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all">
+                  {savingNarrative ? <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-white"></div> : <Save size={14} />}
+                  Salva Relazione
+                </button>
+              )}
+            </div>
+
+            {accident.status !== "CHIUSO" ? (
+              <textarea
+                value={narrative}
+                onChange={e => setNarrative(e.target.value)}
+                placeholder="Scrivi qui la relazione discorsiva del sinistro oppure usa 'Auto-genera dai dati' per creare una bozza dai dati raccolti nelle altre schede..."
+                rows={20}
+                className="w-full p-4 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 font-mono leading-relaxed resize-y focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                style={{ minHeight: "60vh" }}
+              />
+            ) : (
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">{accident.narrativeReport || "(Nessuna relazione compilata)"}</pre>
+              </div>
             )}
           </div>
         )}
