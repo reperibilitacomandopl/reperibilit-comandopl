@@ -1,10 +1,7 @@
 import jsPDF from "jspdf"
-import autoTable from "jspdf-autotable"
+import autoTableFn from "jspdf-autotable"
 import { format } from "date-fns"
 import { it } from "date-fns/locale"
-
-// Apply the plugin to jsPDF prototype (required for server-side)
-autoTable(jsPDF.prototype as any, {} as any)
 
 interface jsPDFWithAutoTable extends jsPDF {
   autoTable: (options: import("jspdf-autotable").UserOptions) => jsPDF;
@@ -131,7 +128,7 @@ export async function generateAccidentReportPDF({
       v.damageDescription || "Nessun danno descritto"
     ])
 
-    doc.autoTable({
+    autoTableFn(doc, {
       startY: y + 2,
       head: [["Rif.", "Tipo", "Targa", "Marca/Modello", "Assicurazione", "Rimozione", "Danni"]],
       body: vehicleRows,
@@ -158,7 +155,7 @@ export async function generateAccidentReportPDF({
       p.alcoholTestDone ? (p.alcoholTestResult ? `${p.alcoholTestResult} g/L` : "Effettuato") : "No"
     ])
 
-    doc.autoTable({
+    autoTableFn(doc, {
       startY: y + 2,
       head: [["Nominativo", "Ruolo", "CF", "Nascita", "Lesioni", "Ospedale", "Alcoltest"]],
       body: peopleRows,
@@ -183,7 +180,7 @@ export async function generateAccidentReportPDF({
       d.content?.substring(0, 100) + (d.content?.length > 100 ? "..." : "")
     ])
 
-    doc.autoTable({
+    autoTableFn(doc, {
       startY: y + 2,
       head: [["Dichiarante", "Tipo", "Avviso Legale", "Firma", "Contenuto (estratto)"]],
       body: declRows,
@@ -221,7 +218,7 @@ export async function generateAccidentReportPDF({
     if (survey.impactMeasures && typeof survey.impactMeasures === "object") {
       const measures = Array.isArray(survey.impactMeasures) ? survey.impactMeasures : [survey.impactMeasures]
       const measureRows = measures.map((m: any) => [m.label || "", String(m.value || ""), m.unit || "m", m.fromReference || ""])
-      doc.autoTable({
+      autoTableFn(doc, {
         startY: y + 2,
         head: [["Misura", "Valore", "Udm", "Da riferimento"]],
         body: measureRows,
@@ -247,7 +244,7 @@ export async function generateAccidentReportPDF({
       return [u.unitType, u.unitName || "-", u.unitIdentifier || "-", arrivedAt, leftAt, u.actionsPerformed || "-"]
     })
 
-    doc.autoTable({
+    autoTableFn(doc, {
       startY: y + 2,
       head: [["Ente", "Nome/Unità", "Identificativo", "Arrivo", "Partenza", "Operazioni"]],
       body: unitRows,
@@ -276,7 +273,7 @@ export async function generateAccidentReportPDF({
       t.code, t.type, t.position || "-", t.measurement || "-", t.description || "-"
     ])
 
-    doc.autoTable({
+    autoTableFn(doc, {
       startY: y + 2,
       head: [["Codice", "Tipo", "Posizione", "Misura", "Descrizione"]],
       body: traceRows,

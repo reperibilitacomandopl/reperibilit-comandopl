@@ -51,7 +51,8 @@
       "Bash(mkdir -p \"src/app/api/agent/accidents/[id]/people\")",
       "Bash(python3 -c ' *)",
       "Bash(Get-ChildItem *)",
-      "Bash(Select-String -Pattern \"\\(declaration|survey|external-unit|send-email|export/istat|accident\\\\.ts|email-sender|pdf-accident\\)\" -Context 0,2)"
+      "Bash(Select-String -Pattern \"\\(declaration|survey|external-unit|send-email|export/istat|accident\\\\.ts|email-sender|pdf-accident\\)\" -Context 0,2)",
+      "Bash(node *)"
     ]
   }
 }
