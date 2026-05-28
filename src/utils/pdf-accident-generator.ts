@@ -1,7 +1,10 @@
 import jsPDF from "jspdf"
-import "jspdf-autotable"
+import autoTable from "jspdf-autotable"
 import { format } from "date-fns"
 import { it } from "date-fns/locale"
+
+// Apply the plugin to jsPDF prototype (required for server-side)
+autoTable(jsPDF.prototype as any, {} as any)
 
 interface jsPDFWithAutoTable extends jsPDF {
   autoTable: (options: import("jspdf-autotable").UserOptions) => jsPDF;
@@ -354,6 +357,174 @@ export async function generateAccidentReportPDF({
     doc.setTextColor(150, 150, 150)
     doc.setFont("helvetica", "normal")
     doc.text(`Documento informatico ai sensi del CAD — Fascicolo: ${accident.id}`, 14, 285)
+    doc.text(`Pagina ${i} di ${pageCount}`, 196, 285, { align: "right" })
+  }
+
+  return doc.output('arraybuffer')
+}
+
+// ─── SCHEDA PERSONA (allegato persona) ───
+export async function generatePersonSchedaPDF({
+  person, accident, tenantName = "Comando Polizia Locale"
+}: { person: any; accident: any; tenantName?: string }) {
+  const doc = new jsPDF() as jsPDFWithAutoTable
+
+  doc.setFontSize(18); doc.setTextColor(...NAVY); doc.setFont("helvetica", "bold")
+  doc.text(`SCHEDA PERSONA - ${tenantName.toUpperCase()}`, 105, 20, { align: "center" })
+  doc.setFontSize(12); doc.setFont("helvetica", "normal"); doc.setTextColor(...GREY)
+  doc.text(`Sinistro: ${accident.protocolNumber} — ${format(new Date(accident.date), "dd/MM/yyyy", { locale: it })}`, 105, 28, { align: "center" })
+  doc.line(14, 32, 196, 32)
+
+  let y = 40
+  y = sectionBody(doc, y)
+  doc.text(`Nominativo: ${person.firstName} ${person.lastName}`, 14, y); y += 7
+  doc.text(`Ruolo: ${person.role}`, 14, y); y += 7
+  if (person.fiscalCode) { doc.text(`Codice Fiscale: ${person.fiscalCode}`, 14, y); y += 7 }
+  if (person.birthDate) { doc.text(`Nato il: ${format(new Date(person.birthDate), "dd/MM/yyyy", { locale: it })} a ${person.birthPlace || "n/d"}`, 14, y); y += 7 }
+  if (person.nationality) { doc.text(`Nazionalità: ${person.nationality}`, 14, y); y += 7 }
+  if (person.documentType) { doc.text(`Documento: ${person.documentType}${person.documentNumber ? " n. " + person.documentNumber : ""}`, 14, y); y += 7 }
+  if (person.address) { doc.text(`Residenza: ${person.address}`, 14, y); y += 7 }
+  if (person.contactPhone) { doc.text(`Tel: ${person.contactPhone}`, 14, y); y += 7 }
+  if (person.email) { doc.text(`Email: ${person.email}`, 14, y); y += 7 }
+  y += 3
+
+  if (person.role === "CONDUCENTE") {
+    doc.setFont("helvetica", "bold"); doc.text("Patente:", 14, y); doc.setFont("helvetica", "normal"); y += 6
+    doc.text(`Categoria: ${person.licenseCategory || "n/d"} | N. ${person.licenseNumber || "n/d"}`, 20, y); y += 6
+    if (person.licenseExpiry) { doc.text(`Scadenza: ${format(new Date(person.licenseExpiry), "dd/MM/yyyy", { locale: it })} | Valida: ${person.licenseValid ? "Sì" : "N/D"}`, 20, y); y += 6 }
+    y += 3
+  }
+
+  doc.setFont("helvetica", "bold"); doc.text("Lesioni:", 14, y); doc.setFont("helvetica", "normal"); y += 6
+  doc.text(`Classificazione: ${person.injuries || "Nessuna"}`, 20, y); y += 6
+  if (person.injuriesDetail) { doc.text(`Dettaglio: ${person.injuriesDetail}`, 20, y); y += 6 }
+  if (person.injuryDescription) { doc.text(`Descrizione: ${person.injuryDescription}`, 20, y); y += 6 }
+  if (person.hospitalSentTo) { doc.text(`Ospedale: ${person.hospitalSentTo} | Trasporto: ${person.transportedBy || "n/d"}`, 20, y); y += 6 }
+  y += 3
+
+  if (person.alcoholTestDone !== null || person.drugTestDone !== null) {
+    doc.setFont("helvetica", "bold"); doc.text("Test Tossicologici:", 14, y); doc.setFont("helvetica", "normal"); y += 6
+    if (person.alcoholTestDone) { doc.text(`Alcoltest: ${person.alcoholTestResult != null ? person.alcoholTestResult + " g/L" : "Effettuato"}`, 20, y); y += 6 }
+    if (person.drugTestDone) { doc.text(`Drug test: ${person.drugTestResult || "Effettuato"}`, 20, y); y += 6 }
+    y += 3
+  }
+
+  const v = accident.vehicles?.find((veh: any) => veh.id === person.accidentVehicleId)
+  if (v) {
+    doc.setFont("helvetica", "bold"); doc.text("Veicolo associato:", 14, y); doc.setFont("helvetica", "normal"); y += 6
+    doc.text(`Targa: ${v.licensePlate} — ${v.vehicleType} ${v.brand ? v.brand + " " + v.model : ""}`, 20, y); y += 6
+    y += 3
+  }
+
+  if (person.refused689) { doc.text("⚠ Ha rifiutato di rilasciare dichiarazioni (L.689/81)", 14, y); y += 7 }
+  if (person.notified689At) { doc.text(`Diritti notificati il: ${format(new Date(person.notified689At), "dd/MM/yyyy HH:mm", { locale: it })}`, 14, y); y += 7 }
+
+  if (person.seatbeltUsed !== null) { doc.text(`Cintura/Casco: ${person.seatbeltUsed ? "Sì" : "No"}`, 14, y); y += 6 }
+  if (person.isFugitive) { doc.text("⚠ SOGGETTO IN FUGA", 14, y); y += 6 }
+
+  // Dichiarazioni di questa persona
+  const personDecls = accident.declarations?.filter((d: any) => d.personId === person.id)
+  if (personDecls?.length) {
+    y = checkPageBreak(doc, y, 200)
+    doc.setFont("helvetica", "bold"); doc.text("Dichiarazioni rese:", 14, y); doc.setFont("helvetica", "normal"); y += 7
+    for (const d of personDecls) {
+      const declText = `[${d.type}] ${d.content.substring(0, 200)}${d.content.length > 200 ? "..." : ""}`
+      const splitDecl = doc.splitTextToSize(declText, 178)
+      doc.text(splitDecl, 20, y)
+      y += splitDecl.length * 5 + 3
+      if (d.signedByPerson) { doc.text("✓ Firmata dall'interessato", 20, y); y += 5 }
+      if (d.legalWarningGiven) { doc.text("✓ Ammonizione art. 64 C.p.p. resa", 20, y); y += 5 }
+      y += 3
+    }
+  }
+
+  // Footer
+  const pageCount = doc.internal.getNumberOfPages()
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i)
+    doc.setFontSize(8); doc.setTextColor(150, 150, 150); doc.setFont("helvetica", "normal")
+    doc.text(`Scheda Persona — Sinistro ${accident.protocolNumber}`, 14, 285)
+    doc.text(`Pagina ${i} di ${pageCount}`, 196, 285, { align: "right" })
+  }
+
+  return doc.output('arraybuffer')
+}
+
+// ─── SCHEDA VEICOLO (allegato veicolo) ───
+export async function generateVehicleSchedaPDF({
+  vehicle, accident, tenantName = "Comando Polizia Locale"
+}: { vehicle: any; accident: any; tenantName?: string }) {
+  const doc = new jsPDF() as jsPDFWithAutoTable
+
+  doc.setFontSize(18); doc.setTextColor(...NAVY); doc.setFont("helvetica", "bold")
+  doc.text(`SCHEDA VEICOLO - ${tenantName.toUpperCase()}`, 105, 20, { align: "center" })
+  doc.setFontSize(12); doc.setFont("helvetica", "normal"); doc.setTextColor(...GREY)
+  doc.text(`Sinistro: ${accident.protocolNumber} — ${format(new Date(accident.date), "dd/MM/yyyy", { locale: it })}`, 105, 28, { align: "center" })
+  doc.line(14, 32, 196, 32)
+
+  let y = 40
+  y = sectionBody(doc, y)
+
+  doc.setFont("helvetica", "bold")
+  doc.text(`Veicolo ${vehicle.vehicleNumber ? String.fromCharCode(64 + vehicle.vehicleNumber) : ""}: ${vehicle.isFugitive ? "IN FUGA" : vehicle.licensePlate}`, 14, y)
+  doc.setFont("helvetica", "normal"); y += 7
+  doc.text(`Tipo: ${vehicle.vehicleType}`, 14, y); y += 6
+  if (vehicle.brand || vehicle.model) { doc.text(`Marca/Modello: ${[vehicle.brand, vehicle.model].filter(Boolean).join(" ")}`, 14, y); y += 6 }
+  if (vehicle.color) { doc.text(`Colore: ${vehicle.color}`, 14, y); y += 6 }
+  if (vehicle.registrationYear) { doc.text(`Anno immatr.: ${vehicle.registrationYear}`, 14, y); y += 6 }
+  if (vehicle.vin) { doc.text(`Telaio/VIN: ${vehicle.vin}`, 14, y); y += 6 }
+  y += 3
+
+  doc.setFont("helvetica", "bold"); doc.text("Proprietario:", 14, y); doc.setFont("helvetica", "normal"); y += 6
+  if (vehicle.ownerName) { doc.text(`Nome: ${vehicle.ownerName}`, 20, y); y += 6 }
+  if (vehicle.ownerFiscalCode) { doc.text(`CF: ${vehicle.ownerFiscalCode}`, 20, y); y += 6 }
+  if (vehicle.ownerAddress) { doc.text(`Indirizzo: ${vehicle.ownerAddress}`, 20, y); y += 6 }
+  y += 3
+
+  doc.setFont("helvetica", "bold"); doc.text("Assicurazione:", 14, y); doc.setFont("helvetica", "normal"); y += 6
+  doc.text(`Compagnia: ${vehicle.insuranceCompany || "n/d"} | Polizza: ${vehicle.insurancePolicy || "n/d"}`, 20, y); y += 6
+  if (vehicle.insuranceExpiry) { doc.text(`Scadenza: ${format(new Date(vehicle.insuranceExpiry), "dd/MM/yyyy", { locale: it })} | Valida: ${vehicle.insuranceValid ? "Sì" : "N/D"}`, 20, y); y += 6 }
+  if (vehicle.revisionDate) { doc.text(`Revisione: ${vehicle.revisionDate}`, 20, y); y += 6 }
+  y += 3
+
+  doc.setFont("helvetica", "bold"); doc.text("Circolazione:", 14, y); doc.setFont("helvetica", "normal"); y += 6
+  if (vehicle.directionOfTravel) { doc.text(`Direzione: ${vehicle.directionOfTravel}`, 20, y); y += 6 }
+  if (vehicle.maneuver) { doc.text(`Manovra: ${vehicle.maneuver}`, 20, y); y += 6 }
+  y += 3
+
+  doc.setFont("helvetica", "bold"); doc.text("Danni:", 14, y); doc.setFont("helvetica", "normal"); y += 6
+  if (vehicle.damageDescription) { doc.text(`Descrizione: ${vehicle.damageDescription}`, 20, y); y += 6 }
+  if (vehicle.damageAreas?.length) { doc.text(`Aree: ${vehicle.damageAreas.join(", ")}`, 20, y); y += 6 }
+  if (vehicle.deformationType) { doc.text(`Deformazione: ${vehicle.deformationType}`, 20, y); y += 6 }
+  if (vehicle.airbagDeployed) { doc.text("Airbag attivati: Sì", 20, y); y += 6 }
+  if (vehicle.tireCondition) { doc.text(`Pneumatici: ${vehicle.tireCondition}`, 20, y); y += 6 }
+  y += 3
+
+  if (vehicle.towingRequired) {
+    doc.setFont("helvetica", "bold"); doc.text("Rimozione:", 14, y); doc.setFont("helvetica", "normal"); y += 6
+    if (vehicle.towingCompany) { doc.text(`Ditta: ${vehicle.towingCompany}`, 20, y); y += 6 }
+    if (vehicle.towingAt) { doc.text(`Ora rimozione: ${format(new Date(vehicle.towingAt), "dd/MM/yyyy HH:mm", { locale: it })}`, 20, y); y += 6 }
+    if (vehicle.depositLocation) { doc.text(`Deposito: ${vehicle.depositLocation}`, 20, y); y += 6 }
+    y += 3
+  }
+
+  // Occupanti
+  const occupants = accident.people?.filter((p: any) => p.accidentVehicleId === vehicle.id)
+  if (occupants?.length) {
+    y = checkPageBreak(doc, y, 200)
+    doc.setFont("helvetica", "bold"); doc.text("Occupanti:", 14, y); doc.setFont("helvetica", "normal"); y += 6
+    for (const p of occupants) {
+      doc.text(`${p.role}: ${p.firstName} ${p.lastName} ${p.injuries && p.injuries !== "NESSUNA" ? "(Lesioni: " + p.injuries + ")" : ""}`, 20, y); y += 6
+    }
+  }
+
+  if (vehicle.isFugitive) { doc.text("⚠ VEICOLO IN FUGA", 14, y); y += 6 }
+
+  const pageCount = doc.internal.getNumberOfPages()
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i)
+    doc.setFontSize(8); doc.setTextColor(150, 150, 150); doc.setFont("helvetica", "normal")
+    doc.text(`Scheda Veicolo — Sinistro ${accident.protocolNumber}`, 14, 285)
     doc.text(`Pagina ${i} di ${pageCount}`, 196, 285, { align: "right" })
   }
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
-import { ShieldAlert, Plus, MapPin, Calendar, Clock, ChevronRight } from "lucide-react"
+import { ShieldAlert, Plus, MapPin, Calendar, Clock, ChevronRight, ArrowLeft, Home } from "lucide-react"
 import { useRouter, useParams } from "next/navigation"
 import { format } from "date-fns"
 import { it } from "date-fns/locale"
@@ -54,6 +54,12 @@ export default function AgentAccidentsList() {
     <div className="p-4 pb-24 space-y-4">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-2">
+          <button onClick={() => router.push(`/${params.tenantSlug}/agent`)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors" title="Home Agente">
+            <Home className="w-5 h-5 text-gray-600" />
+          </button>
+          <button onClick={() => router.back()} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors" title="Indietro">
+            <ArrowLeft className="w-5 h-5 text-gray-600" />
+          </button>
           <ShieldAlert className="w-6 h-6 text-red-600" />
           <h1 className="text-xl font-bold text-slate-800">I Miei Sinistri</h1>
         </div>

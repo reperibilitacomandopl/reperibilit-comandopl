@@ -1,19 +1,21 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { generateAccidentReportPDF } from "@/utils/pdf-accident-generator"
+import { generateAccidentReportPDF, generatePersonSchedaPDF, generateVehicleSchedaPDF } from "@/utils/pdf-accident-generator"
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   const { id: accidentId } = await params;
-  
+
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   const tenantId = session.user.tenantId
+  const { searchParams } = new URL(req.url)
+  const entity = searchParams.get("entity")
+  const entityId = searchParams.get("entityId")
 
-  
   try {
     const accident = await prisma.accidentReport.findUnique({
       where: { id: accidentId },
@@ -45,24 +47,40 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: "Accident not found" }, { status: 404 })
     }
 
-    // Agent can only download if they created it, Admins/Ufficiali can download any
-    const isOwner = accident.reportingOfficerId === session.user.id
-    const isAdminOrUfficiale = session.user.role === "ADMIN" || session.user.isUfficiale
+    let pdfBuffer: ArrayBuffer
+    let filename: string
 
-    if (!isOwner && !isAdminOrUfficiale) {
-      return NextResponse.json({ error: "Non sei autorizzato a scaricare questo fascicolo" }, { status: 403 })
+    if (entity === "person" && entityId) {
+      const person = accident.people.find((p: any) => p.id === entityId)
+      if (!person) return NextResponse.json({ error: "Person not found" }, { status: 404 })
+      pdfBuffer = await generatePersonSchedaPDF({
+        person,
+        accident,
+        tenantName: accident.tenant?.name
+      })
+      filename = `Scheda_${person.firstName}_${person.lastName}_${accident.protocolNumber}.pdf`
+    } else if (entity === "vehicle" && entityId) {
+      const vehicle = accident.vehicles.find((v: any) => v.id === entityId)
+      if (!vehicle) return NextResponse.json({ error: "Vehicle not found" }, { status: 404 })
+      pdfBuffer = await generateVehicleSchedaPDF({
+        vehicle,
+        accident,
+        tenantName: accident.tenant?.name
+      })
+      filename = `Scheda_Veicolo_${vehicle.licensePlate}_${accident.protocolNumber}.pdf`
+    } else {
+      pdfBuffer = await generateAccidentReportPDF({
+        accident,
+        tenantName: accident.tenant?.name
+      })
+      filename = `Sinistro_${accident.protocolNumber || accident.id}.pdf`
     }
-
-    const pdfBuffer = await generateAccidentReportPDF({
-      accident,
-      tenantName: accident.tenant?.name
-    })
 
     return new NextResponse(pdfBuffer, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="Sinistro_${accident.protocolNumber || accident.id}.pdf"`
+        "Content-Disposition": `attachment; filename="${filename}"`
       }
     })
 

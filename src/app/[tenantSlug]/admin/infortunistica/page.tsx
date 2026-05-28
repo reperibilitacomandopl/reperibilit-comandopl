@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
-import { ShieldAlert, Search, Filter, FileText, ChevronRight } from "lucide-react"
+import { ShieldAlert, Search, Filter, FileText, ChevronRight, ArrowLeft, Home } from "lucide-react"
 import { useRouter, useParams } from "next/navigation"
 import { format } from "date-fns"
 import { it } from "date-fns/locale"
@@ -58,11 +58,16 @@ export default function AdminInfortunistica() {
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <ShieldAlert className="w-7 h-7 text-red-600" /> Ufficio Infortunistica
-          </h1>
-          <p className="text-gray-500">Gestione e revisione dei fascicoli di sinistro stradale.</p>
+        <div className="flex items-center gap-2">
+          <button onClick={() => router.push(`/${params.tenantSlug}/admin`)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors" title="Home Admin">
+            <Home className="w-5 h-5 text-gray-600" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+              <ShieldAlert className="w-7 h-7 text-red-600" /> Ufficio Infortunistica
+            </h1>
+            <p className="text-gray-500">Gestione e revisione dei fascicoli di sinistro stradale.</p>
+          </div>
         </div>
         <button
           onClick={async () => {

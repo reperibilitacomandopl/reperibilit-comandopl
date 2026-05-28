@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { ArrowLeft, Car, Users, Camera, Info, CheckCircle, Upload, X, AlertTriangle, ShieldAlert, Ruler, ClipboardCheck, Plus, Trash2, FileText, Save, MessageSquareText, MapPin, Building2, Mail, Pencil } from "lucide-react"
+import { ArrowLeft, Car, Users, Camera, Info, CheckCircle, Upload, X, AlertTriangle, ShieldAlert, Ruler, ClipboardCheck, Plus, Trash2, FileText, Save, MessageSquareText, MapPin, Building2, Mail, Pencil, Home, Download } from "lucide-react"
 import toast from "react-hot-toast"
 import { format } from "date-fns"
 import { SignaturePad } from "@/components/SignaturePad"
@@ -530,12 +530,21 @@ export default function AccidentDetail() {
       {/* Header */}
       <div className="bg-slate-800 text-white p-4 sticky top-0 z-10 shadow-md">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.push(`/${params.tenantSlug}/agent/sinistri`)} className="p-2 bg-slate-700 rounded-full">
+          <button onClick={() => router.push(`/${params.tenantSlug}/agent/sinistri`)} className="p-2 bg-slate-700 rounded-full" title="Torna alla lista">
             <ArrowLeft className="w-5 h-5" />
+          </button>
+          <button onClick={() => router.push(`/${params.tenantSlug}/agent`)} className="p-2 bg-slate-700 rounded-full" title="Home Agente">
+            <Home className="w-5 h-5" />
           </button>
           <div>
             <h1 className="font-bold">{accident.protocolNumber || "Bozza Sinistro"}</h1>
             <p className="text-xs text-slate-300 truncate max-w-[250px]">{accident.address}</p>
+          </div>
+          <div className="ml-auto">
+            <button onClick={() => window.open(`/api/agent/accidents/${accidentId}/pdf`, "_blank")}
+              className="p-2 bg-green-600 hover:bg-green-500 rounded-full transition-colors" title="Scarica PDF">
+              <Download className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
@@ -738,16 +747,19 @@ export default function AccidentDetail() {
 
             {accident.vehicles?.map((v: any, idx: number) => (
               <div key={v.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 relative">
-                {accident.status !== "CHIUSO" && (
-                  <div className="absolute top-2 right-2 flex gap-1 z-10">
-                    <button onClick={() => openEditVehicle(v)} className="p-1.5 rounded-full bg-gray-100 hover:bg-blue-100 text-gray-400 hover:text-blue-500 transition-colors">
+                <div className="absolute top-2 right-2 flex gap-1 z-10">
+                  <button onClick={() => window.open(`/api/agent/accidents/${accidentId}/pdf?entity=vehicle&entityId=${v.id}`, "_blank")} className="p-1.5 rounded-full bg-gray-100 hover:bg-green-100 text-gray-400 hover:text-green-500 transition-colors" title="Scarica scheda veicolo">
+                    <Download size={14} />
+                  </button>
+                  {accident.status !== "CHIUSO" && (<>
+                    <button onClick={() => openEditVehicle(v)} className="p-1.5 rounded-full bg-gray-100 hover:bg-blue-100 text-gray-400 hover:text-blue-500 transition-colors" title="Modifica veicolo">
                       <Pencil size={14} />
                     </button>
-                    <button onClick={() => handleDeleteVehicle(v.id)} className="p-1.5 rounded-full bg-gray-100 hover:bg-red-100 text-gray-400 hover:text-red-500 transition-colors">
+                    <button onClick={() => handleDeleteVehicle(v.id)} className="p-1.5 rounded-full bg-gray-100 hover:bg-red-100 text-gray-400 hover:text-red-500 transition-colors" title="Elimina veicolo">
                       <Trash2 size={14} />
                     </button>
-                  </div>
-                )}
+                  </>)}
+                </div>
                 <div className="flex items-center gap-3">
                   <div className={`p-3 rounded-full ${v.isFugitive ? 'bg-red-100' : 'bg-blue-100'}`}>
                     {v.isFugitive ? <ShieldAlert className="w-6 h-6 text-red-600" /> : <Car className="w-6 h-6 text-blue-600" />}
@@ -796,16 +808,19 @@ export default function AccidentDetail() {
               const vehicle = accident.vehicles?.find((v: any) => v.id === p.accidentVehicleId)
               return (
                 <div key={p.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 relative">
-                  {accident.status !== "CHIUSO" && (
-                    <div className="absolute top-2 right-2 flex gap-1 z-10">
-                      <button onClick={() => openEditPerson(p)} className="p-1.5 rounded-full bg-gray-100 hover:bg-purple-100 text-gray-400 hover:text-purple-500 transition-colors">
+                  <div className="absolute top-2 right-2 flex gap-1 z-10">
+                    <button onClick={() => window.open(`/api/agent/accidents/${accidentId}/pdf?entity=person&entityId=${p.id}`, "_blank")} className="p-1.5 rounded-full bg-gray-100 hover:bg-green-100 text-gray-400 hover:text-green-500 transition-colors" title="Scarica scheda persona">
+                      <Download size={14} />
+                    </button>
+                    {accident.status !== "CHIUSO" && (<>
+                      <button onClick={() => openEditPerson(p)} className="p-1.5 rounded-full bg-gray-100 hover:bg-purple-100 text-gray-400 hover:text-purple-500 transition-colors" title="Modifica persona">
                         <Pencil size={14} />
                       </button>
-                      <button onClick={() => handleDeletePerson(p.id)} className="p-1.5 rounded-full bg-gray-100 hover:bg-red-100 text-gray-400 hover:text-red-500 transition-colors">
+                      <button onClick={() => handleDeletePerson(p.id)} className="p-1.5 rounded-full bg-gray-100 hover:bg-red-100 text-gray-400 hover:text-red-500 transition-colors" title="Elimina persona">
                         <Trash2 size={14} />
                       </button>
-                    </div>
-                  )}
+                    </>)}
+                  </div>
                   <div className="flex items-center gap-3">
                     <div className={`p-3 rounded-full ${p.isFugitive ? 'bg-red-100' : 'bg-purple-100'}`}>
                       <Users className={`w-6 h-6 ${p.isFugitive ? 'text-red-600' : 'text-purple-600'}`} />

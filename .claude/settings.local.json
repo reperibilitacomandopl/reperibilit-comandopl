@@ -48,7 +48,10 @@
       "Bash(Select-String -Pattern \"error|Error|✓|FAIL|Route\")",
       "Bash(Select-Object -First 30)",
       "Bash(mkdir -p \"src/app/api/agent/accidents/[id]/vehicles\")",
-      "Bash(mkdir -p \"src/app/api/agent/accidents/[id]/people\")"
+      "Bash(mkdir -p \"src/app/api/agent/accidents/[id]/people\")",
+      "Bash(python3 -c ' *)",
+      "Bash(Get-ChildItem *)",
+      "Bash(Select-String -Pattern \"\\(declaration|survey|external-unit|send-email|export/istat|accident\\\\.ts|email-sender|pdf-accident\\)\" -Context 0,2)"
     ]
   }
 }
