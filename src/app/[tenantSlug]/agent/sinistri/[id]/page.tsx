@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { ArrowLeft, Car, Users, Camera, Info, CheckCircle, Upload, X, AlertTriangle, ShieldAlert, Ruler, ClipboardCheck, Plus, Trash2, FileText, Save, MessageSquareText, MapPin, Building2, Mail, Pencil, Home, Download } from "lucide-react"
+import { ArrowLeft, Car, Users, Camera, Info, CheckCircle, Upload, X, AlertTriangle, ShieldAlert, Ruler, ClipboardCheck, Plus, Trash2, FileText, Save, MessageSquareText, MapPin, Building2, Mail, Pencil, Home, Download, FileDown } from "lucide-react"
 import toast from "react-hot-toast"
 import { format } from "date-fns"
 import { SignaturePad } from "@/components/SignaturePad"
@@ -540,10 +540,14 @@ export default function AccidentDetail() {
             <h1 className="font-bold">{accident.protocolNumber || "Bozza Sinistro"}</h1>
             <p className="text-xs text-slate-300 truncate max-w-[250px]">{accident.address}</p>
           </div>
-          <div className="ml-auto">
+          <div className="ml-auto flex gap-1">
             <button onClick={() => window.open(`/api/agent/accidents/${accidentId}/pdf`, "_blank")}
               className="p-2 bg-green-600 hover:bg-green-500 rounded-full transition-colors" title="Scarica PDF">
               <Download className="w-5 h-5" />
+            </button>
+            <button onClick={() => window.open(`/api/agent/accidents/${accidentId}/docx`, "_blank")}
+              className="p-2 bg-blue-600 hover:bg-blue-500 rounded-full transition-colors" title="Scarica DOCX (Word)">
+              <FileDown className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -809,8 +813,11 @@ export default function AccidentDetail() {
               return (
                 <div key={p.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 relative">
                   <div className="absolute top-2 right-2 flex gap-1 z-10">
-                    <button onClick={() => window.open(`/api/agent/accidents/${accidentId}/pdf?entity=person&entityId=${p.id}`, "_blank")} className="p-1.5 rounded-full bg-gray-100 hover:bg-green-100 text-gray-400 hover:text-green-500 transition-colors" title="Scarica scheda persona">
+                    <button onClick={() => window.open(`/api/agent/accidents/${accidentId}/pdf?entity=person&entityId=${p.id}`, "_blank")} className="p-1.5 rounded-full bg-gray-100 hover:bg-green-100 text-gray-400 hover:text-green-500 transition-colors" title="Scheda persona PDF">
                       <Download size={14} />
+                    </button>
+                    <button onClick={() => window.open(`/api/agent/accidents/${accidentId}/docx-declaration?personId=${p.id}`, "_blank")} className="p-1.5 rounded-full bg-gray-100 hover:bg-blue-100 text-gray-400 hover:text-blue-500 transition-colors" title="Dichiarazioni DOCX (Word)">
+                      <FileDown size={14} />
                     </button>
                     {accident.status !== "CHIUSO" && (<>
                       <button onClick={() => openEditPerson(p)} className="p-1.5 rounded-full bg-gray-100 hover:bg-purple-100 text-gray-400 hover:text-purple-500 transition-colors" title="Modifica persona">

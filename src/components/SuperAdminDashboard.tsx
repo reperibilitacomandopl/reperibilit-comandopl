@@ -119,17 +119,16 @@ export default function SuperAdminDashboard({ tenants, currentUser }: { tenants:
 
   const handleImpersonate = async (tenantId: string) => {
     try {
+      const targetTenant = tenants.find(t => t.id === tenantId)
+      if (!targetTenant) { toast.error("Tenant non trovato"); return }
       const res = await fetch("/api/superadmin/impersonate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tenantId })
       })
-      const targetTenant = tenants.find(t => t.id === tenantId)
       if (!res.ok) throw new Error("Errore")
-      toast.success("🚀 Accesso in corso...")
-      setTimeout(() => {
-        window.location.href = `/${targetTenant?.slug || 'admin'}/admin/pannello`
-      }, 500)
+      toast.success(`Accesso come ${targetTenant.name}...`)
+      window.location.href = `/${targetTenant.slug}/admin/pannello`
     } catch {
       toast.error("Errore durante l'accesso")
     }
