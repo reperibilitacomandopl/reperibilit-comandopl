@@ -98,22 +98,42 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
     }
     try {
       const importedAssignments: EventAssignment[] = []
+      const seenAbsences = new Set<string>()
       for (const dateStr of dates) {
         const res = await fetch(`/api/admin/shifts/daily?date=${dateStr}`)
         if (!res.ok) continue
         const data = await res.json()
         const shifts = data.shifts || []
+        const users = data.users || []
+        const absences = data.absences || []
+        // Track absent user IDs
+        for (const a of absences) { if (a.userId) seenAbsences.add(a.userId) }
         for (const s of shifts) {
-          if (!s.serviceCategoryId || !s.userId) continue
-          const period = s.type?.startsWith("M") ? "M" : s.type?.startsWith("P") ? "P" : null
+          if (!s.userId) continue
+          // Classify shift period from type: "M7","M8","M9"→M, "P14","P15","P16"→P, "N22"→N
+          const firstChar = (s.type || "").charAt(0).toUpperCase()
+          const period = firstChar === "M" ? "M" : firstChar === "P" ? "P" : null
           if (!period) continue
+          // Use timeRange from shift, or default
+          const timeRange = s.timeRange || (period === "M" ? "07:00 - 13:00" : "14:00 - 20:00")
           const existing = importedAssignments.find(a => a.userId === s.userId && a.shiftPeriod === period)
           if (!existing) {
             importedAssignments.push({
-              userId: s.userId, serviceType: s.serviceType?.name || "Pattuglia", shiftPeriod: period,
-              zone: "", timeRange: s.timeRange || (period === "M" ? "07:00 - 13:00" : "14:00 - 20:00"),
-              ordinaryHours: 6, overtimeHours: 0, projectHours: 0, vehicleId: s.vehicleId || undefined
+              userId: s.userId,
+              serviceType: s.serviceType?.name || s.serviceCategory?.name || "Pattuglia",
+              shiftPeriod: period,
+              zone: s.serviceCategory?.name || "",
+              timeRange,
+              ordinaryHours: 6, overtimeHours: 0, projectHours: 0,
+              vehicleId: s.vehicleId || s.vehicle?.id || undefined
             })
+          }
+        }
+        // Add unassigned agents (present in users but not in shifts with M/P)
+        for (const u of users) {
+          const alreadyAssigned = importedAssignments.some(a => a.userId === u.id)
+          if (!alreadyAssigned && !seenAbsences.has(u.id)) {
+            // Agent is available but not scheduled - add to both M and P as available
           }
         }
       }
@@ -415,11 +435,11 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
                               const vehicle = a.vehicleId ? vehicles.find(v => v.id === a.vehicleId) : null
                               const selected = patrolSelection.has(a.userId)
                               return (
-                                <div key={a.userId + a.shiftPeriod}
+                                <div key={a.id || (a.userId + a.shiftPeriod + (a.zone || ''))}
                                   className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all mb-1.5 group ${a.patrolGroupId ? 'bg-blue-500/10 border-blue-500/30' : 'bg-white/5 border-white/10'} hover:border-amber-500/30 ${selected ? 'ring-1 ring-amber-500/50 bg-amber-500/10' : ''}`}>
                                   <input type="checkbox" checked={selected}
                                     onChange={() => togglePatrolSelection(a.userId)}
-                                    className="w-3 h-3 rounded accent-amber-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    className="w-3 h-3 rounded accent-amber-500" />
                                   <GripVertical size={12} className="text-slate-600 cursor-grab shrink-0" />
                                   <div className="flex-1 min-w-0">
                                     <p className="text-[11px] font-bold text-white truncate">{agent?.name || a.userId}</p>
@@ -458,11 +478,11 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
                               const vehicle = a.vehicleId ? vehicles.find(v => v.id === a.vehicleId) : null
                               const selected = patrolSelection.has(a.userId)
                               return (
-                                <div key={a.userId + a.shiftPeriod}
+                                <div key={a.id || (a.userId + a.shiftPeriod + (a.zone || ''))}
                                   className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all mb-1.5 group ${a.patrolGroupId ? 'bg-blue-500/10 border-blue-500/30' : 'bg-white/5 border-white/10'} hover:border-amber-500/30 ${selected ? 'ring-1 ring-amber-500/50 bg-amber-500/10' : ''}`}>
                                   <input type="checkbox" checked={selected}
                                     onChange={() => togglePatrolSelection(a.userId)}
-                                    className="w-3 h-3 rounded accent-amber-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    className="w-3 h-3 rounded accent-amber-500" />
                                   <GripVertical size={12} className="text-slate-600 cursor-grab shrink-0" />
                                   <div className="flex-1 min-w-0">
                                     <p className="text-[11px] font-bold text-white truncate">{agent?.name || a.userId}</p>
