@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
-import EventiManager from "@/components/EventiManager"
+import EventODSManager from "@/components/EventODSManager"
 
 export const dynamic = "force-dynamic"
 
@@ -14,10 +14,9 @@ export default async function EventiPage({ params }: { params: Promise<{ tenantS
 
   return (
     <div className="p-6 lg:p-8 relative z-10 h-full">
-      <EventiManager
+      <EventODSManager
         tenantSlug={urlSlug}
         tenantName={session.user.tenantName || "Comando Polizia Locale"}
-        logoUrl={(session.user as any).tenantLogoUrl || null}
       />
     </div>
   )

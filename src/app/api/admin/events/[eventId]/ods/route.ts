@@ -28,6 +28,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ eventId:
     const assignments = event.assignments.map((a: any) => ({
       name: a.user.name,
       serviceType: a.serviceType || '',
+      shiftPeriod: a.shiftPeriod || '',
       timeRange: a.timeRange || '',
       ordinaryHours: a.ordinaryHours || 0,
       overtimeHours: a.overtimeHours || 0,

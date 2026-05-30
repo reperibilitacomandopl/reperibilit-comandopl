@@ -1120,11 +1120,12 @@ export async function generateWeeklyODSPDF({
  */
 interface EventAssignmentPDF {
   name: string;
+  serviceType?: string;
+  shiftPeriod?: string;
   timeRange: string;
   ordinaryHours: number;
   overtimeHours: number;
   projectHours: number;
-  equipment: string;
 }
 
 export async function generateEventODSPDF({
@@ -1252,7 +1253,7 @@ export async function generateEventODSPDF({
       { content: a.ordinaryHours > 0 ? String(a.ordinaryHours) : "—", styles: { halign: 'center', fontSize: 7 } },
       { content: a.overtimeHours > 0 ? String(a.overtimeHours) : "—", styles: { halign: 'center', fontSize: 7 } },
       { content: a.projectHours > 0 ? String(a.projectHours) : "—", styles: { halign: 'center', fontSize: 7 } },
-      { content: a.equipment || "", styles: { fontSize: 6.5 } },
+      { content: a.serviceType || (a.shiftPeriod === "M" ? "Mattina" : a.shiftPeriod === "P" ? "Pomeriggio" : ""), styles: { fontSize: 6.5 } },
       { content: "", styles: { fontSize: 6 } }, // Firma manuale
     ]);
 

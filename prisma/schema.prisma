@@ -1409,6 +1409,7 @@ model EventAssignment {
   eventId       String
   userId        String
   serviceType   String? // es. "Pattuglia", "Viabilità", "Presidio Fisso"
+  shiftPeriod   String? // "M" (Mattina) o "P" (Pomeriggio)
   timeRange     String  // es. "18:00 - 24:00"
   ordinaryHours Float   @default(0)
   overtimeHours Float   @default(0)
