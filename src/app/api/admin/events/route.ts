@@ -49,7 +49,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json()
-    const { name, description, startDate, endDate, ordinanza, odsNotes } = body
+    const { name, description, startDate, endDate, ordinanza, odsNotes, assignments } = body
 
     if (!name || !startDate || !endDate) {
       return NextResponse.json({ error: 'Campi obbligatori mancanti' }, { status: 400 })
@@ -63,8 +63,20 @@ export async function POST(req: Request) {
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         ordinanza,
-        odsNotes
-      }
+        odsNotes,
+        assignments: assignments?.length ? {
+          create: assignments.map((a: any) => ({
+            tenantId: session.user.tenantId,
+            userId: a.userId,
+            serviceType: a.serviceType || null,
+            timeRange: a.timeRange,
+            ordinaryHours: parseFloat(a.ordinaryHours) || 0,
+            overtimeHours: parseFloat(a.overtimeHours) || 0,
+            projectHours: parseFloat(a.projectHours) || 0,
+          }))
+        } : undefined
+      },
+      include: { assignments: { include: { user: { select: { id: true, name: true, squadra: true } } } } }
     })
 
     return NextResponse.json(event)

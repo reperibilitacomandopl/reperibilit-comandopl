@@ -54,7 +54,7 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
   const [formOrdinanza, setFormOrdinanza] = useState("")
   const [formOdsNotes, setFormOdsNotes] = useState("")
   const [formAssignments, setFormAssignments] = useState<{
-    userId: string; timeRange: string; ordinaryHours: number; overtimeHours: number; projectHours: number; equipment: string
+    userId: string; serviceType: string; timeRange: string; ordinaryHours: number; overtimeHours: number; projectHours: number
   }[]>([])
 
   const fetchEvents = useCallback(async () => {
@@ -69,7 +69,8 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
       const res = await fetch("/api/admin/users")
       if (res.ok) {
         const data = await res.json()
-        setAgents(data.filter((u: any) => u.isActive).map((u: any) => ({ id: u.id, name: u.name, squadra: u.squadra })))
+        const users = Array.isArray(data) ? data : (data.users || [])
+        setAgents(users.map((u: any) => ({ id: u.id, name: u.name, squadra: u.squadra })))
       }
     } catch {}
   }, [])
@@ -91,8 +92,8 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
     setFormOrdinanza(ev.ordinanza || "")
     setFormOdsNotes(ev.odsNotes || "")
     setFormAssignments(ev.assignments.map(a => ({
-      userId: a.userId, timeRange: a.timeRange, ordinaryHours: a.ordinaryHours,
-      overtimeHours: a.overtimeHours, projectHours: a.projectHours, equipment: a.equipment || ""
+      userId: a.userId, serviceType: a.serviceType || "", timeRange: a.timeRange, ordinaryHours: a.ordinaryHours,
+      overtimeHours: a.overtimeHours, projectHours: a.projectHours
     })))
     setShowCreate(true)
   }
@@ -126,7 +127,7 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
   }
 
   const addAssignment = () => {
-    setFormAssignments([...formAssignments, { userId: "", timeRange: "18:00 - 24:00", ordinaryHours: 0, overtimeHours: 0, projectHours: 0, equipment: "" }])
+    setFormAssignments([...formAssignments, { userId: "", serviceType: "Pattuglia", timeRange: "18:00 - 24:00", ordinaryHours: 0, overtimeHours: 0, projectHours: 0 }])
   }
 
   const removeAssignment = (idx: number) => {
@@ -139,28 +140,8 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
     setFormAssignments(updated)
   }
 
-  const handleDownloadODS = async (ev: SpecialEvent) => {
-    try {
-      const { generateEventODSPDF } = await import("@/utils/pdf-generator")
-      await generateEventODSPDF({
-        eventName: ev.name,
-        eventDescription: ev.description || "",
-        startDate: new Date(ev.startDate),
-        endDate: new Date(ev.endDate),
-        ordinanza: ev.ordinanza || "",
-        odsNotes: ev.odsNotes || "",
-        assignments: ev.assignments.map(a => ({
-          name: a.user.name,
-          timeRange: a.timeRange,
-          ordinaryHours: a.ordinaryHours,
-          overtimeHours: a.overtimeHours,
-          projectHours: a.projectHours,
-          equipment: a.equipment || ""
-        })),
-        tenantName,
-        logoUrl
-      })
-    } catch (e) { console.error("PDF Error:", e); alert("Errore nella generazione del PDF.") }
+  const handleDownloadODS = (ev: SpecialEvent) => {
+    window.open(`/api/admin/events/${ev.id}/ods`, "_blank")
   }
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" })
@@ -246,6 +227,7 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
                     <div key={a.id} className="flex items-center justify-between px-3 py-2 bg-white/5 rounded-xl">
                       <span className="text-xs font-bold text-white">{a.user.name}</span>
                       <div className="flex items-center gap-3 text-[9px] font-bold text-slate-400">
+                        {a.serviceType && <span className="text-amber-400">{a.serviceType}</span>}
                         <span className="flex items-center gap-1"><Clock size={9} /> {a.timeRange}</span>
                         {a.ordinaryHours > 0 && <span className="text-emerald-400">{a.ordinaryHours}h ord</span>}
                         {a.overtimeHours > 0 && <span className="text-amber-400">{a.overtimeHours}h str</span>}
@@ -341,6 +323,19 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
                           <option value="">— Seleziona Agente —</option>
                           {agents.map(ag => <option key={ag.id} value={ag.id}>{ag.name}{ag.squadra ? ` (${ag.squadra})` : ""}</option>)}
                         </select>
+                        <select
+                          value={a.serviceType || "Pattuglia"}
+                          onChange={e => updateAssignment(idx, "serviceType", e.target.value)}
+                          className="w-40 px-2 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
+                        >
+                          <option value="Pattuglia">Pattuglia</option>
+                          <option value="Viabilità">Viabilità</option>
+                          <option value="Presidio Fisso">Presidio Fisso</option>
+                          <option value="Antinfortunistica">Antinfortunistica</option>
+                          <option value="Rappresentanza">Rappresentanza</option>
+                          <option value="Polizia Giudiziaria">Polizia Giudiziaria</option>
+                          <option value="Altro">Altro</option>
+                        </select>
                         <input value={a.timeRange} onChange={e => updateAssignment(idx, "timeRange", e.target.value)} placeholder="18:00 - 24:00"
                           className="w-36 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold text-center focus:outline-none focus:border-amber-500/50 transition-all" />
                         <button onClick={() => removeAssignment(idx)} className="p-2 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white rounded-xl transition-all"><Trash2 size={12} /></button>
@@ -365,8 +360,6 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
                         </div>
                       </div>
 
-                      <input value={a.equipment} onChange={e => updateAssignment(idx, "equipment", e.target.value)} placeholder="Dotazioni (es. Radio 3, Giubbotto 1)"
-                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-[10px] font-bold placeholder-slate-600 focus:outline-none focus:border-amber-500/50 transition-all" />
                     </div>
                   ))}
                 </div>

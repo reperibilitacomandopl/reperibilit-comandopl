@@ -1408,11 +1408,11 @@ model EventAssignment {
   tenantId      String?
   eventId       String
   userId        String
-  timeRange     String // es. "18:00 - 24:00"
-  ordinaryHours Float   @default(0) // Ore calcolate nel monte ore normale
-  overtimeHours Float   @default(0) // Ore di straordinario
-  projectHours  Float   @default(0) // Servizio reso a terzi / Progetto
-  equipment     String? // Dotazioni specifiche (es. Radio 3, Giubbotto 1)
+  serviceType   String? // es. "Pattuglia", "Viabilità", "Presidio Fisso"
+  timeRange     String  // es. "18:00 - 24:00"
+  ordinaryHours Float   @default(0)
+  overtimeHours Float   @default(0)
+  projectHours  Float   @default(0)
 
   event  SpecialEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user   User         @relation("EventAssignments", fields: [userId], references: [id])

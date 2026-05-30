@@ -68,11 +68,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ eventId:
             tenantId: session.user.tenantId,
             eventId: eventId,
             userId: a.userId,
+            serviceType: a.serviceType || null,
             timeRange: a.timeRange,
             ordinaryHours: parseFloat(a.ordinaryHours) || 0,
             overtimeHours: parseFloat(a.overtimeHours) || 0,
             projectHours: parseFloat(a.projectHours) || 0,
-            equipment: a.equipment || null
           }))
         })
       }
