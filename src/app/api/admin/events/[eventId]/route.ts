@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 
-export async function GET(req: Request, { params }: { params: { eventId: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ eventId: string }> }) {
+  const { eventId } = await params
   const session = await auth()
   if (!session?.user || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
@@ -10,7 +11,7 @@ export async function GET(req: Request, { params }: { params: { eventId: string 
 
   try {
     const event = await prisma.specialEvent.findUnique({
-      where: { id: params.eventId, tenantId: session.user.tenantId },
+      where: { id: eventId, tenantId: session.user.tenantId },
       include: {
         assignments: {
           include: {
@@ -29,7 +30,8 @@ export async function GET(req: Request, { params }: { params: { eventId: string 
   }
 }
 
-export async function PUT(req: Request, { params }: { params: { eventId: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ eventId: string }> }) {
+  const { eventId } = await params
   const session = await auth()
   if (!session?.user || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
@@ -41,7 +43,7 @@ export async function PUT(req: Request, { params }: { params: { eventId: string 
 
     // 1. Aggiorna i dati dell'evento
     const event = await prisma.specialEvent.update({
-      where: { id: params.eventId, tenantId: session.user.tenantId },
+      where: { id: eventId, tenantId: session.user.tenantId },
       data: {
         name,
         description,
@@ -56,7 +58,7 @@ export async function PUT(req: Request, { params }: { params: { eventId: string 
     if (assignments && Array.isArray(assignments)) {
       // Elimina quelle vecchie
       await prisma.eventAssignment.deleteMany({
-        where: { eventId: params.eventId }
+        where: { eventId: eventId }
       })
 
       // Crea le nuove
@@ -64,7 +66,7 @@ export async function PUT(req: Request, { params }: { params: { eventId: string 
         await prisma.eventAssignment.createMany({
           data: assignments.map((a: any) => ({
             tenantId: session.user.tenantId,
-            eventId: params.eventId,
+            eventId: eventId,
             userId: a.userId,
             timeRange: a.timeRange,
             ordinaryHours: parseFloat(a.ordinaryHours) || 0,
@@ -77,7 +79,7 @@ export async function PUT(req: Request, { params }: { params: { eventId: string 
     }
 
     const updatedEvent = await prisma.specialEvent.findUnique({
-      where: { id: params.eventId },
+      where: { id: eventId },
       include: {
         assignments: {
           include: { user: { select: { id: true, name: true, squadra: true } } }
@@ -92,7 +94,8 @@ export async function PUT(req: Request, { params }: { params: { eventId: string 
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { eventId: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ eventId: string }> }) {
+  const { eventId } = await params
   const session = await auth()
   if (!session?.user || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
@@ -100,7 +103,7 @@ export async function DELETE(req: Request, { params }: { params: { eventId: stri
 
   try {
     await prisma.specialEvent.delete({
-      where: { id: params.eventId, tenantId: session.user.tenantId }
+      where: { id: eventId, tenantId: session.user.tenantId }
     })
     return NextResponse.json({ success: true })
   } catch (error) {
