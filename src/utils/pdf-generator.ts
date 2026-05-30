@@ -1234,7 +1234,7 @@ export async function generateEventODSPDF({
     }
 
     // ── 3. Tabella Personale Assegnato ──
-    const headRow = [
+    const headRow: any[] = [
       { content: "N.", styles: { halign: 'center' } },
       { content: "PERSONALE", styles: { halign: 'left' } },
       { content: "ORARIO", styles: { halign: 'center' } },
@@ -1245,7 +1245,7 @@ export async function generateEventODSPDF({
       { content: "FIRMA", styles: { halign: 'center' } },
     ];
 
-    const bodyRows = assignments.map((a, i) => [
+    const bodyRows: any[][] = assignments.map((a, i) => [
       { content: String(i + 1), styles: { halign: 'center', fontSize: 7 } },
       { content: a.name, styles: { fontStyle: 'bold', fontSize: 7.5 } },
       { content: a.timeRange, styles: { halign: 'center', fontSize: 7, fontStyle: 'bold' } },
@@ -1261,7 +1261,7 @@ export async function generateEventODSPDF({
     const totalStr = assignments.reduce((s, a) => s + a.overtimeHours, 0);
     const totalPrj = assignments.reduce((s, a) => s + a.projectHours, 0);
 
-    const totalsRow = [
+    const totalsRow: any[] = [
       { content: "", styles: {} },
       { content: "TOTALE", styles: { fontStyle: 'bold', fontSize: 8, halign: 'right' } },
       { content: "", styles: {} },
@@ -1275,7 +1275,7 @@ export async function generateEventODSPDF({
     autoTable(doc, {
       startY: nextY,
       head: [
-        [{ content: `— PERSONALE ASSEGNATO ALL'EVENTO —`, colSpan: 8, styles: { halign: 'center', fillColor: amber600, textColor: 255, fontSize: 9, fontStyle: 'bold', cellPadding: 2 } }],
+        [{ content: `— PERSONALE ASSEGNATO ALL'EVENTO —`, colSpan: 8, styles: { halign: 'center' as any, fillColor: amber600, textColor: 255, fontSize: 9, fontStyle: 'bold', cellPadding: 2 } }],
         headRow
       ],
       body: [...bodyRows, totalsRow],
