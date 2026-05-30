@@ -358,6 +358,7 @@ model Vehicle {
   targa                 String?
   patrolTemplates       PatrolTemplate[]
   shifts                Shift[]
+  eventAssignments      EventAssignment[]
   tenant                Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([name, tenantId])
@@ -1410,6 +1411,9 @@ model EventAssignment {
   userId        String
   serviceType   String? // es. "Pattuglia", "Viabilità", "Presidio Fisso"
   shiftPeriod   String? // "M" (Mattina) o "P" (Pomeriggio)
+  zone          String? // es. "Piazza Duomo", "Via Roma" — zona geografica
+  patrolGroupId String? // UUID per raggruppare pattuglie
+  vehicleId     String? // FK → Vehicle
   timeRange     String  // es. "18:00 - 24:00"
   ordinaryHours Float   @default(0)
   overtimeHours Float   @default(0)
@@ -1417,5 +1421,6 @@ model EventAssignment {
 
   event  SpecialEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user   User         @relation("EventAssignments", fields: [userId], references: [id])
+  vehicle Vehicle?    @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   tenant Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
