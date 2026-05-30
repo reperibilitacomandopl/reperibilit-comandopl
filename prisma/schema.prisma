@@ -73,6 +73,8 @@ model Tenant {
   vehicleTypes            VehicleType[]
   violations              Violation[]
   weapons                 Weapon[]
+  SpecialEvent            SpecialEvent[]
+  EventAssignment         EventAssignment[]
 }
 
 model Municipality {
@@ -199,11 +201,11 @@ model User {
   resetPasswordToken        String?                   @unique
   resetPasswordExpires      DateTime?
   absences                  Absence[]
-  accidentReports           AccidentReport[]         @relation("AccidentReportingOfficer")
-  secondOfficerAccidents    AccidentReport[]         @relation("AccidentSecondOfficer")
-  supervisedAccidents       AccidentReport[]         @relation("AccidentSupervisor")
-  declarations              AccidentDeclaration[]    @relation("DeclarationRecordedBy")
-  surveys                   AccidentSurvey[]         @relation("SurveySurveyedBy")
+  accidentReports           AccidentReport[]          @relation("AccidentReportingOfficer")
+  secondOfficerAccidents    AccidentReport[]          @relation("AccidentSecondOfficer")
+  supervisedAccidents       AccidentReport[]          @relation("AccidentSupervisor")
+  declarations              AccidentDeclaration[]     @relation("DeclarationRecordedBy")
+  surveys                   AccidentSurvey[]          @relation("SurveySurveyedBy")
   accidentAuditLogs         AccidentAuditLog[]
   serviceReports            ServiceReport[]
   agendaEntries             AgendaEntry[]             @relation("agendaEntries")
@@ -238,6 +240,7 @@ model User {
   holidayRotationGroups     HolidayRotationGroup[]    @relation("HolidayRotationGroupMembers")
   patrolTemplates           PatrolTemplate[]          @relation("PatrolMembers")
   vacationRotationGroups    VacationRotationGroup[]   @relation("VacationRotationGroupMembers")
+  eventAssignments          EventAssignment[]         @relation("EventAssignments")
 
   @@unique([tenantId, matricola])
 }
@@ -1071,7 +1074,7 @@ model CdsViolation {
 }
 
 model AccidentReport {
-  id                 String   @id @default(uuid())
+  id                 String    @id @default(uuid())
   tenantId           String
   protocolNumber     String
   date               DateTime
@@ -1091,13 +1094,13 @@ model AccidentReport {
   weatherCondition   String?
   roadCondition      String?
   trafficCondition   String?
-  safetyChecklist    String[] @default([])
+  safetyChecklist    String[]  @default([])
   dynamicDescription String?
   dynamicDiagramUrl  String?
   narrativeReport    String?
-  status             String   @default("BOZZA")
+  status             String    @default("BOZZA")
   legalFramework     String?
-  penalArticles      String[] @default([])
+  penalArticles      String[]  @default([])
   administrativeRef  String?
   interventionId     String?
   reportingOfficerId String?
@@ -1109,33 +1112,33 @@ model AccidentReport {
   istatCode          String?
   istatExportedAt    DateTime?
   notes              String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  intervention     Intervention?     @relation(fields: [interventionId], references: [id])
-  reportingOfficer User?             @relation("AccidentReportingOfficer", fields: [reportingOfficerId], references: [id])
-  secondOfficer    User?             @relation("AccidentSecondOfficer", fields: [secondOfficerId], references: [id])
-  supervisor       User?             @relation("AccidentSupervisor", fields: [supervisorId], references: [id])
-  vehicles         AccidentVehicle[]
-  people           AccidentPerson[]
-  traces           AccidentTrace[]
-  photos           String[]          @default([])
-  forensicPhotos   AccidentPhoto[]
-  auditLogs        AccidentAuditLog[]
-  declarations     AccidentDeclaration[]
-  surveys          AccidentSurvey[]
-  externalUnits    AccidentExternalUnit[]
-  emailLogs        AccidentEmailLog[]
+  tenant            Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  intervention      Intervention?          @relation(fields: [interventionId], references: [id])
+  reportingOfficer  User?                  @relation("AccidentReportingOfficer", fields: [reportingOfficerId], references: [id])
+  secondOfficer     User?                  @relation("AccidentSecondOfficer", fields: [secondOfficerId], references: [id])
+  supervisor        User?                  @relation("AccidentSupervisor", fields: [supervisorId], references: [id])
+  vehicles          AccidentVehicle[]
+  people            AccidentPerson[]
+  traces            AccidentTrace[]
+  photos            String[]               @default([])
+  forensicPhotos    AccidentPhoto[]
+  auditLogs         AccidentAuditLog[]
+  declarations      AccidentDeclaration[]
+  surveys           AccidentSurvey[]
+  externalUnits     AccidentExternalUnit[]
+  emailLogs         AccidentEmailLog[]
   safetySignature   String?
-  separateFascicolo  Boolean  @default(false)
+  separateFascicolo Boolean                @default(false)
 
   @@index([tenantId, date])
   @@index([status])
 }
 
 model AccidentVehicle {
-  id                String   @id @default(uuid())
+  id                String    @id @default(uuid())
   accidentReportId  String
   vehicleNumber     Int?
   licensePlate      String
@@ -1147,15 +1150,15 @@ model AccidentVehicle {
   vin               String?
   directionOfTravel String?
   maneuver          String?
-  isFugitive        Boolean  @default(false)
+  isFugitive        Boolean   @default(false)
   insuranceCompany  String?
   insurancePolicy   String?
   insuranceExpiry   DateTime?
   insuranceValid    Boolean?
   revisionDate      String?
-  mitDataFetchedAt   DateTime?
+  mitDataFetchedAt  DateTime?
   damageDescription String?
-  damageAreas       String[] @default([])
+  damageAreas       String[]  @default([])
   damageZones       Json?
   deformationType   String?
   airbagDeployed    Boolean?
@@ -1163,12 +1166,12 @@ model AccidentVehicle {
   ownerName         String?
   ownerFiscalCode   String?
   ownerAddress      String?
-  towingRequired    Boolean  @default(false)
+  towingRequired    Boolean   @default(false)
   towingCompany     String?
   towingAt          DateTime?
   depositLocation   String?
   position          String?
-  createdAt         DateTime @default(now())
+  createdAt         DateTime  @default(now())
 
   accidentReport AccidentReport   @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
   occupants      AccidentPerson[]
@@ -1177,7 +1180,7 @@ model AccidentVehicle {
 }
 
 model AccidentPerson {
-  id                String   @id @default(uuid())
+  id                String    @id @default(uuid())
   accidentReportId  String
   accidentVehicleId String?
   role              String
@@ -1197,7 +1200,7 @@ model AccidentPerson {
   licenseExpiry     DateTime?
   licenseValid      Boolean?
   seatbeltUsed      Boolean?
-  isFugitive        Boolean  @default(false)
+  isFugitive        Boolean   @default(false)
   injuries          String?
   injuriesDetail    String?
   injuryDescription String?
@@ -1208,13 +1211,13 @@ model AccidentPerson {
   drugTestDone      Boolean?
   drugTestResult    String?
   statement         String?
-  refused689        Boolean  @default(false)
+  refused689        Boolean   @default(false)
   notified689At     DateTime?
   signature         String?
-  createdAt         DateTime @default(now())
+  createdAt         DateTime  @default(now())
 
-  accidentReport AccidentReport     @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
-  vehicle        AccidentVehicle?   @relation(fields: [accidentVehicleId], references: [id])
+  accidentReport AccidentReport        @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
+  vehicle        AccidentVehicle?      @relation(fields: [accidentVehicleId], references: [id])
   declarations   AccidentDeclaration[]
 
   @@index([accidentReportId])
@@ -1243,7 +1246,7 @@ model AccidentDeclaration {
 }
 
 model AccidentSurvey {
-  id                    String    @id @default(uuid())
+  id                    String   @id @default(uuid())
   accidentReportId      String
   roadType              String?
   roadName              String?
@@ -1256,17 +1259,17 @@ model AccidentSurvey {
   impactMeasures        Json?
   skidMarksLength       Float?
   debrisDescription     String?
-  signagePresent        String[]  @default([])
-  signageDamaged        Boolean   @default(false)
-  roadMarkingsPresent   Boolean   @default(false)
-  trafficLightPresent   Boolean   @default(false)
+  signagePresent        String[] @default([])
+  signageDamaged        Boolean  @default(false)
+  roadMarkingsPresent   Boolean  @default(false)
+  trafficLightPresent   Boolean  @default(false)
   trafficLightWorking   Boolean?
-  guardRailDamaged      Boolean   @default(false)
-  publicLightingDamaged Boolean   @default(false)
+  guardRailDamaged      Boolean  @default(false)
+  publicLightingDamaged Boolean  @default(false)
   otherDamages          String?
   surveyedByOfficerId   String
   surveyedAt            DateTime
-  createdAt             DateTime  @default(now())
+  createdAt             DateTime @default(now())
 
   accidentReport AccidentReport @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
   surveyedBy     User           @relation("SurveySurveyedBy", fields: [surveyedByOfficerId], references: [id])
@@ -1312,7 +1315,7 @@ model AccidentEmailLog {
 }
 
 model ServiceReport {
-  id                String     @id @default(uuid())
+  id                String   @id @default(uuid())
   tenantId          String
   authorId          String
   shiftId           String?
@@ -1320,15 +1323,15 @@ model ServiceReport {
   activities        String
   outcome           String?
   notes             String?
-  status            String     @default("BOZZA")
-  interventionIds   String[]   @default([])
-  accidentReportIds String[]   @default([])
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
+  status            String   @default("BOZZA")
+  interventionIds   String[] @default([])
+  accidentReportIds String[] @default([])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  tenant           Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  author           User            @relation(fields: [authorId], references: [id])
-  shift            Shift?          @relation(fields: [shiftId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id])
+  shift  Shift? @relation(fields: [shiftId], references: [id])
 
   @@index([tenantId, reportDate])
   @@index([tenantId, status])
@@ -1377,9 +1380,41 @@ model AccidentAuditLog {
   details          String?
   timestamp        DateTime @default(now())
 
-  accidentReport   AccidentReport @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
-  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accidentReport AccidentReport @relation(fields: [accidentReportId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([accidentReportId])
   @@index([userId])
+}
+
+model SpecialEvent {
+  id          String   @id @default(uuid())
+  tenantId    String?
+  name        String // es. "Notte Bianca 2026" o "Consiglio Comunale"
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  ordinanza   String? // Riferimento normativo
+  odsNotes    String? // Note specifiche da stampare nell'ODS
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assignments EventAssignment[]
+  tenant      Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model EventAssignment {
+  id            String  @id @default(uuid())
+  tenantId      String?
+  eventId       String
+  userId        String
+  timeRange     String // es. "18:00 - 24:00"
+  ordinaryHours Float   @default(0) // Ore calcolate nel monte ore normale
+  overtimeHours Float   @default(0) // Ore di straordinario
+  projectHours  Float   @default(0) // Servizio reso a terzi / Progetto
+  equipment     String? // Dotazioni specifiche (es. Radio 3, Giubbotto 1)
+
+  event  SpecialEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user   User         @relation("EventAssignments", fields: [userId], references: [id])
+  tenant Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }

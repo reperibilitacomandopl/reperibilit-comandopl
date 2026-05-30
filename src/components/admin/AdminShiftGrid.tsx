@@ -18,6 +18,7 @@ interface AdminShiftGridProps {
   sortConfig?: { field: string, direction: 'asc' | 'desc' }
   onSort?: (config: { field: string, direction: 'asc' | 'desc' }) => void
   readOnly?: boolean
+  eventAssignments?: any[]
 }
 
 /* ─── MAPPA COLORI PER CODICE ─── */
@@ -141,7 +142,7 @@ const CAT_THEME: Record<string, { border: string; bg: string; text: string; btnB
 export default function AdminShiftGrid({
   agents, shifts, isMobileView, dayInfo,
   onToggleUfficiale, onRecalcAgent, onSaveCell, onBulkSave,
-  sortConfig, onSort, readOnly
+  sortConfig, onSort, readOnly, eventAssignments = []
 }: AdminShiftGridProps) {
   const { currentYear, currentMonth, settings, allAgents } = useAdminState()
   const [editingCell, setEditingCell] = useState<any>(null)
@@ -220,6 +221,23 @@ export default function AdminShiftGrid({
     }
     return map
   }, [shifts])
+
+  const eventByUserDate = useMemo(() => {
+    const map = new Map<string, any[]>()
+    for (const a of eventAssignments) {
+      if (!a?.userId || !a?.event?.startDate || !a?.event?.endDate) continue
+      // Event dates can span multiple days. Usually it's single day.
+      const sDate = new Date(a.event.startDate)
+      const eDate = new Date(a.event.endDate)
+      for (let d = new Date(sDate); d <= eDate; d.setDate(d.getDate() + 1)) {
+        const k = `${a.userId}|${toDateKey(d)}`
+        const list = map.get(k) || []
+        list.push(a)
+        map.set(k, list)
+      }
+    }
+    return map
+  }, [eventAssignments])
 
   /** Agenti che superano il massimale reperibilità nel mese corrente */
   const agentsOverMassimale = useMemo(() => {
@@ -752,13 +770,22 @@ export default function AdminShiftGrid({
                   const baseShift = hasRep && sType && !sType.includes("REP") && sType !== "RP" ? sType : ""
                   const isSelected = selectedCells.has(`${agent.id}|${di.day}`)
                   const overMassimale = agentsOverMassimale.has(agent.id) && hasRep && !di.isNextMonth
+                  const agentEvents = eventByUserDate.get(userDateKey(agent.id, targetYear, targetMonth, di.day))
 
                     return (
                       <td key={di.isNextMonth ? `next-${di.day}` : `day-${agent.id}-${di.day}`}
-                        className={`px-0 py-0.5 text-center border-r border-slate-100/80 ${style.bg} ${di.isNextMonth ? "opacity-30 grayscale" : (readOnly ? "cursor-default select-none" : "cursor-pointer hover:brightness-95 select-none")} ${isSelected ? "ring-2 ring-indigo-500 ring-inset bg-indigo-50/50" : ""} ${overMassimale ? "ring-2 ring-red-500 ring-inset" : ""}`}
+                        className={`px-0 py-0.5 text-center border-r border-slate-100/80 ${style.bg} relative ${di.isNextMonth ? "opacity-30 grayscale" : (readOnly ? "cursor-default select-none" : "cursor-pointer hover:brightness-95 select-none")} ${isSelected ? "ring-2 ring-indigo-500 ring-inset bg-indigo-50/50" : ""} ${overMassimale ? "ring-2 ring-red-500 ring-inset" : ""}`}
                         onMouseDown={() => !di.isNextMonth && handleMouseDown(agent.id, idx, di.day, rType, sType)}
                         onMouseEnter={() => !di.isNextMonth && handleMouseEnter(agent.id, idx, di.day)}
                         onMouseUp={() => !di.isNextMonth && handleMouseUp(agent.id, agent.name, di.day, rType, sType)}>
+                        
+                        {/* Event Indicator */}
+                        {agentEvents && agentEvents.length > 0 && !di.isNextMonth && (
+                          <div className="absolute top-0 right-0 z-10 -mt-1 -mr-1" title={`Assegnato a ${agentEvents.map(e => e.event.name).join(', ')}`}>
+                            <div className="w-2.5 h-2.5 bg-amber-500 rounded-full border-2 border-white shadow-sm flex items-center justify-center animate-pulse"></div>
+                          </div>
+                        )}
+
                         {style.badge && (
                           <div className="flex flex-col items-center justify-center min-h-[28px] gap-0">
                             <div className={`mx-auto w-[34px] ${baseShift ? 'h-[14px] leading-[14px]' : 'h-[20px] leading-[20px]'} flex items-center justify-center rounded text-[8px] font-black shadow-sm ${style.badgeClass}`}>

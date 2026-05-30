@@ -522,8 +522,8 @@ export default function AccidentDetail() {
   if (loading) return <div className="p-4 text-center text-gray-500"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500 mx-auto"></div></div>
   if (!accident) return <div className="p-4 text-center text-gray-500">Sinistro non trovato</div>
 
-  const sevLabels: Record<string, string> = { SOLO_DANNI: "Danni a Cose", FERITI: "Con Feriti", MORTALE: "Mortale", RISERVA_PROGNOSI: "Prognosi Riservata" }
-  const statusLabels: Record<string, string> = { BOZZA: "Bozza", IN_COMPILAZIONE: "In Compilazione", REVISIONATO: "Revisionato", CHIUSO: "Chiuso" }
+  const sevLabels = new Map(Object.entries({ SOLO_DANNI: "Danni a Cose", FERITI: "Con Feriti", MORTALE: "Mortale", RISERVA_PROGNOSI: "Prognosi Riservata" }))
+  const statusLabels = new Map(Object.entries({ BOZZA: "Bozza", IN_COMPILAZIONE: "In Compilazione", REVISIONATO: "Revisionato", CHIUSO: "Chiuso" }))
 
   return (
     <div className="pb-24">
@@ -590,13 +590,13 @@ export default function AccidentDetail() {
               <h2 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Info className="w-5 h-5 text-blue-500" /> Dati Sinistro</h2>
               <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
                 <p><b>Data:</b> {format(new Date(accident.date), "dd/MM/yyyy HH:mm")}</p>
-                <p><b>Gravità:</b> {sevLabels[accident.severity] || accident.severity}</p>
+                <p><b>Gravità:</b> {sevLabels.get(accident.severity) || accident.severity}</p>
                 <p><b>Tipo Strada:</b> {accident.roadType || "n/d"}</p>
                 <p><b>Illuminazione:</b> {accident.lighting || "n/d"}</p>
                 <p><b>Meteo:</b> {accident.weatherCondition || "n/d"}</p>
                 <p><b>Fondo:</b> {accident.roadCondition || "n/d"}</p>
                 <p><b>Traffico:</b> {accident.trafficCondition || "n/d"}</p>
-                <p><b>Stato:</b> {statusLabels[accident.status] || accident.status}</p>
+                <p><b>Stato:</b> {statusLabels.get(accident.status) || accident.status}</p>
               </div>
               {accident.dynamicDescription && (
                 <div className="mt-3 pt-3 border-t">

@@ -128,9 +128,9 @@ Non servono 50 feature nuove; servono **coerenza**, **prove formali** e **packag
 | A3 | Rotazione segreti su server | Da fare | SEC-01 |
 | A4 | Pentest esterno + remediation | Da fare | CI-03 |
 | A5 | CI che blocca su build + test tenant | Parziale | CI-01 |
-| A6 | Allineare CSP Nginx ↔ app | Da fare | SEC-08 |
-| A7 | MFA admin senza auto-trust IP | Da fare | SEC-09 |
-| A8 | Rimozione dipendenza `AUTH_SECRET` per integrazioni | Parziale | VERBATEL_API_KEY |
+| A6 | Allineare CSP Nginx ↔ app | Fatto ✅ | SEC-08 |
+| A7 | MFA admin senza auto-trust IP | Fatto ✅ | SEC-09 |
+| A8 | Rimozione dipendenza `AUTH_SECRET` per integrazioni | Fatto ✅ | VERBATEL_API_KEY |
 
 **Definition of Done Asse A:**  
 `/api/test-db` → 404 in prod; rate limit attivo; cron 200 con secret; pentest zero Critical aperti.
@@ -201,9 +201,9 @@ Non servono 50 feature nuove; servono **coerenza**, **prove formali** e **packag
 | ID | Attività | Rischio regressione |
 |----|----------|---------------------|
 | D1 | Conflitti visivi griglia | 🟢 |
-| D2 | Copia mese precedente (con conferma) | 🟡 |
-| D3 | Workflow assenze 2 livelli (`twoLevelApproval: false` default) | 🟡 |
-| D4 | Undo client-side (ultima azione) | 🔴 — ultima |
+| D2 | ~~Copia mese precedente~~ (Non serve) | ⚪ |
+| D3 | Workflow assenze 2 livelli (`twoLevelApproval: false` default) | Fatto ✅ |
+| D4 | Undo client-side (ultima azione) | Fatto ✅ |
 | D5 | Wizard onboarding primo accesso tenant | 🟢 |
 | D6 | Video / guida in-app per agenti | 🟢 — solo contenuti |
 
@@ -217,7 +217,7 @@ Dettaglio UX: [`AUDIT_MIGLIORAMENTI.md`](./AUDIT_MIGLIORAMENTI.md)
 
 | ID | Attività | Note |
 |----|----------|------|
-| E1 | Piani TRIAL / ACTIVE / ENTERPRISE enforced (blocco post-scadenza) | `trialEndsAt` esiste |
+| E1 | Piani TRIAL / ACTIVE / ENTERPRISE enforced (blocco post-scadenza) | Fatto ✅ |
 | E2 | Processo commerciale PA: ordine + fattura elettronica (anche senza Stripe) | |
 | E3 | Stripe o pagamento manuale per comuni piccoli | Opzionale |
 | E4 | Limiti trial (max agenti) automatici | |

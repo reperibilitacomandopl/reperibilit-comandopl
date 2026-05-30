@@ -33,13 +33,13 @@ Design moderno e premium con glassmorphism, animazioni scroll, sezione pricing e
 | 1.1 | Aggiungere un **video/animazione hero** (mockup dell'app in uso) al posto del solo testo | Alto | Medio |
 | 1.2 | Inserire **loghi clienti** nella social proof bar (anche solo il logo del Comune di Altamura) | Medio | Basso |
 | 1.3 | Aggiungere una **sezione screenshot** dell'app con carousel interattivo | Alto | Medio |
-| 1.4 | Il form demo non invia realmente i dati (`TODO: Send to API` nel codice). **Collegare a un endpoint** | **Critico** | Basso |
+| 1.4 | ~~Il form demo non invia realmente i dati (`TODO: Send to API` nel codice). **Collegare a un endpoint**~~ ✅ Completato | **Critico** | Basso |
 
 ### Miglioramenti Funzionali
 | # | Intervento | Impatto | Effort |
 |---|-----------|---------|--------|
 | 1.5 | Implementare invio email reale per il form demo (via API `/api/demo-request`) | Alto | Basso |
-| 1.6 | Aggiungere **cookie banner GDPR** nella landing (obbligatorio per legge) | **Critico** | Basso |
+| 1.6 | ~~Aggiungere **cookie banner GDPR** nella landing~~ ✅ Completato | **Critico** | Basso |
 | 1.7 | SEO: aggiungere structured data (JSON-LD) per Google | Medio | Basso |
 
 ---
@@ -62,7 +62,7 @@ KPI card professionali, scanner strategico con barra di copertura, sezione AI In
 |---|-----------|---------|--------|
 | 2.5 | Le card KPI non sono **cliccabili**. Renderle link (es. "Forze sul Campo" → apre la sala operativa) | Medio | Basso |
 | 2.6 | Aggiungere un **contatore richieste pendenti** (ferie/permessi in attesa di approvazione) visibile in overview | Alto | Basso |
-| 2.7 | Implementare **notifica sonora** per nuove richieste di assenza o SOS | Medio | Medio |
+| 2.7 | ~~Implementare **notifica sonora** per nuove richieste di assenza o SOS~~ ✅ Completato | Medio | Medio |
 
 ---
 
@@ -87,8 +87,8 @@ Griglia turni completa con ~30 pulsanti operativi visibili simultaneamente in 4 
 ### Miglioramenti Funzionali
 | # | Intervento | Impatto | Effort |
 |---|-----------|---------|--------|
-| 3.7 | **Undo/Redo**: Implementare un sistema di annullamento per le modifiche ai turni | Alto | Alto |
-| 3.8 | **Multi-select**: Permettere la selezione di più celle contemporaneamente per assegnazioni bulk | Alto | Alto |
+| 3.7 | ~~**Undo/Redo**: Implementare un sistema di annullamento per le modifiche ai turni~~ ✅ Completato | Alto | Alto |
+| 3.8 | ~~**Multi-select**: Permettere la selezione di più celle contemporaneamente per assegnazioni bulk~~ ✅ Completato | Alto | Alto |
 | 3.9 | **Copia-incolla mese**: Copiare la pianificazione da un mese precedente come base | Medio | Medio |
 | 3.10 | **Conflitti visivi**: Mostrare un bordo rosso sulle celle con conflitti (es. doppio turno, massimale superato) | Alto | Medio |
 
@@ -130,8 +130,8 @@ Pagina con header "Centrale Operativa GPS" ma la mappa appare vuota con "0 Agent
 ### Miglioramenti Funzionali
 | # | Intervento | Impatto | Effort |
 |---|-----------|---------|--------|
-| 5.4 | **Geofencing**: Configurare zone di servizio e alert quando un agente esce dalla zona assegnata | Alto | Alto |
-| 5.5 | **Storico posizioni**: Timeline delle posizioni degli agenti nelle ultime 24h | Medio | Alto |
+| 5.4 | ~~**Geofencing**: Configurare zone di servizio e alert quando un agente esce dalla zona assegnata~~ ✅ Completato | Alto | Alto |
+| 5.5 | ~~**Storico posizioni**: Timeline delle posizioni degli agenti nelle ultime 24h~~ ✅ Completato | Medio | Alto |
 | 5.6 | **Integrazione meteo**: Sovrapporre layer meteo sulla mappa per decisioni operative | Basso | Medio |
 
 ---
@@ -154,7 +154,7 @@ Design premium "gamer/glassmorphism" ottimizzato per mobile. Widget servizio del
 |---|-----------|---------|--------|
 | 6.5 | **Storico personale**: Sezione "I miei turni passati" con filtri per mese e tipo di servizio | Medio | Medio |
 | 6.6 | **Documenti personali**: Upload patente, porto d'armi con alert di scadenza personalizzato | Alto | Medio |
-| 6.7 | **Chat tra colleghi**: Mini-chat tra i membri della stessa pattuglia/servizio del giorno | Medio | Alto |
+| 6.7 | ~~**Chat tra colleghi**: Mini-chat tra i membri della stessa pattuglia/servizio del giorno~~ ✅ Completato | Medio | Alto |
 
 ---
 

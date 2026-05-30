@@ -128,7 +128,7 @@ export default auth(async (req) => {
 
   // 3. MFA SEIZURE & ENFORCEMENT (⚠ Critico)
   const currentIp = req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1"
-  const isIpTrusted = (u as any).trustedIps?.includes(currentIp)
+  const isIpTrusted = u.role !== "ADMIN" && !u.isSuperAdmin && (u as any).trustedIps?.includes(currentIp)
 
   // Se l'MFA è attivo ma non verificato, blocca tutto tranne la pagina di verifica
   // SALTA il controllo se l'IP è già trusted

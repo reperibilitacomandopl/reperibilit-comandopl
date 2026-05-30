@@ -12,12 +12,12 @@ interface AgentStat {
   turniMattina: number; turniPomeriggio: number; giorniLavorati: number
   riposiProgrammati: number; ferie: number; malattia: number
   permessi104: number; altreAssenze: number; giorniAssenza: number
-  oreLavorate: number; oreStraordinario: number
+  oreLavorate: number; oreStraordinario: number; oreProgetto: number
 }
 
 interface Totals {
   totalAgents: number; totalGiorniLavorati: number; totalOreLavorate: number
-  totalOreStraordinario: number; totalFerie: number; totalMalattia: number
+  totalOreStraordinario: number; totalOreProgetto: number; totalFerie: number; totalMalattia: number
   totalPermessi104: number; tassoAssenteismo: number
 }
 
@@ -72,7 +72,7 @@ export default function MonthlyReport() {
       Nome: s.name, Matricola: s.matricola, Qualifica: s.qualifica || "", Squadra: s.squadra || "",
       "Turni Mattina": s.turniMattina, "Turni Pomeriggio": s.turniPomeriggio,
       "Giorni Lavorati": s.giorniLavorati, "Ore Lavorate": s.oreLavorate,
-      "Ore Straordinario": s.oreStraordinario, Riposi: s.riposiProgrammati,
+      "Ore Straordinario": s.oreStraordinario, "Ore Progetto": s.oreProgetto, Riposi: s.riposiProgrammati,
       Ferie: s.ferie, Malattia: s.malattia, "104": s.permessi104, "Altre Assenze": s.altreAssenze,
     }))
     const ws = XLSX.utils.json_to_sheet(data)
@@ -133,6 +133,7 @@ export default function MonthlyReport() {
               <div className="flex items-center gap-2 text-xs font-bold text-slate-600"><span className="w-3 h-3 bg-rose-500 rounded-sm"></span> Malattia: {totals.totalMalattia} gg</div>
               <div className="flex items-center gap-2 text-xs font-bold text-slate-600"><span className="w-3 h-3 bg-purple-500 rounded-sm"></span> 104: {totals.totalPermessi104} gg</div>
               <div className="flex items-center gap-2 text-xs font-bold text-slate-600"><span className="w-3 h-3 bg-amber-500 rounded-sm"></span> Straordinario: {totals.totalOreStraordinario}h</div>
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-600"><span className="w-3 h-3 bg-indigo-500 rounded-sm"></span> Progetto: {totals.totalOreProgetto}h</div>
             </div>
           )}
 
@@ -168,6 +169,7 @@ export default function MonthlyReport() {
                     {[
                       { key: "name", label: "Agente" }, { key: "turniMattina", label: "Matt." }, { key: "turniPomeriggio", label: "Pom." },
                       { key: "giorniLavorati", label: "Lav." }, { key: "oreLavorate", label: "Ore" }, { key: "oreStraordinario", label: "Strao." },
+                      { key: "oreProgetto", label: "Prog." },
                       { key: "riposiProgrammati", label: "Riposi" }, { key: "ferie", label: "Ferie" },
                       { key: "malattia", label: "Mal." }, { key: "permessi104", label: "104" }, { key: "altreAssenze", label: "Altro" },
                     ].map(col => (
@@ -190,6 +192,7 @@ export default function MonthlyReport() {
                       <td className="p-3 text-xs text-slate-800 font-black text-center">{s.giorniLavorati}</td>
                       <td className="p-3 text-xs text-emerald-700 font-black text-center">{s.oreLavorate}</td>
                       <td className="p-3 text-xs font-black text-center">{s.oreStraordinario > 0 ? <span className="text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg">{s.oreStraordinario}h</span> : "—"}</td>
+                      <td className="p-3 text-xs font-black text-center">{s.oreProgetto > 0 ? <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg">{s.oreProgetto}h</span> : "—"}</td>
                       <td className="p-3 text-xs text-slate-500 text-center">{s.riposiProgrammati || "—"}</td>
                       <td className="p-3 text-xs text-center">{s.ferie > 0 ? <span className="text-blue-600 font-bold">{s.ferie}</span> : "—"}</td>
                       <td className="p-3 text-xs text-center">{s.malattia > 0 ? <span className="text-rose-600 font-bold">{s.malattia}</span> : "—"}</td>
@@ -205,6 +208,7 @@ export default function MonthlyReport() {
                       <td className="p-3 text-xs text-center">{totals.totalGiorniLavorati}</td>
                       <td className="p-3 text-xs text-center">{totals.totalOreLavorate}</td>
                       <td className="p-3 text-xs text-center">{totals.totalOreStraordinario}h</td>
+                      <td className="p-3 text-xs text-center">{totals.totalOreProgetto}h</td>
                       <td className="p-3 text-xs text-center">{stats.reduce((a, s) => a + s.riposiProgrammati, 0)}</td>
                       <td className="p-3 text-xs text-center">{totals.totalFerie}</td>
                       <td className="p-3 text-xs text-center">{totals.totalMalattia}</td>

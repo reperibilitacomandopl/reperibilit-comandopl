@@ -73,7 +73,7 @@ Aggiungere `position: sticky; top: 0; z-index: 10;` all'header della tabella tur
 **Priorità: ALTA** | **Rischio: 🟢 Basso** | **Effort: ~30 min**
 
 ### Problema
-Le card KPI nell'Overview non sono interattive. Manca un contatore delle richieste in attesa.
+~~Le card KPI nell'Overview non sono interattive. Manca un contatore delle richieste in attesa.~~ ✅ Completato (PannelloOverview)
 
 ### Intervento
 1. Wrappare ogni KPI card in un `<Link>` verso la pagina corrispondente
@@ -120,7 +120,7 @@ Creare un componente `CookieBanner.tsx` che:
 **Priorità: CRITICA (business)** | **Rischio: 🟢 Basso** | **Effort: ~30 min**
 
 ### Problema
-Il form "Richiedi Demo" nella landing ha un `TODO: Send to API` e non invia nulla.
+~~Il form "Richiedi Demo" nella landing ha un `TODO: Send to API` e non invia nulla.~~ ✅ Completato (collegato a /api/demo-request)
 
 ### Intervento
 1. Creare endpoint `POST /api/demo-request`
@@ -163,7 +163,7 @@ Nella griglia turni non c'è una legenda dei colori. I conflitti (doppio turno, 
 **Priorità: ALTA (sicurezza)** | **Rischio: 🟡 Medio** | **Effort: ~45 min**
 
 ### Problema
-Il pulsante SOS può essere premuto accidentalmente. Manca un countdown al prossimo turno.
+~~Il pulsante SOS può essere premuto accidentalmente. Manca un countdown al prossimo turno.~~ ✅ Completato (HoldButton per SOS, NextShiftCard per countdown)
 
 ### Intervento
 1. Implementare conferma **long-press 3 secondi** con barra di progresso circolare

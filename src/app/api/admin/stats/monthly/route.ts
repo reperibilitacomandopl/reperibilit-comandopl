@@ -45,6 +45,18 @@ export async function GET(request: Request) {
       select: { userId: true, code: true, hours: true, date: true }
     })
 
+    // Fetch event assignments
+    const eventAssignments = await prisma.eventAssignment.findMany({
+      where: {
+        event: {
+          tenantId,
+          startDate: { lte: lastDay },
+          endDate: { gte: firstDay }
+        }
+      },
+      include: { event: true }
+    })
+
     // Build per-agent stats
     const agentStats = agents.map((agent: any) => {
       const agentShifts = shifts.filter((s: any) => s.userId === agent.id)
@@ -59,6 +71,9 @@ export async function GET(request: Request) {
       let altreAssenze = 0
       let oreLavorate = 0
       let oreStraordinario = 0
+      let oreProgetto = 0
+
+      const agentEvents = eventAssignments.filter((e: any) => e.userId === agent.id)
 
       agentShifts.forEach((s: any) => {
         const t = s.type.toUpperCase()
@@ -94,6 +109,13 @@ export async function GET(request: Request) {
         }
       })
 
+      // Add event hours
+      agentEvents.forEach((a: any) => {
+        oreLavorate += a.ordinaryHours || 0
+        oreStraordinario += a.overtimeHours || 0
+        oreProgetto += a.projectHours || 0
+      })
+
       const giorniLavorati = turniMattina + turniPomeriggio
       const giorniAssenza = ferie + malattia + permessi104 + altreAssenze
 
@@ -115,6 +137,7 @@ export async function GET(request: Request) {
         giorniAssenza,
         oreLavorate: Math.round(oreLavorate * 10) / 10,
         oreStraordinario: Math.round(oreStraordinario * 10) / 10,
+        oreProgetto: Math.round(oreProgetto * 10) / 10,
       }
     })
 
@@ -124,6 +147,7 @@ export async function GET(request: Request) {
       totalGiorniLavorati: agentStats.reduce((a: any, s: any) => a + s.giorniLavorati, 0),
       totalOreLavorate: Math.round(agentStats.reduce((a: any, s: any) => a + s.oreLavorate, 0) * 10) / 10,
       totalOreStraordinario: Math.round(agentStats.reduce((a: any, s: any) => a + s.oreStraordinario, 0) * 10) / 10,
+      totalOreProgetto: Math.round(agentStats.reduce((a: any, s: any) => a + s.oreProgetto, 0) * 10) / 10,
       totalFerie: agentStats.reduce((a: any, s: any) => a + s.ferie, 0),
       totalMalattia: agentStats.reduce((a: any, s: any) => a + s.malattia, 0),
       totalPermessi104: agentStats.reduce((a: any, s: any) => a + s.permessi104, 0),

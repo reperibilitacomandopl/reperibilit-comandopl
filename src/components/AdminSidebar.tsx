@@ -63,6 +63,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Stampa O.d.S.", href: "/admin/stampa-ods", icon: Printer, description: "Anteprima e Stampa PDF" },
       { label: "Generatore Ciclico", href: "/admin/auto-compila", icon: Wand2, description: "Auto-Compilazione Turni" },
       { label: "Bacheca Scambi", href: "/admin/bacheca-scambi", icon: ArrowLeftRight, description: "Marketplace cessione turni" },
+      { label: "Eventi Speciali", href: "/admin/eventi", icon: Target, description: "ODS personalizzati per eventi" },
     ],
   },
   {

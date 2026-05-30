@@ -271,7 +271,7 @@ Limiti consigliati:
 
 ---
 
-### 4.3 Account lockout progressivo — Alta priorità
+### 4.3 Account lockout progressivo — ✅ Fatto
 
 | Tentativi falliti | Azione |
 |---|---|

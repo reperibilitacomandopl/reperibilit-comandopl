@@ -104,13 +104,19 @@ export async function POST(req: Request) {
         hours: hours ? parseFloat(hours) : null,
         code,
         notes,
-        status: "PENDING_OFFICER"
+        status: "PENDING_ADMIN" // Salta l'ufficiale, va dritto al comandante
       }
     })
 
-    // --- NOTIFICA AGLI UFFICIALI DI TURNO (step 1 del workflow) ---
+    const label = getLabel(code)
+    const startStr = new Date(date).toLocaleDateString("it-IT")
+    const periodStr = endDate
+      ? `dal ${startStr} al ${new Date(endDate).toLocaleDateString("it-IT")}`
+      : `per il ${startStr}`
+
+    // --- NOTIFICA AL COMANDANTE / ADMIN (Approvazione richiesta) ---
     try {
-      const officers = await prisma.user.findMany({
+      const admins = await prisma.user.findMany({
         where: {
           tenantId: tenantId || null,
           role: "ADMIN",
@@ -119,27 +125,53 @@ export async function POST(req: Request) {
         select: { id: true, telegramChatId: true, telegramOptIn: true }
       })
 
-      if (officers.length > 0) {
-        const label = getLabel(code)
-        const startStr = new Date(date).toLocaleDateString("it-IT")
-        const periodStr = endDate
-          ? `dal ${startStr} al ${new Date(endDate).toLocaleDateString("it-IT")}`
-          : `per il ${startStr}`
-
+      if (admins.length > 0) {
         await (prisma as any).notification.createMany({
-          data: officers.map((o: any) => ({
+          data: admins.map((admin: any) => ({
             tenantId: tenantId || null,
-            userId: o.id,
-            title: "Nuova Richiesta — In Attesa Ufficiale",
-            message: `${session.user.name} ha richiesto ${label} ${periodStr}. Necessaria approvazione ufficiale di turno.`,
+            userId: admin.id,
+            title: "Nuova Richiesta — In Attesa Comandante",
+            message: `${session.user.name} ha richiesto ${label} ${periodStr}. Necessaria la tua approvazione.`,
             type: "REQUEST",
             link: `/admin/richieste`,
-            metadata: JSON.stringify({ requestId: request.id, step: "officer" })
+            metadata: JSON.stringify({ requestId: request.id, step: "admin" })
           }))
         })
       }
     } catch (notifyError) {
-      console.error("Error creating notification for officers:", notifyError)
+      console.error("Error creating notification for admins:", notifyError)
+    }
+
+    // --- NOTIFICA ALL'UFFICIALE DELLA STESSA SQUADRA (Solo per conoscenza - FYI) ---
+    try {
+      if (session.user.squadra) {
+        const officers = await prisma.user.findMany({
+          where: {
+            tenantId: tenantId || null,
+            squadra: session.user.squadra,
+            isUfficiale: true,
+            isActive: true,
+            id: { not: session.user.id } // Non notificare se l'ufficiale è lui stesso
+          },
+          select: { id: true, name: true }
+        })
+
+        if (officers.length > 0) {
+          await (prisma as any).notification.createMany({
+            data: officers.map((o: any) => ({
+              tenantId: tenantId || null,
+              userId: o.id,
+              title: "Info Squadra — Nuova Richiesta",
+              message: `[Per conoscenza] ${session.user.name} ha richiesto ${label} ${periodStr}. In attesa di approvazione dal Comando.`,
+              type: "INFO",
+              link: `/admin/richieste`, // o dashboard
+              metadata: JSON.stringify({ requestId: request.id, step: "fyi" })
+            }))
+          })
+        }
+      }
+    } catch (fyiError) {
+      console.error("Error creating FYI notification for officers:", fyiError)
     }
 
     return NextResponse.json({ success: true, request })

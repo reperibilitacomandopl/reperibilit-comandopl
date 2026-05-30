@@ -70,7 +70,7 @@ As a SuperAdmin, I want to gestire piani (TRIAL 30gg → ACTIVE → ENTERPRISE) 
 As an Agente, I want to accedere con matricola + password + 2FA so that il mio account è protetto da accessi non autorizzati.
 - [ ] Login con tenantSlug + matricola + password
 - [ ] 2FA TOTP (Google Authenticator / Authy) con backup codes
-- [ ] Lockout progressivo: 5→15min, 10→24h, 20→permanente
+- [x] Lockout progressivo: 5→15min, 10→24h, 20→permanente
 - [ ] hCaptcha dopo 3 tentativi falliti
 - [ ] Cambio password obbligatorio al primo accesso
 - [ ] Verifica password attuale per cambio password
@@ -272,7 +272,7 @@ As an Admin, I want to gestire armi e giubbotti so che traccio dotazioni e scade
 **US-062: Gestione formazione**
 As an Admin, I want to tracciare i corsi di formazione degli agenti so che verifico abilitazioni e scadenze.
 - [ ] CRUD corsi: nome, categoria, ente, data, scadenza
-- [ ] Associazione agente-corso con stato (completato, in corso, scaduto)
+- [x] Associazione agente-corso con stato (completato, in corso, scaduto)
 - [ ] Alert scadenza abilitazioni
 - [ ] Export elenco formazioni per agente
 - [ ] Verify in browser

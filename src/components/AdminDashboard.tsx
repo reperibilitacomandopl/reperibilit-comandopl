@@ -34,7 +34,8 @@ export default function AdminDashboard({
   rotationGroups = [],
   categories = [],
   currentUser,
-  logoUrl
+  logoUrl,
+  eventAssignments = []
 }: any) {
   const router = useRouter()
   
@@ -154,6 +155,7 @@ export default function AdminDashboard({
           <AdminShiftGrid 
             agents={admin.sortedAgents}
             shifts={admin.shifts}
+            eventAssignments={eventAssignments}
             isMobileView={isMobileView}
             dayInfo={admin.dayInfo}
             readOnly={!canManageShifts}

@@ -1113,3 +1113,255 @@ export async function generateWeeklyODSPDF({
     throw err;
   }
 }
+
+/**
+ * Genera l'Ordine di Servizio per un EVENTO SPECIALE
+ * Rispetta lo stile istituzionale identico all'ODS giornaliero
+ */
+interface EventAssignmentPDF {
+  name: string;
+  timeRange: string;
+  ordinaryHours: number;
+  overtimeHours: number;
+  projectHours: number;
+  equipment: string;
+}
+
+export async function generateEventODSPDF({
+  eventName,
+  eventDescription,
+  startDate,
+  endDate,
+  ordinanza,
+  odsNotes,
+  assignments,
+  tenantName = "Comando Polizia Locale",
+  logoUrl,
+}: {
+  eventName: string;
+  eventDescription: string;
+  startDate: Date;
+  endDate: Date;
+  ordinanza: string;
+  odsNotes: string;
+  assignments: EventAssignmentPDF[];
+  tenantName?: string;
+  logoUrl?: string | null;
+}) {
+  try {
+    console.log("[PDF] Generazione ODS Evento Speciale:", eventName);
+
+    const { default: jsPDFLib } = await import("jspdf");
+    const { default: autoTable } = await import("jspdf-autotable");
+    const QRCodeLib = await import("qrcode");
+
+    const doc = new jsPDFLib({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4"
+    }) as unknown as jsPDFWithAutoTable;
+
+    const navelBlue: [number, number, number] = [0, 23, 54];
+    const amber600: [number, number, number] = [180, 83, 9];
+    const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
+
+    const startStr = startDate.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+    const endStr = endDate.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+    const isSingleDay = startDate.toDateString() === endDate.toDateString();
+    const dateLabel = isSingleDay ? startStr.toUpperCase() : `DAL ${startStr.toUpperCase()} AL ${endStr.toUpperCase()}`;
+
+    // ── 1. Intestazione Istituzionale (identica all'ODS standard) ──
+    let preloadedImg: any = null;
+    if (logoUrl) {
+      try { preloadedImg = await getBase64Image(logoUrl); } catch {}
+    }
+
+    if (preloadedImg) {
+      doc.addImage(preloadedImg.data, preloadedImg.format, (pageWidth / 2) - 50, 10, 18, 18);
+      doc.setFontSize(20);
+      doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+      doc.setFont("helvetica", "bold");
+      const headerTitle = tenantName.toUpperCase().includes("POLIZIA LOCALE") 
+        ? tenantName.toUpperCase() 
+        : `POLIZIA LOCALE ${tenantName.toUpperCase()}`;
+      doc.text(headerTitle, (pageWidth / 2) + 12, 20, { align: "center" });
+    } else {
+      doc.setFontSize(22);
+      doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+      doc.setFont("helvetica", "bold");
+      const headerTitle = tenantName.toUpperCase().includes("POLIZIA LOCALE") 
+        ? tenantName.toUpperCase() 
+        : `POLIZIA LOCALE ${tenantName.toUpperCase()}`;
+      doc.text(headerTitle, pageWidth / 2, 20, { align: "center" });
+    }
+
+    // Titolo ODS Evento (Amber per distinguerlo dall'ODS giornaliero blu)
+    doc.setFontSize(14);
+    doc.setTextColor(amber600[0], amber600[1], amber600[2]);
+    doc.setFont("helvetica", "bold");
+    doc.text("ORDINE DI SERVIZIO — EVENTO SPECIALE", pageWidth / 2, 28, { align: "center" });
+
+    doc.setFontSize(12);
+    doc.setTextColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+    doc.text(eventName.toUpperCase(), pageWidth / 2, 35, { align: "center" });
+
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 116, 139);
+    doc.text(dateLabel, pageWidth / 2, 41, { align: "center" });
+
+    doc.setDrawColor(navelBlue[0], navelBlue[1], navelBlue[2]);
+    doc.setLineWidth(0.5);
+    doc.line(20, 44, pageWidth - 20, 44);
+
+    let nextY = 50;
+
+    // ── 2. Info Box (Ordinanza + Descrizione) ──
+    if (ordinanza || eventDescription) {
+      const infoRows: any[][] = [];
+      if (ordinanza) infoRows.push([{ content: `Rif. Normativo: ${ordinanza}`, styles: { fontStyle: 'bold', fontSize: 8 } }]);
+      if (eventDescription) infoRows.push([{ content: eventDescription, styles: { fontSize: 7.5 } }]);
+
+      autoTable(doc, {
+        startY: nextY,
+        body: infoRows,
+        theme: 'plain',
+        styles: { cellPadding: 3, textColor: 30 },
+        margin: { left: 20, right: 20 },
+      });
+      nextY = (doc as any).lastAutoTable.finalY + 5;
+    }
+
+    // ── 3. Tabella Personale Assegnato ──
+    const headRow = [
+      { content: "N.", styles: { halign: 'center' } },
+      { content: "PERSONALE", styles: { halign: 'left' } },
+      { content: "ORARIO", styles: { halign: 'center' } },
+      { content: "ORE ORD.", styles: { halign: 'center' } },
+      { content: "STRAORD.", styles: { halign: 'center' } },
+      { content: "PROGETTO", styles: { halign: 'center' } },
+      { content: "DOTAZIONI", styles: { halign: 'left' } },
+      { content: "FIRMA", styles: { halign: 'center' } },
+    ];
+
+    const bodyRows = assignments.map((a, i) => [
+      { content: String(i + 1), styles: { halign: 'center', fontSize: 7 } },
+      { content: a.name, styles: { fontStyle: 'bold', fontSize: 7.5 } },
+      { content: a.timeRange, styles: { halign: 'center', fontSize: 7, fontStyle: 'bold' } },
+      { content: a.ordinaryHours > 0 ? String(a.ordinaryHours) : "—", styles: { halign: 'center', fontSize: 7 } },
+      { content: a.overtimeHours > 0 ? String(a.overtimeHours) : "—", styles: { halign: 'center', fontSize: 7 } },
+      { content: a.projectHours > 0 ? String(a.projectHours) : "—", styles: { halign: 'center', fontSize: 7 } },
+      { content: a.equipment || "", styles: { fontSize: 6.5 } },
+      { content: "", styles: { fontSize: 6 } }, // Firma manuale
+    ]);
+
+    // Riga totali
+    const totalOrd = assignments.reduce((s, a) => s + a.ordinaryHours, 0);
+    const totalStr = assignments.reduce((s, a) => s + a.overtimeHours, 0);
+    const totalPrj = assignments.reduce((s, a) => s + a.projectHours, 0);
+
+    const totalsRow = [
+      { content: "", styles: {} },
+      { content: "TOTALE", styles: { fontStyle: 'bold', fontSize: 8, halign: 'right' } },
+      { content: "", styles: {} },
+      { content: totalOrd > 0 ? String(totalOrd) + "h" : "—", styles: { halign: 'center', fontStyle: 'bold', fontSize: 7.5, textColor: [5, 150, 105] } },
+      { content: totalStr > 0 ? String(totalStr) + "h" : "—", styles: { halign: 'center', fontStyle: 'bold', fontSize: 7.5, textColor: [180, 83, 9] } },
+      { content: totalPrj > 0 ? String(totalPrj) + "h" : "—", styles: { halign: 'center', fontStyle: 'bold', fontSize: 7.5, textColor: [79, 70, 229] } },
+      { content: "", styles: {} },
+      { content: "", styles: {} },
+    ];
+
+    autoTable(doc, {
+      startY: nextY,
+      head: [
+        [{ content: `— PERSONALE ASSEGNATO ALL'EVENTO —`, colSpan: 8, styles: { halign: 'center', fillColor: amber600, textColor: 255, fontSize: 9, fontStyle: 'bold', cellPadding: 2 } }],
+        headRow
+      ],
+      body: [...bodyRows, totalsRow],
+      theme: 'grid',
+      headStyles: { fillColor: navelBlue, textColor: 255, fontSize: 7, halign: 'center', fontStyle: 'bold', cellPadding: 2 },
+      bodyStyles: { fontSize: 7, cellPadding: 2, textColor: 30, lineColor: [200, 200, 200], lineWidth: 0.2 },
+      alternateRowStyles: { fillColor: [250, 250, 252] },
+      columnStyles: {
+        0: { cellWidth: 8 },
+        1: { cellWidth: 34 },
+        2: { cellWidth: 22 },
+        3: { cellWidth: 16 },
+        4: { cellWidth: 16 },
+        5: { cellWidth: 16 },
+        6: { cellWidth: 'auto' },
+        7: { cellWidth: 30 }
+      },
+      margin: { left: 6, right: 6 },
+    });
+
+    nextY = (doc as any).lastAutoTable.finalY + 6;
+
+    // ── 4. Note ODS ──
+    if (odsNotes && odsNotes.trim().length > 0) {
+      autoTable(doc, {
+        startY: nextY,
+        head: [["DISPOSIZIONI E NOTE PER L'EVENTO"]],
+        body: [[odsNotes]],
+        theme: 'grid',
+        headStyles: { fillColor: [250, 245, 225], textColor: [100, 60, 10], fontSize: 8, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 7.5, fillColor: [255, 255, 255], textColor: 30, cellPadding: 3 },
+        margin: { left: 6, right: 6 },
+      });
+      nextY = (doc as any).lastAutoTable.finalY + 5;
+    }
+
+    // ── 5. Sezione Firma Comandante ──
+    const finalY = Math.max(nextY, 200) + 15;
+    doc.setFontSize(9);
+    doc.setTextColor(60, 60, 60);
+    doc.text("IL COMANDANTE DEL CORPO", pageWidth / 2, finalY, { align: "center" });
+    doc.line(pageWidth / 2 - 30, finalY + 12, pageWidth / 2 + 30, finalY + 12);
+
+    // ── 5.5 Timbro Digitale (uguale allo standard) ──
+    const sealCenterX = pageWidth - 35;
+    const sealCenterY = finalY + 6;
+    const sealRadius = 12;
+    
+    doc.setDrawColor(16, 185, 129);
+    doc.setLineWidth(0.8);
+    doc.circle(sealCenterX, sealCenterY, sealRadius, "S");
+    doc.setLineWidth(0.3);
+    doc.circle(sealCenterX, sealCenterY, sealRadius - 2, "S");
+    
+    doc.setFontSize(5);
+    doc.setTextColor(16, 185, 129);
+    doc.setFont("helvetica", "bold");
+    doc.text("★ FIRMATO DIGITALMENTE ★", sealCenterX, sealCenterY - 5, { align: "center" });
+    doc.setFontSize(12);
+    doc.text("✓", sealCenterX, sealCenterY + 1.5, { align: "center" });
+    doc.setFontSize(4);
+    doc.text("SENTINEL SECURITY SUITE", sealCenterX, sealCenterY + 5, { align: "center" });
+    doc.setFontSize(3.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(new Date().toLocaleDateString('it-IT'), sealCenterX, sealCenterY + 7.5, { align: "center" });
+
+    // ── 6. Hash Digitale & QR ──
+    const pdfOutput = doc.output("arraybuffer");
+    const documentHash = await generateHash(pdfOutput);
+
+    try {
+      const verifyUrl = `${window.location.origin}/verify/${documentHash}`;
+      const qrDataUrl = await QRCodeLib.toDataURL(verifyUrl, { margin: 1, width: 80 });
+      doc.addImage(qrDataUrl, "PNG", pageWidth - 35, pageHeight - 40, 20, 20);
+    } catch {}
+
+    doc.setFontSize(6);
+    doc.setTextColor(150, 150, 150);
+    doc.text(`IDENTIFICATIVO DIGITALE SHA-256: ${documentHash}`, 14, pageHeight - 12);
+    doc.text(`SENTINEL SECURITY SUITE - ODS EVENTO SPECIALE CERTIFICATO IL ${new Date().toLocaleString('it-IT')}`, 14, pageHeight - 9);
+    doc.text("SCANSIONA IL QR CODE PER VERIFICARE L'AUTENTICITÀ", pageWidth - 16, pageHeight - 18, { align: "right" });
+
+    doc.save(`ODS_Evento_${eventName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+    return documentHash;
+  } catch (err) {
+    console.error("[PDF] Errore critico generazione ODS Evento:", err);
+    throw err;
+  }
+}
