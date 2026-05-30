@@ -436,11 +436,14 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
                               const selected = patrolSelection.has(a.userId)
                               return (
                                 <div key={a.id || (a.userId + a.shiftPeriod + (a.zone || ''))}
-                                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all mb-1.5 group ${a.patrolGroupId ? 'bg-blue-500/10 border-blue-500/30' : 'bg-white/5 border-white/10'} hover:border-amber-500/30 ${selected ? 'ring-1 ring-amber-500/50 bg-amber-500/10' : ''}`}>
+                                  draggable
+                                  onDragStart={e => handleDragStart(e, a.userId)}
+                                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all mb-1.5 group cursor-grab active:cursor-grabbing ${a.patrolGroupId ? 'bg-blue-500/10 border-blue-500/30' : 'bg-white/5 border-white/10'} hover:border-amber-500/30 ${selected ? 'ring-1 ring-amber-500/50 bg-amber-500/10' : ''}`}>
                                   <input type="checkbox" checked={selected}
                                     onChange={() => togglePatrolSelection(a.userId)}
+                                    onClick={e => e.stopPropagation()}
                                     className="w-3 h-3 rounded accent-amber-500" />
-                                  <GripVertical size={12} className="text-slate-600 cursor-grab shrink-0" />
+                                  <GripVertical size={12} className="text-slate-600 shrink-0" />
                                   <div className="flex-1 min-w-0">
                                     <p className="text-[11px] font-bold text-white truncate">{agent?.name || a.userId}</p>
                                     <div className="flex items-center gap-1.5 flex-wrap text-[8px] text-slate-400">
@@ -479,11 +482,14 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
                               const selected = patrolSelection.has(a.userId)
                               return (
                                 <div key={a.id || (a.userId + a.shiftPeriod + (a.zone || ''))}
-                                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all mb-1.5 group ${a.patrolGroupId ? 'bg-blue-500/10 border-blue-500/30' : 'bg-white/5 border-white/10'} hover:border-amber-500/30 ${selected ? 'ring-1 ring-amber-500/50 bg-amber-500/10' : ''}`}>
+                                  draggable
+                                  onDragStart={e => handleDragStart(e, a.userId)}
+                                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all mb-1.5 group cursor-grab active:cursor-grabbing ${a.patrolGroupId ? 'bg-blue-500/10 border-blue-500/30' : 'bg-white/5 border-white/10'} hover:border-amber-500/30 ${selected ? 'ring-1 ring-amber-500/50 bg-amber-500/10' : ''}`}>
                                   <input type="checkbox" checked={selected}
                                     onChange={() => togglePatrolSelection(a.userId)}
+                                    onClick={e => e.stopPropagation()}
                                     className="w-3 h-3 rounded accent-amber-500" />
-                                  <GripVertical size={12} className="text-slate-600 cursor-grab shrink-0" />
+                                  <GripVertical size={12} className="text-slate-600 shrink-0" />
                                   <div className="flex-1 min-w-0">
                                     <p className="text-[11px] font-bold text-white truncate">{agent?.name || a.userId}</p>
                                     <div className="flex items-center gap-1.5 flex-wrap text-[8px] text-slate-400">

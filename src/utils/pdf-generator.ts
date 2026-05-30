@@ -1359,8 +1359,9 @@ export async function generateEventODSPDF({
     doc.text(`SENTINEL SECURITY SUITE - ODS EVENTO SPECIALE CERTIFICATO IL ${new Date().toLocaleString('it-IT')}`, 14, pageHeight - 9);
     doc.text("SCANSIONA IL QR CODE PER VERIFICARE L'AUTENTICITÀ", pageWidth - 16, pageHeight - 18, { align: "right" });
 
-    doc.save(`ODS_Evento_${eventName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
-    return documentHash;
+    // Return the final PDF buffer (hash/QR already added above)
+    const finalOutput = doc.output("arraybuffer");
+    return finalOutput;
   } catch (err) {
     console.error("[PDF] Errore critico generazione ODS Evento:", err);
     throw err;
