@@ -7,6 +7,8 @@ import { CalendarDays, Plus, Trash2, Users, FileText, Pencil, X, Check, Download
 interface EventAssignment {
   id: string
   userId: string
+  serviceType: string | null
+  zone: string | null
   timeRange: string
   ordinaryHours: number
   overtimeHours: number
@@ -14,7 +16,6 @@ interface EventAssignment {
   equipment: string | null
   patrolGroupId: string | null
   vehicleId: string | null
-  zone: string | null
   user: { id: string; name: string; squadra: string | null }
 }
 
@@ -248,13 +249,10 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
                   {ev.assignments.map(a => (
                     <div key={a.id} className="flex items-center justify-between px-3 py-2 bg-white/5 rounded-xl">
                       <span className="text-xs font-bold text-white">{a.user.name}</span>
-                      <div className="flex items-center gap-3 text-[9px] font-bold text-slate-400">
+                      <div className="flex items-center gap-3 text-[9px] font-bold text-slate-400 flex-wrap">
                         {a.serviceType && <span className="text-amber-400">{a.serviceType}</span>}
-                        {a.zone && <span className="text-white/70 italic">{a.zone}</span>}
+                        {a.zone && <span className="text-cyan-400 italic">{a.zone}</span>}
                         <span className="flex items-center gap-1"><Clock size={9} /> {a.timeRange}</span>
-                        {a.ordinaryHours > 0 && <span className="text-emerald-400">{a.ordinaryHours}h ord</span>}
-                        {a.overtimeHours > 0 && <span className="text-amber-400">{a.overtimeHours}h str</span>}
-                        {a.projectHours > 0 && <span className="text-blue-400">{a.projectHours}h prog</span>}
                       </div>
                     </div>
                   ))}
@@ -268,7 +266,7 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
       {/* Create/Edit Modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={resetForm}>
-          <div className="bg-[#0a0f1a] border border-white/10 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-[#0a0f1a] border border-white/10 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b border-white/5 flex items-center justify-between">
               <h2 className="text-lg font-black text-white tracking-tight flex items-center gap-3">
                 <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center">
@@ -326,84 +324,112 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
                     <Users size={16} className="text-amber-400" /> Personale Assegnato
                   </h3>
                   <button onClick={addAssignment} className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all">
-                    <Plus size={12} /> Aggiungi
+                    <Plus size={12} /> Aggiungi Operatore
                   </button>
                 </div>
 
                 {formAssignments.length === 0 && (
-                  <p className="text-center text-slate-600 text-xs py-6">Nessun agente assegnato. Clicca "Aggiungi" per iniziare.</p>
+                  <p className="text-center text-slate-600 text-xs py-6">Nessun agente assegnato. Clicca "Aggiungi Operatore" per iniziare.</p>
                 )}
 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {formAssignments.map((a, idx) => (
-                    <div key={idx} className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
-                      <div className="flex items-center gap-3">
+                    <div key={idx} className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 space-y-4 relative">
+                      {/* Numero e Elimina */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Operatore #{idx + 1}</span>
+                        <button onClick={() => removeAssignment(idx)} className="flex items-center gap-1 px-2 py-1 bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white rounded-lg text-[9px] font-bold transition-all">
+                          <Trash2 size={10} /> Rimuovi
+                        </button>
+                      </div>
+
+                      {/* Riga 1: Operatore (tutta la larghezza) */}
+                      <div>
+                        <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">👤 Seleziona Operatore</label>
                         <select
                           value={a.userId}
                           onChange={e => updateAssignment(idx, "userId", e.target.value)}
-                          className="flex-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
+                          className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
                         >
                           <option className="bg-slate-900 text-white" value="">— Seleziona Agente —</option>
                           {agents.map(ag => <option className="bg-slate-900 text-white" key={ag.id} value={ag.id}>{ag.name}{ag.squadra ? ` (${ag.squadra})` : ""}</option>)}
                         </select>
-                        <select
-                          value={a.serviceType || "Pattuglia"}
-                          onChange={e => updateAssignment(idx, "serviceType", e.target.value)}
-                          className="w-32 px-2 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
-                        >
-                          <option className="bg-slate-900 text-white" value="Pattuglia">Pattuglia</option>
-                          <option className="bg-slate-900 text-white" value="Viabilità">Viabilità</option>
-                          <option className="bg-slate-900 text-white" value="Presidio Fisso">Presidio Fisso</option>
-                          <option className="bg-slate-900 text-white" value="Antinfortunistica">Antinfortunistica</option>
-                          <option className="bg-slate-900 text-white" value="Rappresentanza">Rappresentanza</option>
-                          <option className="bg-slate-900 text-white" value="Polizia Giudiziaria">Polizia Giudiziaria</option>
-                          <option className="bg-slate-900 text-white" value="Altro">Altro</option>
-                        </select>
-                        <input
-                          type="text"
-                          value={a.zone}
-                          onChange={e => updateAssignment(idx, "zone", e.target.value)}
-                          placeholder="Zona / Lavoro"
-                          title="Indicazioni del tipo di lavoro o zona per l'operatore"
-                          className="w-32 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
-                        />
-                        <select
-                          value={a.vehicleId}
-                          onChange={e => updateAssignment(idx, "vehicleId", e.target.value)}
-                          className="w-32 px-2 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
-                        >
-                          <option className="bg-slate-900 text-white" value="">Nessun Veicolo</option>
-                          {vehicles.map(v => <option className="bg-slate-900 text-white" key={v.id} value={v.id}>{v.name}</option>)}
-                        </select>
-                        <input type="text" value={a.patrolGroupId} onChange={e => updateAssignment(idx, "patrolGroupId", e.target.value)} placeholder="Gr. Patt. (Es. 1)"
-                          className="w-24 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold text-center focus:outline-none focus:border-amber-500/50 transition-all" title="Gruppo Pattuglia" />
-                        <input type="time" value={a.startTime} onChange={e => updateAssignment(idx, "startTime", e.target.value)}
-                          className="w-24 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold text-center focus:outline-none focus:border-amber-500/50 transition-all" />
-                        <span className="text-white/40 font-bold">-</span>
-                        <input type="time" value={a.endTime} onChange={e => updateAssignment(idx, "endTime", e.target.value)}
-                          className="w-24 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold text-center focus:outline-none focus:border-amber-500/50 transition-all" />
-                        <button onClick={() => removeAssignment(idx)} className="p-2 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white rounded-xl transition-all"><Trash2 size={12} /></button>
                       </div>
 
-                      {/* Hours Breakdown */}
-                      <div className="grid grid-cols-3 gap-3">
+                      {/* Riga 2: Servizio + Zona + Veicolo + Pattuglia */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div>
-                          <label className="text-[8px] font-black text-emerald-400/60 uppercase tracking-widest mb-1 block flex items-center gap-1"><Briefcase size={8} /> Ore Ordinarie</label>
+                          <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">🔧 Tipo Servizio</label>
+                          <select
+                            value={a.serviceType || "Pattuglia"}
+                            onChange={e => updateAssignment(idx, "serviceType", e.target.value)}
+                            className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
+                          >
+                            <option className="bg-slate-900 text-white" value="Pattuglia">Pattuglia</option>
+                            <option className="bg-slate-900 text-white" value="Viabilità">Viabilità</option>
+                            <option className="bg-slate-900 text-white" value="Presidio Fisso">Presidio Fisso</option>
+                            <option className="bg-slate-900 text-white" value="Antinfortunistica">Antinfortunistica</option>
+                            <option className="bg-slate-900 text-white" value="Rappresentanza">Rappresentanza</option>
+                            <option className="bg-slate-900 text-white" value="Polizia Giudiziaria">Polizia Giudiziaria</option>
+                            <option className="bg-slate-900 text-white" value="Altro">Altro</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">📍 Zona / Mansione</label>
+                          <input
+                            type="text"
+                            value={a.zone}
+                            onChange={e => updateAssignment(idx, "zone", e.target.value)}
+                            placeholder="es. Piazza Duomo, Via Roma"
+                            className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold placeholder-slate-600 focus:outline-none focus:border-amber-500/50 transition-all"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">🚗 Veicolo</label>
+                          <select
+                            value={a.vehicleId}
+                            onChange={e => updateAssignment(idx, "vehicleId", e.target.value)}
+                            className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
+                          >
+                            <option className="bg-slate-900 text-white" value="">Nessun Veicolo</option>
+                            {vehicles.map(v => <option className="bg-slate-900 text-white" key={v.id} value={v.id}>{v.name}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">👥 Gruppo Pattuglia</label>
+                          <input type="text" value={a.patrolGroupId} onChange={e => updateAssignment(idx, "patrolGroupId", e.target.value)} placeholder="es. 1, A, Alfa"
+                            className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold text-center placeholder-slate-600 focus:outline-none focus:border-amber-500/50 transition-all" />
+                        </div>
+                      </div>
+
+                      {/* Riga 3: Orario + Ore */}
+                      <div className="grid grid-cols-5 gap-3">
+                        <div>
+                          <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block flex items-center gap-1"><Clock size={8} /> Inizio Turno</label>
+                          <input type="time" value={a.startTime} onChange={e => updateAssignment(idx, "startTime", e.target.value)}
+                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs font-bold text-center focus:outline-none focus:border-amber-500/50 transition-all" />
+                        </div>
+                        <div>
+                          <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block flex items-center gap-1"><Clock size={8} /> Fine Turno</label>
+                          <input type="time" value={a.endTime} onChange={e => updateAssignment(idx, "endTime", e.target.value)}
+                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs font-bold text-center focus:outline-none focus:border-amber-500/50 transition-all" />
+                        </div>
+                        <div>
+                          <label className="text-[8px] font-black text-emerald-400/60 uppercase tracking-widest mb-1 block flex items-center gap-1"><Briefcase size={8} /> Ore Ord.</label>
                           <input type="number" step="0.5" min="0" value={a.ordinaryHours} onChange={e => updateAssignment(idx, "ordinaryHours", parseFloat(e.target.value) || 0)}
                             className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs font-bold text-center focus:outline-none focus:border-emerald-500/50 transition-all" />
                         </div>
                         <div>
-                          <label className="text-[8px] font-black text-amber-400/60 uppercase tracking-widest mb-1 block flex items-center gap-1"><Zap size={8} /> Straordinario</label>
+                          <label className="text-[8px] font-black text-amber-400/60 uppercase tracking-widest mb-1 block flex items-center gap-1"><Zap size={8} /> Straord.</label>
                           <input type="number" step="0.5" min="0" value={a.overtimeHours} onChange={e => updateAssignment(idx, "overtimeHours", parseFloat(e.target.value) || 0)}
                             className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs font-bold text-center focus:outline-none focus:border-amber-500/50 transition-all" />
                         </div>
                         <div>
-                          <label className="text-[8px] font-black text-blue-400/60 uppercase tracking-widest mb-1 block flex items-center gap-1"><FileText size={8} /> Progetto / Terzi</label>
+                          <label className="text-[8px] font-black text-blue-400/60 uppercase tracking-widest mb-1 block flex items-center gap-1"><FileText size={8} /> Progetto</label>
                           <input type="number" step="0.5" min="0" value={a.projectHours} onChange={e => updateAssignment(idx, "projectHours", parseFloat(e.target.value) || 0)}
                             className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs font-bold text-center focus:outline-none focus:border-blue-500/50 transition-all" />
                         </div>
                       </div>
-
                     </div>
                   ))}
                 </div>
