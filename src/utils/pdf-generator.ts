@@ -1316,15 +1316,15 @@ export async function generateEventODSPDF({
             { content: "", rowSpan: userAss.length, styles: { fontSize: 6, valign: 'middle' } },
           ];
         } else {
-          // Record successivi: le colonne con rowSpan ereditano il valore, passiamo null
+          // Righe successive per lo stesso operatore: celle vuote esplicite nelle posizioni con rowSpan
           row = [
-            null,
-            null,
+            { content: "" },
+            { content: "" },
             { content: serviceLabel, styles: { halign: 'center', fontSize: 7, valign: 'middle' } },
             { content: zoneLabel, styles: { fontSize: 7, fontStyle: zoneLabel ? 'bold' : 'normal', valign: 'middle' } },
             { content: a.timeRange, styles: { halign: 'center', fontSize: 7, fontStyle: 'bold', valign: 'middle' } },
             { content: a.vehicle || "", styles: { halign: 'center', fontSize: 6.5, valign: 'middle' } },
-            null,
+            { content: "" },
           ];
         }
         
