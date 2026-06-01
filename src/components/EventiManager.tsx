@@ -351,8 +351,8 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
                           onChange={e => updateAssignment(idx, "userId", e.target.value)}
                           className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
                         >
-                          <option className="bg-slate-900 text-white" value="">— Seleziona Agente —</option>
-                          {agents.map(ag => <option className="bg-slate-900 text-white" key={ag.id} value={ag.id}>{ag.name}{ag.squadra ? ` (${ag.squadra})` : ""}</option>)}
+                          <option className="text-slate-900 bg-white" value="">— Seleziona Agente —</option>
+                          {agents.map(ag => <option className="text-slate-900 bg-white" key={ag.id} value={ag.id}>{ag.name}{ag.squadra ? ` (${ag.squadra})` : ""}</option>)}
                         </select>
                       </div>
 
@@ -365,13 +365,13 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
                             onChange={e => updateAssignment(idx, "serviceType", e.target.value)}
                             className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
                           >
-                            <option className="bg-slate-900 text-white" value="Pattuglia">Pattuglia</option>
-                            <option className="bg-slate-900 text-white" value="Viabilità">Viabilità</option>
-                            <option className="bg-slate-900 text-white" value="Presidio Fisso">Presidio Fisso</option>
-                            <option className="bg-slate-900 text-white" value="Antinfortunistica">Antinfortunistica</option>
-                            <option className="bg-slate-900 text-white" value="Rappresentanza">Rappresentanza</option>
-                            <option className="bg-slate-900 text-white" value="Polizia Giudiziaria">Polizia Giudiziaria</option>
-                            <option className="bg-slate-900 text-white" value="Altro">Altro</option>
+                            <option className="text-slate-900 bg-white" value="Pattuglia">Pattuglia</option>
+                            <option className="text-slate-900 bg-white" value="Viabilità">Viabilità</option>
+                            <option className="text-slate-900 bg-white" value="Presidio Fisso">Presidio Fisso</option>
+                            <option className="text-slate-900 bg-white" value="Antinfortunistica">Antinfortunistica</option>
+                            <option className="text-slate-900 bg-white" value="Rappresentanza">Rappresentanza</option>
+                            <option className="text-slate-900 bg-white" value="Polizia Giudiziaria">Polizia Giudiziaria</option>
+                            <option className="text-slate-900 bg-white" value="Altro">Altro</option>
                           </select>
                         </div>
                         <div>
@@ -391,8 +391,8 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
                             onChange={e => updateAssignment(idx, "vehicleId", e.target.value)}
                             className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
                           >
-                            <option className="bg-slate-900 text-white" value="">Nessun Veicolo</option>
-                            {vehicles.map(v => <option className="bg-slate-900 text-white" key={v.id} value={v.id}>{v.name}</option>)}
+                            <option className="text-slate-900 bg-white" value="">Nessun Veicolo</option>
+                            {vehicles.map(v => <option className="text-slate-900 bg-white" key={v.id} value={v.id}>{v.name}</option>)}
                           </select>
                         </div>
                         <div>
