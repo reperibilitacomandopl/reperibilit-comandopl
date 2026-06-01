@@ -37,6 +37,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ eventId:
       overtimeHours: a.overtimeHours || 0,
       projectHours: a.projectHours || 0,
       patrolGroupId: a.patrolGroupId || null,
+      zone: a.zone || null,
       vehicle: a.vehicle ? a.vehicle.name : '',
     }))
 

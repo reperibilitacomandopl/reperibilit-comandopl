@@ -1129,6 +1129,7 @@ interface EventAssignmentPDF {
   overtimeHours: number;
   projectHours: number;
   patrolGroupId?: string | null;
+  zone?: string | null;
   vehicle?: string;
 }
 
@@ -1265,7 +1266,7 @@ export async function generateEventODSPDF({
         { content: String(i + 1), styles: { halign: 'center', fontSize: 7 } },
         { content: `${qualificaLabel}\n${a.name}`, styles: { fontStyle: 'bold', fontSize: 7.5 } },
         { content: a.timeRange, styles: { halign: 'center', fontSize: 7, fontStyle: 'bold' } },
-        { content: a.serviceType || (a.shiftPeriod === "M" ? "Mattina" : a.shiftPeriod === "P" ? "Pomeriggio" : ""), styles: { fontSize: 6.5 } },
+        { content: (a.serviceType || (a.shiftPeriod === "M" ? "Mattina" : a.shiftPeriod === "P" ? "Pomeriggio" : "")) + (a.zone ? `\n${a.zone}` : ""), styles: { fontSize: 6.5 } },
         { content: a.vehicle || "", styles: { halign: 'center', fontSize: 6.5 } },
         { content: "", styles: { fontSize: 6 } }, // Firma manuale
       ];

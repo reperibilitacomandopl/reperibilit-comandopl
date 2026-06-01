@@ -14,6 +14,7 @@ interface EventAssignment {
   equipment: string | null
   patrolGroupId: string | null
   vehicleId: string | null
+  zone: string | null
   user: { id: string; name: string; squadra: string | null }
 }
 
@@ -62,7 +63,7 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
   const [formOrdinanza, setFormOrdinanza] = useState("")
   const [formOdsNotes, setFormOdsNotes] = useState("")
   const [formAssignments, setFormAssignments] = useState<{
-    userId: string; serviceType: string; timeRange: string; startTime: string; endTime: string; ordinaryHours: number; overtimeHours: number; projectHours: number; patrolGroupId: string; vehicleId: string;
+    userId: string; serviceType: string; zone: string; timeRange: string; startTime: string; endTime: string; ordinaryHours: number; overtimeHours: number; projectHours: number; patrolGroupId: string; vehicleId: string;
   }[]>([])
 
   const fetchEvents = useCallback(async () => {
@@ -109,7 +110,7 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
     setFormAssignments(ev.assignments.map(a => {
       const [start, end] = (a.timeRange || "18:00 - 24:00").split(" - ")
       return {
-        userId: a.userId, serviceType: a.serviceType || "", timeRange: a.timeRange, startTime: start || "18:00", endTime: end || "24:00", ordinaryHours: a.ordinaryHours,
+        userId: a.userId, serviceType: a.serviceType || "Pattuglia", zone: a.zone || "", timeRange: a.timeRange, startTime: start || "18:00", endTime: end || "24:00", ordinaryHours: a.ordinaryHours,
         overtimeHours: a.overtimeHours, projectHours: a.projectHours, patrolGroupId: a.patrolGroupId || "", vehicleId: a.vehicleId || ""
       }
     }))
@@ -145,7 +146,7 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
   }
 
   const addAssignment = () => {
-    setFormAssignments([...formAssignments, { userId: "", serviceType: "", timeRange: "18:00 - 24:00", startTime: "18:00", endTime: "24:00", ordinaryHours: 0, overtimeHours: 0, projectHours: 0, patrolGroupId: "", vehicleId: "" }])
+    setFormAssignments([...formAssignments, { userId: "", serviceType: "Pattuglia", zone: "", timeRange: "18:00 - 24:00", startTime: "18:00", endTime: "24:00", ordinaryHours: 0, overtimeHours: 0, projectHours: 0, patrolGroupId: "", vehicleId: "" }])
   }
 
   const removeAssignment = (idx: number) => {
@@ -249,6 +250,7 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
                       <span className="text-xs font-bold text-white">{a.user.name}</span>
                       <div className="flex items-center gap-3 text-[9px] font-bold text-slate-400">
                         {a.serviceType && <span className="text-amber-400">{a.serviceType}</span>}
+                        {a.zone && <span className="text-white/70 italic">{a.zone}</span>}
                         <span className="flex items-center gap-1"><Clock size={9} /> {a.timeRange}</span>
                         {a.ordinaryHours > 0 && <span className="text-emerald-400">{a.ordinaryHours}h ord</span>}
                         {a.overtimeHours > 0 && <span className="text-amber-400">{a.overtimeHours}h str</span>}
@@ -344,12 +346,26 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
                           <option className="bg-slate-900 text-white" value="">— Seleziona Agente —</option>
                           {agents.map(ag => <option className="bg-slate-900 text-white" key={ag.id} value={ag.id}>{ag.name}{ag.squadra ? ` (${ag.squadra})` : ""}</option>)}
                         </select>
+                        <select
+                          value={a.serviceType || "Pattuglia"}
+                          onChange={e => updateAssignment(idx, "serviceType", e.target.value)}
+                          className="w-32 px-2 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
+                        >
+                          <option className="bg-slate-900 text-white" value="Pattuglia">Pattuglia</option>
+                          <option className="bg-slate-900 text-white" value="Viabilità">Viabilità</option>
+                          <option className="bg-slate-900 text-white" value="Presidio Fisso">Presidio Fisso</option>
+                          <option className="bg-slate-900 text-white" value="Antinfortunistica">Antinfortunistica</option>
+                          <option className="bg-slate-900 text-white" value="Rappresentanza">Rappresentanza</option>
+                          <option className="bg-slate-900 text-white" value="Polizia Giudiziaria">Polizia Giudiziaria</option>
+                          <option className="bg-slate-900 text-white" value="Altro">Altro</option>
+                        </select>
                         <input
                           type="text"
-                          value={a.serviceType}
-                          onChange={e => updateAssignment(idx, "serviceType", e.target.value)}
-                          placeholder="Servizio / Mansione"
-                          className="w-40 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
+                          value={a.zone}
+                          onChange={e => updateAssignment(idx, "zone", e.target.value)}
+                          placeholder="Zona / Lavoro"
+                          title="Indicazioni del tipo di lavoro o zona per l'operatore"
+                          className="w-32 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
                         />
                         <select
                           value={a.vehicleId}
