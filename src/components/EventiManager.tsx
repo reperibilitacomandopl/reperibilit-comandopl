@@ -145,7 +145,7 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
   }
 
   const addAssignment = () => {
-    setFormAssignments([...formAssignments, { userId: "", serviceType: "Pattuglia", timeRange: "18:00 - 24:00", startTime: "18:00", endTime: "24:00", ordinaryHours: 0, overtimeHours: 0, projectHours: 0, patrolGroupId: "", vehicleId: "" }])
+    setFormAssignments([...formAssignments, { userId: "", serviceType: "", timeRange: "18:00 - 24:00", startTime: "18:00", endTime: "24:00", ordinaryHours: 0, overtimeHours: 0, projectHours: 0, patrolGroupId: "", vehicleId: "" }])
   }
 
   const removeAssignment = (idx: number) => {
@@ -341,29 +341,23 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
                           onChange={e => updateAssignment(idx, "userId", e.target.value)}
                           className="flex-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
                         >
-                          <option value="">— Seleziona Agente —</option>
-                          {agents.map(ag => <option key={ag.id} value={ag.id}>{ag.name}{ag.squadra ? ` (${ag.squadra})` : ""}</option>)}
+                          <option className="bg-slate-900 text-white" value="">— Seleziona Agente —</option>
+                          {agents.map(ag => <option className="bg-slate-900 text-white" key={ag.id} value={ag.id}>{ag.name}{ag.squadra ? ` (${ag.squadra})` : ""}</option>)}
                         </select>
-                        <select
-                          value={a.serviceType || "Pattuglia"}
+                        <input
+                          type="text"
+                          value={a.serviceType}
                           onChange={e => updateAssignment(idx, "serviceType", e.target.value)}
-                          className="w-32 px-2 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
-                        >
-                          <option value="Pattuglia">Pattuglia</option>
-                          <option value="Viabilità">Viabilità</option>
-                          <option value="Presidio Fisso">Presidio Fisso</option>
-                          <option value="Antinfortunistica">Antinfortunistica</option>
-                          <option value="Rappresentanza">Rappresentanza</option>
-                          <option value="Polizia Giudiziaria">Polizia Giudiziaria</option>
-                          <option value="Altro">Altro</option>
-                        </select>
+                          placeholder="Servizio / Mansione"
+                          className="w-40 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
+                        />
                         <select
                           value={a.vehicleId}
                           onChange={e => updateAssignment(idx, "vehicleId", e.target.value)}
                           className="w-32 px-2 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
                         >
-                          <option value="">Nessun Veicolo</option>
-                          {vehicles.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                          <option className="bg-slate-900 text-white" value="">Nessun Veicolo</option>
+                          {vehicles.map(v => <option className="bg-slate-900 text-white" key={v.id} value={v.id}>{v.name}</option>)}
                         </select>
                         <input type="text" value={a.patrolGroupId} onChange={e => updateAssignment(idx, "patrolGroupId", e.target.value)} placeholder="Gr. Patt. (Es. 1)"
                           className="w-24 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold text-center focus:outline-none focus:border-amber-500/50 transition-all" title="Gruppo Pattuglia" />
