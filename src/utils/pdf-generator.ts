@@ -1305,7 +1305,7 @@ export async function generateEventODSPDF({
 
         let row: any[];
         if (j === 0) {
-          // Primo record dell'operatore: imposta rowSpan per le colonne N., Nome e Firma
+          // Primo record: rowSpan su colonne 0 (N.), 1 (Nome), 6 (Firma)
           row = [
             { content: String(operatorIndex + 1), rowSpan: userAss.length, styles: { halign: 'center', fontSize: 7, valign: 'middle' } },
             { content: `${qualificaLabel}\n${a.name}`, rowSpan: userAss.length, styles: { fontStyle: 'bold', fontSize: 7.5, valign: 'middle' } },
@@ -1316,18 +1316,16 @@ export async function generateEventODSPDF({
             { content: "", rowSpan: userAss.length, styles: { fontSize: 6, valign: 'middle' } },
           ];
         } else {
-          // Righe successive per lo stesso operatore: celle vuote esplicite nelle posizioni con rowSpan
+          // Righe successive: OMETTERE le colonne coperte da rowSpan (0, 1, 6)
+          // Le 4 celle qui sotto si mappano automaticamente alle colonne 2-3-4-5
           row = [
-            { content: "" },
-            { content: "" },
             { content: serviceLabel, styles: { halign: 'center', fontSize: 7, valign: 'middle' } },
             { content: zoneLabel, styles: { fontSize: 7, fontStyle: zoneLabel ? 'bold' : 'normal', valign: 'middle' } },
             { content: a.timeRange, styles: { halign: 'center', fontSize: 7, fontStyle: 'bold', valign: 'middle' } },
             { content: a.vehicle || "", styles: { halign: 'center', fontSize: 6.5, valign: 'middle' } },
-            { content: "" },
           ];
         }
-        
+
         if (a.patrolGroupId) patrolRowIndices.add(bodyRows.length);
         bodyRows.push(row);
       });
