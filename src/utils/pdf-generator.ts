@@ -1240,11 +1240,14 @@ export async function generateEventODSPDF({
     }
 
     // ── 3. Tabella Personale Assegnato ──
+    console.log("[PDF] Assignments ricevute:", JSON.stringify(assignments.map(a => ({ name: a.name, serviceType: a.serviceType, zone: a.zone, vehicle: a.vehicle, patrolGroupId: a.patrolGroupId }))));
+
     const headRow: any[] = [
       { content: "N.", styles: { halign: 'center' } },
       { content: "QUALIFICA / NOME", styles: { halign: 'left' } },
+      { content: "SERVIZIO", styles: { halign: 'center' } },
+      { content: "ZONA / MANSIONE", styles: { halign: 'left' } },
       { content: "ORARIO", styles: { halign: 'center' } },
-      { content: "SERVIZIO / DOTAZIONI", styles: { halign: 'left' } },
       { content: "VEICOLO", styles: { halign: 'center' } },
       { content: "FIRMA", styles: { halign: 'center' } },
     ];
@@ -1262,11 +1265,14 @@ export async function generateEventODSPDF({
 
     const bodyRows: any[][] = sortedAssignments.map((a, i) => {
       const qualificaLabel = a.qualifica || (a.isUfficiale ? 'Uff.le' : 'Agente');
+      const serviceLabel = a.serviceType || (a.shiftPeriod === "M" ? "Mattina" : a.shiftPeriod === "P" ? "Pomeriggio" : "");
+      const zoneLabel = a.zone || "";
       const row: any[] = [
         { content: String(i + 1), styles: { halign: 'center', fontSize: 7 } },
         { content: `${qualificaLabel}\n${a.name}`, styles: { fontStyle: 'bold', fontSize: 7.5 } },
+        { content: serviceLabel, styles: { halign: 'center', fontSize: 7 } },
+        { content: zoneLabel, styles: { fontSize: 7, fontStyle: zoneLabel ? 'bold' : 'normal' } },
         { content: a.timeRange, styles: { halign: 'center', fontSize: 7, fontStyle: 'bold' } },
-        { content: (a.serviceType || (a.shiftPeriod === "M" ? "Mattina" : a.shiftPeriod === "P" ? "Pomeriggio" : "")) + (a.zone ? `\n${a.zone}` : ""), styles: { fontSize: 6.5 } },
         { content: a.vehicle || "", styles: { halign: 'center', fontSize: 6.5 } },
         { content: "", styles: { fontSize: 6 } }, // Firma manuale
       ];
@@ -1277,7 +1283,7 @@ export async function generateEventODSPDF({
     autoTable(doc, {
       startY: nextY,
       head: [
-        [{ content: `— PERSONALE ASSEGNATO ALL'EVENTO —`, colSpan: 6, styles: { halign: 'center' as any, fillColor: amber600, textColor: 255, fontSize: 9, fontStyle: 'bold', cellPadding: 2 } }],
+        [{ content: `— PERSONALE ASSEGNATO ALL'EVENTO —`, colSpan: 7, styles: { halign: 'center' as any, fillColor: amber600, textColor: 255, fontSize: 9, fontStyle: 'bold', cellPadding: 2 } }],
         headRow
       ],
       body: bodyRows,
@@ -1287,11 +1293,12 @@ export async function generateEventODSPDF({
       alternateRowStyles: { fillColor: [250, 250, 252] },
       columnStyles: {
         0: { cellWidth: 8 },
-        1: { cellWidth: 40 },
-        2: { cellWidth: 28 },
+        1: { cellWidth: 35 },
+        2: { cellWidth: 22 },
         3: { cellWidth: 'auto' },
-        4: { cellWidth: 35 },
-        5: { cellWidth: 30 }
+        4: { cellWidth: 22 },
+        5: { cellWidth: 28 },
+        6: { cellWidth: 25 }
       },
       margin: { left: 6, right: 6 },
       didParseCell: (data: any) => {
