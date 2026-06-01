@@ -571,23 +571,23 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
                 <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Tipo Servizio</label>
                 <select value={editForm.serviceType} onChange={e => setEditForm({ ...editForm, serviceType: e.target.value })}
                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm font-bold focus:outline-none focus:border-amber-500/50">
-                  {SERVICE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  {SERVICE_TYPES.map(t => <option className="text-slate-900 bg-white" key={t} value={t}>{t}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Zona</label>
                 <select value={editForm.zone} onChange={e => setEditForm({ ...editForm, zone: e.target.value })}
                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm font-bold focus:outline-none focus:border-amber-500/50">
-                  <option value="">— Nessuna zona —</option>
-                  {zones.map(z => <option key={z} value={z}>{z}</option>)}
+                  <option className="text-slate-900 bg-white" value="">— Nessuna zona —</option>
+                  {zones.map(z => <option className="text-slate-900 bg-white" key={z} value={z}>{z}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Veicolo</label>
                 <select value={editForm.vehicleId} onChange={e => setEditForm({ ...editForm, vehicleId: e.target.value })}
                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm font-bold focus:outline-none focus:border-amber-500/50">
-                  <option value="">— Nessun veicolo —</option>
-                  {vehicles.map(v => <option key={v.id} value={v.id}>{v.name}{v.targa ? ` (${v.targa})` : ""}</option>)}
+                  <option className="text-slate-900 bg-white" value="">— Nessun veicolo —</option>
+                  {vehicles.map(v => <option className="text-slate-900 bg-white" key={v.id} value={v.id}>{v.name}{v.targa ? ` (${v.targa})` : ""}</option>)}
                 </select>
               </div>
               <div>
