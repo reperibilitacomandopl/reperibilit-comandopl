@@ -1119,6 +1119,7 @@ export async function generateWeeklyODSPDF({
  * Rispetta lo stile istituzionale identico all'ODS giornaliero
  */
 interface EventAssignmentPDF {
+  userId: string;
   name: string;
   qualifica?: string;
   isUfficiale?: boolean;
@@ -1291,6 +1292,7 @@ export async function generateEventODSPDF({
     });
 
     const bodyRows: any[][] = [];
+    const patrolRowIndices = new Set<number>();
     let operatorIndex = 0;
 
     sortedUserIds.forEach((uid) => {
@@ -1326,7 +1328,7 @@ export async function generateEventODSPDF({
           ];
         }
         
-        row.isPatrol = !!a.patrolGroupId;
+        if (a.patrolGroupId) patrolRowIndices.add(bodyRows.length);
         bodyRows.push(row);
       });
 
@@ -1355,8 +1357,7 @@ export async function generateEventODSPDF({
       },
       margin: { left: 6, right: 6 },
       didParseCell: (data: any) => {
-        const row = bodyRows[data.row.index];
-        if (row && (row as any).isPatrol && data.section === 'body') {
+        if (patrolRowIndices.has(data.row.index) && data.section === 'body') {
           data.cell.styles.fillColor = [232, 242, 255];
         }
       }

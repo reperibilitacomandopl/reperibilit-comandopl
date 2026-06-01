@@ -27,6 +27,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ eventId:
     if (!event) return NextResponse.json({ error: 'Evento non trovato' }, { status: 404 })
 
     const assignments = event.assignments.map((a: any) => ({
+      userId: a.user.id,
       name: a.user.name,
       qualifica: a.user.qualifica,
       isUfficiale: a.user.isUfficiale,
