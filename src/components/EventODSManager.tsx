@@ -586,20 +586,55 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
             {/* SIDEBAR: Agenti disponibili */}
             <div className="w-56 shrink-0">
               <div className="bg-white/5 border border-white/10 rounded-2xl p-3 min-h-[400px]" onDragOver={handleDragOver}
-                onDrop={async e => { const userId = e.dataTransfer.getData("text/plain"); if (userId) await handleRemoveFromBoard(userId) }}>
+                onDrop={handleRemoveFromBoard}>
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                  <GripVertical size={12} /> Disponibili ({getUnassignedAgents().length})
+                  <GripVertical size={12} /> Personale
                 </h3>
                 <div className="space-y-1 max-h-[480px] overflow-y-auto">
-                  {getUnassignedAgents().map(agent => (
-                    <div key={agent.id} draggable onDragStart={e => handleDragStart(e, agent.id)}
-                      className="flex items-center gap-2 px-2.5 py-2 bg-white/5 hover:bg-amber-500/20 border border-white/5 hover:border-amber-500/30 rounded-lg cursor-grab active:cursor-grabbing text-[11px] font-bold text-white">
-                      <GripVertical size={10} className="text-slate-600 shrink-0" />
-                      <span className="truncate">{agent.name}</span>
-                      {agent.squadra && <span className="text-[8px] text-slate-500 ml-auto shrink-0">{agent.squadra}</span>}
-                    </div>
-                  ))}
-                  {getUnassignedAgents().length === 0 && <p className="text-[10px] text-slate-600 text-center py-4">Tutti assegnati</p>}
+                  {getUnassignedAgents().map(agent => {
+                    const userAssignments = selectedEvent?.assignments.filter(a => a.userId === agent.id) || []
+                    const isAssigned = userAssignments.length > 0
+
+                    return (
+                      <div 
+                        key={agent.id} 
+                        draggable 
+                        onDragStart={e => handleDragStart(e, agent.id)}
+                        className={`relative group/agent flex flex-col px-2.5 py-2 border rounded-lg cursor-grab active:cursor-grabbing text-[11px] font-bold transition-all ${
+                          isAssigned 
+                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20' 
+                            : 'bg-white/5 border-white/5 hover:bg-amber-500/20 hover:border-amber-500/30 text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <GripVertical size={10} className={`${isAssigned ? 'text-emerald-500/40' : 'text-slate-600'} shrink-0`} />
+                          <span className="truncate">{agent.name}</span>
+                          {agent.squadra && <span className="text-[8px] text-slate-500 ml-auto shrink-0">{agent.squadra}</span>}
+                        </div>
+                        {isAssigned && (
+                          <div className="text-[8px] text-emerald-500/70 mt-0.5 flex items-center gap-1 font-black">
+                            <Check size={8} /> IN SERVIZIO ({userAssignments.length})
+                          </div>
+                        )}
+                        
+                        {/* Tooltip con dettagli assegnazione */}
+                        {isAssigned && (
+                          <div className="absolute left-full ml-2 top-0 hidden group-hover/agent:block bg-[#0e1626] border border-white/10 p-2.5 rounded-xl shadow-2xl w-48 z-[60] pointer-events-none animate-in fade-in slide-in-from-left-2">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 border-b border-white/5 pb-1">Dettaglio Servizi</p>
+                            <div className="space-y-1.5">
+                              {userAssignments.map((a, i) => (
+                                <div key={i} className="text-[9px] text-slate-300 flex flex-col">
+                                  <span className="font-extrabold text-amber-400">{a.shiftPeriod === 'M' ? 'Mattina' : 'Pomeriggio'}</span>
+                                  <span className="text-slate-400 font-bold">📍 {a.zone || 'Senza Zona'}</span>
+                                  <span className="text-slate-500">⏱️ {a.timeRange}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -721,6 +756,87 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
             <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
               <p className="text-[10px] font-black text-amber-400/60 uppercase tracking-widest mb-1">Note ODS</p>
               <p className="text-xs text-slate-300">{selectedEvent.odsNotes}</p>
+            </div>
+          )}
+
+          {/* Tabella di Riepilogo Copertura Personale */}
+          {selectedEvent.assignments.length > 0 && (
+            <div className="bg-white/5 border border-white/10 rounded-3xl p-6 mt-6 animate-in fade-in">
+              <h3 className="text-xs font-black text-white uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Users size={14} className="text-amber-400" /> Riepilogo Copertura Personale ({selectedEvent.assignments.length} assegnazioni)
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/10 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                      <th className="py-3 px-4">Operatore</th>
+                      <th className="py-3 px-4">Mattina (M)</th>
+                      <th className="py-3 px-4">Pomeriggio (P)</th>
+                      <th className="py-3 px-4 text-center">Tot Ore (Ord / Str / Proj)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {(() => {
+                      const assignedUserIds = Array.from(new Set(selectedEvent.assignments.map(a => a.userId)))
+                      return assignedUserIds.map(uid => {
+                        const agent = agents.find(ag => ag.id === uid)
+                        const userAssignments = selectedEvent.assignments.filter(a => a.userId === uid)
+                        
+                        const morningAssignments = userAssignments.filter(a => a.shiftPeriod === 'M')
+                        const afternoonAssignments = userAssignments.filter(a => a.shiftPeriod === 'P')
+                        
+                        const totOrd = userAssignments.reduce((acc, a) => acc + (a.ordinaryHours || 0), 0)
+                        const totOver = userAssignments.reduce((acc, a) => acc + (a.overtimeHours || 0), 0)
+                        const totProj = userAssignments.reduce((acc, a) => acc + (a.projectHours || 0), 0)
+                        const totalHours = totOrd + totOver + totProj
+
+                        return (
+                          <tr key={uid} className="hover:bg-white/[0.02] transition-colors text-xs font-bold text-slate-300">
+                            <td className="py-3.5 px-4 text-white">
+                              {agent?.name || uid}
+                              {agent?.squadra && <span className="text-[9px] text-slate-500 ml-2 font-normal">({agent.squadra})</span>}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              {morningAssignments.length > 0 ? (
+                                <div className="space-y-1">
+                                  {morningAssignments.map((a, idx) => (
+                                    <div key={idx} className="flex items-center gap-1.5 text-[11px] text-amber-400">
+                                      <MapPin size={10} className="shrink-0" />
+                                      <span>{a.zone || 'Senza Zona'}</span>
+                                      <span className="text-[9px] text-slate-500 font-bold">({a.timeRange})</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-slate-600">—</span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              {afternoonAssignments.length > 0 ? (
+                                <div className="space-y-1">
+                                  {afternoonAssignments.map((a, idx) => (
+                                    <div key={idx} className="flex items-center gap-1.5 text-[11px] text-blue-400">
+                                      <MapPin size={10} className="shrink-0" />
+                                      <span>{a.zone || 'Senza Zona'}</span>
+                                      <span className="text-[9px] text-slate-500 font-bold">({a.timeRange})</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-slate-600">—</span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4 text-center text-[11px]">
+                              <span className="text-white font-extrabold">{totalHours}h</span>
+                              <span className="text-slate-500 ml-1.5 text-[9px] font-bold">({totOrd} ord / {totOver} str / {totProj} proj)</span>
+                            </td>
+                          </tr>
+                        )
+                      })
+                    })()}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
