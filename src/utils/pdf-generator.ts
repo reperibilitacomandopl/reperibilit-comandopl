@@ -1347,15 +1347,15 @@ export async function generateEventODSPDF({
       bodyStyles: { fontSize: 7, cellPadding: 2, textColor: 30, lineColor: [200, 200, 200], lineWidth: 0.2 },
       alternateRowStyles: { fillColor: [250, 250, 252] },
       columnStyles: {
-        0: { cellWidth: 8 },
-        1: { cellWidth: 35 },
-        2: { cellWidth: 22 },
-        3: { cellWidth: 'auto' },
-        4: { cellWidth: 22 },
+        0: { cellWidth: 10 },
+        1: { cellWidth: 42 },
+        2: { cellWidth: 26 },
+        3: { cellWidth: 42 },
+        4: { cellWidth: 28 },
         5: { cellWidth: 28 },
-        6: { cellWidth: 25 }
+        6: { cellWidth: 24 }
       },
-      margin: { left: 6, right: 6 },
+      margin: { left: 5, right: 5 },
       didParseCell: (data: any) => {
         if (patrolRowIndices.has(data.row.index) && data.section === 'body') {
           data.cell.styles.fillColor = [232, 242, 255];
