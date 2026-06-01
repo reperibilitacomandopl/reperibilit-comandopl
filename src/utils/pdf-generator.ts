@@ -1263,21 +1263,74 @@ export async function generateEventODSPDF({
       return a.name.localeCompare(b.name);
     });
 
-    const bodyRows: any[][] = sortedAssignments.map((a, i) => {
-      const qualificaLabel = a.qualifica || (a.isUfficiale ? 'Uff.le' : 'Agente');
-      const serviceLabel = a.serviceType || (a.shiftPeriod === "M" ? "Mattina" : a.shiftPeriod === "P" ? "Pomeriggio" : "");
-      const zoneLabel = a.zone || "";
-      const row: any[] = [
-        { content: String(i + 1), styles: { halign: 'center', fontSize: 7 } },
-        { content: `${qualificaLabel}\n${a.name}`, styles: { fontStyle: 'bold', fontSize: 7.5 } },
-        { content: serviceLabel, styles: { halign: 'center', fontSize: 7 } },
-        { content: zoneLabel, styles: { fontSize: 7, fontStyle: zoneLabel ? 'bold' : 'normal' } },
-        { content: a.timeRange, styles: { halign: 'center', fontSize: 7, fontStyle: 'bold' } },
-        { content: a.vehicle || "", styles: { halign: 'center', fontSize: 6.5 } },
-        { content: "", styles: { fontSize: 6 } }, // Firma manuale
-      ];
-      (row as any).isPatrol = !!a.patrolGroupId;
-      return row;
+    // Raggruppa le assegnazioni per utente per applicare il rowSpan alle colonne anagrafiche e firma
+    const groupedAssignments: { [key: string]: typeof sortedAssignments } = {};
+    const userOrder: string[] = [];
+
+    sortedAssignments.forEach(a => {
+      const key = a.userId;
+      if (!groupedAssignments[key]) {
+        groupedAssignments[key] = [];
+        userOrder.push(key);
+      }
+      groupedAssignments[key].push(a);
+    });
+
+    // Mantiene l'ordinamento originale per gruppi di pattuglia e nome
+    const sortedUserIds = [...userOrder].sort((idA, idB) => {
+      const a = groupedAssignments[idA][0];
+      const b = groupedAssignments[idB][0];
+      const gA = a.patrolGroupId || "";
+      const gB = b.patrolGroupId || "";
+      if (gA !== gB) {
+        if (gA === "") return 1;
+        if (gB === "") return -1;
+        return gA.localeCompare(gB);
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    const bodyRows: any[][] = [];
+    let operatorIndex = 0;
+
+    sortedUserIds.forEach((uid) => {
+      const userAss = groupedAssignments[uid];
+      const qualificaLabel = userAss[0].qualifica || (userAss[0].isUfficiale ? 'Uff.le' : 'Agente');
+
+      userAss.forEach((a, j) => {
+        const serviceLabel = a.serviceType || (a.shiftPeriod === "M" ? "Mattina" : a.shiftPeriod === "P" ? "Pomeriggio" : "");
+        const zoneLabel = a.zone || "";
+
+        let row: any[];
+        if (j === 0) {
+          // Primo record dell'operatore: imposta rowSpan per le colonne N., Nome e Firma
+          row = [
+            { content: String(operatorIndex + 1), rowSpan: userAss.length, styles: { halign: 'center', fontSize: 7, valign: 'middle' } },
+            { content: `${qualificaLabel}\n${a.name}`, rowSpan: userAss.length, styles: { fontStyle: 'bold', fontSize: 7.5, valign: 'middle' } },
+            { content: serviceLabel, styles: { halign: 'center', fontSize: 7, valign: 'middle' } },
+            { content: zoneLabel, styles: { fontSize: 7, fontStyle: zoneLabel ? 'bold' : 'normal', valign: 'middle' } },
+            { content: a.timeRange, styles: { halign: 'center', fontSize: 7, fontStyle: 'bold', valign: 'middle' } },
+            { content: a.vehicle || "", styles: { halign: 'center', fontSize: 6.5, valign: 'middle' } },
+            { content: "", rowSpan: userAss.length, styles: { fontSize: 6, valign: 'middle' } },
+          ];
+        } else {
+          // Record successivi: le colonne con rowSpan ereditano il valore, passiamo null
+          row = [
+            null,
+            null,
+            { content: serviceLabel, styles: { halign: 'center', fontSize: 7, valign: 'middle' } },
+            { content: zoneLabel, styles: { fontSize: 7, fontStyle: zoneLabel ? 'bold' : 'normal', valign: 'middle' } },
+            { content: a.timeRange, styles: { halign: 'center', fontSize: 7, fontStyle: 'bold', valign: 'middle' } },
+            { content: a.vehicle || "", styles: { halign: 'center', fontSize: 6.5, valign: 'middle' } },
+            null,
+          ];
+        }
+        
+        row.isPatrol = !!a.patrolGroupId;
+        bodyRows.push(row);
+      });
+
+      operatorIndex++;
     });
 
     autoTable(doc, {
