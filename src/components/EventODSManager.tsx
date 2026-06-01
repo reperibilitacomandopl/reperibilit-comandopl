@@ -30,6 +30,41 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
   const [loading, setLoading] = useState(true)
   const [zones, setZones] = useState<string[]>(["Zona 1"])
 
+  // Aggiorna le zone e le salva in localStorage per l'evento attivo
+  const updateEventZones = (newZones: string[]) => {
+    setZones(newZones)
+    if (selectedEvent) {
+      localStorage.setItem(`event_zones_${selectedEvent.id}`, JSON.stringify(newZones))
+    }
+  }
+
+  // Carica le zone specifiche per l'evento selezionato
+  useEffect(() => {
+    if (!selectedEvent) return
+    
+    // 1. Estrai zone già assegnate
+    const activeAssignmentsZones = selectedEvent.assignments
+      .map(a => a.zone)
+      .filter(Boolean) as string[]
+      
+    // 2. Carica zone salvate da localStorage
+    let savedZones: string[] = []
+    try {
+      const stored = localStorage.getItem(`event_zones_${selectedEvent.id}`)
+      if (stored) savedZones = JSON.parse(stored)
+    } catch {}
+    
+    // 3. Unisci e rimuovi duplicati
+    const merged = Array.from(new Set([...activeAssignmentsZones, ...savedZones]))
+    
+    // 4. Default se vuoto
+    if (merged.length === 0) {
+      merged.push("Zona 1")
+    }
+    
+    setZones(merged)
+  }, [selectedEvent?.id])
+
   // Create/Edit event modal
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -195,9 +230,10 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
   }
 
   // ─── Zone ───
-  const addZone = () => {
-    if (newZoneName.trim() && !zones.includes(newZoneName.trim())) {
-      setZones([...zones, newZoneName.trim()])
+  const addZone = (zoneName: string) => {
+    const name = zoneName.trim()
+    if (name && !zones.includes(name)) {
+      updateEventZones([...zones, name])
     }
     setNewZoneName("")
     setShowZoneInput(false)
@@ -349,16 +385,55 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Zone:</span>
             {zones.map(z => (
-              <span key={z} className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-white flex items-center gap-1.5">
+              <span key={z} className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-white flex items-center gap-1.5 animate-in fade-in">
                 <MapPin size={10} className="text-amber-400" /> {z}
-                <button onClick={() => setZones(zones.filter(zz => zz !== z))} className="text-slate-600 hover:text-rose-400"><X size={10} /></button>
+                <button onClick={() => updateEventZones(zones.filter(zz => zz !== z))} className="text-slate-600 hover:text-rose-400 transition-all"><X size={10} /></button>
               </span>
             ))}
+            
             {showZoneInput ? (
-              <div className="flex items-center gap-1">
-                <input value={newZoneName} onChange={e => setNewZoneName(e.target.value)} onKeyDown={e => e.key === "Enter" && addZone()}
-                  placeholder="Nome zona..." className="w-32 px-2 py-1.5 bg-white/5 border border-amber-500/30 rounded-lg text-white text-xs focus:outline-none" autoFocus />
-                <button onClick={addZone} className="p-1.5 bg-emerald-600 rounded-lg text-white"><Check size={11} /></button>
+              <div className="relative z-20 flex flex-col bg-[#0f172a] border border-white/10 rounded-xl p-3 space-y-2 w-64 shadow-xl animate-in zoom-in-95">
+                <div className="flex items-center gap-1">
+                  <input 
+                    value={newZoneName} 
+                    onChange={e => setNewZoneName(e.target.value)} 
+                    onKeyDown={e => e.key === "Enter" && addZone(newZoneName)}
+                    placeholder="Nome zona..." 
+                    className="flex-1 px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-xs focus:outline-none focus:border-amber-500/50" 
+                    autoFocus 
+                  />
+                  <button onClick={() => addZone(newZoneName)} className="p-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white transition-all"><Check size={12} /></button>
+                  <button onClick={() => setShowZoneInput(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-all"><X size={12} /></button>
+                </div>
+                
+                {/* Suggerimenti storici (Database delle zone) */}
+                {(() => {
+                  const suggestions = Array.from(new Set(
+                    events.flatMap(ev => ev.assignments.map(a => a.zone).filter(Boolean) as string[])
+                  ))
+                  .filter(z => !zones.includes(z))
+                  .filter(z => z.toLowerCase().includes(newZoneName.toLowerCase()))
+                  .slice(0, 5);
+                  
+                  if (suggestions.length === 0) return null;
+                  
+                  return (
+                    <div className="pt-2 border-t border-white/5">
+                      <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Zone suggerite / storiche</p>
+                      <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
+                        {suggestions.map(s => (
+                          <button 
+                            key={s} 
+                            onClick={() => addZone(s)}
+                            className="text-left px-2 py-1 hover:bg-white/5 rounded text-[10px] text-slate-300 hover:text-amber-400 font-bold transition-all truncate flex items-center gap-1"
+                          >
+                            <MapPin size={8} className="text-amber-500/50" /> {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             ) : (
               <button onClick={() => setShowZoneInput(true)}
