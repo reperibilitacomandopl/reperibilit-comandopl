@@ -25,7 +25,7 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
 
 
 
-  const [users, setUsers] = useState<{ id: string; name: string; rotationGroupId?: string; fixedRestDay?: number | null }[]>([])
+  const [users, setUsers] = useState<{ id: string; name: string; rotationGroupId?: string; fixedRestDay?: number | null; dynamicRestStartDay?: number | null }[]>([])
   // Map of userId -> "YYYY-MM-DD" -> type
   const [grid, setGrid] = useState<Record<string, Record<string, string>>>({})
   const [syncedGrid, setSyncedGrid] = useState<Record<string, Record<string, boolean>>>({})
@@ -455,12 +455,13 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
           const existing = nextGrid[u.id][dStr]
           if (existing && isAssenza(existing)) return
 
-          // LOGICA RIPOSO DINAMICO
           const dateObj = new Date(year, month - 1, day)
+
+          // LOGICA RIPOSO FISSO: giorno fisso ogni settimana
           if (u.fixedRestDay !== null && u.fixedRestDay !== undefined && dateObj.getDay() === u.fixedRestDay) {
             const prevSunday = new Date(dateObj)
             prevSunday.setDate(dateObj.getDate() - (dateObj.getDay() || 7))
-            
+
             const diffSun = prevSunday.getTime() - new Date(year, month - 1, 1).getTime()
             const daysDiffSun = Math.round(diffSun / (1000 * 60 * 60 * 24))
             const sunPatternIdx = ((uStartIndex + daysDiffSun) % uPattern.length + uPattern.length) % uPattern.length
@@ -469,6 +470,23 @@ export default function MonthlyShiftPlanner({ tenantSlug }: { tenantSlug?: strin
             if (sunType === "M" || isMattina(sunType) || isPomeriggio(sunType)) {
               nextGrid[u.id][dStr] = "RP"
               return
+            }
+          }
+
+          // LOGICA RIPOSO DINAMICO: ruota ogni settimana (lunedì → martedì → mercoledì → ...)
+          if (u.fixedRestDay === null && u.dynamicRestStartDay != null) {
+            const groupStart = uGroup?.startDate ? new Date(uGroup.startDate) : new Date(year, 0, 1)
+            const dayDiff = Math.floor((dateObj.getTime() - groupStart.getTime()) / (1000 * 60 * 60 * 24))
+            const weekNumber = Math.floor(dayDiff / 7)
+            const dynamicRestDay = ((u.dynamicRestStartDay + weekNumber) % 7 + 7) % 7
+
+            if (dateObj.getDay() === dynamicRestDay) {
+              const patternIdx = ((uStartIndex + index) % uPattern.length + uPattern.length) % uPattern.length
+              const pType = uPattern[patternIdx]
+              if (pType === "M" || isMattina(pType) || isPomeriggio(pType)) {
+                nextGrid[u.id][dStr] = "RP"
+                return
+              }
             }
           }
           

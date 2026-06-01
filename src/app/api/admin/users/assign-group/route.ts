@@ -8,14 +8,16 @@ export async function PUT(request: Request) {
   if (!session?.user || (session.user.role !== "ADMIN" && !session?.user?.canManageUsers)) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
 
   try {
-    const { userId, rotationGroupId, fixedRestDay } = await request.json()
+    const { userId, rotationGroupId, fixedRestDay, dynamicRestStartDay } = await request.json()
 
     // fixedRestDay può essere undefined/null
     // rotationGroupId può essere null (rimozione dalla squadra)
-    
+    // dynamicRestStartDay: giorno di partenza per riposo dinamico (0-6), undefined se non specificato
+
     const updateData: any = {}
     if (rotationGroupId !== undefined) updateData.rotationGroupId = rotationGroupId
     if (fixedRestDay !== undefined) updateData.fixedRestDay = fixedRestDay
+    if (dynamicRestStartDay !== undefined) updateData.dynamicRestStartDay = dynamicRestStartDay
     
     await prisma.user.update({
       where: { id: userId },

@@ -74,7 +74,7 @@ interface RotationGroup {
   pStartTime: string
   pEndTime: string
   startDate: string
-  users: { id: string; name: string; fixedRestDay: number | null; isActive?: boolean }[]
+  users: { id: string; name: string; fixedRestDay: number | null; dynamicRestStartDay?: number | null; isActive?: boolean }[]
 }
 
 export default function SquadreManager() {
@@ -101,6 +101,10 @@ export default function SquadreManager() {
   const [newCustomCode, setNewCustomCode] = useState("")
   const [newCustomLabel, setNewCustomLabel] = useState("")
   const [newCustomCategory, setNewCustomCategory] = useState<"mattina" | "pomeriggio" | "notte" | "riposo">("mattina")
+
+  // Modale riposo dinamico
+  const [dynamicRestTarget, setDynamicRestTarget] = useState<string | null>(null)
+  const [dynamicRestDay, setDynamicRestDay] = useState(1) // default Lunedì
 
   // Keep _allCodes in sync with custom codes
   const allCodes = [...SHIFT_CODES, ...customCodes]
@@ -226,16 +230,27 @@ export default function SquadreManager() {
     } catch { toast.error("Errore") }
   }
 
-  const setRestDay = async (userId: string, day: number | null) => {
+  const setRestDay = async (userId: string, day: number | null, dynamicStartDay?: number | null) => {
     try {
       await fetch("/api/admin/users/assign-group", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, fixedRestDay: day })
+        body: JSON.stringify({ userId, fixedRestDay: day, dynamicRestStartDay: dynamicStartDay })
       })
       toast.success("Riposo impostato!")
       loadData()
     } catch { toast.error("Errore") }
+  }
+
+  const openDynamicRestModal = (userId: string, currentStartDay?: number | null) => {
+    setDynamicRestTarget(userId)
+    setDynamicRestDay(currentStartDay ?? 1) // default Lunedì
+  }
+
+  const confirmDynamicRest = async () => {
+    if (!dynamicRestTarget) return
+    await setRestDay(dynamicRestTarget, null, dynamicRestDay)
+    setDynamicRestTarget(null)
   }
 
   const openPatternEditor = (group: RotationGroup) => {
@@ -521,10 +536,17 @@ export default function SquadreManager() {
                           <div className="relative">
                             <select
                               value={u.fixedRestDay ?? ""}
-                              onChange={e => setRestDay(u.id, e.target.value === "" ? null : parseInt(e.target.value))}
+                              onChange={e => {
+                                const val = e.target.value
+                                if (val === "") {
+                                  openDynamicRestModal(u.id, u.dynamicRestStartDay)
+                                } else {
+                                  setRestDay(u.id, parseInt(val), null)
+                                }
+                              }}
                               className="appearance-none pr-8 pl-4 py-2 bg-slate-100/50 border border-slate-200 rounded-xl text-[10px] font-black text-slate-600 uppercase tracking-widest focus:bg-white focus:border-blue-500 transition-all outline-none"
                             >
-                              <option value="">Riposo Dinamico</option>
+                              <option value="">{u.dynamicRestStartDay != null ? `Riposo Dinamico (dal ${DAYS_OF_WEEK[u.dynamicRestStartDay]})` : "Riposo Dinamico"}</option>
                               {DAYS_OF_WEEK.map((d, idx) => (
                                 <option key={idx} value={idx}>{d}</option>
                               ))}
@@ -836,6 +858,73 @@ export default function SquadreManager() {
               <button onClick={() => savePattern()} className="px-12 py-4 bg-slate-900 text-white font-black text-[11px] uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-200 hover:bg-black transition-all active:scale-95 flex items-center gap-3">
                 <Check size={18} /> Sincronizza Motore
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODALE RIPOSO DINAMICO --- */}
+      {dynamicRestTarget && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-[60] flex items-center justify-center p-6 animate-in fade-in duration-500">
+          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-md overflow-hidden border border-white/20 animate-in zoom-in-95 duration-200">
+            <div className="bg-indigo-600 p-8 text-white text-center">
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Calendar size={28} className="text-white" />
+              </div>
+              <h3 className="text-xl font-black uppercase tracking-tight">Riposo Dinamico</h3>
+              <p className="text-indigo-200 text-sm font-medium mt-2">
+                Il riposo ruoterà ogni settimana: inizia il giorno scelto, la settimana successiva slitta al giorno dopo, e così via.
+              </p>
+            </div>
+
+            <div className="p-8">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-3">
+                Giorno di partenza
+              </label>
+              <div className="grid grid-cols-7 gap-2 mb-8">
+                {DAYS_OF_WEEK.map((d, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setDynamicRestDay(idx)}
+                    className={`py-3 rounded-xl text-[10px] font-black uppercase transition-all border-2 ${
+                      dynamicRestDay === idx
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-200"
+                        : "bg-slate-50 border-slate-100 text-slate-500 hover:border-indigo-200 hover:bg-indigo-50"
+                    }`}
+                  >
+                    {d.substring(0, 3)}
+                  </button>
+                ))}
+              </div>
+
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 mb-8">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Anteprima rotazione</p>
+                <div className="flex flex-wrap gap-1">
+                  {Array.from({ length: 8 }).map((_, week) => {
+                    const restDay = (dynamicRestDay + week) % 7
+                    return (
+                      <span key={week} className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600">
+                        S{week + 1}: {DAYS_OF_WEEK[restDay].substring(0, 3)}
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDynamicRestTarget(null)}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl text-xs uppercase tracking-widest transition-all"
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={confirmDynamicRest}
+                  className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-lg shadow-indigo-200 transition-all active:scale-95 text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+                >
+                  <Check size={16} /> Conferma
+                </button>
+              </div>
             </div>
           </div>
         </div>

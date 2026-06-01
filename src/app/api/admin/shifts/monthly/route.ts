@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 
     const users = await prisma.user.findMany({ 
       where: { tenantId: session.user.tenantId, role: "AGENTE" },
-      select: { id: true, name: true, rotationGroupId: true, rotationGroup: true, fixedRestDay: true }, 
+      select: { id: true, name: true, rotationGroupId: true, rotationGroup: true, fixedRestDay: true, dynamicRestStartDay: true },
       orderBy: { name: 'asc' } 
     })
     const shifts = await prisma.shift.findMany({
@@ -94,24 +94,29 @@ export async function PUT(request: Request) {
       existingMap.set(key, s)
     })
 
-    // Split into updates vs inserts
+    // Split into updates, inserts, and deletes
     const toUpdate: any[] = []
     const toInsert: any[] = []
+    const toDelete: string[] = [] // shift IDs to delete (when type is emptied)
 
     for (const diff of updates) {
-      if (!diff.type) continue
-      
+      const key = `${diff.userId}|${diff.date}`
+      const existing = existingMap.get(key)
+
+      // If type is empty, delete the existing shift (if any)
+      if (!diff.type) {
+        if (existing) toDelete.push(existing.id)
+        continue
+      }
+
       const macroType = diff.type.trim().toUpperCase()
       let timeRange = diff.timeRange || null
-      
+
       // Auto-derive timeRange if not provided
       if (!timeRange && !isAssenza(macroType)) {
         timeRange = inferTimeRangeFromMacro(macroType) || null
       }
       if (isAssenza(macroType)) timeRange = null
-
-      const key = `${diff.userId}|${diff.date}`
-      const existing = existingMap.get(key)
 
       if (existing) {
         toUpdate.push({
@@ -136,6 +141,13 @@ export async function PUT(request: Request) {
           serviceDetails: diff.serviceDetails || null
         })
       }
+    }
+
+    // BATCH 0: Bulk DELETE shifts that were cleared
+    if (toDelete.length > 0) {
+      await prisma.shift.deleteMany({
+        where: { id: { in: toDelete }, tenantId: session.user.tenantId }
+      })
     }
 
     // BATCH 1: Bulk INSERT new shifts (single query)
@@ -180,19 +192,20 @@ export async function PUT(request: Request) {
     }
 
     // Log the action
-    if (toInsert.length > 0 || toUpdate.length > 0) {
+    const totalOps = toInsert.length + toUpdate.length + toDelete.length
+    if (totalOps > 0) {
       await prisma.auditLog.create({
         data: {
           tenantId: session.user.tenantId,
           adminId: session.user.id,
           adminName: session.user.name,
           action: "UPDATE_MONTHLY_SHIFTS",
-          details: `Modificati ${toInsert.length + toUpdate.length} turni nella pianificazione mensile.`
+          details: `Modificati ${totalOps} turni nella pianificazione mensile (inseriti: ${toInsert.length}, aggiornati: ${toUpdate.length}, eliminati: ${toDelete.length}).`
         }
       })
     }
 
-    return NextResponse.json({ success: true, inserted: toInsert.length, updated: toUpdate.length })
+    return NextResponse.json({ success: true, inserted: toInsert.length, updated: toUpdate.length, deleted: toDelete.length })
   } catch (error: any) {
     console.error("[MONTHLY SHIFTS PUT ERROR]:", {
       message: error.message,

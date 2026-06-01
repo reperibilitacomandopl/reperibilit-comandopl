@@ -85,9 +85,18 @@ export function resolveTheoreticalShift({
   if (user.fixedRestDay !== null && user.fixedRestDay !== undefined) {
     const dayOfWeek = targetDate.getUTCDay(); // 0=Dom, 1=Lun...
     if (dayOfWeek === user.fixedRestDay) {
-      // Se è il riposo fisso (es. Lunedì), verifichiamo se ha lavorato la domenica precedente (logica RP)
-      // Per semplicità nel look-ahead, se è il giorno di riposo fisso, lo consideriamo "R"
       return "R";
+    }
+  }
+
+  // 5. Calcolo dal Riposo Dinamico (ruota ogni settimana)
+  if (user.fixedRestDay === null && user.dynamicRestStartDay != null && user.rotationGroup?.startDate) {
+    const anchor = new Date(user.rotationGroup.startDate)
+    const dayDiff = Math.floor((targetDate.getTime() - anchor.getTime()) / (1000 * 60 * 60 * 24))
+    const weekNumber = Math.floor(dayDiff / 7)
+    const dynamicRestDay = ((user.dynamicRestStartDay + weekNumber) % 7 + 7) % 7
+    if (targetDate.getUTCDay() === dynamicRestDay) {
+      return "R"
     }
   }
 

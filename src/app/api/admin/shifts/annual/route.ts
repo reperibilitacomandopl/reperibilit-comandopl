@@ -100,20 +100,35 @@ export async function POST(request: Request) {
 
           // Calcolo tipo finale (con logica Riposo Fisso se presente)
           let finalType = pVal
+
+          // LOGICA RIPOSO FISSO: giorno fisso ogni settimana
           if (user.fixedRestDay !== null && date.getUTCDay() === user.fixedRestDay) {
             // Controlla se ha lavorato la domenica precedente
             const prevSun = new Date(date)
             prevSun.setUTCDate(date.getUTCDate() - (date.getUTCDay() || 7))
-            
+
             const diffSun = prevSun.getTime() - anchor.getTime()
             const daysSun = Math.round(diffSun / (1000 * 60 * 60 * 24))
             const sunIdx = ((daysSun % 28) + 28) % 28
             const sunVal = pattern[sunIdx]
-            
+
             // Se la domenica precedente era lavorativa, metti riposo oggi
-            // Nota che sunVal === "M" o "P" è necessario perché nel pattern i turni sono 'M' o 'P'
             if (sunVal === "M" || sunVal === "P" || isMattina(sunVal) || isPomeriggio(sunVal)) {
               finalType = "RP"
+            }
+          }
+
+          // LOGICA RIPOSO DINAMICO: ruota ogni settimana
+          if (user.fixedRestDay === null && user.dynamicRestStartDay != null) {
+            const dayDiff = Math.floor((date.getTime() - anchor.getTime()) / (1000 * 60 * 60 * 24))
+            const weekNumber = Math.floor(dayDiff / 7)
+            const dynamicRestDay = ((user.dynamicRestStartDay + weekNumber) % 7 + 7) % 7
+
+            if (date.getUTCDay() === dynamicRestDay) {
+              const pType = pattern[patternIndex]
+              if (pType === "M" || pType === "P" || isMattina(pType) || isPomeriggio(pType)) {
+                finalType = "RP"
+              }
             }
           }
 

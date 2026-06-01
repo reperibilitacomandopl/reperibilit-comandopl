@@ -16,7 +16,7 @@ export async function GET() {
       include: {
         users: { 
           where: { isActive: true },
-          select: { id: true, name: true, fixedRestDay: true } 
+          select: { id: true, name: true, fixedRestDay: true, dynamicRestStartDay: true }
         }
       },
       orderBy: { name: 'asc' }

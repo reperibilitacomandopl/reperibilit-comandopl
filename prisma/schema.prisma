@@ -157,6 +157,7 @@ model User {
   defaultServiceTypeId      String?
   fallbackServiceCategoryId String?
   fixedRestDay              Int?
+  dynamicRestStartDay       Int?
   forcePasswordChange       Boolean                   @default(true)
   telegramChatId            String?
   telegramLinkCode          String?
