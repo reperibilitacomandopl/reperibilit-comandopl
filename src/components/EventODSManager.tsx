@@ -71,7 +71,7 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
   const [form, setForm] = useState({ name: "", description: "", startDate: "", endDate: "", ordinanza: "", odsNotes: "" })
 
   // Edit assignment modal
-  const [editingAssignment, setEditingAssignment] = useState<{ userId: string; shiftPeriod: string } | null>(null)
+  const [editingAssignment, setEditingAssignment] = useState<{ userId: string; shiftPeriod: string; zone: string } | null>(null)
   const [editForm, setEditForm] = useState({ serviceType: "Pattuglia", zone: "", timeRange: "", ordinaryHours: 6, overtimeHours: 0, projectHours: 0, vehicleId: "" })
 
   // Patrol selection
@@ -80,6 +80,10 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
   // Zone management
   const [showZoneInput, setShowZoneInput] = useState(false)
   const [newZoneName, setNewZoneName] = useState("")
+  
+  // Zone renaming
+  const [editingZoneName, setEditingZoneName] = useState<string | null>(null)
+  const [tempZoneNameInput, setTempZoneNameInput] = useState<string>("")
 
   const fetchEvents = useCallback(async () => {
     try { const res = await fetch("/api/admin/events"); if (res.ok) setEvents(await res.json()) } catch {} finally { setLoading(false) }
@@ -179,8 +183,9 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
   }
 
   // ─── Drag & Drop ───
-  const handleDragStart = (e: React.DragEvent, userId: string) => {
-    e.dataTransfer.setData("text/plain", userId)
+  const handleDragStart = (e: React.DragEvent, userId: string, sourcePeriod?: string, sourceZone?: string) => {
+    const payload = JSON.stringify({ userId, sourcePeriod, sourceZone })
+    e.dataTransfer.setData("text/plain", payload)
     e.dataTransfer.effectAllowed = "move"
   }
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = "move" }
@@ -188,21 +193,96 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
   const handleDropToBoard = async (e: React.DragEvent, shiftPeriod: string, zone?: string) => {
     e.preventDefault()
     if (!selectedEvent) return
-    const userId = e.dataTransfer.getData("text/plain")
+    const dataStr = e.dataTransfer.getData("text/plain")
+    if (!dataStr) return
+
+    let userId = ""
+    let sourcePeriod = ""
+    let sourceZone = ""
+
+    try {
+      if (dataStr.startsWith("{")) {
+        const parsed = JSON.parse(dataStr)
+        userId = parsed.userId
+        sourcePeriod = parsed.sourcePeriod
+        sourceZone = parsed.sourceZone
+      } else {
+        userId = dataStr
+      }
+    } catch {
+      userId = dataStr
+    }
+
     if (!userId) return
-    const existing = selectedEvent.assignments.find(a => a.userId === userId)
     const defaultTimeRange = shiftPeriod === "M" ? "07:00 - 13:00" : "14:00 - 20:00"
-    const assignments = existing
-      ? selectedEvent.assignments.map(a => a.userId === userId ? { ...a, shiftPeriod, zone: zone || a.zone, timeRange: a.timeRange || defaultTimeRange } : a)
-      : [...selectedEvent.assignments, { userId, serviceType: "Pattuglia", shiftPeriod, zone: zone || "", timeRange: defaultTimeRange, ordinaryHours: 6, overtimeHours: 0, projectHours: 0 }]
+
+    let assignments;
+    if (sourcePeriod) {
+      // SPOSTAMENTO di una tessera esistente sulla lavagna
+      assignments = selectedEvent.assignments.map(a => {
+        if (a.userId === userId && a.shiftPeriod === sourcePeriod && (a.zone || "") === (sourceZone || "")) {
+          return { ...a, shiftPeriod, zone: zone || "" }
+        }
+        return a
+      })
+    } else {
+      // AGGIUNTA di un nuovo agente dalla barra laterale
+      const existing = selectedEvent.assignments.find(a => a.userId === userId && a.shiftPeriod === shiftPeriod && (a.zone || "") === (zone || ""))
+      if (existing) {
+        assignments = selectedEvent.assignments
+      } else {
+        assignments = [...selectedEvent.assignments, { userId, serviceType: "Pattuglia", shiftPeriod, zone: zone || "", timeRange: defaultTimeRange, ordinaryHours: 6, overtimeHours: 0, projectHours: 0 }]
+      }
+    }
+
     const updated = { ...selectedEvent, assignments }
     setSelectedEvent(updated)
     await saveAssignments(selectedEvent.id, assignments)
   }
 
-  const handleRemoveFromBoard = async (userId: string) => {
+  const handleRemoveFromBoard = async (userIdOrEvent: string | React.DragEvent) => {
     if (!selectedEvent) return
-    const assignments = selectedEvent.assignments.filter(a => a.userId !== userId)
+    let userId = ""
+    let sourcePeriod = ""
+    let sourceZone = ""
+
+    if (typeof userIdOrEvent === "string") {
+      userId = userIdOrEvent
+    } else {
+      const e = userIdOrEvent
+      e.preventDefault()
+      const dataStr = e.dataTransfer.getData("text/plain")
+      if (!dataStr) return
+      try {
+        if (dataStr.startsWith("{")) {
+          const parsed = JSON.parse(dataStr)
+          userId = parsed.userId
+          sourcePeriod = parsed.sourcePeriod
+          sourceZone = parsed.sourceZone
+        } else {
+          userId = dataStr
+        }
+      } catch {
+        userId = dataStr
+      }
+    }
+
+    if (!userId) return
+
+    let assignments;
+    if (sourcePeriod) {
+      assignments = selectedEvent.assignments.filter(a => !(a.userId === userId && a.shiftPeriod === sourcePeriod && (a.zone || "") === (sourceZone || "")))
+    } else {
+      assignments = selectedEvent.assignments.filter(a => a.userId !== userId)
+    }
+
+    setSelectedEvent({ ...selectedEvent, assignments })
+    await saveAssignments(selectedEvent.id, assignments)
+  }
+
+  const handleRemoveSingleAssignment = async (userId: string, shiftPeriod: string, zone?: string) => {
+    if (!selectedEvent) return
+    const assignments = selectedEvent.assignments.filter(a => !(a.userId === userId && a.shiftPeriod === shiftPeriod && (a.zone || "") === (zone || "")))
     setSelectedEvent({ ...selectedEvent, assignments })
     await saveAssignments(selectedEvent.id, assignments)
   }
@@ -241,19 +321,49 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
 
   // ─── Edit Assignment ───
   const openEditAssignment = (a: EventAssignment) => {
-    setEditingAssignment({ userId: a.userId, shiftPeriod: a.shiftPeriod })
+    setEditingAssignment({ userId: a.userId, shiftPeriod: a.shiftPeriod, zone: a.zone || "" })
     setEditForm({ serviceType: a.serviceType || "Pattuglia", zone: a.zone || "", timeRange: a.timeRange, ordinaryHours: a.ordinaryHours, overtimeHours: a.overtimeHours, projectHours: a.projectHours, vehicleId: a.vehicleId || "" })
   }
 
   const saveEditAssignment = async () => {
     if (!selectedEvent || !editingAssignment) return
     const assignments = selectedEvent.assignments.map(a =>
-      a.userId === editingAssignment.userId && a.shiftPeriod === editingAssignment.shiftPeriod
+      a.userId === editingAssignment.userId && a.shiftPeriod === editingAssignment.shiftPeriod && (a.zone || "") === editingAssignment.zone
         ? { ...a, ...editForm } : a
     )
     setSelectedEvent({ ...selectedEvent, assignments })
     setEditingAssignment(null)
     await saveAssignments(selectedEvent.id, assignments)
+  }
+
+  // ─── Zone rename helpers ───
+  const startEditZone = (z: string) => {
+    setEditingZoneName(z)
+    setTempZoneNameInput(z)
+  }
+
+  const saveZoneRename = async (oldName: string) => {
+    const newName = tempZoneNameInput.trim()
+    if (!newName || newName === oldName) {
+      setEditingZoneName(null)
+      return
+    }
+
+    const updatedZones = zones.map(z => z === oldName ? newName : z)
+    updateEventZones(updatedZones)
+
+    if (selectedEvent) {
+      const updatedAssignments = selectedEvent.assignments.map(a => {
+        if (a.zone === oldName) {
+          return { ...a, zone: newName }
+        }
+        return a
+      })
+      setSelectedEvent({ ...selectedEvent, assignments: updatedAssignments })
+      await saveAssignments(selectedEvent.id, updatedAssignments)
+    }
+
+    setEditingZoneName(null)
   }
 
   // ─── Event CRUD ───
@@ -285,8 +395,7 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
   const getAssignedFor = (period: string) => selectedEvent?.assignments.filter(a => a.shiftPeriod === period) || []
   const getUnassignedAgents = () => {
     if (!selectedEvent) return []
-    const assignedIds = new Set(selectedEvent.assignments.map(a => a.userId))
-    return agents.filter(a => !assignedIds.has(a.id))
+    return agents
   }
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>
@@ -384,12 +493,30 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
           {/* Zone management */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Zone:</span>
-            {zones.map(z => (
-              <span key={z} className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-white flex items-center gap-1.5 animate-in fade-in">
-                <MapPin size={10} className="text-amber-400" /> {z}
-                <button onClick={() => updateEventZones(zones.filter(zz => zz !== z))} className="text-slate-600 hover:text-rose-400 transition-all"><X size={10} /></button>
-              </span>
-            ))}
+            {zones.map(z => {
+              const isEditing = editingZoneName === z;
+              return (
+                <span key={z} className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-white flex items-center gap-1.5 animate-in fade-in">
+                  <MapPin size={10} className="text-amber-400" />
+                  {isEditing ? (
+                    <input
+                      value={tempZoneNameInput}
+                      onChange={e => setTempZoneNameInput(e.target.value)}
+                      onBlur={() => saveZoneRename(z)}
+                      onKeyDown={e => e.key === "Enter" && saveZoneRename(z)}
+                      className="bg-transparent text-white border-b border-amber-500 focus:outline-none w-24 px-1"
+                      autoFocus
+                    />
+                  ) : (
+                    <>
+                      <span>{z}</span>
+                      <button onClick={() => startEditZone(z)} className="text-slate-500 hover:text-amber-400 transition-all ml-0.5"><Pencil size={10} /></button>
+                    </>
+                  )}
+                  <button onClick={() => updateEventZones(zones.filter(zz => zz !== z))} className="text-slate-600 hover:text-rose-400 transition-all"><X size={10} /></button>
+                </span>
+              );
+            })}
             
             {showZoneInput ? (
               <div className="relative z-20 flex flex-col bg-[#0f172a] border border-white/10 rounded-xl p-3 space-y-2 w-64 shadow-xl animate-in zoom-in-95">
@@ -512,7 +639,7 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
                               return (
                                 <div key={a.id || (a.userId + a.shiftPeriod + (a.zone || ''))}
                                   draggable
-                                  onDragStart={e => handleDragStart(e, a.userId)}
+                                  onDragStart={e => handleDragStart(e, a.userId, board.period, a.zone || undefined)}
                                   className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all mb-1.5 group cursor-grab active:cursor-grabbing ${a.patrolGroupId ? 'bg-blue-500/10 border-blue-500/30' : 'bg-white/5 border-white/10'} hover:border-amber-500/30 ${selected ? 'ring-1 ring-amber-500/50 bg-amber-500/10' : ''}`}>
                                   <input type="checkbox" checked={selected}
                                     onChange={() => togglePatrolSelection(a.userId)}
@@ -529,7 +656,7 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
                                     </div>
                                   </div>
                                   <button onClick={() => openEditAssignment(a)} className="p-1.5 bg-white/10 hover:bg-blue-600 text-slate-400 hover:text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all"><Pencil size={11} /></button>
-                                  <button onClick={() => handleRemoveFromBoard(a.userId)} className="p-1.5 bg-white/10 hover:bg-rose-600 text-slate-400 hover:text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all"><X size={11} /></button>
+                                  <button onClick={() => handleRemoveSingleAssignment(a.userId, board.period, a.zone || undefined)} className="p-1.5 bg-white/10 hover:bg-rose-600 text-slate-400 hover:text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all"><X size={11} /></button>
                                 </div>
                               )
                             })}
@@ -558,7 +685,7 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
                               return (
                                 <div key={a.id || (a.userId + a.shiftPeriod + (a.zone || ''))}
                                   draggable
-                                  onDragStart={e => handleDragStart(e, a.userId)}
+                                  onDragStart={e => handleDragStart(e, a.userId, board.period, undefined)}
                                   className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all mb-1.5 group cursor-grab active:cursor-grabbing ${a.patrolGroupId ? 'bg-blue-500/10 border-blue-500/30' : 'bg-white/5 border-white/10'} hover:border-amber-500/30 ${selected ? 'ring-1 ring-amber-500/50 bg-amber-500/10' : ''}`}>
                                   <input type="checkbox" checked={selected}
                                     onChange={() => togglePatrolSelection(a.userId)}
@@ -575,7 +702,7 @@ export default function EventODSManager({ tenantSlug, tenantName }: Props) {
                                     </div>
                                   </div>
                                   <button onClick={() => openEditAssignment(a)} className="p-1.5 bg-white/10 hover:bg-blue-600 text-slate-400 hover:text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all"><Pencil size={11} /></button>
-                                  <button onClick={() => handleRemoveFromBoard(a.userId)} className="p-1.5 bg-white/10 hover:bg-rose-600 text-slate-400 hover:text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all"><X size={11} /></button>
+                                  <button onClick={() => handleRemoveSingleAssignment(a.userId, board.period, undefined)} className="p-1.5 bg-white/10 hover:bg-rose-600 text-slate-400 hover:text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all"><X size={11} /></button>
                                 </div>
                               )
                             })}
