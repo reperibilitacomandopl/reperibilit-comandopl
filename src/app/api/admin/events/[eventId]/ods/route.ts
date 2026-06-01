@@ -16,7 +16,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ eventId:
       include: {
         assignments: {
           include: {
-            user: { select: { id: true, name: true, squadra: true } }
+            user: { select: { id: true, name: true, squadra: true, qualifica: true, isUfficiale: true } },
+            vehicle: { select: { name: true } }
           }
         },
         tenant: { select: { name: true } }
@@ -27,12 +28,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ eventId:
 
     const assignments = event.assignments.map((a: any) => ({
       name: a.user.name,
+      qualifica: a.user.qualifica,
+      isUfficiale: a.user.isUfficiale,
       serviceType: a.serviceType || '',
       shiftPeriod: a.shiftPeriod || '',
       timeRange: a.timeRange || '',
       ordinaryHours: a.ordinaryHours || 0,
       overtimeHours: a.overtimeHours || 0,
       projectHours: a.projectHours || 0,
+      patrolGroupId: a.patrolGroupId || null,
+      vehicle: a.vehicle ? a.vehicle.name : '',
     }))
 
     const pdfBuffer = await generateEventODSPDF({

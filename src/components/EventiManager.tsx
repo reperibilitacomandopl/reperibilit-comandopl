@@ -12,7 +12,14 @@ interface EventAssignment {
   overtimeHours: number
   projectHours: number
   equipment: string | null
+  patrolGroupId: string | null
+  vehicleId: string | null
   user: { id: string; name: string; squadra: string | null }
+}
+
+interface Vehicle {
+  id: string
+  name: string
 }
 
 interface SpecialEvent {
@@ -41,6 +48,7 @@ interface Props {
 export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props) {
   const [events, setEvents] = useState<SpecialEvent[]>([])
   const [agents, setAgents] = useState<Agent[]>([])
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [editingEvent, setEditingEvent] = useState<SpecialEvent | null>(null)
@@ -54,7 +62,7 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
   const [formOrdinanza, setFormOrdinanza] = useState("")
   const [formOdsNotes, setFormOdsNotes] = useState("")
   const [formAssignments, setFormAssignments] = useState<{
-    userId: string; serviceType: string; timeRange: string; ordinaryHours: number; overtimeHours: number; projectHours: number
+    userId: string; serviceType: string; timeRange: string; startTime: string; endTime: string; ordinaryHours: number; overtimeHours: number; projectHours: number; patrolGroupId: string; vehicleId: string;
   }[]>([])
 
   const fetchEvents = useCallback(async () => {
@@ -75,7 +83,14 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
     } catch {}
   }, [])
 
-  useEffect(() => { fetchEvents(); fetchAgents() }, [fetchEvents, fetchAgents])
+  const fetchVehicles = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/vehicles")
+      if (res.ok) setVehicles(await res.json())
+    } catch {}
+  }, [])
+
+  useEffect(() => { fetchEvents(); fetchAgents(); fetchVehicles() }, [fetchEvents, fetchAgents, fetchVehicles])
 
   const resetForm = () => {
     setFormName(""); setFormDescription(""); setFormStartDate(""); setFormEndDate("")
@@ -91,10 +106,13 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
     setFormEndDate(ev.endDate.split("T")[0])
     setFormOrdinanza(ev.ordinanza || "")
     setFormOdsNotes(ev.odsNotes || "")
-    setFormAssignments(ev.assignments.map(a => ({
-      userId: a.userId, serviceType: a.serviceType || "", timeRange: a.timeRange, ordinaryHours: a.ordinaryHours,
-      overtimeHours: a.overtimeHours, projectHours: a.projectHours
-    })))
+    setFormAssignments(ev.assignments.map(a => {
+      const [start, end] = (a.timeRange || "18:00 - 24:00").split(" - ")
+      return {
+        userId: a.userId, serviceType: a.serviceType || "", timeRange: a.timeRange, startTime: start || "18:00", endTime: end || "24:00", ordinaryHours: a.ordinaryHours,
+        overtimeHours: a.overtimeHours, projectHours: a.projectHours, patrolGroupId: a.patrolGroupId || "", vehicleId: a.vehicleId || ""
+      }
+    }))
     setShowCreate(true)
   }
 
@@ -127,7 +145,7 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
   }
 
   const addAssignment = () => {
-    setFormAssignments([...formAssignments, { userId: "", serviceType: "Pattuglia", timeRange: "18:00 - 24:00", ordinaryHours: 0, overtimeHours: 0, projectHours: 0 }])
+    setFormAssignments([...formAssignments, { userId: "", serviceType: "Pattuglia", timeRange: "18:00 - 24:00", startTime: "18:00", endTime: "24:00", ordinaryHours: 0, overtimeHours: 0, projectHours: 0, patrolGroupId: "", vehicleId: "" }])
   }
 
   const removeAssignment = (idx: number) => {
@@ -137,6 +155,9 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
   const updateAssignment = (idx: number, field: string, value: any) => {
     const updated = [...formAssignments]
     updated[idx] = { ...updated[idx], [field]: value }
+    if (field === "startTime" || field === "endTime") {
+      updated[idx].timeRange = `${updated[idx].startTime} - ${updated[idx].endTime}`
+    }
     setFormAssignments(updated)
   }
 
@@ -326,7 +347,7 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
                         <select
                           value={a.serviceType || "Pattuglia"}
                           onChange={e => updateAssignment(idx, "serviceType", e.target.value)}
-                          className="w-40 px-2 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
+                          className="w-32 px-2 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
                         >
                           <option value="Pattuglia">Pattuglia</option>
                           <option value="Viabilità">Viabilità</option>
@@ -336,8 +357,21 @@ export default function EventiManager({ tenantSlug, tenantName, logoUrl }: Props
                           <option value="Polizia Giudiziaria">Polizia Giudiziaria</option>
                           <option value="Altro">Altro</option>
                         </select>
-                        <input value={a.timeRange} onChange={e => updateAssignment(idx, "timeRange", e.target.value)} placeholder="18:00 - 24:00"
-                          className="w-36 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold text-center focus:outline-none focus:border-amber-500/50 transition-all" />
+                        <select
+                          value={a.vehicleId}
+                          onChange={e => updateAssignment(idx, "vehicleId", e.target.value)}
+                          className="w-32 px-2 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 transition-all"
+                        >
+                          <option value="">Nessun Veicolo</option>
+                          {vehicles.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                        </select>
+                        <input type="text" value={a.patrolGroupId} onChange={e => updateAssignment(idx, "patrolGroupId", e.target.value)} placeholder="Gr. Patt. (Es. 1)"
+                          className="w-24 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold text-center focus:outline-none focus:border-amber-500/50 transition-all" title="Gruppo Pattuglia" />
+                        <input type="time" value={a.startTime} onChange={e => updateAssignment(idx, "startTime", e.target.value)}
+                          className="w-24 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold text-center focus:outline-none focus:border-amber-500/50 transition-all" />
+                        <span className="text-white/40 font-bold">-</span>
+                        <input type="time" value={a.endTime} onChange={e => updateAssignment(idx, "endTime", e.target.value)}
+                          className="w-24 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs font-bold text-center focus:outline-none focus:border-amber-500/50 transition-all" />
                         <button onClick={() => removeAssignment(idx)} className="p-2 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white rounded-xl transition-all"><Trash2 size={12} /></button>
                       </div>
 

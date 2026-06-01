@@ -1120,12 +1120,16 @@ export async function generateWeeklyODSPDF({
  */
 interface EventAssignmentPDF {
   name: string;
+  qualifica?: string;
+  isUfficiale?: boolean;
   serviceType?: string;
   shiftPeriod?: string;
   timeRange: string;
   ordinaryHours: number;
   overtimeHours: number;
   projectHours: number;
+  patrolGroupId?: string | null;
+  vehicle?: string;
 }
 
 export async function generateEventODSPDF({
@@ -1237,64 +1241,64 @@ export async function generateEventODSPDF({
     // ── 3. Tabella Personale Assegnato ──
     const headRow: any[] = [
       { content: "N.", styles: { halign: 'center' } },
-      { content: "PERSONALE", styles: { halign: 'left' } },
+      { content: "QUALIFICA / NOME", styles: { halign: 'left' } },
       { content: "ORARIO", styles: { halign: 'center' } },
-      { content: "ORE ORD.", styles: { halign: 'center' } },
-      { content: "STRAORD.", styles: { halign: 'center' } },
-      { content: "PROGETTO", styles: { halign: 'center' } },
-      { content: "DOTAZIONI", styles: { halign: 'left' } },
+      { content: "SERVIZIO / DOTAZIONI", styles: { halign: 'left' } },
+      { content: "VEICOLO", styles: { halign: 'center' } },
       { content: "FIRMA", styles: { halign: 'center' } },
     ];
 
-    const bodyRows: any[][] = assignments.map((a, i) => [
-      { content: String(i + 1), styles: { halign: 'center', fontSize: 7 } },
-      { content: a.name, styles: { fontStyle: 'bold', fontSize: 7.5 } },
-      { content: a.timeRange, styles: { halign: 'center', fontSize: 7, fontStyle: 'bold' } },
-      { content: a.ordinaryHours > 0 ? String(a.ordinaryHours) : "—", styles: { halign: 'center', fontSize: 7 } },
-      { content: a.overtimeHours > 0 ? String(a.overtimeHours) : "—", styles: { halign: 'center', fontSize: 7 } },
-      { content: a.projectHours > 0 ? String(a.projectHours) : "—", styles: { halign: 'center', fontSize: 7 } },
-      { content: a.serviceType || (a.shiftPeriod === "M" ? "Mattina" : a.shiftPeriod === "P" ? "Pomeriggio" : ""), styles: { fontSize: 6.5 } },
-      { content: "", styles: { fontSize: 6 } }, // Firma manuale
-    ]);
+    const sortedAssignments = [...assignments].sort((a, b) => {
+      const gA = a.patrolGroupId || "";
+      const gB = b.patrolGroupId || "";
+      if (gA !== gB) {
+        if (gA === "") return 1;
+        if (gB === "") return -1;
+        return gA.localeCompare(gB);
+      }
+      return a.name.localeCompare(b.name);
+    });
 
-    // Riga totali
-    const totalOrd = assignments.reduce((s, a) => s + a.ordinaryHours, 0);
-    const totalStr = assignments.reduce((s, a) => s + a.overtimeHours, 0);
-    const totalPrj = assignments.reduce((s, a) => s + a.projectHours, 0);
-
-    const totalsRow: any[] = [
-      { content: "", styles: {} },
-      { content: "TOTALE", styles: { fontStyle: 'bold', fontSize: 8, halign: 'right' } },
-      { content: "", styles: {} },
-      { content: totalOrd > 0 ? String(totalOrd) + "h" : "—", styles: { halign: 'center', fontStyle: 'bold', fontSize: 7.5, textColor: [5, 150, 105] } },
-      { content: totalStr > 0 ? String(totalStr) + "h" : "—", styles: { halign: 'center', fontStyle: 'bold', fontSize: 7.5, textColor: [180, 83, 9] } },
-      { content: totalPrj > 0 ? String(totalPrj) + "h" : "—", styles: { halign: 'center', fontStyle: 'bold', fontSize: 7.5, textColor: [79, 70, 229] } },
-      { content: "", styles: {} },
-      { content: "", styles: {} },
-    ];
+    const bodyRows: any[][] = sortedAssignments.map((a, i) => {
+      const qualificaLabel = a.qualifica || (a.isUfficiale ? 'Uff.le' : 'Agente');
+      const row: any[] = [
+        { content: String(i + 1), styles: { halign: 'center', fontSize: 7 } },
+        { content: `${qualificaLabel}\n${a.name}`, styles: { fontStyle: 'bold', fontSize: 7.5 } },
+        { content: a.timeRange, styles: { halign: 'center', fontSize: 7, fontStyle: 'bold' } },
+        { content: a.serviceType || (a.shiftPeriod === "M" ? "Mattina" : a.shiftPeriod === "P" ? "Pomeriggio" : ""), styles: { fontSize: 6.5 } },
+        { content: a.vehicle || "", styles: { halign: 'center', fontSize: 6.5 } },
+        { content: "", styles: { fontSize: 6 } }, // Firma manuale
+      ];
+      (row as any).isPatrol = !!a.patrolGroupId;
+      return row;
+    });
 
     autoTable(doc, {
       startY: nextY,
       head: [
-        [{ content: `— PERSONALE ASSEGNATO ALL'EVENTO —`, colSpan: 8, styles: { halign: 'center' as any, fillColor: amber600, textColor: 255, fontSize: 9, fontStyle: 'bold', cellPadding: 2 } }],
+        [{ content: `— PERSONALE ASSEGNATO ALL'EVENTO —`, colSpan: 6, styles: { halign: 'center' as any, fillColor: amber600, textColor: 255, fontSize: 9, fontStyle: 'bold', cellPadding: 2 } }],
         headRow
       ],
-      body: [...bodyRows, totalsRow],
+      body: bodyRows,
       theme: 'grid',
       headStyles: { fillColor: navelBlue, textColor: 255, fontSize: 7, halign: 'center', fontStyle: 'bold', cellPadding: 2 },
       bodyStyles: { fontSize: 7, cellPadding: 2, textColor: 30, lineColor: [200, 200, 200], lineWidth: 0.2 },
       alternateRowStyles: { fillColor: [250, 250, 252] },
       columnStyles: {
         0: { cellWidth: 8 },
-        1: { cellWidth: 34 },
-        2: { cellWidth: 22 },
-        3: { cellWidth: 16 },
-        4: { cellWidth: 16 },
-        5: { cellWidth: 16 },
-        6: { cellWidth: 'auto' },
-        7: { cellWidth: 30 }
+        1: { cellWidth: 40 },
+        2: { cellWidth: 28 },
+        3: { cellWidth: 'auto' },
+        4: { cellWidth: 35 },
+        5: { cellWidth: 30 }
       },
       margin: { left: 6, right: 6 },
+      didParseCell: (data: any) => {
+        const row = bodyRows[data.row.index];
+        if (row && (row as any).isPatrol && data.section === 'body') {
+          data.cell.styles.fillColor = [232, 242, 255];
+        }
+      }
     });
 
     nextY = (doc as any).lastAutoTable.finalY + 6;
