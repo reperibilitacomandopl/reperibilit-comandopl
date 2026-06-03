@@ -372,10 +372,11 @@ export default function AdminShiftGrid({
   }
 
   const executeBulkSave = async (val: string, hours?: number) => {
-    if (!val) return
+    if (val == null) return
     setIsSavingBulk(true)
     let finalValue = val.trim()
-    if (finalValue.toUpperCase() === "REP") { finalValue = "rep" } 
+    if (finalValue === "") { /* Svuota turno — lascia stringa vuota */ }
+    else if (finalValue.toUpperCase() === "REP") { finalValue = "rep" } 
     else { finalValue = finalValue.toUpperCase() }
 
     try {
