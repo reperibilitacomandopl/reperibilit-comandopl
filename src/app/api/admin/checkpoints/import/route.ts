@@ -3,11 +3,12 @@ import { auth } from '@/auth'
 
 /**
  * API per l'importazione di schede compilate a mano via OCR.
- * Usa Google Gemini Vision API (Pro) per leggere schede scannerizzate con calligrafia.
- * Modello configurabile via GEMINI_OCR_MODEL (default: gemini-2.5-pro).
+ * Usa Google Gemini Vision API per leggere schede scannerizzate con calligrafia.
+ * Modello configurabile via GEMINI_OCR_MODEL (default: gemini-2.5-flash).
+ * Per calligrafia difficile, impostare GEMINI_OCR_MODEL=gemini-2.5-pro (2 RPM nel tier gratuito).
  */
 
-const DEFAULT_MODEL = 'gemini-2.5-pro'
+const DEFAULT_MODEL = 'gemini-2.5-flash'
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
 
 const OCR_PROMPT = `Sei un assistente specializzato nella digitalizzazione di moduli della Polizia Locale italiana compilati A MANO.
@@ -21,6 +22,8 @@ IMPORTANTE — RICONOSCIMENTO CALLIGRAFIA:
 - Date: formato DD/MM/YYYY
 - Cerca di dedurre il significato dal contesto quando un carattere è ambiguo
 - Se un CAMPO È ILLEGGIBILE, lascialo vuoto (stringa "") — non inventare dati
+- I cognomi italiani spesso finiscono in -I, -O, -A, -E (es. ROSSI, BIANCO, FERRARA)
+- I nomi propri italiani comuni: MARCO, GIUSEPPE, ANTONIO, MARIA, ANNA, FRANCESCO, LUCA, ALESSANDRO, GIOVANNI, ROBERTO, ANDREA, PAOLO, SALVATORE, LUIGI, ANGELO, MATTEO, FABIO, DAVIDE, STEFANO, SIMONE, GIORGIO, NICOLA, ENRICO, FEDERICO, PIETRO, MICHELE, ALBERTO, CLAUDIO, DANIELE, MASSIMO, CARLO, SERGIO, FRANCO, MARIO, LORENZO, RICCARDO, DOMENICO, VINCENZO
 
 Estrai TUTTI i dati e restituisci ESCLUSIVAMENTE un JSON valido con questa struttura:
 
@@ -74,14 +77,12 @@ REGOLE FONDAMENTALI:
 - Ogni riquadro/veicolo nella scheda = un oggetto nell'array "veicoli"
 - Se un campo è illeggibile, usa "" — MAI inventare dati
 - Se il conducente ha flaggato "LO STESSO" o scritto "idem"/"stesso", imposta conducente_stesso_prop: true e copia i dati del proprietario nei campi conducente
-- I cognomi italiani spesso finiscono in -I, -O, -A, -E (es. ROSSI, BIANCO, FERRARA, LEONE)
-- I nomi propri italiani comuni: MARCO, GIUSEPPE, ANTONIO, MARIA, ANNA, FRANCESCO, LUCA, ALESSANDRO, GIOVANNI, ROBERTO, ANDREA, PAOLO, SALVATORE, LUIGI, ANGELO, MATTEO, FABIO, DAVIDE, STEFANO, SIMONE, GIORGIO, NICOLA, ENRICO, FEDERICO, PIETRO, MICHELE, ALBERTO, CLAUDIO, DANIELE, MASSIMO, CARLO, SERGIO, FRANCO, MARIO, LORENZO, RICCARDO, DOMENICO, VINCENZO
 - Restituisci SOLO JSON valido, nessun markdown, nessun commento`
 
-// Fields that can be filtered out for privacy
+// Fields che possono essere filtrati per privacy
 const ALL_PRIVACY_FIELDS = ['intestazione', 'veicolo', 'proprietario', 'conducente', 'patente', 'sanzione', 'passeggero']
 
-// Fields belonging to each privacy category (for prompt-based filtering)
+// Campi appartenenti a ciascuna categoria privacy
 const PRIVACY_FIELD_GROUPS: Record<string, string[]> = {
   veicolo: ['ora_controllo', 'veicolo', 'targa', 'marca_modello', 'ultima_revisione', 'assicurazione', 'assicurato_fino'],
   proprietario: ['proprietario_cognome', 'proprietario_nome', 'proprietario_data_nascita', 'proprietario_luogo_nascita', 'proprietario_residenza', 'proprietario_indirizzo'],
@@ -89,6 +90,101 @@ const PRIVACY_FIELD_GROUPS: Record<string, string[]> = {
   patente: ['patente_numero', 'patente_rilasciata_da', 'patente_data_rilascio', 'patente_validita_fino'],
   sanzione: ['sanzione_elevata', 'sanzione_accessoria'],
   passeggero: ['passeggero_cognome', 'passeggero_nome', 'passeggero_data_nascita', 'passeggero_luogo_nascita', 'passeggero_residenza', 'passeggero_indirizzo'],
+}
+
+function buildOcrSchema(privacyFields: string[]) {
+  const ocrSchema: any = {
+    type: "OBJECT",
+    properties: {
+      controllo: {
+        type: "OBJECT",
+        properties: {
+          data_controllo: { type: "STRING" },
+          ora_inizio: { type: "STRING" },
+          ora_fine: { type: "STRING" },
+          luogo: { type: "STRING" },
+          operatori: { type: "STRING" }
+        }
+      },
+      veicoli: {
+        type: "ARRAY",
+        items: {
+          type: "OBJECT",
+          properties: {
+            ora_controllo: { type: "STRING" },
+            veicolo: { type: "STRING" },
+            targa: { type: "STRING" },
+            marca_modello: { type: "STRING" },
+            ultima_revisione: { type: "STRING" },
+            assicurazione: { type: "STRING" },
+            assicurato_fino: { type: "STRING" },
+            proprietario_cognome: { type: "STRING", description: "Il cognome (family name). Se nome e cognome sono scritti insieme, inserisci qui il cognome e lascia il nome vuoto." },
+            proprietario_nome: { type: "STRING", description: "Il nome di battesimo (given name). Attenzione a non scambiare nome e cognome." },
+            proprietario_data_nascita: { type: "STRING" },
+            proprietario_luogo_nascita: { type: "STRING" },
+            proprietario_residenza: { type: "STRING" },
+            proprietario_indirizzo: { type: "STRING" },
+            conducente_stesso_prop: { type: "BOOLEAN", description: "True se è spuntato LO STESSO" },
+            conducente_cognome: { type: "STRING", description: "Il cognome (family name)." },
+            conducente_nome: { type: "STRING", description: "Il nome di battesimo (given name)." },
+            conducente_data_nascita: { type: "STRING" },
+            conducente_luogo_nascita: { type: "STRING" },
+            conducente_residenza: { type: "STRING" },
+            conducente_indirizzo: { type: "STRING" },
+            patente_numero: { type: "STRING" },
+            patente_rilasciata_da: { type: "STRING" },
+            patente_data_rilascio: { type: "STRING" },
+            patente_validita_fino: { type: "STRING" },
+            sanzione_elevata: { type: "STRING" },
+            sanzione_accessoria: { type: "STRING" },
+            passeggero_cognome: { type: "STRING", description: "Il cognome (family name)." },
+            passeggero_nome: { type: "STRING", description: "Il nome di battesimo (given name)." },
+            passeggero_data_nascita: { type: "STRING" },
+            passeggero_luogo_nascita: { type: "STRING" },
+            passeggero_residenza: { type: "STRING" },
+            passeggero_indirizzo: { type: "STRING" }
+          }
+        }
+      }
+    }
+  }
+
+  // Filtra dinamicamente i campi in base alla selezione privacy
+  const vProps = ocrSchema.properties.veicoli.items.properties as Record<string, any>
+
+  if (!privacyFields.includes('intestazione')) {
+    delete ocrSchema.properties.controllo
+  }
+  if (!privacyFields.includes('veicolo')) {
+    delete vProps.ora_controllo; delete vProps.veicolo; delete vProps.targa
+    delete vProps.marca_modello; delete vProps.ultima_revisione
+    delete vProps.assicurazione; delete vProps.assicurato_fino
+  }
+  if (!privacyFields.includes('proprietario')) {
+    delete vProps.proprietario_cognome; delete vProps.proprietario_nome
+    delete vProps.proprietario_data_nascita; delete vProps.proprietario_luogo_nascita
+    delete vProps.proprietario_residenza; delete vProps.proprietario_indirizzo
+  }
+  if (!privacyFields.includes('conducente')) {
+    delete vProps.conducente_stesso_prop; delete vProps.conducente_cognome
+    delete vProps.conducente_nome; delete vProps.conducente_data_nascita
+    delete vProps.conducente_luogo_nascita; delete vProps.conducente_residenza
+    delete vProps.conducente_indirizzo
+  }
+  if (!privacyFields.includes('patente')) {
+    delete vProps.patente_numero; delete vProps.patente_rilasciata_da
+    delete vProps.patente_data_rilascio; delete vProps.patente_validita_fino
+  }
+  if (!privacyFields.includes('sanzione')) {
+    delete vProps.sanzione_elevata; delete vProps.sanzione_accessoria
+  }
+  if (!privacyFields.includes('passeggero')) {
+    delete vProps.passeggero_cognome; delete vProps.passeggero_nome
+    delete vProps.passeggero_data_nascita; delete vProps.passeggero_luogo_nascita
+    delete vProps.passeggero_residenza; delete vProps.passeggero_indirizzo
+  }
+
+  return ocrSchema
 }
 
 export async function POST(req: Request) {
@@ -118,7 +214,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Formato file non supportato. Usa PDF o immagini (PNG, JPG, TIFF)' }, { status: 400 })
     }
 
-    // Limit file size (20MB)
     if (file.size > 20 * 1024 * 1024) {
       return NextResponse.json({ error: 'File troppo grande (max 20MB)' }, { status: 400 })
     }
@@ -134,7 +229,7 @@ export async function POST(req: Request) {
     else if (file.name.endsWith('.jpg') || file.name.endsWith('.jpeg')) mimeType = 'image/jpeg'
     else if (file.name.endsWith('.tiff') || file.name.endsWith('.tif')) mimeType = 'image/tiff'
 
-    // Build prompt with privacy filter instructions
+    // Build prompt with privacy filter hints
     let finalPrompt = OCR_PROMPT
     if (privacyFields.length < ALL_PRIVACY_FIELDS.length) {
       const excluded = ALL_PRIVACY_FIELDS.filter(f => !privacyFields.includes(f))
@@ -150,24 +245,26 @@ export async function POST(req: Request) {
       }
     }
 
-    // Modelli in ordine di preferenza (Pro per calligrafia, Flash come fallback)
-    const MODEL_TIER: string[] = [
-      process.env.GEMINI_OCR_MODEL || DEFAULT_MODEL,
-      'gemini-2.5-flash' // fallback se Pro è in rate limit
-    ]
+    // responseSchema per forzare JSON valido
+    const ocrSchema = buildOcrSchema(privacyFields)
+
+    // Modelli in ordine: principale (configurabile) → fallback Flash
+    const preferredModel = process.env.GEMINI_OCR_MODEL || DEFAULT_MODEL
+    const MODEL_TIER: string[] = [preferredModel]
+    if (preferredModel !== 'gemini-2.5-flash') {
+      MODEL_TIER.push('gemini-2.5-flash')
+    }
 
     let geminiRes: Response | null = null
     let lastError: string = ''
     let usedModel: string = ''
 
-    // Retry loop con exponential backoff + fallback tra modelli
     for (let tier = 0; tier < MODEL_TIER.length; tier++) {
       const model = MODEL_TIER[tier]
-      let delay = 2000 // inizia con 2s di attesa
+      let delay = 2000
 
       for (let attempt = 1; attempt <= 3; attempt++) {
         if (attempt > 1) {
-          // Exponential backoff: 2s, 4s, 8s
           await new Promise(r => setTimeout(r, delay))
           delay *= 2
         }
@@ -185,7 +282,8 @@ export async function POST(req: Request) {
             generationConfig: {
               temperature: 0.2,
               maxOutputTokens: 8192,
-              responseMimeType: "application/json"
+              responseMimeType: "application/json",
+              responseSchema: ocrSchema
             },
             safetySettings: [
               { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
@@ -196,29 +294,27 @@ export async function POST(req: Request) {
           })
         })
 
-        // 429 = rate limit → retry o fallback
+        // 429 = rate limit → retry dopo backoff
         if (res.status === 429) {
-          const errText = await res.text()
           console.warn(`[OCR_IMPORT] 429 rate limit su ${model}, attempt ${attempt}/3`)
           lastError = `Rate limit su ${model}`
-          continue // riprova dopo backoff
+          continue
         }
 
-        // Altri errori → non retryable
+        // Altri errori non retryable → prossimo modello
         if (!res.ok) {
           const errText = await res.text()
           console.error(`[OCR_IMPORT] ${model} error:`, errText.substring(0, 300))
           lastError = `Errore API ${model}: ${res.status}`
-          break // esci dal retry loop, prova prossimo modello
+          break
         }
 
-        // Successo!
         geminiRes = res
         usedModel = model
         break
       }
 
-      if (geminiRes) break // abbiamo una risposta valida
+      if (geminiRes) break
     }
 
     if (!geminiRes) {
@@ -228,28 +324,21 @@ export async function POST(req: Request) {
     }
 
     const geminiData = await geminiRes.json()
-
-    // Extract text from Gemini response
     const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || ''
 
     if (!rawText.trim()) {
       console.error('[OCR_IMPORT] Empty response from Gemini')
       return NextResponse.json({
         error: 'Nessun testo estratto. La scheda potrebbe essere illeggibile o vuota.',
-        rawText: ''
       }, { status: 422 })
     }
 
-    // Robust JSON extraction
     let parsedData: any
     try {
       let jsonStr = rawText.trim()
-
-      // Strip markdown code fences
       jsonStr = jsonStr.replace(/^```(?:json)?\s*\n?/i, '')
       jsonStr = jsonStr.replace(/\n?\s*```$/i, '')
 
-      // If still not valid JSON, try to extract from first { to last }
       if (!jsonStr.startsWith('{')) {
         const firstBrace = jsonStr.indexOf('{')
         const lastBrace = jsonStr.lastIndexOf('}')
@@ -258,49 +347,26 @@ export async function POST(req: Request) {
         }
       }
 
-      jsonStr = jsonStr.trim()
-
-      if (!jsonStr) {
-        throw new Error('No JSON content found in response')
-      }
-
-      parsedData = JSON.parse(jsonStr)
-
-      // Ensure required structure exists
+      parsedData = JSON.parse(jsonStr.trim())
       parsedData.controllo = parsedData.controllo || {}
       parsedData.veicoli = Array.isArray(parsedData.veicoli) ? parsedData.veicoli : []
-
-      // Friendly message if nothing was found
-      const isEmpty = !parsedData.veicoli.length
-        && !parsedData.controllo.data_controllo
-        && !parsedData.controllo.luogo
-        && !parsedData.controllo.operatori
-
-      if (isEmpty) {
-        console.warn('[OCR_IMPORT] Gemini returned empty data')
-        // Non blocchiamo — l'utente può comunque inserire i dati a mano nella review
-      }
-
     } catch (parseError) {
       console.error('[OCR_IMPORT] JSON parse error:', parseError)
-      console.error('[OCR_IMPORT] Raw text (first 1000 chars):', rawText.substring(0, 1000))
-
+      console.error('[OCR_IMPORT] Raw text:', rawText.substring(0, 1000))
       return NextResponse.json({
         error: 'Impossibile interpretare i dati dalla scheda. Verifica che la scansione sia nitida e ben illuminata.',
         rawText: rawText.substring(0, 3000),
-        hint: 'Gemini ha restituito del testo ma non è JSON valido. Controlla rawText.'
       }, { status: 422 })
     }
 
-    // Strip fields excluded by privacy filters from the parsed response
+    // Post-processing: strip privacy-excluded fields from parsed response
     if (privacyFields.length < ALL_PRIVACY_FIELDS.length) {
       if (!privacyFields.includes('intestazione')) {
         parsedData.controllo = {}
       }
       for (const cat of ALL_PRIVACY_FIELDS) {
         if (!privacyFields.includes(cat) && PRIVACY_FIELD_GROUPS[cat]) {
-          const vehicles = parsedData.veicoli || []
-          for (const v of vehicles) {
+          for (const v of (parsedData.veicoli || [])) {
             for (const field of PRIVACY_FIELD_GROUPS[cat]) {
               delete v[field]
             }
@@ -320,7 +386,7 @@ export async function POST(req: Request) {
       controllo: parsedData.controllo || {},
       veicoli: parsedData.veicoli || [],
       model: usedModel,
-      empty: isEmpty ? true : undefined,
+      empty: isEmpty || undefined,
       warning: isEmpty ? 'Nessun dato rilevato. La calligrafia potrebbe essere illeggibile. Controlla la qualità della scansione.' : undefined,
       rawText: rawText.substring(0, 500)
     })
