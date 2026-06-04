@@ -150,43 +150,81 @@ export async function POST(req: Request) {
       }
     }
 
-    // Use configurable model (default Pro for better handwriting recognition)
-    const modelName = process.env.GEMINI_OCR_MODEL || DEFAULT_MODEL
+    // Modelli in ordine di preferenza (Pro per calligrafia, Flash come fallback)
+    const MODEL_TIER: string[] = [
+      process.env.GEMINI_OCR_MODEL || DEFAULT_MODEL,
+      'gemini-2.5-flash' // fallback se Pro è in rate limit
+    ]
 
-    // Call Gemini Vision API — no responseSchema for better handwriting recognition
-    const geminiRes = await fetch(`${GEMINI_API_URL}/${modelName}:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: finalPrompt },
-            {
-              inline_data: {
-                mime_type: mimeType,
-                data: base64
-              }
-            }
-          ]
-        }],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 8192,
-          responseMimeType: "application/json"
-        },
-        safetySettings: [
-          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" }
-        ]
-      })
-    })
+    let geminiRes: Response | null = null
+    let lastError: string = ''
+    let usedModel: string = ''
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text()
-      console.error('[OCR_IMPORT] Gemini API error:', errText.substring(0, 500))
-      return NextResponse.json({ error: `Errore API Gemini: ${geminiRes.status}` }, { status: 502 })
+    // Retry loop con exponential backoff + fallback tra modelli
+    for (let tier = 0; tier < MODEL_TIER.length; tier++) {
+      const model = MODEL_TIER[tier]
+      let delay = 2000 // inizia con 2s di attesa
+
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        if (attempt > 1) {
+          // Exponential backoff: 2s, 4s, 8s
+          await new Promise(r => setTimeout(r, delay))
+          delay *= 2
+        }
+
+        const res = await fetch(`${GEMINI_API_URL}/${model}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { text: finalPrompt },
+                { inline_data: { mime_type: mimeType, data: base64 } }
+              ]
+            }],
+            generationConfig: {
+              temperature: 0.2,
+              maxOutputTokens: 8192,
+              responseMimeType: "application/json"
+            },
+            safetySettings: [
+              { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" }
+            ]
+          })
+        })
+
+        // 429 = rate limit → retry o fallback
+        if (res.status === 429) {
+          const errText = await res.text()
+          console.warn(`[OCR_IMPORT] 429 rate limit su ${model}, attempt ${attempt}/3`)
+          lastError = `Rate limit su ${model}`
+          continue // riprova dopo backoff
+        }
+
+        // Altri errori → non retryable
+        if (!res.ok) {
+          const errText = await res.text()
+          console.error(`[OCR_IMPORT] ${model} error:`, errText.substring(0, 300))
+          lastError = `Errore API ${model}: ${res.status}`
+          break // esci dal retry loop, prova prossimo modello
+        }
+
+        // Successo!
+        geminiRes = res
+        usedModel = model
+        break
+      }
+
+      if (geminiRes) break // abbiamo una risposta valida
+    }
+
+    if (!geminiRes) {
+      return NextResponse.json({
+        error: `Servizio OCR momentaneamente saturo. Riprova tra qualche secondo. (${lastError})`
+      }, { status: 503 })
     }
 
     const geminiData = await geminiRes.json()
@@ -234,7 +272,7 @@ export async function POST(req: Request) {
       filename: file.name,
       controllo: parsedData.controllo || {},
       veicoli: parsedData.veicoli || [],
-      model: modelName,
+      model: usedModel,
       rawText: rawText.substring(0, 500) // debug info
     })
 
