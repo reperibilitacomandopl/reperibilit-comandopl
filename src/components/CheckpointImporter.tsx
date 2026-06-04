@@ -3,8 +3,10 @@
 import { useState, useRef, useCallback } from "react"
 import {
   Upload, FileText, Eye, Save, AlertTriangle, CheckCircle,
-  Loader2, RotateCw, X, ChevronDown, ChevronUp, Edit3, Trash2, Camera
+  Loader2, RotateCw, X, ChevronDown, ChevronUp, Edit3, Trash2, Camera, Shield
 } from "lucide-react"
+
+const ALL_PRIVACY_FIELDS = ['intestazione', 'veicolo', 'proprietario', 'conducente', 'patente', 'sanzione', 'passeggero']
 
 type OcrVehicle = {
   ora_controllo?: string
@@ -58,6 +60,7 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
   const [preview, setPreview] = useState<string | null>(null)
   const [ocrResult, setOcrResult] = useState<OcrResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [privacyFields, setPrivacyFields] = useState<string[]>(ALL_PRIVACY_FIELDS)
   const [expandedVehicle, setExpandedVehicle] = useState<number | null>(null)
   const [saveResult, setSaveResult] = useState<any>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -93,6 +96,7 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
     try {
       const formData = new FormData()
       formData.append('file', file)
+      formData.append('privacyFields', privacyFields.join(','))
 
       const res = await fetch('/api/admin/checkpoints/import', {
         method: 'POST',
@@ -228,15 +232,35 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
           </div>
 
           {file && (
-            <div className="flex justify-end mt-6 gap-3">
-              <button onClick={reset} className={`px-4 py-3 text-sm font-bold rounded-xl ${isDark ? "bg-white/5 hover:bg-white/10" : "bg-slate-100 hover:bg-slate-200"}`}>
-                Annulla
-              </button>
-              <button onClick={processOCR}
-                className="flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-purple-600/20 active:scale-95">
-                <Eye size={16} /> Analizza con Gemini AI
-              </button>
-            </div>
+            <>
+              {/* Privacy fields selection */}
+              <div className="mt-8 border-t border-slate-200 dark:border-white/10 pt-6 animate-in fade-in slide-in-from-bottom-4">
+                <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
+                  <Shield size={16} className="text-blue-500" /> Seleziona Dati da Estrarre (Filtro Privacy)
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {ALL_PRIVACY_FIELDS.map(f => (
+                    <label key={f} className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${privacyFields.includes(f) ? 'border-blue-500 bg-blue-500/5' : 'border-slate-200 dark:border-white/10 opacity-50 hover:opacity-100'}`}>
+                      <input type="checkbox" checked={privacyFields.includes(f)} onChange={(e) => {
+                        if (e.target.checked) setPrivacyFields([...privacyFields, f])
+                        else setPrivacyFields(privacyFields.filter(x => x !== f))
+                      }} className="w-4 h-4 rounded text-blue-500 focus:ring-blue-500 bg-transparent border-slate-300 dark:border-slate-600" />
+                      <span className="text-xs font-bold uppercase tracking-wider">{f}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end mt-8 gap-3">
+                <button onClick={reset} className={`px-4 py-3 text-sm font-bold rounded-xl ${isDark ? "bg-white/5 hover:bg-white/10" : "bg-slate-100 hover:bg-slate-200"}`}>
+                  Annulla
+                </button>
+                <button onClick={processOCR}
+                  className="flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-purple-600/20 active:scale-95">
+                  <Eye size={16} /> Analizza con Gemini AI
+                </button>
+              </div>
+            </>
           )}
         </div>
       )}

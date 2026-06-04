@@ -81,6 +81,9 @@ export async function POST(req: Request) {
 
     const formData = await req.formData()
     const file = formData.get('file') as File
+    const privacyFieldsStr = formData.get('privacyFields') as string || ''
+    const privacyFields = privacyFieldsStr ? privacyFieldsStr.split(',') : ['intestazione', 'veicolo', 'proprietario', 'conducente', 'patente', 'sanzione', 'passeggero']
+
     if (!file) {
       return NextResponse.json({ error: 'Nessun file caricato' }, { status: 400 })
     }
@@ -163,6 +166,63 @@ export async function POST(req: Request) {
       }
     };
 
+    // Filtra dinamicamente i campi in base alla selezione dell'utente
+    const vProps = ocrSchema.properties.veicoli.items.properties as Record<string, any>;
+    
+    if (!privacyFields.includes('intestazione')) {
+      delete (ocrSchema.properties as any).controllo;
+    }
+    if (!privacyFields.includes('veicolo')) {
+      delete vProps.ora_controllo;
+      delete vProps.veicolo;
+      delete vProps.targa;
+      delete vProps.marca_modello;
+      delete vProps.ultima_revisione;
+      delete vProps.assicurazione;
+      delete vProps.assicurato_fino;
+    }
+    if (!privacyFields.includes('proprietario')) {
+      delete vProps.proprietario_cognome;
+      delete vProps.proprietario_nome;
+      delete vProps.proprietario_data_nascita;
+      delete vProps.proprietario_luogo_nascita;
+      delete vProps.proprietario_residenza;
+      delete vProps.proprietario_indirizzo;
+    }
+    if (!privacyFields.includes('conducente')) {
+      delete vProps.conducente_stesso_prop;
+      delete vProps.conducente_cognome;
+      delete vProps.conducente_nome;
+      delete vProps.conducente_data_nascita;
+      delete vProps.conducente_luogo_nascita;
+      delete vProps.conducente_residenza;
+      delete vProps.conducente_indirizzo;
+    }
+    if (!privacyFields.includes('patente')) {
+      delete vProps.patente_numero;
+      delete vProps.patente_rilasciata_da;
+      delete vProps.patente_data_rilascio;
+      delete vProps.patente_validita_fino;
+    }
+    if (!privacyFields.includes('sanzione')) {
+      delete vProps.sanzione_elevata;
+      delete vProps.sanzione_accessoria;
+    }
+    if (!privacyFields.includes('passeggero')) {
+      delete vProps.passeggero_cognome;
+      delete vProps.passeggero_nome;
+      delete vProps.passeggero_data_nascita;
+      delete vProps.passeggero_luogo_nascita;
+      delete vProps.passeggero_residenza;
+      delete vProps.passeggero_indirizzo;
+    }
+
+    // Costruisci il prompt aggiungendo istruzioni dinamiche
+    let finalPrompt = OCR_PROMPT;
+    if (privacyFields.length < 7) {
+      finalPrompt += `\n- ATTENZIONE: Alcuni campi privacy sono stati disabilitati. IGNORA CATEGORICAMENTE e non restituire alcun dato per i blocchi che non sono presenti nella struttura JSON richiesta.`;
+    }
+
     // Call Gemini Vision API
     const geminiRes = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
       method: 'POST',
@@ -170,7 +230,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         contents: [{
           parts: [
-            { text: OCR_PROMPT },
+            { text: finalPrompt },
             {
               inline_data: {
                 mime_type: mimeType,
