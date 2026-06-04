@@ -254,8 +254,27 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
 
       {/* STEP: REVIEW */}
       {step === "review" && ocrResult && (
-        <div className="space-y-6">
-          <div className={`rounded-3xl border ${cardBg} p-6 shadow-sm`}>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
+          
+          {/* Colonna Sinistra: Anteprima Sticky */}
+          <div className="hidden xl:block sticky top-6 space-y-4">
+            <h3 className="text-sm font-black uppercase tracking-widest opacity-60 flex items-center gap-2">
+              <Camera size={16} /> Scansione Originale
+            </h3>
+            {preview ? (
+              <div className={`rounded-3xl border ${cardBg} p-2 overflow-hidden shadow-sm`}>
+                <img src={preview} alt="Anteprima Scheda" className="w-full h-auto max-h-[85vh] object-contain rounded-2xl bg-slate-100 dark:bg-slate-800" />
+              </div>
+            ) : (
+              <div className={`rounded-3xl border ${cardBg} p-8 flex items-center justify-center text-center h-[50vh]`}>
+                <p className={mutedText}>Anteprima non disponibile (PDF o formato non testuale)</p>
+              </div>
+            )}
+          </div>
+
+          {/* Colonna Destra: Form di Verifica */}
+          <div className="space-y-6">
+            <div className={`rounded-3xl border ${cardBg} p-6 shadow-sm`}>
             <h2 className="text-lg font-black mb-4 flex items-center gap-3">
               <Edit3 size={20} className="text-amber-500" /> Revisiona i Dati Estratti
             </h2>
@@ -389,14 +408,15 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
           </div>
 
           {/* Action buttons */}
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center bg-white dark:bg-slate-900 sticky bottom-4 p-4 rounded-2xl border border-slate-200 dark:border-white/10 shadow-2xl z-50">
             <button onClick={reset} className={`px-4 py-3 text-sm font-bold rounded-xl ${isDark ? "bg-white/5 hover:bg-white/10" : "bg-slate-100 hover:bg-slate-200"}`}>
-              ← Carica altra scheda
+              ← Annulla
             </button>
             <button onClick={confirmImport} disabled={!ocrResult.veicoli.length}
               className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-600/20 active:scale-95">
               <Save size={16} /> Conferma e Salva ({ocrResult.veicoli.length} veicoli)
             </button>
+          </div>
           </div>
         </div>
       )}
