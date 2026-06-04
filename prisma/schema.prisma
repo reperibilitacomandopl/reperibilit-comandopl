@@ -75,6 +75,8 @@ model Tenant {
   weapons                 Weapon[]
   SpecialEvent            SpecialEvent[]
   EventAssignment         EventAssignment[]
+  checkpoints             Checkpoint[]
+  checkedVehicles         CheckedVehicle[]
 }
 
 model Municipality {
@@ -242,6 +244,7 @@ model User {
   patrolTemplates           PatrolTemplate[]          @relation("PatrolMembers")
   vacationRotationGroups    VacationRotationGroup[]   @relation("VacationRotationGroupMembers")
   eventAssignments          EventAssignment[]         @relation("EventAssignments")
+  checkpoints               Checkpoint[]              @relation("CheckpointOperator")
 
   @@unique([tenantId, matricola])
 }
@@ -1424,4 +1427,86 @@ model EventAssignment {
   user   User         @relation("EventAssignments", fields: [userId], references: [id])
   vehicle Vehicle?    @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   tenant Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+// ══════════════════════════════════════════════════════════════
+//  POSTI DI CONTROLLO
+// ══════════════════════════════════════════════════════════════
+
+model Checkpoint {
+  id              String           @id @default(uuid())
+  tenantId        String
+  operatorId      String?
+  dataControllo   DateTime
+  oraInizio       String           // "HH:MM"
+  oraFine         String           // "HH:MM"
+  luogo           String
+  lat             Float?
+  lng             Float?
+  operatori       String?          // nomi operatori (da scheda cartacea)
+  veicoloServizio String?
+  note            String?
+  importSource    String           @default("MANUALE") // MANUALE | OCR_PDF | OCR_IMMAGINE
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  deletedAt       DateTime?
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  operator        User?            @relation("CheckpointOperator", fields: [operatorId], references: [id])
+  vehicles        CheckedVehicle[]
+
+  @@index([tenantId, dataControllo])
+  @@index([operatorId])
+}
+
+model CheckedVehicle {
+  id                       String      @id @default(uuid())
+  tenantId                 String
+  checkpointId             String
+  oraControllo             String?     // "HH:MM"
+  targa                    String
+  tipoVeicolo              String?
+  marcaModello             String?
+  ultimaRevisione          DateTime?
+  assicurazione            String?
+  assicuratoFino           DateTime?
+  // Proprietario
+  proprietarioNome         String?
+  proprietarioCognome      String?
+  proprietarioDataNascita  DateTime?
+  proprietarioLuogoNascita String?
+  proprietarioResidenza    String?
+  proprietarioIndirizzo    String?
+  // Conducente
+  conducenteStessoProp     Boolean     @default(false)
+  conducenteNome           String?
+  conducenteCognome        String?
+  conducenteDataNascita    DateTime?
+  conducenteLuogoNascita   String?
+  conducenteResidenza      String?
+  conducenteIndirizzo      String?
+  patenteNumero            String?
+  patenteRilasciataDa      String?
+  patenteDataRilascio      DateTime?
+  patenteValiditaFino      DateTime?
+  // Passeggero
+  passeggeroNome           String?
+  passeggeroCognome        String?
+  passeggeroDataNascita    DateTime?
+  passeggeroLuogoNascita   String?
+  passeggeroResidenza      String?
+  passeggeroIndirizzo      String?
+  // Sanzioni
+  sanzioneElevata          String?
+  sanzioneAccessoria       String?
+
+  createdAt                DateTime    @default(now())
+  updatedAt                DateTime    @updatedAt
+
+  tenant                   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  checkpoint               Checkpoint  @relation(fields: [checkpointId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([checkpointId])
+  @@index([targa])
 }

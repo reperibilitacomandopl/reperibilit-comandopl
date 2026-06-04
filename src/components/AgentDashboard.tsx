@@ -277,6 +277,20 @@ export default function AgentDashboard({
                   <CalendarDays size={28} className="text-white" />
                </div>
             </button>
+
+            <button 
+               onClick={() => window.location.href = `/${tenantSlug || ''}/agent/posti-controllo`}
+               className="relative bg-gradient-to-r from-blue-500 to-indigo-600 rounded-[1.5rem] md:rounded-[2rem] p-5 md:p-8 overflow-hidden shadow-xl shadow-blue-200 hover:shadow-2xl hover:-translate-y-1 transition-all group text-left w-full border-none"
+            >
+               <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl group-hover:bg-white/20 transition-all"></div>
+               <div className="relative z-10 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xl font-black text-white mb-1 drop-shadow-md">Posti di Controllo</h3>
+                    <p className="text-sm font-bold text-blue-50 drop-shadow-sm opacity-90">Inserimento dal campo</p>
+                  </div>
+                  <Shield size={28} className="text-white" />
+               </div>
+            </button>
         </div>
 
         <div className="lg:col-span-2">
