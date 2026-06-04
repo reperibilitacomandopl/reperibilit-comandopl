@@ -56,6 +56,7 @@ export default function MobileAgentLaunchpad({
     { id: "sinistri", title: "Sinistri", desc: "Rilievo incidenti", icon: ShieldAlert, color: "from-red-500 to-orange-500", href: `/${tenantSlug}/agent/sinistri` },
     { id: "relazioni", title: "Relazioni", desc: "Rapporto giornaliero", icon: FileText, color: "from-teal-500 to-cyan-600", href: `/${tenantSlug}/agent/relazioni` },
     { id: "verbali", title: "Verbali CDS", desc: "Emetti contravvenzioni", icon: FileText, color: "from-rose-500 to-pink-500", href: `/${tenantSlug}/agent/verbale/nuovo` },
+    { id: "posti-controllo", title: "Controlli", desc: "Posti di blocco e veicoli", icon: ShieldCheck, color: "from-blue-600 to-blue-800", href: `/${tenantSlug}/agent/posti-controllo` },
     { id: "bacheca", title: "Bacheca", desc: "Avvisi del comando", icon: Megaphone, color: "from-sky-500 to-blue-600", view: "bacheca" },
     { id: "calendario", title: "Vista Annuale", desc: "Panoramica anno", icon: LayoutGrid, color: "from-teal-500 to-emerald-600", view: "planning" },
     { id: "sos", title: "SOS Emergenza", desc: "Allarme immediato", icon: Shield, color: "from-red-500 to-rose-600", action: "sos" },

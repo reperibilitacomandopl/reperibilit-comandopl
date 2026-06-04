@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback } from "react"
 import { useTheme } from "@/hooks/useTheme"
 import {
-  Shield, Plus, Car, Save, CheckCircle, ChevronDown, ChevronUp, MapPin
+  Shield, Plus, Car, Save, CheckCircle, ChevronDown, ChevronUp, MapPin, Upload, Camera, FileText, Download, Check, Users, Navigation, Trash2
 } from "lucide-react"
+import CdsViolationSearch from "@/components/CdsViolationSearch"
 
 type Checkpoint = {
   id: string
@@ -316,7 +317,20 @@ export default function CheckpointEntry() {
 
                       {activeSection === "sanzioni" && (
                         <>
-                          <input placeholder="Sanzione Elevata (Articolo/i)" value={vehicleForm.sanzioneElevata} onChange={e => setVehicleForm(f => ({...f, sanzioneElevata: e.target.value}))} className={`col-span-2 px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                          <div className="col-span-2 relative z-50 bg-blue-50/50 dark:bg-blue-900/10 p-2 rounded-xl mb-2">
+                            <CdsViolationSearch 
+                              onSelect={(violation) => {
+                                const artStr = `Art. ${violation.articolo?.articolo || ''} ${violation.comma ? `c. ${violation.comma}` : ''} - ${violation.descrizione}`.substring(0, 255);
+                                const accStr = violation.sanzioneAccessoria || "";
+                                setVehicleForm(f => ({
+                                  ...f, 
+                                  sanzioneElevata: f.sanzioneElevata ? `${f.sanzioneElevata}\n${artStr}` : artStr,
+                                  sanzioneAccessoria: f.sanzioneAccessoria ? (accStr ? `${f.sanzioneAccessoria}\n${accStr}` : f.sanzioneAccessoria) : accStr
+                                }))
+                              }} 
+                            />
+                          </div>
+                          <textarea placeholder="Sanzione Elevata (Testo o importazione)" value={vehicleForm.sanzioneElevata} onChange={e => setVehicleForm(f => ({...f, sanzioneElevata: e.target.value}))} className={`col-span-2 px-3 py-2 rounded-xl border text-sm min-h-[80px] ${inputBg}`} />
                           <input placeholder="Sanzioni Accessorie (es. Sequestro)" value={vehicleForm.sanzioneAccessoria} onChange={e => setVehicleForm(f => ({...f, sanzioneAccessoria: e.target.value}))} className={`col-span-2 px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
                         </>
                       )}
