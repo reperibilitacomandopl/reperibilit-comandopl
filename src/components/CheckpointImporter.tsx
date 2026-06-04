@@ -117,7 +117,7 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
 
       setOcrResult({
         controllo: data.controllo || {},
-        veicoli: (data.veicoli || []).filter((v: OcrVehicle) => v.targa)
+        veicoli: (data.veicoli || [])
       })
       setStep("review")
 

@@ -273,7 +273,7 @@ function addSecurityHeaders(response: NextResponse, isPublic: boolean = false, r
     frame-ancestors 'none';
     form-action 'self';
     base-uri 'self';
-    object-src 'none';
+    object-src 'self' blob: data:;
   `.replace(/\s{2,}/g, ' ').trim()
 
   response.headers.set("Content-Security-Policy", cspHeader)
