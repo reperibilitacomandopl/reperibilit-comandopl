@@ -77,7 +77,7 @@ REGOLE FONDAMENTALI:
 - Ogni riquadro/veicolo nella scheda = un oggetto nell'array "veicoli"
 - Se un campo è illeggibile, usa "" — MAI inventare dati
 - Se il conducente ha flaggato "LO STESSO" o scritto "idem"/"stesso", imposta conducente_stesso_prop: true e copia i dati del proprietario nei campi conducente
-- Restituisci SOLO JSON valido, nessun markdown, nessun commento`
+- IMPORTANTE: Restituisci SOLO il JSON puro. NIENTE markdown, NIENTE backtick, NIENTE testo prima o dopo. Solo l'oggetto JSON.`
 
 // Fields che possono essere filtrati per privacy
 const ALL_PRIVACY_FIELDS = ['intestazione', 'veicolo', 'proprietario', 'conducente', 'patente', 'sanzione', 'passeggero']
@@ -90,101 +90,6 @@ const PRIVACY_FIELD_GROUPS: Record<string, string[]> = {
   patente: ['patente_numero', 'patente_rilasciata_da', 'patente_data_rilascio', 'patente_validita_fino'],
   sanzione: ['sanzione_elevata', 'sanzione_accessoria'],
   passeggero: ['passeggero_cognome', 'passeggero_nome', 'passeggero_data_nascita', 'passeggero_luogo_nascita', 'passeggero_residenza', 'passeggero_indirizzo'],
-}
-
-function buildOcrSchema(privacyFields: string[]) {
-  const ocrSchema: any = {
-    type: "OBJECT",
-    properties: {
-      controllo: {
-        type: "OBJECT",
-        properties: {
-          data_controllo: { type: "STRING" },
-          ora_inizio: { type: "STRING" },
-          ora_fine: { type: "STRING" },
-          luogo: { type: "STRING" },
-          operatori: { type: "STRING" }
-        }
-      },
-      veicoli: {
-        type: "ARRAY",
-        items: {
-          type: "OBJECT",
-          properties: {
-            ora_controllo: { type: "STRING" },
-            veicolo: { type: "STRING" },
-            targa: { type: "STRING" },
-            marca_modello: { type: "STRING" },
-            ultima_revisione: { type: "STRING" },
-            assicurazione: { type: "STRING" },
-            assicurato_fino: { type: "STRING" },
-            proprietario_cognome: { type: "STRING", description: "Il cognome (family name). Se nome e cognome sono scritti insieme, inserisci qui il cognome e lascia il nome vuoto." },
-            proprietario_nome: { type: "STRING", description: "Il nome di battesimo (given name). Attenzione a non scambiare nome e cognome." },
-            proprietario_data_nascita: { type: "STRING" },
-            proprietario_luogo_nascita: { type: "STRING" },
-            proprietario_residenza: { type: "STRING" },
-            proprietario_indirizzo: { type: "STRING" },
-            conducente_stesso_prop: { type: "BOOLEAN", description: "True se è spuntato LO STESSO" },
-            conducente_cognome: { type: "STRING", description: "Il cognome (family name)." },
-            conducente_nome: { type: "STRING", description: "Il nome di battesimo (given name)." },
-            conducente_data_nascita: { type: "STRING" },
-            conducente_luogo_nascita: { type: "STRING" },
-            conducente_residenza: { type: "STRING" },
-            conducente_indirizzo: { type: "STRING" },
-            patente_numero: { type: "STRING" },
-            patente_rilasciata_da: { type: "STRING" },
-            patente_data_rilascio: { type: "STRING" },
-            patente_validita_fino: { type: "STRING" },
-            sanzione_elevata: { type: "STRING" },
-            sanzione_accessoria: { type: "STRING" },
-            passeggero_cognome: { type: "STRING", description: "Il cognome (family name)." },
-            passeggero_nome: { type: "STRING", description: "Il nome di battesimo (given name)." },
-            passeggero_data_nascita: { type: "STRING" },
-            passeggero_luogo_nascita: { type: "STRING" },
-            passeggero_residenza: { type: "STRING" },
-            passeggero_indirizzo: { type: "STRING" }
-          }
-        }
-      }
-    }
-  }
-
-  // Filtra dinamicamente i campi in base alla selezione privacy
-  const vProps = ocrSchema.properties.veicoli.items.properties as Record<string, any>
-
-  if (!privacyFields.includes('intestazione')) {
-    delete ocrSchema.properties.controllo
-  }
-  if (!privacyFields.includes('veicolo')) {
-    delete vProps.ora_controllo; delete vProps.veicolo; delete vProps.targa
-    delete vProps.marca_modello; delete vProps.ultima_revisione
-    delete vProps.assicurazione; delete vProps.assicurato_fino
-  }
-  if (!privacyFields.includes('proprietario')) {
-    delete vProps.proprietario_cognome; delete vProps.proprietario_nome
-    delete vProps.proprietario_data_nascita; delete vProps.proprietario_luogo_nascita
-    delete vProps.proprietario_residenza; delete vProps.proprietario_indirizzo
-  }
-  if (!privacyFields.includes('conducente')) {
-    delete vProps.conducente_stesso_prop; delete vProps.conducente_cognome
-    delete vProps.conducente_nome; delete vProps.conducente_data_nascita
-    delete vProps.conducente_luogo_nascita; delete vProps.conducente_residenza
-    delete vProps.conducente_indirizzo
-  }
-  if (!privacyFields.includes('patente')) {
-    delete vProps.patente_numero; delete vProps.patente_rilasciata_da
-    delete vProps.patente_data_rilascio; delete vProps.patente_validita_fino
-  }
-  if (!privacyFields.includes('sanzione')) {
-    delete vProps.sanzione_elevata; delete vProps.sanzione_accessoria
-  }
-  if (!privacyFields.includes('passeggero')) {
-    delete vProps.passeggero_cognome; delete vProps.passeggero_nome
-    delete vProps.passeggero_data_nascita; delete vProps.passeggero_luogo_nascita
-    delete vProps.passeggero_residenza; delete vProps.passeggero_indirizzo
-  }
-
-  return ocrSchema
 }
 
 export async function POST(req: Request) {
@@ -245,9 +150,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // responseSchema per forzare JSON valido
-    const ocrSchema = buildOcrSchema(privacyFields)
-
     // Modelli in ordine: principale (configurabile) → fallback Flash
     const preferredModel = process.env.GEMINI_OCR_MODEL || DEFAULT_MODEL
     const MODEL_TIER: string[] = [preferredModel]
@@ -281,9 +183,7 @@ export async function POST(req: Request) {
             }],
             generationConfig: {
               temperature: 0.2,
-              maxOutputTokens: 8192,
-              responseMimeType: "application/json",
-              responseSchema: ocrSchema
+              maxOutputTokens: 8192
             },
             safetySettings: [
               { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
