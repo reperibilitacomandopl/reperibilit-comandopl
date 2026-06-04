@@ -112,7 +112,11 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.error || 'Errore durante il processamento OCR')
+        // Mostra rawText se disponibile per debugging
+        const errMsg = data.rawText
+          ? `${data.error}\n\n--- RAW GEMINI RESPONSE ---\n${data.rawText.substring(0, 1000)}`
+          : (data.error || 'Errore durante il processamento OCR')
+        setError(errMsg)
         setStep("upload")
         return
       }
@@ -215,7 +219,7 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
 
           {error && (
             <div className="mb-4 p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 text-sm font-bold flex items-center gap-2">
-              <AlertTriangle size={16} /> {error}
+              <AlertTriangle size={16} /> <span className="whitespace-pre-wrap">{error}</span>
             </div>
           )}
 
