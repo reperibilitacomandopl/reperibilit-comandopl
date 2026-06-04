@@ -3,14 +3,27 @@ import { auth } from '@/auth'
 
 /**
  * API per l'importazione di schede compilate a mano via OCR.
- * Usa Google Gemini Vision API per leggere le schede scannerizzate.
- * Non richiede micro-servizio Python separato.
+ * Usa Google Gemini Vision API (Pro) per leggere schede scannerizzate con calligrafia.
+ * Modello configurabile via GEMINI_OCR_MODEL (default: gemini-2.5-pro).
  */
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
+const DEFAULT_MODEL = 'gemini-2.5-pro'
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
 
-const OCR_PROMPT = `Sei un assistente per l'estrazione dati. Questa è una scheda di controllo della Polizia Locale (italiana) scritta a mano.
-Estrai tutti i dati LEGGIBILI e restituisci ESATTAMENTE un file JSON (senza markdown, senza backtick), usando QUESTA esatta struttura:
+const OCR_PROMPT = `Sei un assistente specializzato nella digitalizzazione di moduli della Polizia Locale italiana compilati A MANO.
+
+IMPORTANTE — RICONOSCIMENTO CALLIGRAFIA:
+- Il testo è SCRITTO A MANO in italiano, con calligrafia corsiva o stampatello
+- Le lettere maiuscole possono somigliare ad altre lettere (es. A/H, C/G, I/L, M/N, O/0, S/5, Z/2, B/8)
+- I numeri possono essere ambigui: 1/7, 3/8, 5/6, 0/6, 4/9
+- Le targhe italiane sono nel formato AA000AA (lettere-numeri-lettere, no spazi)
+- Codici fiscali: 16 caratteri alfanumerici
+- Date: formato DD/MM/YYYY
+- Cerca di dedurre il significato dal contesto quando un carattere è ambiguo
+- Se un CAMPO È ILLEGGIBILE, lascialo vuoto (stringa "") — non inventare dati
+
+Estrai TUTTI i dati e restituisci ESCLUSIVAMENTE un JSON valido con questa struttura:
+
 {
   "controllo": {
     "data_controllo": "DD/MM/YYYY",
@@ -22,8 +35,8 @@ Estrai tutti i dati LEGGIBILI e restituisci ESATTAMENTE un file JSON (senza mark
   "veicoli": [
     {
       "ora_controllo": "HH:MM",
-      "veicolo": "stringa (es. AUTOVETTURA)",
-      "targa": "stringa",
+      "veicolo": "stringa (es. AUTOVETTURA, MOTOCICLO, AUTOCARRO)",
+      "targa": "stringa MAIUSCOLO senza spazi",
       "marca_modello": "stringa",
       "ultima_revisione": "DD/MM/YYYY o vuoto",
       "assicurazione": "stringa compagnia",
@@ -57,15 +70,26 @@ Estrai tutti i dati LEGGIBILI e restituisci ESATTAMENTE un file JSON (senza mark
   ]
 }
 
-REGOLE IMPORTANTI:
-- Ogni blocco veicolo nella scheda corrisponde a un oggetto nell'array "veicoli"
-- Se un campo è illeggibile o vuoto, usa stringa vuota ""
-- Se "conducente" dice "LO STESSO" o simile, imposta conducente_stesso_prop a true e copia i dati del proprietario
-- Le date devono essere in formato DD/MM/YYYY
-- Le targhe devono essere in MAIUSCOLO senza spazi
-- La scheda può avere fino a 4 veicoli per pagina
-- Ignora i campi completamente vuoti
-- NON aggiungere commenti o spiegazioni, solo il JSON`
+REGOLE FONDAMENTALI:
+- Ogni riquadro/veicolo nella scheda = un oggetto nell'array "veicoli"
+- Se un campo è illeggibile, usa "" — MAI inventare dati
+- Se il conducente ha flaggato "LO STESSO" o scritto "idem"/"stesso", imposta conducente_stesso_prop: true e copia i dati del proprietario nei campi conducente
+- I cognomi italiani spesso finiscono in -I, -O, -A, -E (es. ROSSI, BIANCO, FERRARA, LEONE)
+- I nomi propri italiani comuni: MARCO, GIUSEPPE, ANTONIO, MARIA, ANNA, FRANCESCO, LUCA, ALESSANDRO, GIOVANNI, ROBERTO, ANDREA, PAOLO, SALVATORE, LUIGI, ANGELO, MATTEO, FABIO, DAVIDE, STEFANO, SIMONE, GIORGIO, NICOLA, ENRICO, FEDERICO, PIETRO, MICHELE, ALBERTO, CLAUDIO, DANIELE, MASSIMO, CARLO, SERGIO, FRANCO, MARIO, LORENZO, RICCARDO, DOMENICO, VINCENZO
+- Restituisci SOLO JSON valido, nessun markdown, nessun commento`
+
+// Fields that can be filtered out for privacy
+const ALL_PRIVACY_FIELDS = ['intestazione', 'veicolo', 'proprietario', 'conducente', 'patente', 'sanzione', 'passeggero']
+
+// Fields belonging to each privacy category (for prompt-based filtering)
+const PRIVACY_FIELD_GROUPS: Record<string, string[]> = {
+  veicolo: ['ora_controllo', 'veicolo', 'targa', 'marca_modello', 'ultima_revisione', 'assicurazione', 'assicurato_fino'],
+  proprietario: ['proprietario_cognome', 'proprietario_nome', 'proprietario_data_nascita', 'proprietario_luogo_nascita', 'proprietario_residenza', 'proprietario_indirizzo'],
+  conducente: ['conducente_stesso_prop', 'conducente_cognome', 'conducente_nome', 'conducente_data_nascita', 'conducente_luogo_nascita', 'conducente_residenza', 'conducente_indirizzo'],
+  patente: ['patente_numero', 'patente_rilasciata_da', 'patente_data_rilascio', 'patente_validita_fino'],
+  sanzione: ['sanzione_elevata', 'sanzione_accessoria'],
+  passeggero: ['passeggero_cognome', 'passeggero_nome', 'passeggero_data_nascita', 'passeggero_luogo_nascita', 'passeggero_residenza', 'passeggero_indirizzo'],
+}
 
 export async function POST(req: Request) {
   try {
@@ -82,7 +106,7 @@ export async function POST(req: Request) {
     const formData = await req.formData()
     const file = formData.get('file') as File
     const privacyFieldsStr = formData.get('privacyFields') as string || ''
-    const privacyFields = privacyFieldsStr ? privacyFieldsStr.split(',') : ['intestazione', 'veicolo', 'proprietario', 'conducente', 'patente', 'sanzione', 'passeggero']
+    const privacyFields = privacyFieldsStr ? privacyFieldsStr.split(',') : ALL_PRIVACY_FIELDS
 
     if (!file) {
       return NextResponse.json({ error: 'Nessun file caricato' }, { status: 400 })
@@ -110,121 +134,27 @@ export async function POST(req: Request) {
     else if (file.name.endsWith('.jpg') || file.name.endsWith('.jpeg')) mimeType = 'image/jpeg'
     else if (file.name.endsWith('.tiff') || file.name.endsWith('.tif')) mimeType = 'image/tiff'
 
-    const ocrSchema = {
-      type: "OBJECT",
-      properties: {
-        controllo: {
-          type: "OBJECT",
-          properties: {
-            data_controllo: { type: "STRING" },
-            ora_inizio: { type: "STRING" },
-            ora_fine: { type: "STRING" },
-            luogo: { type: "STRING" },
-            operatori: { type: "STRING" }
-          }
-        },
-        veicoli: {
-          type: "ARRAY",
-          items: {
-            type: "OBJECT",
-            properties: {
-              ora_controllo: { type: "STRING" },
-              veicolo: { type: "STRING" },
-              targa: { type: "STRING" },
-              marca_modello: { type: "STRING" },
-              ultima_revisione: { type: "STRING" },
-              assicurazione: { type: "STRING" },
-              assicurato_fino: { type: "STRING" },
-              proprietario_cognome: { type: "STRING", description: "Il cognome (family name). Se nome e cognome sono scritti insieme, inserisci qui il cognome e lascia il nome vuoto." },
-              proprietario_nome: { type: "STRING", description: "Il nome di battesimo (given name). Attenzione a non scambiare nome e cognome." },
-              proprietario_data_nascita: { type: "STRING" },
-              proprietario_luogo_nascita: { type: "STRING" },
-              proprietario_residenza: { type: "STRING" },
-              proprietario_indirizzo: { type: "STRING" },
-              conducente_stesso_prop: { type: "BOOLEAN", description: "True se è spuntato LO STESSO" },
-              conducente_cognome: { type: "STRING", description: "Il cognome (family name)." },
-              conducente_nome: { type: "STRING", description: "Il nome di battesimo (given name)." },
-              conducente_data_nascita: { type: "STRING" },
-              conducente_luogo_nascita: { type: "STRING" },
-              conducente_residenza: { type: "STRING" },
-              conducente_indirizzo: { type: "STRING" },
-              patente_numero: { type: "STRING" },
-              patente_rilasciata_da: { type: "STRING" },
-              patente_data_rilascio: { type: "STRING" },
-              patente_validita_fino: { type: "STRING" },
-              sanzione_elevata: { type: "STRING" },
-              sanzione_accessoria: { type: "STRING" },
-              passeggero_cognome: { type: "STRING", description: "Il cognome (family name)." },
-              passeggero_nome: { type: "STRING", description: "Il nome di battesimo (given name)." },
-              passeggero_data_nascita: { type: "STRING" },
-              passeggero_luogo_nascita: { type: "STRING" },
-              passeggero_residenza: { type: "STRING" },
-              passeggero_indirizzo: { type: "STRING" }
-            }
-          }
+    // Build prompt with privacy filter instructions
+    let finalPrompt = OCR_PROMPT
+    if (privacyFields.length < ALL_PRIVACY_FIELDS.length) {
+      const excluded = ALL_PRIVACY_FIELDS.filter(f => !privacyFields.includes(f))
+      finalPrompt += '\n\nFILTRO PRIVACY ATTIVO — NON ESTRARRE questi dati:\n'
+      for (const cat of excluded) {
+        if (cat === 'intestazione') {
+          finalPrompt += '- NON estrarre i campi "controllo" (data, ora, luogo, operatori) — lascia tutto vuoto\n'
+        }
+        const fields = PRIVACY_FIELD_GROUPS[cat]
+        if (fields) {
+          finalPrompt += `- NON estrarre: ${fields.join(', ')} — lascia questi campi vuoti\n`
         }
       }
-    };
-
-    // Filtra dinamicamente i campi in base alla selezione dell'utente
-    const vProps = ocrSchema.properties.veicoli.items.properties as Record<string, any>;
-    
-    if (!privacyFields.includes('intestazione')) {
-      delete (ocrSchema.properties as any).controllo;
-    }
-    if (!privacyFields.includes('veicolo')) {
-      delete vProps.ora_controllo;
-      delete vProps.veicolo;
-      delete vProps.targa;
-      delete vProps.marca_modello;
-      delete vProps.ultima_revisione;
-      delete vProps.assicurazione;
-      delete vProps.assicurato_fino;
-    }
-    if (!privacyFields.includes('proprietario')) {
-      delete vProps.proprietario_cognome;
-      delete vProps.proprietario_nome;
-      delete vProps.proprietario_data_nascita;
-      delete vProps.proprietario_luogo_nascita;
-      delete vProps.proprietario_residenza;
-      delete vProps.proprietario_indirizzo;
-    }
-    if (!privacyFields.includes('conducente')) {
-      delete vProps.conducente_stesso_prop;
-      delete vProps.conducente_cognome;
-      delete vProps.conducente_nome;
-      delete vProps.conducente_data_nascita;
-      delete vProps.conducente_luogo_nascita;
-      delete vProps.conducente_residenza;
-      delete vProps.conducente_indirizzo;
-    }
-    if (!privacyFields.includes('patente')) {
-      delete vProps.patente_numero;
-      delete vProps.patente_rilasciata_da;
-      delete vProps.patente_data_rilascio;
-      delete vProps.patente_validita_fino;
-    }
-    if (!privacyFields.includes('sanzione')) {
-      delete vProps.sanzione_elevata;
-      delete vProps.sanzione_accessoria;
-    }
-    if (!privacyFields.includes('passeggero')) {
-      delete vProps.passeggero_cognome;
-      delete vProps.passeggero_nome;
-      delete vProps.passeggero_data_nascita;
-      delete vProps.passeggero_luogo_nascita;
-      delete vProps.passeggero_residenza;
-      delete vProps.passeggero_indirizzo;
     }
 
-    // Costruisci il prompt aggiungendo istruzioni dinamiche
-    let finalPrompt = OCR_PROMPT;
-    if (privacyFields.length < 7) {
-      finalPrompt += `\n- ATTENZIONE: Alcuni campi privacy sono stati disabilitati. IGNORA CATEGORICAMENTE e non restituire alcun dato per i blocchi che non sono presenti nella struttura JSON richiesta.`;
-    }
+    // Use configurable model (default Pro for better handwriting recognition)
+    const modelName = process.env.GEMINI_OCR_MODEL || DEFAULT_MODEL
 
-    // Call Gemini Vision API
-    const geminiRes = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+    // Call Gemini Vision API — no responseSchema for better handwriting recognition
+    const geminiRes = await fetch(`${GEMINI_API_URL}/${modelName}:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -240,10 +170,9 @@ export async function POST(req: Request) {
           ]
         }],
         generationConfig: {
-          temperature: 0.1,
+          temperature: 0.2,
           maxOutputTokens: 8192,
-          responseMimeType: "application/json",
-          responseSchema: ocrSchema
+          responseMimeType: "application/json"
         },
         safetySettings: [
           { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
@@ -256,7 +185,7 @@ export async function POST(req: Request) {
 
     if (!geminiRes.ok) {
       const errText = await geminiRes.text()
-      console.error('[OCR_IMPORT] Gemini API error:', errText)
+      console.error('[OCR_IMPORT] Gemini API error:', errText.substring(0, 500))
       return NextResponse.json({ error: `Errore API Gemini: ${geminiRes.status}` }, { status: 502 })
     }
 
@@ -268,7 +197,6 @@ export async function POST(req: Request) {
     // Parse JSON from response (may be wrapped in markdown code block)
     let parsedData: any
     try {
-      // Remove markdown backticks if present
       let jsonStr = rawText.trim()
       if (jsonStr.startsWith('```json')) jsonStr = jsonStr.slice(7)
       else if (jsonStr.startsWith('```')) jsonStr = jsonStr.slice(3)
@@ -284,11 +212,29 @@ export async function POST(req: Request) {
       }, { status: 422 })
     }
 
+    // Strip fields excluded by privacy filters from the parsed response
+    if (privacyFields.length < ALL_PRIVACY_FIELDS.length) {
+      if (!privacyFields.includes('intestazione')) {
+        parsedData.controllo = {}
+      }
+      for (const cat of ALL_PRIVACY_FIELDS) {
+        if (!privacyFields.includes(cat) && PRIVACY_FIELD_GROUPS[cat]) {
+          const vehicles = parsedData.veicoli || []
+          for (const v of vehicles) {
+            for (const field of PRIVACY_FIELD_GROUPS[cat]) {
+              delete v[field]
+            }
+          }
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
       filename: file.name,
       controllo: parsedData.controllo || {},
       veicoli: parsedData.veicoli || [],
+      model: modelName,
       rawText: rawText.substring(0, 500) // debug info
     })
 
