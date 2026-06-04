@@ -92,6 +92,52 @@ const PRIVACY_FIELD_GROUPS: Record<string, string[]> = {
   passeggero: ['passeggero_cognome', 'passeggero_nome', 'passeggero_data_nascita', 'passeggero_luogo_nascita', 'passeggero_residenza', 'passeggero_indirizzo'],
 }
 
+/**
+ * Tenta di recuperare un JSON troncato (MAX_TOKENS) chiudendo stringhe/array/oggetti aperti.
+ * Restituisce l'oggetto parsato o null se impossibile.
+ */
+function salvageTruncatedJson(rawText: string): any | null {
+  try {
+    let text = rawText.trim()
+    // Strip markdown
+    text = text.replace(/^```(?:json)?\s*\n?/i, '')
+    text = text.replace(/\n?\s*```$/i, '')
+
+    if (!text.includes('{')) return null
+
+    // Trova l'ultima occorrenza di "veicolo" o "targa" per capire dove siamo
+    const lastVeicoloIdx = text.lastIndexOf('"veicolo"')
+    const lastTargaIdx = text.lastIndexOf('"targa"')
+
+    // Rimuovi l'ultimo veicolo incompleto: trova l'ultima { prima del veicolo interrotto
+    const lastOpenBrace = text.lastIndexOf('{')
+    // Trova la penultima { (inizio dell'ultimo veicolo completo o quasi)
+    const beforeLast = text.lastIndexOf('{', lastOpenBrace - 1)
+
+    if (beforeLast > 0) {
+      // Tronca all'ultimo veicolo completo
+      let truncated = text.substring(0, beforeLast).trim()
+
+      // Rimuovi virgola finale se presente
+      if (truncated.endsWith(',')) {
+        truncated = truncated.substring(0, truncated.length - 1)
+      }
+
+      // Close the veicoli array and the main object
+      truncated += '\n    ]\n  }\n}'
+
+      const parsed = JSON.parse(truncated)
+      if (parsed.veicoli && Array.isArray(parsed.veicoli) && parsed.veicoli.length > 0) {
+        return parsed
+      }
+    }
+
+    return null
+  } catch {
+    return null
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const session = await auth()
@@ -183,7 +229,7 @@ export async function POST(req: Request) {
             }],
             generationConfig: {
               temperature: 0.2,
-              maxOutputTokens: 8192
+              maxOutputTokens: 16384
             },
             safetySettings: [
               { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
@@ -225,20 +271,28 @@ export async function POST(req: Request) {
 
     const geminiData = await geminiRes.json()
     const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    const finishReason = geminiData.candidates?.[0]?.finishReason || ''
 
     if (!rawText.trim()) {
-      console.error('[OCR_IMPORT] Empty response from Gemini')
+      console.error('[OCR_IMPORT] Empty response from Gemini, finishReason:', finishReason)
       return NextResponse.json({
-        error: 'Nessun testo estratto. La scheda potrebbe essere illeggibile o vuota.',
+        error: finishReason === 'MAX_TOKENS'
+          ? 'Risposta troncata (token massimi raggiunti). Riprova con una scansione a risoluzione più bassa.'
+          : 'Nessun testo estratto. La scheda potrebbe essere illeggibile o vuota.',
       }, { status: 422 })
     }
 
+    const wasTruncated = finishReason === 'MAX_TOKENS'
+
+    // Extract JSON from response
     let parsedData: any
     try {
       let jsonStr = rawText.trim()
+      // Strip markdown code fences
       jsonStr = jsonStr.replace(/^```(?:json)?\s*\n?/i, '')
       jsonStr = jsonStr.replace(/\n?\s*```$/i, '')
 
+      // If still not valid JSON, try first { to last }
       if (!jsonStr.startsWith('{')) {
         const firstBrace = jsonStr.indexOf('{')
         const lastBrace = jsonStr.lastIndexOf('}')
@@ -247,17 +301,35 @@ export async function POST(req: Request) {
         }
       }
 
-      parsedData = JSON.parse(jsonStr.trim())
-      parsedData.controllo = parsedData.controllo || {}
-      parsedData.veicoli = Array.isArray(parsedData.veicoli) ? parsedData.veicoli : []
+      jsonStr = jsonStr.trim()
+
+      if (!jsonStr) throw new Error('No JSON content found')
+
+      parsedData = JSON.parse(jsonStr)
+
     } catch (parseError) {
-      console.error('[OCR_IMPORT] JSON parse error:', parseError)
-      console.error('[OCR_IMPORT] Raw text:', rawText.substring(0, 1000))
-      return NextResponse.json({
-        error: 'Impossibile interpretare i dati dalla scheda. Verifica che la scansione sia nitida e ben illuminata.',
-        rawText: rawText.substring(0, 3000),
-      }, { status: 422 })
+      // Truncated JSON? Try to salvage by closing open structures
+      console.warn('[OCR_IMPORT] JSON parse failed, attempting salvage...')
+      const salvaged = salvageTruncatedJson(rawText)
+      if (salvaged) {
+        parsedData = salvaged
+        console.log('[OCR_IMPORT] Salvaged partial JSON:', parsedData.veicoli?.length, 'vehicles')
+      } else {
+        console.error('[OCR_IMPORT] JSON parse error:', parseError)
+        console.error('[OCR_IMPORT] Raw text:', rawText.substring(0, 1000))
+        return NextResponse.json({
+          error: `Impossibile interpretare i dati dalla scheda. ${wasTruncated ? 'La risposta AI è stata troncata (MAX_TOKENS). Riprova con un file più piccolo.' : 'Verifica che la scansione sia nitida e ben illuminata.'}`,
+          rawText: rawText.substring(0, 3000),
+        }, { status: 422 })
+      }
     }
+
+    // Ensure required structure
+    parsedData.controllo = parsedData.controllo || {}
+    parsedData.veicoli = Array.isArray(parsedData.veicoli) ? parsedData.veicoli : []
+
+    // Filter out incomplete vehicle entries (missing targa or truncated)
+    parsedData.veicoli = parsedData.veicoli.filter((v: any) => v.targa && v.targa.length >= 4)
 
     // Post-processing: strip privacy-excluded fields from parsed response
     if (privacyFields.length < ALL_PRIVACY_FIELDS.length) {
