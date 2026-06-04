@@ -342,6 +342,21 @@ export default function AgentHeader({
                   </>
                 )}
               </HoldButton>
+              
+              <Link 
+                href={`/${tenantSlug || ''}/agent/posti-controllo`}
+                className="bg-blue-600 hover:bg-blue-500 p-4 sm:p-6 rounded-[2rem] sm:rounded-[2.5rem] flex flex-col justify-between h-32 sm:h-40 shadow-2xl shadow-blue-900/40 transition-all active:scale-95 group border border-blue-400/20 col-span-2 xl:col-span-1"
+              >
+                <div className="p-4 bg-white/20 rounded-2xl w-fit group-hover:scale-110 transition-transform">
+                  <ShieldCheck className="text-white" size={24} />
+                </div>
+                <div className="text-left relative z-10">
+                  <p className="text-[10px] text-blue-200 font-black uppercase tracking-widest mb-1">
+                    Gestione
+                  </p>
+                  <p className="text-xl font-black text-white uppercase tracking-tighter">Posti di Controllo</p>
+                </div>
+              </Link>
             </div>
             
             <div className="flex flex-col gap-4">

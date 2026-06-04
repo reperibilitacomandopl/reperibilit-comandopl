@@ -89,9 +89,19 @@ export default function CheckpointManager() {
   // New vehicle form
   const [vehicleForm, setVehicleForm] = useState({
     oraControllo: "", targa: "", tipoVeicolo: "AUTOVETTURA", marcaModello: "",
-    proprietarioNome: "", proprietarioCognome: "", conducenteStessoProp: true,
+    ultimaRevisione: "", assicurazione: "", assicuratoFino: "",
+    proprietarioNome: "", proprietarioCognome: "", proprietarioDataNascita: "",
+    proprietarioLuogoNascita: "", proprietarioResidenza: "", proprietarioIndirizzo: "",
+    conducenteStessoProp: true,
+    conducenteNome: "", conducenteCognome: "", conducenteDataNascita: "",
+    conducenteLuogoNascita: "", conducenteResidenza: "", conducenteIndirizzo: "",
+    patenteNumero: "", patenteRilasciataDa: "", patenteDataRilascio: "", patenteValiditaFino: "",
+    passeggeroNome: "", passeggeroCognome: "", passeggeroDataNascita: "",
+    passeggeroLuogoNascita: "", passeggeroResidenza: "", passeggeroIndirizzo: "",
     sanzioneElevata: "", sanzioneAccessoria: ""
   })
+  
+  const [activeSection, setActiveSection] = useState("dati_base")
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -158,7 +168,19 @@ export default function CheckpointManager() {
         body: JSON.stringify(vehicleForm)
       })
       if (res.ok) {
-        setVehicleForm({ oraControllo: "", targa: "", tipoVeicolo: "AUTOVETTURA", marcaModello: "", proprietarioNome: "", proprietarioCognome: "", conducenteStessoProp: true, sanzioneElevata: "", sanzioneAccessoria: "" })
+        setVehicleForm({
+          oraControllo: "", targa: "", tipoVeicolo: "AUTOVETTURA", marcaModello: "",
+          ultimaRevisione: "", assicurazione: "", assicuratoFino: "",
+          proprietarioNome: "", proprietarioCognome: "", proprietarioDataNascita: "",
+          proprietarioLuogoNascita: "", proprietarioResidenza: "", proprietarioIndirizzo: "",
+          conducenteStessoProp: true,
+          conducenteNome: "", conducenteCognome: "", conducenteDataNascita: "",
+          conducenteLuogoNascita: "", conducenteResidenza: "", conducenteIndirizzo: "",
+          patenteNumero: "", patenteRilasciataDa: "", patenteDataRilascio: "", patenteValiditaFino: "",
+          passeggeroNome: "", passeggeroCognome: "", passeggeroDataNascita: "",
+          passeggeroLuogoNascita: "", passeggeroResidenza: "", passeggeroIndirizzo: "",
+          sanzioneElevata: "", sanzioneAccessoria: ""
+        })
         setShowVehicleForm(null)
         expandCheckpoint(checkpointId)
         fetchData()
@@ -362,29 +384,118 @@ export default function CheckpointManager() {
 
                             {/* Add vehicle form */}
                             {showVehicleForm === c.id && (
-                              <div className={`p-4 rounded-2xl border ${cardBg} space-y-3`}>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                  <input placeholder="Ora (HH:MM)" value={vehicleForm.oraControllo} onChange={e => setVehicleForm(f => ({...f, oraControllo: e.target.value}))} className={`px-3 py-2 rounded-lg border text-sm ${inputBg}`} />
-                                  <input placeholder="Targa *" value={vehicleForm.targa} onChange={e => setVehicleForm(f => ({...f, targa: e.target.value.toUpperCase()}))} className={`px-3 py-2 rounded-lg border text-sm font-bold ${inputBg}`} />
-                                  <input placeholder="Tipo (es. Autovettura)" value={vehicleForm.tipoVeicolo} onChange={e => setVehicleForm(f => ({...f, tipoVeicolo: e.target.value}))} className={`px-3 py-2 rounded-lg border text-sm ${inputBg}`} />
-                                  <input placeholder="Marca / Modello" value={vehicleForm.marcaModello} onChange={e => setVehicleForm(f => ({...f, marcaModello: e.target.value}))} className={`px-3 py-2 rounded-lg border text-sm ${inputBg}`} />
+                              <div className={`p-4 rounded-2xl border ${cardBg} space-y-4`}>
+                                {/* Tabs */}
+                                <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide">
+                                  {[
+                                    {id: "dati_base", label: "Veicolo"},
+                                    {id: "proprietario", label: "Proprietario"},
+                                    {id: "conducente", label: "Conducente"},
+                                    {id: "patente", label: "Patente"},
+                                    {id: "passeggero", label: "Passeggero"},
+                                    {id: "sanzioni", label: "Sanzioni"}
+                                  ].map(sec => (
+                                    <button key={sec.id} onClick={() => setActiveSection(sec.id)}
+                                      className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${activeSection === sec.id ? "bg-blue-600 text-white" : isDark ? "bg-white/5 hover:bg-white/10" : "bg-slate-100 hover:bg-slate-200"}`}>
+                                      {sec.label}
+                                    </button>
+                                  ))}
                                 </div>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                  <input placeholder="Cognome proprietario" value={vehicleForm.proprietarioCognome} onChange={e => setVehicleForm(f => ({...f, proprietarioCognome: e.target.value}))} className={`px-3 py-2 rounded-lg border text-sm ${inputBg}`} />
-                                  <input placeholder="Nome proprietario" value={vehicleForm.proprietarioNome} onChange={e => setVehicleForm(f => ({...f, proprietarioNome: e.target.value}))} className={`px-3 py-2 rounded-lg border text-sm ${inputBg}`} />
-                                  <input placeholder="Sanzione elevata (art.)" value={vehicleForm.sanzioneElevata} onChange={e => setVehicleForm(f => ({...f, sanzioneElevata: e.target.value}))} className={`px-3 py-2 rounded-lg border text-sm ${inputBg}`} />
-                                  <input placeholder="Sanzione accessoria" value={vehicleForm.sanzioneAccessoria} onChange={e => setVehicleForm(f => ({...f, sanzioneAccessoria: e.target.value}))} className={`px-3 py-2 rounded-lg border text-sm ${inputBg}`} />
+
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
+                                  {activeSection === "dati_base" && (
+                                    <>
+                                      <input placeholder="Targa *" value={vehicleForm.targa} onChange={e => setVehicleForm(f => ({...f, targa: e.target.value.toUpperCase()}))} className={`col-span-2 px-3 py-2.5 rounded-xl border text-base font-black tracking-widest ${inputBg}`} />
+                                      <input placeholder="Ora (HH:MM)" value={vehicleForm.oraControllo} onChange={e => setVehicleForm(f => ({...f, oraControllo: e.target.value}))} className={`px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                      <input placeholder="Tipo (es. Auto)" value={vehicleForm.tipoVeicolo} onChange={e => setVehicleForm(f => ({...f, tipoVeicolo: e.target.value}))} className={`px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                      <input placeholder="Marca/Modello" value={vehicleForm.marcaModello} onChange={e => setVehicleForm(f => ({...f, marcaModello: e.target.value}))} className={`px-3 py-2 col-span-2 rounded-xl border text-sm ${inputBg}`} />
+                                      <div className="col-span-2 space-y-1">
+                                        <label className="text-[10px] font-bold uppercase opacity-60">Scadenza Revisione</label>
+                                        <input type="date" value={vehicleForm.ultimaRevisione} onChange={e => setVehicleForm(f => ({...f, ultimaRevisione: e.target.value}))} className={`w-full px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                      </div>
+                                      <input placeholder="Compagnia Assicurativa" value={vehicleForm.assicurazione} onChange={e => setVehicleForm(f => ({...f, assicurazione: e.target.value}))} className={`col-span-2 px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                      <div className="col-span-2 space-y-1">
+                                        <label className="text-[10px] font-bold uppercase opacity-60">Scadenza Assicurazione</label>
+                                        <input type="date" value={vehicleForm.assicuratoFino} onChange={e => setVehicleForm(f => ({...f, assicuratoFino: e.target.value}))} className={`w-full px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                      </div>
+                                    </>
+                                  )}
+
+                                  {activeSection === "proprietario" && (
+                                    <>
+                                      <input placeholder="Cognome Proprietario" value={vehicleForm.proprietarioCognome} onChange={e => setVehicleForm(f => ({...f, proprietarioCognome: e.target.value}))} className={`col-span-2 px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                      <input placeholder="Nome Proprietario" value={vehicleForm.proprietarioNome} onChange={e => setVehicleForm(f => ({...f, proprietarioNome: e.target.value}))} className={`col-span-2 px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                      <div className="col-span-2 md:col-span-4 space-y-1">
+                                        <label className="text-[10px] font-bold uppercase opacity-60">Data di Nascita</label>
+                                        <input type="date" value={vehicleForm.proprietarioDataNascita} onChange={e => setVehicleForm(f => ({...f, proprietarioDataNascita: e.target.value}))} className={`w-full px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                      </div>
+                                      <input placeholder="Luogo di Nascita" value={vehicleForm.proprietarioLuogoNascita} onChange={e => setVehicleForm(f => ({...f, proprietarioLuogoNascita: e.target.value}))} className={`col-span-2 md:col-span-4 px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                      <input placeholder="Residenza (Citta)" value={vehicleForm.proprietarioResidenza} onChange={e => setVehicleForm(f => ({...f, proprietarioResidenza: e.target.value}))} className={`col-span-2 px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                      <input placeholder="Indirizzo" value={vehicleForm.proprietarioIndirizzo} onChange={e => setVehicleForm(f => ({...f, proprietarioIndirizzo: e.target.value}))} className={`col-span-2 px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                    </>
+                                  )}
+
+                                  {activeSection === "conducente" && (
+                                    <>
+                                      <label className="col-span-2 md:col-span-4 flex items-center gap-2 text-xs font-bold bg-black/5 dark:bg-white/5 p-2 rounded-lg cursor-pointer">
+                                        <input type="checkbox" checked={vehicleForm.conducenteStessoProp} onChange={e => setVehicleForm(f => ({...f, conducenteStessoProp: e.target.checked}))} className="rounded" />
+                                        Il Conducente è il Proprietario
+                                      </label>
+                                      {!vehicleForm.conducenteStessoProp && (
+                                        <>
+                                          <input placeholder="Cognome Conducente" value={vehicleForm.conducenteCognome} onChange={e => setVehicleForm(f => ({...f, conducenteCognome: e.target.value}))} className={`col-span-2 px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                          <input placeholder="Nome Conducente" value={vehicleForm.conducenteNome} onChange={e => setVehicleForm(f => ({...f, conducenteNome: e.target.value}))} className={`col-span-2 px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                          <div className="col-span-2 md:col-span-4 space-y-1">
+                                            <label className="text-[10px] font-bold uppercase opacity-60">Data di Nascita</label>
+                                            <input type="date" value={vehicleForm.conducenteDataNascita} onChange={e => setVehicleForm(f => ({...f, conducenteDataNascita: e.target.value}))} className={`w-full px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                          </div>
+                                          <input placeholder="Luogo di Nascita" value={vehicleForm.conducenteLuogoNascita} onChange={e => setVehicleForm(f => ({...f, conducenteLuogoNascita: e.target.value}))} className={`col-span-2 md:col-span-4 px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                          <input placeholder="Residenza (Citta)" value={vehicleForm.conducenteResidenza} onChange={e => setVehicleForm(f => ({...f, conducenteResidenza: e.target.value}))} className={`col-span-2 px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                          <input placeholder="Indirizzo" value={vehicleForm.conducenteIndirizzo} onChange={e => setVehicleForm(f => ({...f, conducenteIndirizzo: e.target.value}))} className={`col-span-2 px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                        </>
+                                      )}
+                                    </>
+                                  )}
+
+                                  {activeSection === "patente" && (
+                                    <>
+                                      <input placeholder="Numero Patente" value={vehicleForm.patenteNumero} onChange={e => setVehicleForm(f => ({...f, patenteNumero: e.target.value}))} className={`col-span-2 px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                      <input placeholder="Rilasciata Da (es. MIT, Prefettura)" value={vehicleForm.patenteRilasciataDa} onChange={e => setVehicleForm(f => ({...f, patenteRilasciataDa: e.target.value}))} className={`col-span-2 px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                      <div className="col-span-2 space-y-1">
+                                        <label className="text-[10px] font-bold uppercase opacity-60">Data Rilascio</label>
+                                        <input type="date" value={vehicleForm.patenteDataRilascio} onChange={e => setVehicleForm(f => ({...f, patenteDataRilascio: e.target.value}))} className={`w-full px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                      </div>
+                                      <div className="col-span-2 space-y-1">
+                                        <label className="text-[10px] font-bold uppercase opacity-60">Scadenza Patente</label>
+                                        <input type="date" value={vehicleForm.patenteValiditaFino} onChange={e => setVehicleForm(f => ({...f, patenteValiditaFino: e.target.value}))} className={`w-full px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                      </div>
+                                    </>
+                                  )}
+
+                                  {activeSection === "passeggero" && (
+                                    <>
+                                      <input placeholder="Cognome Passeggero" value={vehicleForm.passeggeroCognome} onChange={e => setVehicleForm(f => ({...f, passeggeroCognome: e.target.value}))} className={`col-span-2 px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                      <input placeholder="Nome Passeggero" value={vehicleForm.passeggeroNome} onChange={e => setVehicleForm(f => ({...f, passeggeroNome: e.target.value}))} className={`col-span-2 px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                      <div className="col-span-2 md:col-span-4 space-y-1">
+                                        <label className="text-[10px] font-bold uppercase opacity-60">Data di Nascita</label>
+                                        <input type="date" value={vehicleForm.passeggeroDataNascita} onChange={e => setVehicleForm(f => ({...f, passeggeroDataNascita: e.target.value}))} className={`w-full px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                      </div>
+                                      <input placeholder="Luogo di Nascita" value={vehicleForm.passeggeroLuogoNascita} onChange={e => setVehicleForm(f => ({...f, passeggeroLuogoNascita: e.target.value}))} className={`col-span-2 md:col-span-4 px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                    </>
+                                  )}
+
+                                  {activeSection === "sanzioni" && (
+                                    <>
+                                      <input placeholder="Sanzione Elevata (Articolo/i)" value={vehicleForm.sanzioneElevata} onChange={e => setVehicleForm(f => ({...f, sanzioneElevata: e.target.value}))} className={`col-span-2 md:col-span-4 px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                      <input placeholder="Sanzioni Accessorie (es. Sequestro)" value={vehicleForm.sanzioneAccessoria} onChange={e => setVehicleForm(f => ({...f, sanzioneAccessoria: e.target.value}))} className={`col-span-2 md:col-span-4 px-3 py-2 rounded-xl border text-sm ${inputBg}`} />
+                                    </>
+                                  )}
                                 </div>
-                                <div className="flex gap-2">
-                                  <label className="flex items-center gap-2 text-xs font-bold">
-                                    <input type="checkbox" checked={vehicleForm.conducenteStessoProp} onChange={e => setVehicleForm(f => ({...f, conducenteStessoProp: e.target.checked}))} className="rounded" />
-                                    Conducente = Proprietario
-                                  </label>
-                                </div>
-                                <div className="flex gap-2 justify-end">
-                                  <button onClick={() => setShowVehicleForm(null)} className={`px-4 py-2 text-xs font-bold rounded-lg ${isDark ? "bg-white/5 hover:bg-white/10" : "bg-slate-100 hover:bg-slate-200"}`}>Annulla</button>
-                                  <button onClick={() => addVehicle(c.id)} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg">
-                                    <Save size={14} className="inline mr-1" /> Salva
+                                
+                                <div className="flex gap-2 justify-end pt-2">
+                                  <button onClick={() => setShowVehicleForm(null)} className={`px-4 py-2.5 text-xs font-bold rounded-xl ${isDark ? "bg-white/5 hover:bg-white/10" : "bg-slate-100 hover:bg-slate-200"}`}>Annulla</button>
+                                  <button onClick={() => addVehicle(c.id)} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-blue-600/20">
+                                    <Save size={14} className="inline mr-1" /> Salva Veicolo
                                   </button>
                                 </div>
                               </div>
