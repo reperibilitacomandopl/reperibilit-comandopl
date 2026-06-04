@@ -290,7 +290,11 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
             {preview ? (
               <div className={`rounded-3xl border ${cardBg} p-2 overflow-hidden shadow-sm`}>
                 {(file?.type === 'application/pdf' || file?.name.toLowerCase().endsWith('.pdf')) ? (
-                  <iframe src={preview} title="Anteprima PDF" className="w-full h-[85vh] rounded-2xl bg-white border-0" />
+                  <object data={preview} type="application/pdf" className="w-full h-[85vh] rounded-2xl bg-white border-0">
+                    <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-slate-100 rounded-2xl text-slate-500">
+                      <p>Il tuo browser non supporta l'anteprima PDF inline.</p>
+                    </div>
+                  </object>
                 ) : (
                   <img src={preview} alt="Anteprima Scheda" className="w-full h-auto max-h-[85vh] object-contain rounded-2xl bg-slate-100 dark:bg-slate-800" />
                 )}
@@ -359,11 +363,11 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
                     {v.sanzione_elevata && <span className="px-2 py-0.5 bg-amber-500/10 text-amber-500 text-xs font-bold rounded-lg">Sanzione</span>}
                   </div>
                   <div className="flex items-center gap-2">
+                    {expandedVehicle === idx ? <ChevronUp size={20} className={mutedText} /> : <ChevronDown size={20} className={mutedText} />}
                     <button onClick={(e) => { e.stopPropagation(); removeVehicle(idx) }}
-                      className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white transition-all">
+                      className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white transition-all ml-2">
                       <Trash2 size={14} />
                     </button>
-                    {expandedVehicle === idx ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                   </div>
                 </div>
 
