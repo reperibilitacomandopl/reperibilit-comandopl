@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from "react"
 import {
   Upload, FileText, Eye, Save, AlertTriangle, CheckCircle,
-  Loader2, RotateCw, X, ChevronDown, ChevronUp, Edit3, Trash2
+  Loader2, RotateCw, X, ChevronDown, ChevronUp, Edit3, Trash2, Camera
 } from "lucide-react"
 
 type OcrVehicle = {
