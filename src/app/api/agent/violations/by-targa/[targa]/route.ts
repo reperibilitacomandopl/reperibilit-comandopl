@@ -4,15 +4,16 @@ import { auth } from '@/auth'
 
 export async function GET(
   req: Request,
-  { params }: { params: { targa: string } }
+  { params }: { params: Promise<{ targa: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const session = await auth()
     if (!session?.user?.id || !session.user.tenantId) {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
     }
 
-    const targa = params.targa?.toUpperCase().trim()
+    const targa = resolvedParams.targa?.toUpperCase().trim()
     
     if (!targa) {
       return NextResponse.json({ error: 'Targa mancante' }, { status: 400 })
