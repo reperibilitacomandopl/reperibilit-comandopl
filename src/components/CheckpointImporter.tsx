@@ -41,6 +41,7 @@ type OcrVehicle = {
   passeggero_luogo_nascita?: string
   passeggero_residenza?: string
   passeggero_indirizzo?: string
+  violation_id?: string
 }
 
 type OcrResult = {
@@ -62,6 +63,7 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
   const [error, setError] = useState<string | null>(null)
   const [privacyFields, setPrivacyFields] = useState<string[]>(ALL_PRIVACY_FIELDS)
   const [expandedVehicle, setExpandedVehicle] = useState<number | null>(null)
+  const [matchedViolations, setMatchedViolations] = useState<Record<number, any[]>>({})
   const [saveResult, setSaveResult] = useState<any>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -183,6 +185,18 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
     setOcrResult(null)
     setError(null)
     setSaveResult(null)
+    setMatchedViolations({})
+  }
+
+  const loadViolations = async (idx: number, targa?: string) => {
+    if (!targa || matchedViolations[idx]) return;
+    try {
+      const res = await fetch(`/api/agent/violations/by-targa/${targa}`)
+      const data = await res.json()
+      setMatchedViolations(prev => ({...prev, [idx]: data}))
+    } catch (err) {
+      console.error('Errore fetch verbali', err)
+    }
   }
 
   return (
@@ -356,7 +370,11 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
             {ocrResult.veicoli.map((v, idx) => (
               <div key={idx} className={`rounded-2xl border ${cardBg} overflow-hidden shadow-sm`}>
                 {/* Vehicle summary bar */}
-                <div className="p-4 flex items-center justify-between cursor-pointer" onClick={() => setExpandedVehicle(expandedVehicle === idx ? null : idx)}>
+                <div className="p-4 flex items-center justify-between cursor-pointer" onClick={() => {
+                  const newIdx = expandedVehicle === idx ? null : idx
+                  setExpandedVehicle(newIdx)
+                  if (newIdx !== null) loadViolations(idx, v.targa)
+                }}>
                   <div className="flex items-center gap-4">
                     <span className="text-lg font-black tracking-widest text-blue-500">{v.targa || '???'}</span>
                     <span className={`text-sm ${mutedText}`}>{v.veicolo} {v.marca_modello ? `• ${v.marca_modello}` : ''}</span>
@@ -430,10 +448,33 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
                     {/* Sanzioni */}
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2">Sanzioni</p>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                         <InputField label="Sanzione elevata" value={v.sanzione_elevata} onChange={val => updateVehicleField(idx, 'sanzione_elevata', val)} inputBg={inputBg} />
                         <InputField label="Sanzione accessoria" value={v.sanzione_accessoria} onChange={val => updateVehicleField(idx, 'sanzione_accessoria', val)} inputBg={inputBg} />
                       </div>
+                      
+                      {/* Collega a verbale esistente */}
+                      {(v.sanzione_elevata || matchedViolations[idx]?.length > 0) && (
+                        <div className={`p-3 rounded-xl border ${isDark ? "border-amber-500/20 bg-amber-500/5" : "border-amber-500/30 bg-amber-50"}`}>
+                          <label className="text-xs font-bold text-amber-600 dark:text-amber-500 mb-1.5 block flex items-center gap-2">
+                            <Shield size={14} /> Collega al Verbale (Ricerca automatica per targa: {v.targa})
+                          </label>
+                          <select 
+                            value={v.violation_id || ""} 
+                            onChange={(e) => updateVehicleField(idx, 'violation_id', e.target.value)}
+                            className={`w-full px-3 py-2 rounded-lg border text-sm font-bold ${inputBg} ${isDark ? "border-amber-500/30" : "border-amber-500/50"}`}
+                          >
+                            <option value="">-- Nessun verbale collegato (Salva solo testo) --</option>
+                            {matchedViolations[idx]?.map((viol: any) => (
+                              <option key={viol.id} value={viol.id}>
+                                Verbale {viol.documentType} del {new Date(viol.createdAt).toLocaleDateString()} - Art. {viol.cdsViolation?.articolo?.articolo} {viol.cdsViolation?.comma ? `c. ${viol.cdsViolation.comma}` : ''} - €{viol.importo}
+                              </option>
+                            ))}
+                          </select>
+                          {!matchedViolations[idx] && <p className="text-xs opacity-60 mt-2 animate-pulse">Ricerca verbali in corso...</p>}
+                          {matchedViolations[idx]?.length === 0 && <p className="text-xs opacity-60 mt-2">Nessun verbale recente trovato per questa targa.</p>}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

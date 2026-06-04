@@ -1027,6 +1027,8 @@ model Violation {
   createdAt                   DateTime           @default(now())
   updatedAt                   DateTime           @updatedAt
   deletedAt                   DateTime?
+  
+  checkedVehicles             CheckedVehicle[]   @relation("CheckedVehicleToViolation")
   cdsViolation                CdsViolation?      @relation("ViolationToCdsViolation", fields: [cdsViolationId], references: [id])
   tenant                      Tenant?            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user                        User               @relation("UserViolations", fields: [userId], references: [id])
@@ -1499,6 +1501,9 @@ model CheckedVehicle {
   // Sanzioni
   sanzioneElevata          String?
   sanzioneAccessoria       String?
+
+  violationId              String?
+  violation                Violation?  @relation("CheckedVehicleToViolation", fields: [violationId], references: [id])
 
   createdAt                DateTime    @default(now())
   updatedAt                DateTime    @updatedAt
