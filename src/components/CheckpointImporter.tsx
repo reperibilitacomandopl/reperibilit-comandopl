@@ -53,6 +53,8 @@ type OcrResult = {
     operatori?: string
   }
   veicoli: OcrVehicle[]
+  model?: string
+  warning?: string
 }
 
 export default function CheckpointImporter({ isDark, onImportComplete }: { isDark: boolean; onImportComplete: () => void }) {
@@ -117,8 +119,10 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
 
       setOcrResult({
         controllo: data.controllo || {},
-        veicoli: (data.veicoli || [])
-      })
+        veicoli: (data.veicoli || []),
+        model: data.model,
+        warning: data.warning
+      } as any)
       setStep("review")
 
     } catch (err) {
@@ -327,6 +331,13 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
               <Edit3 size={20} className="text-amber-500" /> Revisiona i Dati Estratti
             </h2>
             <p className={`text-sm mb-6 ${mutedText}`}>Verifica e correggi i dati estratti dall'OCR prima di salvare.</p>
+
+            {ocrResult.warning && (
+              <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-600 dark:text-amber-400 text-sm font-bold flex items-center gap-2">
+                <AlertTriangle size={16} /> {ocrResult.warning}
+                {ocrResult.model && <span className="text-xs opacity-60 ml-auto">Modello: {ocrResult.model}</span>}
+              </div>
+            )}
 
             {error && (
               <div className="mb-4 p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 text-sm font-bold flex items-center gap-2">

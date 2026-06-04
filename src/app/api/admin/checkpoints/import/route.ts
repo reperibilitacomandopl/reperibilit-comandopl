@@ -232,21 +232,63 @@ export async function POST(req: Request) {
     // Extract text from Gemini response
     const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || ''
 
-    // Parse JSON from response (may be wrapped in markdown code block)
+    if (!rawText.trim()) {
+      console.error('[OCR_IMPORT] Empty response from Gemini')
+      return NextResponse.json({
+        error: 'Nessun testo estratto. La scheda potrebbe essere illeggibile o vuota.',
+        rawText: ''
+      }, { status: 422 })
+    }
+
+    // Robust JSON extraction
     let parsedData: any
     try {
       let jsonStr = rawText.trim()
-      if (jsonStr.startsWith('```json')) jsonStr = jsonStr.slice(7)
-      else if (jsonStr.startsWith('```')) jsonStr = jsonStr.slice(3)
-      if (jsonStr.endsWith('```')) jsonStr = jsonStr.slice(0, -3)
+
+      // Strip markdown code fences
+      jsonStr = jsonStr.replace(/^```(?:json)?\s*\n?/i, '')
+      jsonStr = jsonStr.replace(/\n?\s*```$/i, '')
+
+      // If still not valid JSON, try to extract from first { to last }
+      if (!jsonStr.startsWith('{')) {
+        const firstBrace = jsonStr.indexOf('{')
+        const lastBrace = jsonStr.lastIndexOf('}')
+        if (firstBrace >= 0 && lastBrace > firstBrace) {
+          jsonStr = jsonStr.substring(firstBrace, lastBrace + 1)
+        }
+      }
+
       jsonStr = jsonStr.trim()
 
+      if (!jsonStr) {
+        throw new Error('No JSON content found in response')
+      }
+
       parsedData = JSON.parse(jsonStr)
+
+      // Ensure required structure exists
+      parsedData.controllo = parsedData.controllo || {}
+      parsedData.veicoli = Array.isArray(parsedData.veicoli) ? parsedData.veicoli : []
+
+      // Friendly message if nothing was found
+      const isEmpty = !parsedData.veicoli.length
+        && !parsedData.controllo.data_controllo
+        && !parsedData.controllo.luogo
+        && !parsedData.controllo.operatori
+
+      if (isEmpty) {
+        console.warn('[OCR_IMPORT] Gemini returned empty data')
+        // Non blocchiamo — l'utente può comunque inserire i dati a mano nella review
+      }
+
     } catch (parseError) {
-      console.error('[OCR_IMPORT] JSON parse error:', parseError, 'Raw text:', rawText.substring(0, 500))
+      console.error('[OCR_IMPORT] JSON parse error:', parseError)
+      console.error('[OCR_IMPORT] Raw text (first 1000 chars):', rawText.substring(0, 1000))
+
       return NextResponse.json({
-        error: 'Impossibile interpretare i dati dalla scheda. Riprova con un\'immagine più nitida.',
-        rawText: rawText.substring(0, 2000)
+        error: 'Impossibile interpretare i dati dalla scheda. Verifica che la scansione sia nitida e ben illuminata.',
+        rawText: rawText.substring(0, 3000),
+        hint: 'Gemini ha restituito del testo ma non è JSON valido. Controlla rawText.'
       }, { status: 422 })
     }
 
@@ -267,13 +309,20 @@ export async function POST(req: Request) {
       }
     }
 
+    const isEmpty = !(parsedData.veicoli || []).length
+      && !parsedData.controllo?.data_controllo
+      && !parsedData.controllo?.luogo
+      && !parsedData.controllo?.operatori
+
     return NextResponse.json({
       success: true,
       filename: file.name,
       controllo: parsedData.controllo || {},
       veicoli: parsedData.veicoli || [],
       model: usedModel,
-      rawText: rawText.substring(0, 500) // debug info
+      empty: isEmpty ? true : undefined,
+      warning: isEmpty ? 'Nessun dato rilevato. La calligrafia potrebbe essere illeggibile. Controlla la qualità della scansione.' : undefined,
+      rawText: rawText.substring(0, 500)
     })
 
   } catch (error) {
