@@ -1078,6 +1078,7 @@ model CdsViolation {
   createdAt          DateTime    @default(now())
   articolo           CdsArticle  @relation(fields: [articoloId], references: [id], onDelete: Cascade)
   violazioniEmesse   Violation[] @relation("ViolationToCdsViolation")
+  veicoliControllati CheckedVehicle[]
 }
 
 model AccidentReport {
@@ -1504,6 +1505,8 @@ model CheckedVehicle {
 
   violationId              String?
   violation                Violation?  @relation("CheckedVehicleToViolation", fields: [violationId], references: [id])
+  cdsViolationId           String?
+  cdsViolation             CdsViolation? @relation(fields: [cdsViolationId], references: [id])
 
   createdAt                DateTime    @default(now())
   updatedAt                DateTime    @updatedAt
@@ -1514,4 +1517,5 @@ model CheckedVehicle {
   @@index([tenantId])
   @@index([checkpointId])
   @@index([targa])
+  @@index([cdsViolationId])
 }

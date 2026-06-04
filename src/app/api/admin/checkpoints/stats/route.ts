@@ -92,6 +92,38 @@ export async function GET() {
       })
     }
 
+    // Statistiche sanzioni per articolo CDS
+    const sanzioniGrouped = await prisma.checkedVehicle.groupBy({
+      by: ['cdsViolationId'],
+      where: { tenantId, cdsViolationId: { not: null } },
+      _count: { id: true }
+    })
+
+    const cdsIds = sanzioniGrouped.map((g: any) => g.cdsViolationId).filter(Boolean)
+    let cdsLabels: Record<string, any> = {}
+    if (cdsIds.length > 0) {
+      const violations = await prisma.cdsViolation.findMany({
+        where: { id: { in: cdsIds } },
+        include: { articolo: true }
+      })
+      for (const v of violations) {
+        cdsLabels[v.id] = {
+          articolo: v.articolo?.articolo,
+          comma: v.comma,
+          descrizione: v.descrizione,
+          codice: v.codice
+        }
+      }
+    }
+
+    const sanzioniPerArticolo = sanzioniGrouped
+      .map((g: any) => ({
+        cdsViolationId: g.cdsViolationId,
+        count: g._count.id,
+        ...(cdsLabels[g.cdsViolationId] || {})
+      }))
+      .sort((a: any, b: any) => b.count - a.count)
+
     // Media veicoli per controllo
     const mediaVeicoli = controlliTotali > 0 ? Math.round((veicoliTotali / controlliTotali) * 10) / 10 : 0
     const percSanzioni = veicoliTotali > 0 ? Math.round((veicoliConSanzione / veicoliTotali * 100) * 10) / 10 : 0
@@ -109,7 +141,8 @@ export async function GET() {
       targheMultiple: targheMultiple.map((t: any) => ({ targa: t.targa, volte: t._count.id })),
       andamentoMensile,
       mediaVeicoli,
-      percSanzioni
+      percSanzioni,
+      sanzioniPerArticolo
     })
   } catch (error) {
     console.error('[CHECKPOINT_STATS] Error:', error)

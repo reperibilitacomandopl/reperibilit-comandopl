@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
+import { loadCdsCatalog, scoreCatalog, normalizeInput } from '@/lib/cds-search'
 
 /**
  * API per l'importazione di schede compilate a mano via OCR.
@@ -342,6 +343,39 @@ export async function POST(req: Request) {
             for (const field of PRIVACY_FIELD_GROUPS[cat]) {
               delete v[field]
             }
+          }
+        }
+      }
+    }
+
+    // Auto-match sanctions against CDS catalog
+    const vehiclesWithSanctions = (parsedData.veicoli || []).filter((v: any) => v.sanzione_elevata && v.sanzione_elevata.trim())
+    let cdsCatalog: any[] = []
+    if (vehiclesWithSanctions.length > 0) {
+      try {
+        cdsCatalog = await loadCdsCatalog()
+      } catch (err) {
+        console.warn('[OCR_IMPORT] Failed to load CDS catalog for auto-match:', err)
+      }
+    }
+
+    for (const v of (parsedData.veicoli || [])) {
+      if (v.sanzione_elevata && v.sanzione_elevata.trim() && cdsCatalog.length > 0) {
+        const inputWords = normalizeInput(v.sanzione_elevata)
+        const inputTesto = v.sanzione_elevata.toLowerCase()
+        if (inputWords.length > 0) {
+          const scored = scoreCatalog(cdsCatalog, inputWords, inputTesto)
+          if (scored.length > 0) {
+            v.cdsViolationId = scored[0].id
+            v.cdsViolationCandidates = scored.slice(0, 3).map((s: any) => ({
+              id: s.id,
+              articolo: s.articolo?.articolo,
+              comma: s.comma,
+              codice: s.codice,
+              descrizione: s.descrizione,
+              sanzione: s.sanzione,
+              score: s.score
+            }))
           }
         }
       }

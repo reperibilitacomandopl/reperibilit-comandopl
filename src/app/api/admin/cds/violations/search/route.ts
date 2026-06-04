@@ -13,8 +13,8 @@ const searchSchema = z.object({
 export async function POST(req: Request) {
   try {
     const session = await auth()
-    if (!session?.user?.id || !session.user.tenantId) {
-      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 })
+    if (!session?.user?.id || !session.user.tenantId || session.user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 })
     }
 
     const body = await req.json()
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     return NextResponse.json(result)
 
   } catch (error) {
-    console.error('[AGENT_VIOLATION_SEARCH_POST] Error:', error)
+    console.error('[ADMIN_CDS_SEARCH_POST] Error:', error)
     return NextResponse.json({ error: 'Errore interno del server' }, { status: 500 })
   }
 }

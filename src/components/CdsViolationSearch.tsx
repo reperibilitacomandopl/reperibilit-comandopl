@@ -1,33 +1,54 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { Search, Sparkles, FileText, Check } from "lucide-react"
 
 interface CdsViolationSearchProps {
   onSelect: (violation: any) => void
   disabled?: boolean
+  initialText?: string
+  initialArticolo?: string
+  apiEndpoint?: string
 }
 
-export default function CdsViolationSearch({ onSelect, disabled }: CdsViolationSearchProps) {
-  const [searchArticolo, setSearchArticolo] = useState("")
-  const [nlpText, setNlpText] = useState("")
+export default function CdsViolationSearch({
+  onSelect,
+  disabled,
+  initialText,
+  initialArticolo,
+  apiEndpoint = "/api/agent/violations/search"
+}: CdsViolationSearchProps) {
+  const [searchArticolo, setSearchArticolo] = useState(initialArticolo || "")
+  const [nlpText, setNlpText] = useState(initialText || "")
   const [aiLoading, setAiLoading] = useState(false)
   const [aiResults, setAiResults] = useState<any[]>([])
   const [searched, setSearched] = useState(false)
   const [selected, setSelected] = useState<any | null>(null)
+  const autoSearched = useRef(false)
 
-  const searchNLP = async () => {
-    if (!nlpText && !searchArticolo) return
+  useEffect(() => {
+    if (!autoSearched.current && (initialText || initialArticolo)) {
+      autoSearched.current = true
+      // Delay to let the component mount before searching
+      const t = setTimeout(() => searchNLP(initialText, initialArticolo), 300)
+      return () => clearTimeout(t)
+    }
+  }, [initialText, initialArticolo])
+
+  const searchNLP = async (text?: string, articolo?: string) => {
+    const t = text ?? nlpText
+    const a = articolo ?? searchArticolo
+    if (!t && !a) return
     setAiLoading(true)
     setSearched(true)
     setAiResults([])
     try {
-      const res = await fetch("/api/agent/violations/search", {
+      const res = await fetch(apiEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ testo: nlpText, articolo: searchArticolo })
+        body: JSON.stringify({ testo: t, articolo: a })
       })
-      
+
       if (res.ok) {
         const data = await res.json()
         setAiResults(data.risultati || [])
@@ -51,9 +72,9 @@ export default function CdsViolationSearch({ onSelect, disabled }: CdsViolationS
       <label className="text-xs font-bold text-blue-500 uppercase tracking-wider flex items-center gap-1.5">
         <Sparkles size={14} /> Ricerca Violazione (C.d.S.)
       </label>
-      
+
       <div className="flex gap-2 w-full">
-        <input 
+        <input
           type="text"
           value={searchArticolo}
           onChange={e => setSearchArticolo(e.target.value)}
@@ -62,7 +83,7 @@ export default function CdsViolationSearch({ onSelect, disabled }: CdsViolationS
           placeholder="Art."
           disabled={disabled}
         />
-        <input 
+        <input
           type="text"
           value={nlpText}
           onChange={e => setNlpText(e.target.value)}
@@ -71,9 +92,9 @@ export default function CdsViolationSearch({ onSelect, disabled }: CdsViolationS
           placeholder="Es. Guidava al cellulare..."
           disabled={disabled}
         />
-        <button 
+        <button
           type="button"
-          onClick={searchNLP}
+          onClick={() => searchNLP()}
           disabled={disabled || aiLoading || (nlpText.length < 3 && searchArticolo.length === 0)}
           className="px-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl flex items-center justify-center transition-all shadow-sm"
         >
@@ -113,7 +134,7 @@ export default function CdsViolationSearch({ onSelect, disabled }: CdsViolationS
           ))}
         </div>
       )}
-      
+
       {searched && aiResults.length === 0 && !aiLoading && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-rose-50 dark:bg-slate-800 border border-rose-200 dark:border-rose-500/30 rounded-2xl p-4 text-sm text-center text-rose-600 dark:text-rose-300 z-10">
           Nessuna corrispondenza trovata. Riprova con altre parole chiave.

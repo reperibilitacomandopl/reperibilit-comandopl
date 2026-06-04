@@ -122,6 +122,7 @@ export async function POST(req: Request) {
               sanzioneElevata: v.sanzione_elevata || null,
               sanzioneAccessoria: v.sanzione_accessoria || null,
               violationId: v.violation_id || null,
+              cdsViolationId: v.cdsViolationId || null,
             }
           })
           veicoliImportati++

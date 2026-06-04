@@ -5,6 +5,7 @@ import {
   Upload, FileText, Eye, Save, AlertTriangle, CheckCircle,
   Loader2, RotateCw, X, ChevronDown, ChevronUp, Edit3, Trash2, Camera, Shield
 } from "lucide-react"
+import CdsViolationSearch from "./CdsViolationSearch"
 
 const ALL_PRIVACY_FIELDS = ['intestazione', 'veicolo', 'proprietario', 'conducente', 'patente', 'sanzione', 'passeggero']
 
@@ -42,6 +43,16 @@ type OcrVehicle = {
   passeggero_residenza?: string
   passeggero_indirizzo?: string
   violation_id?: string
+  cdsViolationId?: string
+  cdsViolationCandidates?: Array<{
+    id: string
+    articolo: number
+    comma: string | null
+    codice: string | null
+    descrizione: string
+    sanzione: number
+    score: number
+  }>
 }
 
 type OcrResult = {
@@ -467,7 +478,26 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
                         <InputField label="Sanzione elevata" value={v.sanzione_elevata} onChange={val => updateVehicleField(idx, 'sanzione_elevata', val)} inputBg={inputBg} />
                         <InputField label="Sanzione accessoria" value={v.sanzione_accessoria} onChange={val => updateVehicleField(idx, 'sanzione_accessoria', val)} inputBg={inputBg} />
                       </div>
-                      
+
+                      {/* CDS Catalog Search */}
+                      {v.sanzione_elevata && (
+                        <div className="mb-3">
+                          <CdsViolationSearch
+                            initialText={v.sanzione_elevata}
+                            apiEndpoint="/api/admin/cds/violations/search"
+                            onSelect={(violation: any) => updateVehicleField(idx, 'cdsViolationId', violation.id)}
+                          />
+                          {v.cdsViolationId && (
+                            <div className="mt-2 p-2 bg-emerald-100 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/20 rounded-lg flex items-center gap-2">
+                              <CheckCircle size={14} className="text-emerald-600 dark:text-emerald-400" />
+                              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                                Violazione CDS collegata
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {/* Collega a verbale esistente */}
                       {(v.sanzione_elevata || matchedViolations[idx]?.length > 0) && (
                         <div className={`p-3 rounded-xl border ${isDark ? "border-amber-500/20 bg-amber-500/5" : "border-amber-500/30 bg-amber-50"}`}>
