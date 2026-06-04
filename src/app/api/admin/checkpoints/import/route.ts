@@ -107,6 +107,62 @@ export async function POST(req: Request) {
     else if (file.name.endsWith('.jpg') || file.name.endsWith('.jpeg')) mimeType = 'image/jpeg'
     else if (file.name.endsWith('.tiff') || file.name.endsWith('.tif')) mimeType = 'image/tiff'
 
+    const ocrSchema = {
+      type: "OBJECT",
+      properties: {
+        controllo: {
+          type: "OBJECT",
+          properties: {
+            data_controllo: { type: "STRING" },
+            ora_inizio: { type: "STRING" },
+            ora_fine: { type: "STRING" },
+            luogo: { type: "STRING" },
+            operatori: { type: "STRING" }
+          }
+        },
+        veicoli: {
+          type: "ARRAY",
+          items: {
+            type: "OBJECT",
+            properties: {
+              ora_controllo: { type: "STRING" },
+              veicolo: { type: "STRING" },
+              targa: { type: "STRING" },
+              marca_modello: { type: "STRING" },
+              ultima_revisione: { type: "STRING" },
+              assicurazione: { type: "STRING" },
+              assicurato_fino: { type: "STRING" },
+              proprietario_cognome: { type: "STRING" },
+              proprietario_nome: { type: "STRING" },
+              proprietario_data_nascita: { type: "STRING" },
+              proprietario_luogo_nascita: { type: "STRING" },
+              proprietario_residenza: { type: "STRING" },
+              proprietario_indirizzo: { type: "STRING" },
+              conducente_stesso_prop: { type: "BOOLEAN" },
+              conducente_cognome: { type: "STRING" },
+              conducente_nome: { type: "STRING" },
+              conducente_data_nascita: { type: "STRING" },
+              conducente_luogo_nascita: { type: "STRING" },
+              conducente_residenza: { type: "STRING" },
+              conducente_indirizzo: { type: "STRING" },
+              patente_numero: { type: "STRING" },
+              patente_rilasciata_da: { type: "STRING" },
+              patente_data_rilascio: { type: "STRING" },
+              patente_validita_fino: { type: "STRING" },
+              sanzione_elevata: { type: "STRING" },
+              sanzione_accessoria: { type: "STRING" },
+              passeggero_cognome: { type: "STRING" },
+              passeggero_nome: { type: "STRING" },
+              passeggero_data_nascita: { type: "STRING" },
+              passeggero_luogo_nascita: { type: "STRING" },
+              passeggero_residenza: { type: "STRING" },
+              passeggero_indirizzo: { type: "STRING" }
+            }
+          }
+        }
+      }
+    };
+
     // Call Gemini Vision API
     const geminiRes = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
       method: 'POST',
@@ -126,8 +182,15 @@ export async function POST(req: Request) {
         generationConfig: {
           temperature: 0.1,
           maxOutputTokens: 8192,
-          responseMimeType: "application/json"
-        }
+          responseMimeType: "application/json",
+          responseSchema: ocrSchema
+        },
+        safetySettings: [
+          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" }
+        ]
       })
     })
 
