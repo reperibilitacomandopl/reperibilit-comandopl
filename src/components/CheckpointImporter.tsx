@@ -77,7 +77,7 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
       const reader = new FileReader()
       reader.onload = e => setPreview(e.target?.result as string)
       reader.readAsDataURL(f)
-    } else if (f.type === 'application/pdf') {
+    } else if (f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')) {
       setPreview(URL.createObjectURL(f))
     } else {
       setPreview(null)
@@ -289,7 +289,7 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
             </h3>
             {preview ? (
               <div className={`rounded-3xl border ${cardBg} p-2 overflow-hidden shadow-sm`}>
-                {file?.type === 'application/pdf' ? (
+                {(file?.type === 'application/pdf' || file?.name.toLowerCase().endsWith('.pdf')) ? (
                   <iframe src={preview} title="Anteprima PDF" className="w-full h-[85vh] rounded-2xl bg-white border-0" />
                 ) : (
                   <img src={preview} alt="Anteprima Scheda" className="w-full h-auto max-h-[85vh] object-contain rounded-2xl bg-slate-100 dark:bg-slate-800" />
