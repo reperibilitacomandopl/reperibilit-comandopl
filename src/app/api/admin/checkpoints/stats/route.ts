@@ -95,7 +95,7 @@ export async function GET() {
     // Statistiche sanzioni testuali (da OCR o manuali)
     const sanzioniGrouped = await prisma.checkedVehicle.groupBy({
       by: ['sanzioneElevata'],
-      where: { tenantId, sanzioneElevata: { not: null, not: '' } },
+      where: { tenantId, sanzioneElevata: { not: null }, NOT: { sanzioneElevata: '' } },
       _count: { id: true }
     })
 
