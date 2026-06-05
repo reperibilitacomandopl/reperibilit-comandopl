@@ -80,6 +80,7 @@ export default function CheckpointManager() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showVehicleForm, setShowVehicleForm] = useState<string | null>(null)
+  const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null)
 
   // Form state for new checkpoint
   const [newForm, setNewForm] = useState({
@@ -148,8 +149,8 @@ export default function CheckpointManager() {
     } catch (err) { console.error(err) }
   }
 
-  const expandCheckpoint = async (id: string) => {
-    if (expandedId === id) { setExpandedId(null); return }
+  const expandCheckpoint = async (id: string, forceRefresh = false) => {
+    if (expandedId === id && !forceRefresh) { setExpandedId(null); return }
     try {
       const res = await fetch(`/api/admin/checkpoints/${id}`)
       if (res.ok) {
@@ -163,8 +164,14 @@ export default function CheckpointManager() {
   const addVehicle = async (checkpointId: string) => {
     if (!vehicleForm.targa) return
     try {
-      const res = await fetch(`/api/admin/checkpoints/${checkpointId}/vehicles`, {
-        method: 'POST',
+      const isEditing = !!editingVehicleId
+      const url = isEditing 
+        ? `/api/admin/checkpoints/${checkpointId}/vehicles/${editingVehicleId}`
+        : `/api/admin/checkpoints/${checkpointId}/vehicles`
+      const method = isEditing ? 'PUT' : 'POST'
+      
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(vehicleForm)
       })
@@ -183,17 +190,59 @@ export default function CheckpointManager() {
           sanzioneElevata: "", sanzioneAccessoria: ""
         })
         setShowVehicleForm(null)
-        expandCheckpoint(checkpointId)
+        setEditingVehicleId(null)
+        expandCheckpoint(checkpointId, true)
         fetchData()
       }
     } catch (err) { console.error(err) }
   }
 
+  const startEditVehicle = (checkpointId: string, v: Vehicle) => {
+    const formatDateInput = (iso: string | null | undefined) => iso ? new Date(iso).toISOString().split('T')[0] : "";
+    setVehicleForm({
+      oraControllo: v.oraControllo || "",
+      targa: v.targa || "",
+      tipoVeicolo: v.tipoVeicolo || "AUTOVETTURA",
+      marcaModello: v.marcaModello || "",
+      ultimaRevisione: formatDateInput(v.ultimaRevisione),
+      assicurazione: v.assicurazione || "",
+      assicuratoFino: formatDateInput(v.assicuratoFino),
+      proprietarioNome: v.proprietarioNome || "",
+      proprietarioCognome: v.proprietarioCognome || "",
+      proprietarioDataNascita: formatDateInput((v as any).proprietarioDataNascita),
+      proprietarioLuogoNascita: (v as any).proprietarioLuogoNascita || "",
+      proprietarioResidenza: (v as any).proprietarioResidenza || "",
+      proprietarioIndirizzo: (v as any).proprietarioIndirizzo || "",
+      conducenteStessoProp: v.conducenteStessoProp ?? true,
+      conducenteNome: v.conducenteNome || "",
+      conducenteCognome: v.conducenteCognome || "",
+      conducenteDataNascita: formatDateInput((v as any).conducenteDataNascita),
+      conducenteLuogoNascita: (v as any).conducenteLuogoNascita || "",
+      conducenteResidenza: (v as any).conducenteResidenza || "",
+      conducenteIndirizzo: (v as any).conducenteIndirizzo || "",
+      patenteNumero: v.patenteNumero || "",
+      patenteRilasciataDa: (v as any).patenteRilasciataDa || "",
+      patenteDataRilascio: formatDateInput((v as any).patenteDataRilascio),
+      patenteValiditaFino: formatDateInput((v as any).patenteValiditaFino),
+      passeggeroNome: v.passeggeroNome || "",
+      passeggeroCognome: v.passeggeroCognome || "",
+      passeggeroDataNascita: formatDateInput((v as any).passeggeroDataNascita),
+      passeggeroLuogoNascita: (v as any).passeggeroLuogoNascita || "",
+      passeggeroResidenza: (v as any).passeggeroResidenza || "",
+      passeggeroIndirizzo: (v as any).passeggeroIndirizzo || "",
+      sanzioneElevata: v.sanzioneElevata || "",
+      sanzioneAccessoria: v.sanzioneAccessoria || ""
+    });
+    setEditingVehicleId(v.id);
+    setShowVehicleForm(checkpointId);
+    setActiveSection("dati_base");
+  };
+
   const deleteVehicle = async (checkpointId: string, vehicleId: string) => {
     if (!confirm("Eliminare questo veicolo?")) return
     try {
       const res = await fetch(`/api/admin/checkpoints/${checkpointId}/vehicles/${vehicleId}`, { method: 'DELETE' })
-      if (res.ok) { expandCheckpoint(checkpointId); fetchData() }
+      if (res.ok) { expandCheckpoint(checkpointId, true); fetchData() }
     } catch (err) { console.error(err) }
   }
 
@@ -377,7 +426,23 @@ export default function CheckpointManager() {
                               <h4 className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
                                 <Car size={16} className="text-cyan-500" /> Veicoli Controllati ({c.vehicles?.length || 0})
                               </h4>
-                              <button onClick={() => setShowVehicleForm(showVehicleForm === c.id ? null : c.id)}
+                              <button onClick={() => {
+                                setEditingVehicleId(null);
+                                setVehicleForm({
+                                  oraControllo: "", targa: "", tipoVeicolo: "AUTOVETTURA", marcaModello: "",
+                                  ultimaRevisione: "", assicurazione: "", assicuratoFino: "",
+                                  proprietarioNome: "", proprietarioCognome: "", proprietarioDataNascita: "",
+                                  proprietarioLuogoNascita: "", proprietarioResidenza: "", proprietarioIndirizzo: "",
+                                  conducenteStessoProp: true,
+                                  conducenteNome: "", conducenteCognome: "", conducenteDataNascita: "",
+                                  conducenteLuogoNascita: "", conducenteResidenza: "", conducenteIndirizzo: "",
+                                  patenteNumero: "", patenteRilasciataDa: "", patenteDataRilascio: "", patenteValiditaFino: "",
+                                  passeggeroNome: "", passeggeroCognome: "", passeggeroDataNascita: "",
+                                  passeggeroLuogoNascita: "", passeggeroResidenza: "", passeggeroIndirizzo: "",
+                                  sanzioneElevata: "", sanzioneAccessoria: ""
+                                });
+                                setShowVehicleForm(showVehicleForm === c.id ? null : c.id);
+                              }}
                                 className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all">
                                 <Plus size={14} /> Aggiungi Veicolo
                               </button>
@@ -509,7 +574,7 @@ export default function CheckpointManager() {
                                 <div className="flex gap-2 justify-end pt-2">
                                   <button onClick={() => setShowVehicleForm(null)} className={`px-4 py-2.5 text-xs font-bold rounded-xl ${isDark ? "bg-white/5 hover:bg-white/10" : "bg-slate-100 hover:bg-slate-200"}`}>Annulla</button>
                                   <button onClick={() => addVehicle(c.id)} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-blue-600/20">
-                                    <Save size={14} className="inline mr-1" /> Salva Veicolo
+                                    <Save size={14} className="inline mr-1" /> {editingVehicleId ? "Salva Modifiche" : "Salva Veicolo"}
                                   </button>
                                 </div>
                               </div>
@@ -546,10 +611,15 @@ export default function CheckpointManager() {
                                         )}
                                       </div>
                                     </div>
-                                    <button onClick={() => deleteVehicle(c.id, v.id)}
-                                      className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white transition-all self-end sm:self-center">
-                                      <Trash2 size={14} />
-                                    </button>
+                                    <div className="flex gap-2 self-end sm:self-center">
+                                      <button onClick={() => startEditVehicle(c.id, v)} className="p-2 rounded-lg bg-blue-500/10 hover:bg-blue-500 text-blue-500 hover:text-white transition-all" title="Modifica">
+                                        <Edit3 size={14} />
+                                      </button>
+                                      <button onClick={() => deleteVehicle(c.id, v.id)}
+                                        className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white transition-all" title="Elimina">
+                                        <Trash2 size={14} />
+                                      </button>
+                                    </div>
                                   </div>
                                 ))}
                               </div>
