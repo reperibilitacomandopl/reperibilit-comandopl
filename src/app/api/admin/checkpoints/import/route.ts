@@ -290,10 +290,10 @@ export async function POST(req: Request) {
           })
         })
 
-        // 429 = rate limit → retry dopo backoff
-        if (res.status === 429) {
-          console.warn(`[OCR_IMPORT] 429 rate limit su ${model}, attempt ${attempt}/3`)
-          lastError = `Rate limit su ${model}`
+        // 429 = rate limit, 503 = overloaded, 500 = internal error → retry dopo backoff
+        if (res.status === 429 || res.status === 503 || res.status === 500) {
+          console.warn(`[OCR_IMPORT] ${res.status} error su ${model}, attempt ${attempt}/3`)
+          lastError = `Errore temporaneo (${res.status}) su ${model}`
           continue
         }
 
