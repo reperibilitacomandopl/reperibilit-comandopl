@@ -378,8 +378,8 @@ export async function POST(req: Request) {
     parsedData.controllo = parsedData.controllo || {}
     parsedData.veicoli = Array.isArray(parsedData.veicoli) ? parsedData.veicoli : []
 
-    // Filter out incomplete vehicle entries (missing targa or truncated)
-    parsedData.veicoli = parsedData.veicoli.filter((v: any) => v.targa && v.targa.length >= 4)
+    // NON filtrare veicoli senza targa — l'operatore può completarla a mano
+    // parsedData.veicoli = parsedData.veicoli.filter((v: any) => v.targa && v.targa.length >= 4)
 
     // Post-processing: strip privacy-excluded fields from parsed response
     if (privacyFields.length < ALL_PRIVACY_FIELDS.length) {
