@@ -94,42 +94,91 @@ const PRIVACY_FIELD_GROUPS: Record<string, string[]> = {
 }
 
 /**
- * Tenta di recuperare un JSON troncato (MAX_TOKENS) chiudendo stringhe/array/oggetti aperti.
+ * Tenta di recuperare un JSON troncato (MAX_TOKENS) con tre strategie a cascata.
  * Restituisce l'oggetto parsato o null se impossibile.
  */
 function salvageTruncatedJson(rawText: string): any | null {
   try {
     let text = rawText.trim()
-    // Strip markdown
     text = text.replace(/^```(?:json)?\s*\n?/i, '')
     text = text.replace(/\n?\s*```$/i, '')
 
     if (!text.includes('{')) return null
 
-    // Trova l'ultima occorrenza di "veicolo" o "targa" per capire dove siamo
-    const lastVeicoloIdx = text.lastIndexOf('"veicolo"')
-    const lastTargaIdx = text.lastIndexOf('"targa"')
+    // Strategy 1: Multi-vehicle — tronca all'ultimo veicolo completo
+    // Cerca pattern: },{ che separa due veicoli nell'array (veicolo completo → inizio prossimo)
+    const closeOpenPattern = /},\s*\{/g
+    let match: RegExpExecArray | null = null
+    let lastSep = -1
+    while ((match = closeOpenPattern.exec(text)) !== null) {
+      lastSep = match.index
+    }
 
-    // Rimuovi l'ultimo veicolo incompleto: trova l'ultima { prima del veicolo interrotto
-    const lastOpenBrace = text.lastIndexOf('{')
-    // Trova la penultima { (inizio dell'ultimo veicolo completo o quasi)
-    const beforeLast = text.lastIndexOf('{', lastOpenBrace - 1)
-
-    if (beforeLast > 0) {
-      // Tronca all'ultimo veicolo completo
-      let truncated = text.substring(0, beforeLast).trim()
-
-      // Rimuovi virgola finale se presente
+    if (lastSep > 0) {
+      let truncated = text.substring(0, lastSep + 1).trim()
       if (truncated.endsWith(',')) {
         truncated = truncated.substring(0, truncated.length - 1)
       }
-
-      // Close the veicoli array and the main object
       truncated += '\n    ]\n  }\n}'
-
       const parsed = JSON.parse(truncated)
       if (parsed.veicoli && Array.isArray(parsed.veicoli) && parsed.veicoli.length > 0) {
         return parsed
+      }
+    }
+
+    // Strategy 2: Single-vehicle truncation — salva controllo + veicoli vuoti
+    const veicoliKey = text.indexOf('"veicoli"')
+    if (veicoliKey > 0) {
+      let truncated = text.substring(0, veicoliKey).trim()
+      if (truncated.endsWith(',')) {
+        truncated = truncated.substring(0, truncated.length - 1)
+      }
+      truncated += '\n  },\n  "veicoli": []\n}'
+      const parsed = JSON.parse(truncated)
+      if (parsed.controllo || parsed.veicoli) {
+        parsed.veicoli = Array.isArray(parsed.veicoli) ? parsed.veicoli : []
+        return parsed
+      }
+    }
+
+    // Strategy 3: Close truncated string — aggiungi quote + ] + } }
+    // Trova l'ultima virgoletta non chiusa (valore stringa tagliato a metà)
+    const lastQuote = text.lastIndexOf('"')
+    const lastColon = text.lastIndexOf(':')
+    if (lastColon > 0 && lastQuote > lastColon + 1) {
+      // L'ultimo token è una chiave con valore stringa iniziato ma non finito
+      // Controlla se ci sono virgolette pari (dispari = stringa aperta)
+      const quotesAfterLastColon = text.substring(lastColon).match(/"/g)
+      if (quotesAfterLastColon && quotesAfterLastColon.length % 2 === 1) {
+        // Numero dispari di virgolette dopo l'ultimo : → stringa aperta
+        let closed = text.trim()
+        if (closed.endsWith(',')) {
+          closed = closed.substring(0, closed.length - 1)
+        }
+        closed += '"\n    }\n  ]\n}'
+        try {
+          const parsed = JSON.parse(closed)
+          if (parsed.veicoli && Array.isArray(parsed.veicoli) && parsed.veicoli.length > 0) {
+            return parsed
+          }
+        } catch { /* continua */ }
+
+        // Prova anche chiudendo il veicolo incompleto e aggiungendo veicoli vuoti
+        const veicoliIdx2 = text.indexOf('"veicoli"')
+        if (veicoliIdx2 > 0) {
+          let truncated2 = text.substring(0, veicoliIdx2).trim()
+          if (truncated2.endsWith(',')) {
+            truncated2 = truncated2.substring(0, truncated2.length - 1)
+          }
+          truncated2 += '\n  },\n  "veicoli": []\n}'
+          try {
+            const parsed = JSON.parse(truncated2)
+            if (parsed.controllo || parsed.veicoli) {
+              parsed.veicoli = Array.isArray(parsed.veicoli) ? parsed.veicoli : []
+              return parsed
+            }
+          } catch { /* continua */ }
+        }
       }
     }
 
@@ -230,7 +279,7 @@ export async function POST(req: Request) {
             }],
             generationConfig: {
               temperature: 0.2,
-              maxOutputTokens: 16384
+              maxOutputTokens: 65536
             },
             safetySettings: [
               { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
