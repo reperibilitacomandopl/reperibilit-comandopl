@@ -78,7 +78,14 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
   const [expandedVehicle, setExpandedVehicle] = useState<number | null>(null)
   const [matchedViolations, setMatchedViolations] = useState<Record<number, any[]>>({})
   const [saveResult, setSaveResult] = useState<any>(null)
+  const [users, setUsers] = useState<any[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    fetch('/api/agent/users').then(r => r.json()).then(data => {
+      if (Array.isArray(data)) setUsers(data)
+    }).catch(() => {})
+  }, [])
 
   const cardBg = isDark ? "bg-slate-900 border-white/5" : "bg-white border-slate-200"
   const inputBg = isDark ? "bg-slate-950 border-white/10 text-white placeholder-white/30" : "bg-white border-slate-200 text-slate-900 placeholder-slate-400"
@@ -383,7 +390,23 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
             </div>
             <div className="mb-6">
               <label className="text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block">Operatori</label>
-              <input value={ocrResult.controllo.operatori || ''} onChange={e => updateControlloField('operatori', e.target.value)} className={`w-full px-3 py-2 rounded-lg border text-sm ${inputBg}`} />
+              <input value={ocrResult.controllo.operatori || ''} onChange={e => updateControlloField('operatori', e.target.value)} className={`w-full px-3 py-2 rounded-lg border text-sm ${inputBg}`} placeholder="es. Ag. Rossi, Isp. Verdi" />
+              {users.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {users.map(u => {
+                    const name = u.name || `${u.nome || ''} ${u.cognome || ''}`.trim() || u.matricola;
+                    return (
+                      <button key={u.id} type="button" onClick={() => {
+                        const current = ocrResult.controllo.operatori || '';
+                        if (current.includes(name)) return;
+                        updateControlloField('operatori', current ? `${current}, ${name}` : name);
+                      }} className={`px-2 py-1 text-xs rounded-md border font-medium transition-colors ${isDark ? "bg-white/5 border-white/10 hover:bg-white/10" : "bg-slate-50 border-slate-200 hover:bg-slate-100"}`}>
+                        + {name}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
