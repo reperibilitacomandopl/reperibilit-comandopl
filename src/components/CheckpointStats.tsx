@@ -17,10 +17,18 @@ export default function CheckpointStats({ stats, isDark }: { stats: any, isDark:
     { name: 'Sanzionati', value: stats.veicoliConSanzione, color: '#f59e0b' }
   ]
 
-  const anomalyData = [
-    { name: 'Revisione', value: stats.veicoliRevisioneScaduta, color: '#ef4444' },
-    { name: 'Assicurazione', value: stats.veicoliAssicurazioneScaduta, color: '#f43f5e' }
-  ]
+  // Top 5 Sanzioni
+  const colors = ['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899']
+  const sanzioniData = stats.sanzioniPerArticolo && stats.sanzioniPerArticolo.length > 0 
+    ? stats.sanzioniPerArticolo.map((s: any, idx: number) => ({
+        name: s.descrizione.length > 25 ? s.descrizione.substring(0, 25) + '...' : s.descrizione,
+        fullName: s.descrizione,
+        value: s.count,
+        color: colors[idx % colors.length]
+      }))
+    : [
+        { name: 'Nessuna Sanzione', value: 0, color: '#cbd5e1' }
+      ]
 
   return (
     <div className="space-y-6">
@@ -75,17 +83,19 @@ export default function CheckpointStats({ stats, isDark }: { stats: any, isDark:
 
           <div className={`p-6 rounded-3xl border ${cardBg} shadow-sm flex flex-col`}>
             <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2">
-              <AlertTriangle className="text-rose-500" size={18} /> Anomalie
+              <AlertTriangle className="text-rose-500" size={18} /> Top Sanzioni
             </h3>
             <div className="flex-1 min-h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={anomalyData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <BarChart data={sanzioniData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={gridColor} horizontal={false} />
                   <XAxis type="number" hide />
-                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} stroke={isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.7)"} fontSize={11} fontWeight="bold" />
-                  <Tooltip cursor={{ fill: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }} contentStyle={{ backgroundColor: isDark ? '#0f172a' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold' }} />
+                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} stroke={isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.7)"} fontSize={11} fontWeight="bold" width={120} />
+                  <Tooltip cursor={{ fill: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }} contentStyle={{ backgroundColor: isDark ? '#0f172a' : '#fff', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0', borderRadius: '12px', fontSize: '12px', fontWeight: 'bold' }} 
+                    formatter={(value: any, name: any, props: any) => [value, props.payload.fullName]}
+                  />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
-                    {anomalyData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                    {sanzioniData.map((entry: any, index: number) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>

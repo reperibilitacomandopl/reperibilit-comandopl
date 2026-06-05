@@ -92,37 +92,20 @@ export async function GET() {
       })
     }
 
-    // Statistiche sanzioni per articolo CDS
+    // Statistiche sanzioni testuali (da OCR o manuali)
     const sanzioniGrouped = await prisma.checkedVehicle.groupBy({
-      by: ['cdsViolationId'],
-      where: { tenantId, cdsViolationId: { not: null } },
+      by: ['sanzioneElevata'],
+      where: { tenantId, sanzioneElevata: { not: null, not: '' } },
       _count: { id: true }
     })
 
-    const cdsIds = sanzioniGrouped.map((g: any) => g.cdsViolationId).filter(Boolean)
-    let cdsLabels: Record<string, any> = {}
-    if (cdsIds.length > 0) {
-      const violations = await prisma.cdsViolation.findMany({
-        where: { id: { in: cdsIds } },
-        include: { articolo: true }
-      })
-      for (const v of violations) {
-        cdsLabels[v.id] = {
-          articolo: v.articolo?.articolo,
-          comma: v.comma,
-          descrizione: v.descrizione,
-          codice: v.codice
-        }
-      }
-    }
-
     const sanzioniPerArticolo = sanzioniGrouped
       .map((g: any) => ({
-        cdsViolationId: g.cdsViolationId,
-        count: g._count.id,
-        ...(cdsLabels[g.cdsViolationId] || {})
+        descrizione: g.sanzioneElevata,
+        count: g._count.id
       }))
       .sort((a: any, b: any) => b.count - a.count)
+      .slice(0, 5) // Mostriamo solo le top 5 per non affollare il grafico
 
     // Media veicoli per controllo
     const mediaVeicoli = controlliTotali > 0 ? Math.round((veicoliTotali / controlliTotali) * 10) / 10 : 0
