@@ -389,6 +389,18 @@ export async function POST(req: Request) {
       }
     })
 
+    // 3.5 Update live location for the Operations Center map
+    if (!isCorrection && lat && lng) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          lastLat: lat,
+          lastLng: lng,
+          lastSeenAt: new Date()
+        }
+      })
+    }
+
     // 4. Log if it's a manual correction by admin
     if (isCorrection) {
       await prisma.auditLog.create({
