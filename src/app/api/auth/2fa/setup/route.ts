@@ -81,9 +81,16 @@ export async function POST(req: Request) {
     }
 
     if (action === "enable") {
+      let decryptedSecret: string;
+      try {
+        decryptedSecret = decrypt(user.twoFactorSecret);
+      } catch (e) {
+        return NextResponse.json({ error: "Segreto corrotto. Ricarica la pagina." }, { status: 400 });
+      }
+
       const result = await otp.verify({
         token,
-        secret: user.twoFactorSecret
+        secret: decryptedSecret
       })
 
       if (!result.valid) {
@@ -125,9 +132,16 @@ export async function POST(req: Request) {
 
     if (action === "disable") {
       // Per disabilitare chiediamo comunque il token per sicurezza
+      let decryptedSecret: string;
+      try {
+        decryptedSecret = decrypt(user.twoFactorSecret);
+      } catch (e) {
+        return NextResponse.json({ error: "Segreto corrotto. Impossibile disabilitare." }, { status: 400 });
+      }
+
       const result = await otp.verify({
         token,
-        secret: user.twoFactorSecret
+        secret: decryptedSecret
       })
 
       if (!result.valid) {
