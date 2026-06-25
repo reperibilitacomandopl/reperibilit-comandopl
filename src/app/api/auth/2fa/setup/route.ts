@@ -88,12 +88,12 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Segreto corrotto. Ricarica la pagina." }, { status: 400 });
       }
 
-      const isValid = otp.verify({
+      const result = await otp.verify({
         token,
         secret: decryptedSecret
       })
 
-      if (!isValid) {
+      if (!result.valid) {
         return NextResponse.json({ error: "Codice non valido" }, { status: 400 })
       }
 
@@ -139,12 +139,12 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Segreto corrotto. Impossibile disabilitare." }, { status: 400 });
       }
 
-      const isValid = otp.verify({
+      const result = await otp.verify({
         token,
         secret: decryptedSecret
       })
 
-      if (!isValid) {
+      if (!result.valid) {
         return NextResponse.json({ error: "Codice non valido" }, { status: 400 })
       }
 
