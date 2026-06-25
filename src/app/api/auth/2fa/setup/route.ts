@@ -26,7 +26,15 @@ export async function GET() {
     }
 
     // Generate secret if not exists
-    let secret = user.twoFactorSecret ? decrypt(user.twoFactorSecret) : null
+    let secret: string | null = null;
+    if (user.twoFactorSecret) {
+      try {
+        secret = decrypt(user.twoFactorSecret);
+      } catch (e) {
+        console.warn("[2FA SETUP] Decryption failed, regenerating secret", e);
+        secret = null;
+      }
+    }
     
     if (!secret) {
       secret = otp.generateSecret()

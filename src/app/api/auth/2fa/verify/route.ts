@@ -30,9 +30,17 @@ export async function POST(req: Request) {
     let isBackupUsed = false
 
     // 1. Prova con il token TOTP normale
+    let decryptedSecret: string;
+    try {
+      decryptedSecret = decrypt(user.twoFactorSecret);
+    } catch (e) {
+      console.warn("[2FA VERIFY] Decryption failed", e);
+      return NextResponse.json({ error: "Errore critico: il segreto 2FA è corrotto. Ripeti il setup." }, { status: 400 });
+    }
+
     const result = await otp.verify({
       token,
-      secret: decrypt(user.twoFactorSecret)
+      secret: decryptedSecret
     })
     isValid = result.valid
 
