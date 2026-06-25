@@ -321,8 +321,18 @@ export function useAdminData(
         })
         
         if (idx !== -1) {
-          if (isRep) next[idx] = { ...next[idx], repType: finalValue }
-          else next[idx] = { ...next[idx], type: finalValue, repType: null }
+          if (finalValue === "") {
+            // Svuotamento: se ha repType rimuoviamo solo quello, altrimenti eliminiamo il turno
+            if (next[idx].repType) {
+              next[idx] = { ...next[idx], repType: null }
+            } else {
+              next.splice(idx, 1)
+              return next
+            }
+          } else {
+            if (isRep) next[idx] = { ...next[idx], repType: finalValue }
+            else next[idx] = { ...next[idx], type: finalValue } // Mantieni repType
+          }
         } else {
           // Se il turno non esisteva, lo creiamo in locale provvisoriamente
           next.push({
@@ -390,8 +400,16 @@ export function useAdminData(
               return s.userId === u.userId && sIso.split('T')[0] === u.date.split('T')[0]
             })
             if (idx !== -1) {
-              if (isRep(u.type)) next[idx] = { ...next[idx], repType: u.type }
-              else next[idx] = { ...next[idx], type: u.type.toUpperCase(), repType: null }
+              if (u.type === "") {
+                if (next[idx].repType) next[idx] = { ...next[idx], repType: null }
+                else {
+                  next.splice(idx, 1)
+                  return // continue inside forEach
+                }
+              } else {
+                if (isRep(u.type)) next[idx] = { ...next[idx], repType: u.type }
+                else next[idx] = { ...next[idx], type: u.type.toUpperCase() } // Mantieni repType
+              }
             } else {
               next.push({
                 id: `temp-${Date.now()}-${Math.random()}`,
