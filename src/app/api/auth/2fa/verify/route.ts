@@ -38,11 +38,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Errore critico: il segreto 2FA è corrotto. Ripeti il setup." }, { status: 400 });
     }
 
-    const result = await otp.verify({
+    isValid = otp.verify({
       token,
       secret: decryptedSecret
     })
-    isValid = result.valid
 
     // 2. Se fallisce, prova con i codici di backup
     if (!isValid && user.twoFactorBackupCodes.length > 0) {
