@@ -178,6 +178,7 @@ export default function DashboardShell({
                 tenant={tenant}
                 certifiedDates={certifiedDates}
                 isPublished={isPublished}
+                calendarToken={calendarToken}
               />
             </div>
           )}

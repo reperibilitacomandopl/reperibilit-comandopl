@@ -27,7 +27,7 @@ type Module = {
   color: string
   view?: string
   href?: string
-  action?: "riepilogo" | "sos"
+  action?: "riepilogo" | "sos" | "sync"
 }
 
 export default function MobileAgentLaunchpad({
@@ -42,6 +42,7 @@ export default function MobileAgentLaunchpad({
   onNavigate: (view: string) => void
   onScrollRiepilogo: () => void
   onSos: () => void
+  onSync: () => void
 }) {
   const modules: Module[] = [
     { id: "riepilogo", title: "Riepilogo", desc: "Timbrature e prossimo turno", icon: Clock, color: "from-slate-700 to-slate-900", action: "riepilogo" },
@@ -59,6 +60,7 @@ export default function MobileAgentLaunchpad({
     { id: "posti-controllo", title: "Controlli", desc: "Posti di blocco e veicoli", icon: ShieldCheck, color: "from-blue-600 to-blue-800", href: `/${tenantSlug}/agent/posti-controllo` },
     { id: "bacheca", title: "Bacheca", desc: "Avvisi del comando", icon: Megaphone, color: "from-sky-500 to-blue-600", view: "bacheca" },
     { id: "calendario", title: "Vista Annuale", desc: "Panoramica anno", icon: LayoutGrid, color: "from-teal-500 to-emerald-600", view: "planning" },
+    { id: "sincro", title: "Sincronizza", desc: "Esporta su Calendario", icon: Calendar, color: "from-blue-600 to-cyan-600", action: "sync" },
     { id: "sos", title: "SOS Emergenza", desc: "Allarme immediato", icon: Shield, color: "from-red-500 to-rose-600", action: "sos" },
   ]
 
@@ -69,6 +71,10 @@ export default function MobileAgentLaunchpad({
     }
     if (mod.action === "sos") {
       onSos()
+      return
+    }
+    if (mod.action === "sync") {
+      onSync()
       return
     }
     if (mod.view) {

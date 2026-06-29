@@ -20,6 +20,7 @@ import AgentTimecardView from "./AgentTimecardView"
 import BachecaPanel from "@/components/BachecaPanel"
 import FloatingSosButton from "./FloatingSosButton"
 import AgentSosModal from "./AgentSosModal"
+import AgentSyncModal from "./AgentSyncModal"
 import { ClockOutModal } from "@/components/ClockOutModal"
 import NotificationManager from "@/components/NotificationManager"
 import AgentReperibilitaView from "./AgentReperibilitaView"
@@ -43,6 +44,7 @@ type Props = {
   certifiedDates?: string[]
   logoUrl?: string | null
   isPublished?: boolean
+  calendarToken?: string
 }
 
 function MobileAgentShellInner(props: Props) {
@@ -58,6 +60,7 @@ function MobileAgentShellInner(props: Props) {
     tenant,
     certifiedDates,
     isPublished = true,
+    calendarToken,
   } = props
 
   const { role } = session.user
@@ -66,6 +69,7 @@ function MobileAgentShellInner(props: Props) {
   )
 
   const [showSosModal, setShowSosModal] = useState(false)
+  const [showSyncModal, setShowSyncModal] = useState(false)
   const [requestPreset, setRequestPreset] = useState<{ code?: string; notes?: string } | null>(
     null
   )
@@ -150,6 +154,7 @@ function MobileAgentShellInner(props: Props) {
               onNavigate={navigate}
               onScrollRiepilogo={scrollToRiepilogo}
               onSos={() => setShowSosModal(true)}
+              onSync={() => setShowSyncModal(true)}
             />
           </div>
         )}
@@ -333,6 +338,15 @@ function MobileAgentShellInner(props: Props) {
             if (ok) setShowSosModal(false)
             return ok
           }}
+        />
+      )}
+
+      {showSyncModal && (
+        <AgentSyncModal
+          userId={session.user.id}
+          userName={session.user.name}
+          calendarToken={calendarToken}
+          onClose={() => setShowSyncModal(false)}
         />
       )}
 
