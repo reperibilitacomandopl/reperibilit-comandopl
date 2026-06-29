@@ -36,6 +36,7 @@ export default function MobileAgentLaunchpad({
   onNavigate,
   onScrollRiepilogo,
   onSos,
+  onSync,
 }: {
   tenantSlug: string
   isClockedIn?: string | null
