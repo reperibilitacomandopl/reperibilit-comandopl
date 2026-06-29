@@ -3,6 +3,9 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { verifyCalendarToken } from "@/lib/calendar-token"
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 // Helper: format a date + hour as ICS local time string (YYYYMMDDTHHMMSS)
 function toIcsLocal(year: number, month: number, day: number, hour: number, min = 0) {
   const yy = String(year)

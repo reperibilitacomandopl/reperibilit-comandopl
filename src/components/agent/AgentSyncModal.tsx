@@ -27,7 +27,7 @@ export default function AgentSyncModal({ userId, calendarToken, onClose }: Agent
         <div className="p-5 space-y-3">
           <button
             onClick={() => {
-              window.location.href = `webcal://${host}/api/calendar/${userId}${tokenParam}`
+              window.location.href = `webcal://${host}/api/calendar/${userId}/feed.ics${tokenParam}`
             }}
             className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-slate-100 hover:border-blue-400 hover:bg-blue-50/50 transition-all text-left"
           >
@@ -40,7 +40,7 @@ export default function AgentSyncModal({ userId, calendarToken, onClose }: Agent
 
           <button
             onClick={() => {
-              window.location.href = `webcal://${host}/api/calendar/${userId}${tokenParam}`
+              window.location.href = `webcal://${host}/api/calendar/${userId}/feed.ics${tokenParam}`
             }}
             className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-slate-100 hover:border-indigo-400 hover:bg-indigo-50/50 transition-all text-left"
           >
@@ -53,7 +53,7 @@ export default function AgentSyncModal({ userId, calendarToken, onClose }: Agent
 
           <button
             onClick={() => {
-              const calUrl = `${protocol}//${host}/api/calendar/${userId}${tokenParam}`
+              const calUrl = `${protocol}//${host}/api/calendar/${userId}/feed.ics${tokenParam}`
               const gcalUrl = `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(calUrl)}`
               window.open(gcalUrl, '_blank')
             }}
@@ -69,7 +69,7 @@ export default function AgentSyncModal({ userId, calendarToken, onClose }: Agent
           <div className="pt-3 border-t border-slate-100">
             <button
               onClick={() => {
-                window.location.href = `/api/calendar/${userId}${tokenParam}`
+                window.location.href = `/api/calendar/${userId}/feed.ics${tokenParam}`
                 onClose()
               }}
               className="w-full flex items-center justify-center gap-2 text-xs font-bold text-slate-500 hover:text-blue-600 py-2 transition-colors"
