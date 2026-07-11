@@ -158,7 +158,7 @@ export default auth(async (req) => {
   const pathParts = pathname.split("/")
   const urlSlug = pathParts[1] // es: /altamura/admin -> 'altamura'
 
-  const reservedPrefixes = ["api", "superadmin", "verify-2fa", "login", "_next", "favicon", "sw", "nfc", "quick-clock"]
+  const reservedPrefixes = ["api", "superadmin", "verify-2fa", "login", "_next", "favicon", "sw", "nfc", "quick-clock", "change-password"]
   if (urlSlug && !reservedPrefixes.includes(urlSlug) && !PUBLIC_ROUTES.has("/" + urlSlug)) {
     // Se l'utente non è SuperAdmin e sta cercando di accedere a uno slug diverso dal suo
     if (!u.isSuperAdmin && u.tenantSlug !== urlSlug) {
@@ -167,8 +167,21 @@ export default auth(async (req) => {
       if (pathname.startsWith("/api/")) {
         return addSecurityHeaders(NextResponse.json({ error: "Forbidden: Tenant Isolation Violation" }, { status: 403 }), false, requestId)
       }
-      // Per le rotte UI, riportalo al suo pannello
-      return NextResponse.redirect(new URL(`/${u.tenantSlug}/admin/pannello`, req.url))
+      
+      // Per le rotte UI, riportalo al suo pannello (admin o agente)
+      const hasAdminAccess =
+        u.role === "ADMIN" ||
+        u.isSuperAdmin ||
+        u.canManageShifts ||
+        u.canManageUsers ||
+        u.canVerifyClockIns ||
+        u.canConfigureSystem
+
+      const destination = hasAdminAccess
+        ? `/${u.tenantSlug}/admin/pannello`
+        : `/${u.tenantSlug}`
+
+      return NextResponse.redirect(new URL(destination, req.url))
     }
   }
 
