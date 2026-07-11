@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
@@ -8,7 +8,7 @@ export async function GET() {
     if (!session?.user?.tenantId) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
 
     const users = await prisma.user.findMany({
-      where: { tenantId: session.user.tenantId, active: true },
+      where: { tenantId: session.user.tenantId, isActive: true },
       select: { id: true, name: true, cognome: true, nome: true, matricola: true },
       orderBy: [{ cognome: "asc" }, { name: "asc" }]
     })
