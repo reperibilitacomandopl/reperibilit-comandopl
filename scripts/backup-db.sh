@@ -22,6 +22,11 @@ fi
 ${DOCKER} exec "${DB_CONTAINER}" pg_dump -U postgres -Fc postgres > "${DUMP_FILE}"
 chmod 600 "${DUMP_FILE}"
 
+# Upload automatico su Oracle Cloud Object Storage (PAR valido fino al 2036)
+echo "[backup-db] Caricamento su Oracle Cloud Object Storage..."
+curl -s -f -X PUT --data-binary @"${DUMP_FILE}" "https://axrugf3mocks.objectstorage.eu-milan-1.oci.customer-oci.com/p/RqkHyjwdjLJFL5xq9cmUIDJ8JoOJyYQddR0CV13VF_hur_vp1hIvzthQU-AJK5zX/n/axrugf3mocks/b/sentinel-backups/o/$(basename "${DUMP_FILE}")" || echo "[backup-db] ERRORE caricamento cloud"
+
 find "${BACKUP_DIR}" -name 'sentinel_*.dump' -type f -mtime +"${RETENTION_DAYS}" -delete
 
 echo "[backup-db] OK ${DUMP_FILE} ($(du -h "${DUMP_FILE}" | cut -f1))"
+
