@@ -60,6 +60,17 @@ export default function DashboardShell({
 }: DashboardShellProps & { initialView?: string }) {
   const { role, name, matricola, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem, canManageCheckpoints, canManageViolations } = session.user
 
+  const [isMobile, setIsMobile] = React.useState(false)
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024)
+    }
+    handleResize()
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
+
   const agentData = useAgentData({
     currentUser: session.user,
     currentYear,
@@ -125,7 +136,7 @@ export default function DashboardShell({
       {/* Main Content Area */}
       <main className="flex-1 pt-20">
         <div className={containerClass}>
-          {(role === "ADMIN" || canManageShifts || canManageUsers || canVerifyClockIns || canConfigureSystem || canManageCheckpoints || canManageViolations) ? (
+          {(role === "ADMIN" || ((canManageShifts || canManageUsers || canVerifyClockIns || canConfigureSystem || canManageCheckpoints || canManageViolations) && (!isMobile || role !== "AGENTE"))) ? (
             <AdminDashboard 
               allAgents={allAgents} 
               shifts={shifts} 
