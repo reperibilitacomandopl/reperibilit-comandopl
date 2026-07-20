@@ -38,6 +38,8 @@ export default async function RisorsePage({ params }: { params: Promise<{ tenant
         canManageUsers: true,
         canVerifyClockIns: true,
         canConfigureSystem: true,
+        canManageCheckpoints: true,
+        canManageViolations: true,
         email: true,
         phone: true,
         qualifica: true,

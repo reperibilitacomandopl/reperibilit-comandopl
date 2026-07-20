@@ -36,6 +36,7 @@ export default async function PianificazionePage({ params, searchParams }: { par
         dataAssunzione: true, scadenzaPatente: true, scadenzaPortoArmi: true, noteInterne: true,
         dataDiNascita: true, tipoContratto: true, defaultPartnerIds: true, fixedServiceDays: true,
         canConfigureSystem: true, canManageShifts: true, canManageUsers: true, canVerifyClockIns: true,
+        canManageCheckpoints: true, canManageViolations: true,
         twoFactorEnabled: true, hasL104: true, l104Assistiti: true, hasStudyLeave: true, hasParentalLeave: true, hasChildSicknessLeave: true
       }
     }),
