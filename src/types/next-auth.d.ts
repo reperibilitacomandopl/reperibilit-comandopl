@@ -17,6 +17,8 @@ declare module "next-auth" {
     canManageUsers: boolean
     canVerifyClockIns: boolean
     canConfigureSystem: boolean
+    canManageCheckpoints: boolean
+    canManageViolations: boolean
     gpsConsent: boolean
     privacyConsent: boolean
     twoFactorEnabled: boolean
@@ -50,6 +52,8 @@ declare module "next-auth/jwt" {
     canManageUsers: boolean
     canVerifyClockIns: boolean
     canConfigureSystem: boolean
+    canManageCheckpoints: boolean
+    canManageViolations: boolean
     gpsConsent: boolean
     privacyConsent: boolean
     twoFactorEnabled: boolean

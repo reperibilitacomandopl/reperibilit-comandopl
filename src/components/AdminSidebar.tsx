@@ -126,6 +126,8 @@ interface AdminSidebarProps {
   canManageUsers?: boolean
   canVerifyClockIns?: boolean
   canConfigureSystem?: boolean
+  canManageCheckpoints?: boolean
+  canManageViolations?: boolean
   userRole?: string
 }
 
@@ -142,6 +144,8 @@ export default function AdminSidebar({
   canManageUsers,
   canVerifyClockIns,
   canConfigureSystem,
+  canManageCheckpoints,
+  canManageViolations,
   userRole
 }: AdminSidebarProps) {
   const pathname = usePathname()
@@ -251,12 +255,16 @@ export default function AdminSidebar({
             if (userRole === "ADMIN" || isSuperAdmin) return true;
 
             // Utente con permessi granulari: mostra in base al permesso
-            if (section.title === "Centrale Operativa") return canManageShifts || canVerifyClockIns;
-            if (section.title === "Pianificazione") return canManageShifts;
-            if (section.title === "Personale") return canManageUsers || canManageShifts;
-            if (section.title === "Risorse e Mezzi") return canConfigureSystem || canManageShifts;
-            if (section.title === "Report e Analisi") return canConfigureSystem || canManageShifts;
-            if (section.title === "Sistema") return canConfigureSystem;
+            if (section.title === "Centrale Operativa") {
+              if (item.href.includes("posti-controllo")) return !!canManageCheckpoints;
+              if (item.href.includes("verbali")) return !!canManageViolations;
+              return !!canManageShifts || !!canVerifyClockIns;
+            }
+            if (section.title === "Pianificazione") return !!canManageShifts;
+            if (section.title === "Personale") return !!canManageUsers || !!canManageShifts;
+            if (section.title === "Risorse e Mezzi") return !!canConfigureSystem || !!canManageShifts;
+            if (section.title === "Report e Analisi") return !!canConfigureSystem || !!canManageShifts;
+            if (section.title === "Sistema") return !!canConfigureSystem;
 
             return false;
           });

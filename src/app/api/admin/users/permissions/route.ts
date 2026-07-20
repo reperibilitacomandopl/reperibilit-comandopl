@@ -35,6 +35,8 @@ export async function POST(req: Request) {
         canManageUsers: permissions.canManageUsers,
         canVerifyClockIns: permissions.canVerifyClockIns,
         canConfigureSystem: permissions.canConfigureSystem,
+        canManageCheckpoints: permissions.canManageCheckpoints,
+        canManageViolations: permissions.canManageViolations,
       }
     })
 

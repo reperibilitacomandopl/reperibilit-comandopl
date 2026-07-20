@@ -58,7 +58,7 @@ export default function DashboardShell({
   calendarToken,
   initialView: _initialView
 }: DashboardShellProps & { initialView?: string }) {
-  const { role, name, matricola, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem } = session.user
+  const { role, name, matricola, canManageShifts, canManageUsers, canVerifyClockIns, canConfigureSystem, canManageCheckpoints, canManageViolations } = session.user
 
   const agentData = useAgentData({
     currentUser: session.user,
@@ -100,7 +100,7 @@ export default function DashboardShell({
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Matr. {matricola} • {role}</p>
             </div>
             <div className="flex items-center gap-2 sm:gap-6">
-              {(role === 'ADMIN' || canManageShifts) && (
+              {(role === 'ADMIN' || canManageShifts || canManageUsers || canVerifyClockIns || canConfigureSystem || canManageCheckpoints || canManageViolations) && (
                 <Link 
                   href={`/${tenantSlug || 'admin'}/admin/pannello`}
                   className="hidden sm:flex items-center gap-2 p-2.5 text-blue-600 hover:bg-blue-50 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest border border-blue-100"
@@ -125,7 +125,7 @@ export default function DashboardShell({
       {/* Main Content Area */}
       <main className="flex-1 pt-20">
         <div className={containerClass}>
-          {(role === "ADMIN" || canManageShifts || canManageUsers || canVerifyClockIns || canConfigureSystem) ? (
+          {(role === "ADMIN" || canManageShifts || canManageUsers || canVerifyClockIns || canConfigureSystem || canManageCheckpoints || canManageViolations) ? (
             <AdminDashboard 
               allAgents={allAgents} 
               shifts={shifts} 

@@ -55,7 +55,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const session = await auth()
-    if (!session?.user?.id || !session.user.tenantId || session.user.role !== 'ADMIN') {
+    if (!session?.user?.id || !session.user.tenantId || (session.user.role !== 'ADMIN' && !session.user.canManageCheckpoints)) {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 })
     }
 

@@ -23,7 +23,9 @@ export default async function AdminLayout({
     session.user.canManageShifts || 
     session.user.canManageUsers || 
     session.user.canVerifyClockIns || 
-    session.user.canConfigureSystem
+    session.user.canConfigureSystem ||
+    session.user.canManageCheckpoints ||
+    session.user.canManageViolations
 
   if (!hasAdminAccess) redirect("/login")
 
@@ -54,6 +56,8 @@ export default async function AdminLayout({
         canManageUsers={session.user.canManageUsers}
         canVerifyClockIns={session.user.canVerifyClockIns}
         canConfigureSystem={session.user.canConfigureSystem}
+        canManageCheckpoints={session.user.canManageCheckpoints}
+        canManageViolations={session.user.canManageViolations}
         userRole={session.user.role}
       />
 

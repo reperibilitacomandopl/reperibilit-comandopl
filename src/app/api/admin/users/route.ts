@@ -102,6 +102,7 @@ export async function PUT(req: Request) {
       dataDiNascita, tipoContratto, defaultPartnerIds, fixedServiceDays,
       hasL104, l104Assistiti, hasStudyLeave, hasParentalLeave, hasChildSicknessLeave,
       canConfigureSystem, canManageShifts, canManageUsers, canVerifyClockIns, 
+      canManageCheckpoints, canManageViolations,
       isUfficiale, isSuperAdmin, twoFactorEnabled, isActive 
     } = validation.data as any
     
@@ -144,6 +145,8 @@ export async function PUT(req: Request) {
       canManageShifts: canManageShifts === undefined ? undefined : canManageShifts,
       canManageUsers: canManageUsers === undefined ? undefined : canManageUsers,
       canVerifyClockIns: canVerifyClockIns === undefined ? undefined : canVerifyClockIns,
+      canManageCheckpoints: canManageCheckpoints === undefined ? undefined : canManageCheckpoints,
+      canManageViolations: canManageViolations === undefined ? undefined : canManageViolations,
       isUfficiale: isUfficiale === undefined ? undefined : isUfficiale,
       // Only SuperAdmins can change the SuperAdmin flag
       isSuperAdmin: (isSuperAdmin !== undefined && session.user.isSuperAdmin) ? isSuperAdmin : undefined,
@@ -245,7 +248,8 @@ export async function POST(req: Request) {
       dataDiNascita, tipoContratto, defaultPartnerIds, fixedServiceDays,
       fallbackServiceCategoryId,
       hasL104, l104Assistiti, hasStudyLeave, hasParentalLeave, hasChildSicknessLeave,
-      canConfigureSystem, canManageShifts, canManageUsers, canVerifyClockIns
+      canConfigureSystem, canManageShifts, canManageUsers, canVerifyClockIns,
+      canManageCheckpoints, canManageViolations
     } = validation.data
 
     const tenantId = session.user.tenantId
@@ -300,7 +304,9 @@ export async function POST(req: Request) {
         canConfigureSystem: canConfigureSystem || false,
         canManageShifts: canManageShifts || false,
         canManageUsers: canManageUsers || false,
-        canVerifyClockIns: canVerifyClockIns || false
+        canVerifyClockIns: canVerifyClockIns || false,
+        canManageCheckpoints: canManageCheckpoints || false,
+        canManageViolations: canManageViolations || false
       }
     })
 

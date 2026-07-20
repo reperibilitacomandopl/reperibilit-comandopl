@@ -230,6 +230,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           canManageUsers: user.canManageUsers,
           canVerifyClockIns: user.canVerifyClockIns,
           canConfigureSystem: user.canConfigureSystem,
+          canManageCheckpoints: user.canManageCheckpoints,
+          canManageViolations: user.canManageViolations,
           gpsConsent: user.gpsConsent,
           privacyConsent: user.privacyConsent,
           twoFactorEnabled: user.twoFactorEnabled,
@@ -270,6 +272,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.canManageUsers = (user as any).canManageUsers as boolean | undefined
         token.canVerifyClockIns = (user as any).canVerifyClockIns as boolean | undefined
         token.canConfigureSystem = (user as any).canConfigureSystem as boolean | undefined
+        token.canManageCheckpoints = (user as any).canManageCheckpoints as boolean | undefined
+        token.canManageViolations = (user as any).canManageViolations as boolean | undefined
         token.gpsConsent = (user as any).gpsConsent as boolean | undefined
         token.privacyConsent = (user as any).privacyConsent as boolean | undefined
         token.twoFactorEnabled = (user as any).twoFactorEnabled as boolean | undefined
@@ -317,6 +321,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.canManageUsers = token.canManageUsers as boolean
         session.user.canVerifyClockIns = token.canVerifyClockIns as boolean
         session.user.canConfigureSystem = token.canConfigureSystem as boolean
+        session.user.canManageCheckpoints = token.canManageCheckpoints as boolean
+        session.user.canManageViolations = token.canManageViolations as boolean
         session.user.gpsConsent = token.gpsConsent as boolean
         session.user.privacyConsent = token.privacyConsent as boolean
         session.user.twoFactorEnabled = token.twoFactorEnabled as boolean

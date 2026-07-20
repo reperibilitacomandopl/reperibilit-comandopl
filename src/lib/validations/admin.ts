@@ -66,6 +66,8 @@ export const userCreateSchema = z.object({
   canManageShifts: z.boolean().optional(),
   canManageUsers: z.boolean().optional(),
   canVerifyClockIns: z.boolean().optional(),
+  canManageCheckpoints: z.boolean().optional(),
+  canManageViolations: z.boolean().optional(),
   twoFactorEnabled: z.boolean().optional(),
   isActive: z.boolean().optional(),
 });

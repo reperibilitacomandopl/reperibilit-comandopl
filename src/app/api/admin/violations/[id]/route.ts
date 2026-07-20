@@ -6,7 +6,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   try {
     const { id } = await params
     const session = await auth()
-    if (!session?.user?.id || !session.user.tenantId || session.user.role !== 'ADMIN') {
+    if (!session?.user?.id || !session.user.tenantId || (session.user.role !== 'ADMIN' && !session.user.canManageViolations)) {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 })
     }
     const body = await req.json()

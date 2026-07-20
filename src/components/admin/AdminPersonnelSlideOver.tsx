@@ -55,6 +55,8 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
   const [tempCanManageShifts, setTempCanManageShifts] = useState(false)
   const [tempCanManageUsers, setTempCanManageUsers] = useState(false)
   const [tempCanVerifyClockIns, setTempCanVerifyClockIns] = useState(false)
+  const [tempCanManageCheckpoints, setTempCanManageCheckpoints] = useState(false)
+  const [tempCanManageViolations, setTempCanManageViolations] = useState(false)
   const [tempIsActive, setTempIsActive] = useState(true)
   const [tempTwoFactorEnabled, setTempTwoFactorEnabled] = useState(false)
 
@@ -94,6 +96,8 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
       setTempCanManageShifts(editingAgent.canManageShifts || false)
       setTempCanManageUsers(editingAgent.canManageUsers || false)
       setTempCanVerifyClockIns(editingAgent.canVerifyClockIns || false)
+      setTempCanManageCheckpoints(editingAgent.canManageCheckpoints || false)
+      setTempCanManageViolations(editingAgent.canManageViolations || false)
       setTempIsActive(editingAgent.isActive !== false)
       setTempTwoFactorEnabled(editingAgent.twoFactorEnabled || false)
 
@@ -137,6 +141,8 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
       canManageShifts: tempCanManageShifts,
       canManageUsers: tempCanManageUsers,
       canVerifyClockIns: tempCanVerifyClockIns,
+      canManageCheckpoints: tempCanManageCheckpoints,
+      canManageViolations: tempCanManageViolations,
       twoFactorEnabled: tempTwoFactorEnabled,
       isActive: tempIsActive,
       newPassword: newPass || undefined, // Used internally to identify if a reset is requested
@@ -544,6 +550,32 @@ export function AdminPersonnelSlideOver({ editingAgent, setEditingAgent, onSave,
                            className={`w-12 h-6 shrink-0 rounded-full transition-all relative ${tempCanVerifyClockIns ? 'bg-blue-600 shadow-inner' : 'bg-slate-200'}`}
                          >
                             <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all ${tempCanVerifyClockIns ? 'translate-x-6' : ''}`} />
+                         </button>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+                         <div>
+                            <p className="text-xs font-black text-slate-800 uppercase tracking-widest">Posti di Controllo</p>
+                            <p className="text-[10px] text-slate-400 font-bold leading-tight mt-1">Può gestire controlli stradali, registrare veicoli e OCR.</p>
+                         </div>
+                         <button 
+                           onClick={() => setTempCanManageCheckpoints(!tempCanManageCheckpoints)}
+                           className={`w-12 h-6 shrink-0 rounded-full transition-all relative ${tempCanManageCheckpoints ? 'bg-rose-600 shadow-inner' : 'bg-slate-200'}`}
+                         >
+                            <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all ${tempCanManageCheckpoints ? 'translate-x-6' : ''}`} />
+                         </button>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+                         <div>
+                            <p className="text-xs font-black text-slate-800 uppercase tracking-widest">Sanzioni & Verbali</p>
+                            <p className="text-[10px] text-slate-400 font-bold leading-tight mt-1">Può gestire registro verbali CDS e aggiornare pagamenti.</p>
+                         </div>
+                         <button 
+                           onClick={() => setTempCanManageViolations(!tempCanManageViolations)}
+                           className={`w-12 h-6 shrink-0 rounded-full transition-all relative ${tempCanManageViolations ? 'bg-orange-500 shadow-inner' : 'bg-slate-200'}`}
+                         >
+                            <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all ${tempCanManageViolations ? 'translate-x-6' : ''}`} />
                          </button>
                       </div>
 

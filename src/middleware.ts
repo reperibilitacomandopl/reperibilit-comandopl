@@ -175,7 +175,9 @@ export default auth(async (req) => {
         u.canManageShifts ||
         u.canManageUsers ||
         u.canVerifyClockIns ||
-        u.canConfigureSystem
+        u.canConfigureSystem ||
+        u.canManageCheckpoints ||
+        u.canManageViolations
 
       const destination = hasAdminAccess
         ? `/${u.tenantSlug}/admin/pannello`
@@ -239,7 +241,9 @@ export default auth(async (req) => {
       u.canManageShifts ||
       u.canManageUsers ||
       u.canVerifyClockIns ||
-      u.canConfigureSystem
+      u.canConfigureSystem ||
+      u.canManageCheckpoints ||
+      u.canManageViolations
 
     if (!hasAdminAccess) {
       if (pathname.startsWith("/api/")) {
@@ -254,12 +258,16 @@ export default auth(async (req) => {
       const isUserRoute = pathname.includes("/risorse") || pathname.includes("/richieste") || pathname.includes("/formazione")
       const isClockRoute = pathname.includes("/timbrature")
       const isSystemRoute = pathname.includes("/impostazioni") || pathname.includes("/sezioni") || pathname.includes("/parco-auto") || pathname.includes("/audit-logs") || pathname.includes("/straordinari") || pathname.includes("/report") || pathname.includes("/export-paghe")
+      const isCheckpointRoute = pathname.includes("/posti-controllo")
+      const isViolationRoute = pathname.includes("/verbali")
 
       let allowed = true
       if (isShiftRoute && !u.canManageShifts) allowed = false
       if (isUserRoute && !u.canManageUsers) allowed = false
       if (isClockRoute && !u.canVerifyClockIns) allowed = false
       if (isSystemRoute && !u.canConfigureSystem) allowed = false
+      if (isCheckpointRoute && !u.canManageCheckpoints) allowed = false
+      if (isViolationRoute && !u.canManageViolations) allowed = false
 
       if (!allowed) {
         return NextResponse.redirect(new URL(`/${u.tenantSlug}/admin/pannello`, req.url))

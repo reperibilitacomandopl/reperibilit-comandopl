@@ -13,6 +13,8 @@ interface UserPermission {
   canManageUsers: boolean
   canVerifyClockIns: boolean
   canConfigureSystem: boolean
+  canManageCheckpoints: boolean
+  canManageViolations: boolean
 }
 
 interface PermissionsPanelProps {
@@ -40,6 +42,8 @@ export default function PermissionsPanel({ users: initialUsers }: PermissionsPan
       canManageUsers: user.canManageUsers,
       canVerifyClockIns: user.canVerifyClockIns,
       canConfigureSystem: user.canConfigureSystem,
+      canManageCheckpoints: user.canManageCheckpoints,
+      canManageViolations: user.canManageViolations,
       [field]: !user[field]
     }
 
@@ -101,6 +105,8 @@ export default function PermissionsPanel({ users: initialUsers }: PermissionsPan
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 text-center">Risorse & Squadre</th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 text-center">Verifiche GPS</th>
                 <th className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 text-center">Setup Sistema</th>
+                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 text-center">Posti Controllo</th>
+                <th className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 text-center">Sanzioni CDS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 italic font-medium">
@@ -122,7 +128,9 @@ export default function PermissionsPanel({ users: initialUsers }: PermissionsPan
                     { key: 'canManageShifts', label: 'Turnazioni' },
                     { key: 'canManageUsers', label: 'Risorse' },
                     { key: 'canVerifyClockIns', label: 'GPS' },
-                    { key: 'canConfigureSystem', label: 'Setup' }
+                    { key: 'canConfigureSystem', label: 'Setup' },
+                    { key: 'canManageCheckpoints', label: 'Controlli' },
+                    { key: 'canManageViolations', label: 'Sanzioni' }
                   ].map((perm) => (
                     <td key={perm.key} className="px-6 py-4 text-center">
                       <button

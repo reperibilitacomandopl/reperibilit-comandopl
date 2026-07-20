@@ -34,7 +34,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth()
-    if (!session?.user?.id || !session.user.tenantId || session.user.role !== 'ADMIN') {
+    if (!session?.user?.id || !session.user.tenantId || (session.user.role !== 'ADMIN' && !session.user.canManageCheckpoints)) {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 })
     }
 
@@ -82,7 +82,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth()
-    if (!session?.user?.id || !session.user.tenantId || session.user.role !== 'ADMIN') {
+    if (!session?.user?.id || !session.user.tenantId || (session.user.role !== 'ADMIN' && !session.user.canManageCheckpoints)) {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 })
     }
 

@@ -5,7 +5,7 @@ import { auth } from '@/auth'
 export async function GET(req: Request) {
   try {
     const session = await auth()
-    if (!session?.user?.id || !session.user.tenantId || session.user.role !== 'ADMIN') {
+    if (!session?.user?.id || !session.user.tenantId || (session.user.role !== 'ADMIN' && !session.user.canManageViolations)) {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 })
     }
 
