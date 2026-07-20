@@ -9,6 +9,28 @@ import CdsViolationSearch from "./CdsViolationSearch"
 
 const ALL_PRIVACY_FIELDS = ['intestazione', 'veicolo', 'proprietario', 'conducente', 'patente', 'sanzione', 'passeggero']
 
+type RedactionBox = {
+  id: string
+  label: string
+  color: string
+  x: number // percentage (0-100)
+  y: number // percentage (0-100)
+  width: number // percentage (0-100)
+  height: number // percentage (0-100)
+  active: boolean
+}
+
+const DEFAULT_BOXES: RedactionBox[] = [
+  { id: 'intestazione', label: 'Intestazione / Operatori', color: 'border-yellow-500 bg-yellow-500/10', x: 5, y: 2, width: 90, height: 10, active: false },
+  { id: 'veicolo', label: 'Dati Veicolo (Targa, Assicurazione, Revisione, Ora)', color: 'border-cyan-500 bg-cyan-500/10', x: 5, y: 13, width: 90, height: 12, active: false },
+  { id: 'proprietario', label: 'Proprietario Veicolo', color: 'border-blue-500 bg-blue-500/10', x: 5, y: 27, width: 90, height: 16, active: false },
+  { id: 'conducente', label: 'Conducente Veicolo', color: 'border-red-500 bg-red-500/10', x: 5, y: 45, width: 90, height: 16, active: true },
+  { id: 'patente', label: 'Dati Patente', color: 'border-purple-500 bg-purple-500/10', x: 5, y: 63, width: 90, height: 10, active: false },
+  { id: 'sanzione', label: 'Sanzioni / Verbali', color: 'border-amber-500 bg-amber-500/10', x: 5, y: 75, width: 90, height: 10, active: false },
+  { id: 'passeggero', label: 'Dati Passeggero', color: 'border-emerald-500 bg-emerald-500/10', x: 5, y: 87, width: 90, height: 10, active: false }
+]
+
+
 type OcrVehicle = {
   ora_controllo?: string
   targa?: string
@@ -81,6 +103,152 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
   const [users, setUsers] = useState<any[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Redaction boxes state
+  const [boxes, setBoxes] = useState<RedactionBox[]>(DEFAULT_BOXES)
+  const [activeDrag, setActiveDrag] = useState<{
+    boxId: string
+    type: 'move' | 'nw' | 'ne' | 'se' | 'sw'
+    startX: number
+    startY: number
+    startBoxX: number
+    startBoxY: number
+    startBoxW: number
+    startBoxH: number
+  } | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const handlePointerDown = (
+    e: React.PointerEvent<HTMLDivElement>,
+    boxId: string,
+    type: 'move' | 'nw' | 'ne' | 'se' | 'sw'
+  ) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const targetBox = boxes.find(b => b.id === boxId)
+    if (!targetBox) return
+
+    ;(e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId)
+
+    setActiveDrag({
+      boxId,
+      type,
+      startX: e.clientX,
+      startY: e.clientY,
+      startBoxX: targetBox.x,
+      startBoxY: targetBox.y,
+      startBoxW: targetBox.width,
+      startBoxH: targetBox.height
+    })
+  }
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!activeDrag || !containerRef.current) return
+    e.preventDefault()
+
+    const rect = containerRef.current.getBoundingClientRect()
+    const deltaX = ((e.clientX - activeDrag.startX) / rect.width) * 100
+    const deltaY = ((e.clientY - activeDrag.startY) / rect.height) * 100
+
+    setBoxes(prev => prev.map(box => {
+      if (box.id !== activeDrag.boxId) return box
+
+      let newX = box.x
+      let newY = box.y
+      let newW = box.width
+      let newH = box.height
+
+      if (activeDrag.type === 'move') {
+        newX = Math.max(0, Math.min(100 - box.width, activeDrag.startBoxX + deltaX))
+        newY = Math.max(0, Math.min(100 - box.height, activeDrag.startBoxY + deltaY))
+      } else if (activeDrag.type === 'se') {
+        newW = Math.max(5, Math.min(100 - box.x, activeDrag.startBoxW + deltaX))
+        newH = Math.max(5, Math.min(100 - box.y, activeDrag.startBoxH + deltaY))
+      } else if (activeDrag.type === 'sw') {
+        const potentialX = activeDrag.startBoxX + deltaX
+        if (potentialX >= 0 && activeDrag.startBoxW - deltaX >= 5) {
+          newX = potentialX
+          newW = activeDrag.startBoxW - deltaX
+        }
+        newH = Math.max(5, Math.min(100 - box.y, activeDrag.startBoxH + deltaY))
+      } else if (activeDrag.type === 'ne') {
+        newW = Math.max(5, Math.min(100 - box.x, activeDrag.startBoxW + deltaX))
+        const potentialY = activeDrag.startBoxY + deltaY
+        if (potentialY >= 0 && activeDrag.startBoxH - deltaY >= 5) {
+          newY = potentialY
+          newH = activeDrag.startBoxH - deltaY
+        }
+      } else if (activeDrag.type === 'nw') {
+        const potentialX = activeDrag.startBoxX + deltaX
+        const potentialY = activeDrag.startBoxY + deltaY
+        if (potentialX >= 0 && activeDrag.startBoxW - deltaX >= 5) {
+          newX = potentialX
+          newW = activeDrag.startBoxW - deltaX
+        }
+        if (potentialY >= 0 && activeDrag.startBoxH - deltaY >= 5) {
+          newY = potentialY
+          newH = activeDrag.startBoxH - deltaY
+        }
+      }
+
+      return {
+        ...box,
+        x: Math.round(newX * 100) / 100,
+        y: Math.round(newY * 100) / 100,
+        width: Math.round(newW * 100) / 100,
+        height: Math.round(newH * 100) / 100
+      }
+    }))
+  }
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!activeDrag) return
+    e.preventDefault()
+    try {
+      (e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId)
+    } catch {}
+    setActiveDrag(null)
+  }
+
+  const getRedactedImageBlob = (): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      if (!file) return reject(new Error('No file selected'))
+
+      const img = new Image()
+      img.src = preview || ''
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.naturalWidth
+        canvas.height = img.naturalHeight
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return reject(new Error('Canvas context not available'))
+
+        // Draw original image
+        ctx.drawImage(img, 0, 0)
+
+        // Draw black rectangles for active redaction boxes
+        ctx.fillStyle = 'black'
+        boxes.forEach(box => {
+          if (!box.active) return
+
+          const px = (box.x / 100) * canvas.width
+          const py = (box.y / 100) * canvas.height
+          const pw = (box.width / 100) * canvas.width
+          const ph = (box.height / 100) * canvas.height
+
+          ctx.fillRect(px, py, pw, ph)
+        })
+
+        // Export as blob
+        canvas.toBlob(blob => {
+          if (blob) resolve(blob)
+          else reject(new Error('Canvas export failed'))
+        }, file.type || 'image/jpeg', 0.9)
+      }
+      img.onerror = (e) => reject(e)
+    })
+  }
+
+
   useEffect(() => {
     fetch('/api/agent/users').then(r => r.json()).then(data => {
       if (Array.isArray(data)) setUsers(data)
@@ -119,8 +287,31 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
 
     try {
       const formData = new FormData()
-      formData.append('file', file)
-      formData.append('privacyFields', privacyFields.join(','))
+
+      // If we have active boxes and it's an image, redact it first!
+      const hasActiveBoxes = boxes.some(b => b.active)
+      const isImage = file.type.startsWith('image/')
+
+      if (hasActiveBoxes && isImage) {
+        try {
+          const redactedBlob = await getRedactedImageBlob()
+          // Append the redacted file instead
+          const redactedFile = new File([redactedBlob], file.name, { type: file.type })
+          formData.append('file', redactedFile)
+        } catch (err) {
+          console.error('Errore durante l\'oscuramento:', err)
+          setError('Impossibile oscurare l\'immagine prima dell\'invio. Invio file originale.')
+          formData.append('file', file)
+        }
+      } else {
+        formData.append('file', file)
+      }
+
+      // Also tell the backend which privacy fields we are filtering (excluding the active boxes)
+      const activeIds = boxes.filter(b => b.active).map(b => b.id)
+      const remainingPrivacyFields = ALL_PRIVACY_FIELDS.filter(f => !activeIds.includes(f))
+      formData.append('privacyFields', remainingPrivacyFields.join(','))
+
 
       const res = await fetch('/api/admin/checkpoints/import', {
         method: 'POST',
@@ -244,24 +435,86 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
           <div
             onDragOver={e => e.preventDefault()}
             onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all ${
+            className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all ${
               file
                 ? "border-blue-500/40 bg-blue-500/5"
-                : isDark ? "border-white/10 hover:border-white/20 hover:bg-white/5" : "border-slate-300 hover:border-slate-400 hover:bg-slate-50"
+                : isDark ? "border-white/10 hover:border-white/20 hover:bg-white/5 cursor-pointer" : "border-slate-300 hover:border-slate-400 hover:bg-slate-50 cursor-pointer"
             }`}
+            onClick={(e) => {
+              // Only open file dialog if user clicks background and not on active boxes / preview
+              if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'DIV' && !(e.target as HTMLElement).closest('.relative')) {
+                fileInputRef.current?.click()
+              }
+            }}
           >
             <input ref={fileInputRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp" onChange={e => e.target.files?.[0] && handleFileSelect(e.target.files[0])} className="hidden" />
 
             {file ? (
-              <div className="space-y-3">
-                {preview && <img src={preview} alt="Anteprima" className="max-h-64 mx-auto rounded-xl shadow-lg" />}
-                <div className="flex items-center justify-center gap-3">
+              <div className="space-y-4">
+                {preview && (
+                  file.type.startsWith('image/') ? (
+                    <div className="space-y-2">
+                      <p className={`text-xs font-bold ${mutedText} mb-2`}>
+                        Trascina o ridimensiona i riquadri colorati per coprire le parti sensibili che non desideri inviare all'IA.
+                      </p>
+                      <div 
+                        ref={containerRef}
+                        onPointerMove={handlePointerMove}
+                        onPointerUp={handlePointerUp}
+                        onPointerLeave={handlePointerUp}
+                        className="relative max-w-full md:max-w-xl mx-auto rounded-xl overflow-hidden shadow-lg select-none cursor-default border border-slate-200 dark:border-white/10 bg-slate-950/20"
+                        style={{ touchAction: 'none' }}
+                      >
+                        <img src={preview} alt="Anteprima" className="w-full h-auto pointer-events-none" />
+                        {boxes.map(box => {
+                          if (!box.active) return null
+                          return (
+                            <div
+                              key={box.id}
+                              className={`absolute border-2 ${box.color} flex flex-col justify-between`}
+                              style={{
+                                left: `${box.x}%`,
+                                top: `${box.y}%`,
+                                width: `${box.width}%`,
+                                height: `${box.height}%`,
+                                cursor: 'move'
+                              }}
+                              onPointerDown={(e) => handlePointerDown(e, box.id, 'move')}
+                            >
+                              {/* Label */}
+                              <span className="bg-slate-900/80 text-white text-[9px] font-black uppercase tracking-wider px-1 py-0.5 self-start select-none rounded-br">
+                                {box.label}
+                              </span>
+                              
+                              {/* Handles */}
+                              <div className="absolute -top-1 -left-1 w-2.5 h-2.5 bg-white border border-slate-950 cursor-nw-resize rounded-full" onPointerDown={(e) => handlePointerDown(e, box.id, 'nw')} />
+                              <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-white border border-slate-950 cursor-ne-resize rounded-full" onPointerDown={(e) => handlePointerDown(e, box.id, 'ne')} />
+                              <div className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-white border border-slate-950 cursor-se-resize rounded-full" onPointerDown={(e) => handlePointerDown(e, box.id, 'se')} />
+                              <div className="absolute -bottom-1 -left-1 w-2.5 h-2.5 bg-white border border-slate-950 cursor-sw-resize rounded-full" onPointerDown={(e) => handlePointerDown(e, box.id, 'sw')} />
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-6 border border-amber-500/20 bg-amber-500/5 rounded-xl text-amber-500 text-xs font-bold max-w-md mx-auto">
+                      L'oscuramento interattivo delle aree è supportato solo per le immagini (PNG, JPG, TIFF). Per i PDF, tutti i filtri privacy selezionati verranno rimossi direttamente dal server tramite software.
+                    </div>
+                  )
+                )}
+                
+                <div className="flex items-center justify-center gap-3 border-t border-slate-200 dark:border-white/5 pt-4 max-w-md mx-auto">
                   <FileText size={24} className="text-blue-500" />
-                  <div>
-                    <p className="font-bold">{file.name}</p>
+                  <div className="text-left">
+                    <p className="font-bold text-sm">{file.name}</p>
                     <p className={`text-xs ${mutedText}`}>{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                   </div>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); reset(); }}
+                    className={`p-1 rounded-full ml-auto hover:bg-rose-500/10 text-rose-500 transition-colors`}
+                  >
+                    <X size={16} />
+                  </button>
                 </div>
               </div>
             ) : (
@@ -273,25 +526,31 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
             )}
           </div>
 
+
           {file && (
             <>
               {/* Privacy fields selection */}
               <div className="mt-8 border-t border-slate-200 dark:border-white/10 pt-6 animate-in fade-in slide-in-from-bottom-4">
                 <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
-                  <Shield size={16} className="text-blue-500" /> Seleziona Dati da Estrarre (Filtro Privacy)
+                  <Shield size={16} className="text-rose-500" /> Seleziona Aree da Oscurare/Censurare prima dell'invio
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {ALL_PRIVACY_FIELDS.map(f => (
-                    <label key={f} className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${privacyFields.includes(f) ? 'border-blue-500 bg-blue-500/5' : 'border-slate-200 dark:border-white/10 opacity-50 hover:opacity-100'}`}>
-                      <input type="checkbox" checked={privacyFields.includes(f)} onChange={(e) => {
-                        if (e.target.checked) setPrivacyFields([...privacyFields, f])
-                        else setPrivacyFields(privacyFields.filter(x => x !== f))
-                      }} className="w-4 h-4 rounded text-blue-500 focus:ring-blue-500 bg-transparent border-slate-300 dark:border-slate-600" />
-                      <span className="text-xs font-bold uppercase tracking-wider">{f}</span>
+                  {boxes.map(box => (
+                    <label key={box.id} className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${box.active ? 'border-rose-500 bg-rose-500/5' : 'border-slate-200 dark:border-white/10 opacity-50 hover:opacity-100'}`}>
+                      <input 
+                        type="checkbox" 
+                        checked={box.active} 
+                        onChange={(e) => {
+                          setBoxes(prev => prev.map(b => b.id === box.id ? { ...b, active: e.target.checked } : b))
+                        }} 
+                        className="w-4 h-4 rounded text-rose-500 focus:ring-rose-500 bg-transparent border-slate-300 dark:border-slate-600" 
+                      />
+                      <span className="text-xs font-bold uppercase tracking-wider">{box.label}</span>
                     </label>
                   ))}
                 </div>
               </div>
+
 
               <div className="flex justify-end mt-8 gap-3">
                 <button onClick={reset} className={`px-4 py-3 text-sm font-bold rounded-xl ${isDark ? "bg-white/5 hover:bg-white/10" : "bg-slate-100 hover:bg-slate-200"}`}>
