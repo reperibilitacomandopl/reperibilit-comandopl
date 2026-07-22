@@ -32,6 +32,35 @@ function getGradoLivello(qualifica: string): number {
 // Pulisce una stringa rimuovendo doppi spazi e portandola a UpperCase
 const superClean = (s: string) => (s || "").toString().toUpperCase().replace(/\s+/g, " ").trim()
 
+function generateNameVariants(fullName: string): { full: string[], initials: string[] } {
+  const clean = superClean(fullName).replace(/[.,]/g, "")
+  const parts = clean.split(" ").filter(Boolean)
+  if (parts.length === 0) return { full: [], initials: [] }
+
+  const fullSet = new Set<string>()
+  const initSet = new Set<string>()
+
+  fullSet.add(clean)
+  fullSet.add(parts.slice().reverse().join(" "))
+
+  if (parts.length >= 2) {
+    const firstWord = parts[0]
+    const lastWord = parts[parts.length - 1]
+    const firstInit = firstWord[0]
+    const lastInit = lastWord[0]
+
+    const restAfterFirst = parts.slice(1).join(" ")
+    initSet.add(`${firstInit} ${restAfterFirst}`)
+    initSet.add(`${firstInit}. ${restAfterFirst}`)
+
+    const restBeforeLast = parts.slice(0, parts.length - 1).join(" ")
+    initSet.add(`${restBeforeLast} ${lastInit}`)
+    initSet.add(`${restBeforeLast} ${lastInit}.`)
+  }
+
+  return { full: Array.from(fullSet), initials: Array.from(initSet) }
+}
+
 export async function POST(req: Request) {
   try {
     const session = await auth()
@@ -54,11 +83,18 @@ export async function POST(req: Request) {
     })
 
     const nameMap = new Map<string, any>()
+    const initialsMap = new Map<string, any>()
     const matricolaMap = new Map<string, any>()
     const rawDigitsMap = new Map<string, any>()
 
     allUsers.forEach((u: any) => {
-      if (u.name) nameMap.set(superClean(u.name), u)
+      if (u.name) {
+        const { full, initials } = generateNameVariants(u.name)
+        full.forEach(v => nameMap.set(v, u))
+        initials.forEach(v => {
+          if (!initialsMap.has(v)) initialsMap.set(v, u)
+        })
+      }
       if (u.matricola) {
         const m = String(u.matricola).trim()
         matricolaMap.set(m, u)
@@ -93,7 +129,10 @@ export async function POST(req: Request) {
             || rawDigitsMap.get(nameDigits)
         }
         if (!userObj) {
-          userObj = nameMap.get(cleanName)
+          userObj = nameMap.get(cleanName) || nameMap.get(cleanName.replace(/[.,]/g, ""))
+        }
+        if (!userObj) {
+          userObj = initialsMap.get(cleanName) || initialsMap.get(cleanName.replace(/[.,]/g, ""))
         }
       }
 
