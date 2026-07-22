@@ -55,9 +55,17 @@ export async function POST(req: Request) {
 
     const nameMap = new Map<string, any>()
     const matricolaMap = new Map<string, any>()
+    const rawDigitsMap = new Map<string, any>()
+
     allUsers.forEach((u: any) => {
       if (u.name) nameMap.set(superClean(u.name), u)
-      if (u.matricola) matricolaMap.set(String(u.matricola).trim(), u)
+      if (u.matricola) {
+        const m = String(u.matricola).trim()
+        matricolaMap.set(m, u)
+        matricolaMap.set(m.replace(/^0+/, ""), u) // Senza zeri iniziali
+        const digits = m.replace(/\D/g, "")
+        if (digits) rawDigitsMap.set(digits, u)
+      }
     })
 
     const resolvedOps: any[] = []
@@ -68,10 +76,25 @@ export async function POST(req: Request) {
       const { name, matricola, date, type } = shiftData
       const cleanName = superClean(name)
       const cleanMatricola = matricola ? String(matricola).trim() : ""
+      const digitsMatricola = cleanMatricola.replace(/\D/g, "")
       
-      let userObj = cleanMatricola ? matricolaMap.get(cleanMatricola) : null
+      let userObj = null
+      if (cleanMatricola) {
+        userObj = matricolaMap.get(cleanMatricola) 
+          || matricolaMap.get(cleanMatricola.replace(/^0+/, "")) 
+          || rawDigitsMap.get(digitsMatricola)
+      }
       if (!userObj && cleanName) {
-        userObj = nameMap.get(cleanName)
+        // Se cleanName è numerico o ha matricola, prova la ricerca per matricola
+        const nameDigits = cleanName.replace(/\D/g, "")
+        if (nameDigits) {
+          userObj = matricolaMap.get(cleanName) 
+            || matricolaMap.get(cleanName.replace(/^0+/, ""))
+            || rawDigitsMap.get(nameDigits)
+        }
+        if (!userObj) {
+          userObj = nameMap.get(cleanName)
+        }
       }
 
       if (!userObj) {

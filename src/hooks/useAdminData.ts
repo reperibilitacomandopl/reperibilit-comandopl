@@ -788,14 +788,27 @@ export function useAdminData(
           const ignoreKeywords = ["AGENTE", "ISTRUTTORE", "UFFICIALE", "SOVRINTENDENTE", "ASSISTENTE", "VICE", "CAPITANO", "TENENTE", "TOTAL", "COMUNE", "POLIZIA"]
           
           const headerData = data[headerRowIndex] as any[]
-          let agentColIndex = -1
+          let nameColIndex = -1
+          let matrColIndex = -1
+          let qualColIndex = -1
+          let squadColIndex = -1
+
           headerData.forEach((val, idx) => {
-            const s = String(val || "").toUpperCase()
-            if (s.includes("AGENTE") || s.includes("NOMINATIVO") || s.includes("NOME")) {
-              if (agentColIndex === -1) agentColIndex = idx
+            const s = String(val || "").toUpperCase().trim()
+            if (s.includes("MATRICOLA") || s.includes("MATR") || s.includes("BADGE") || s.includes("CODICE")) {
+              if (matrColIndex === -1) matrColIndex = idx
+            } else if (s.includes("NOMINATIVO") || s.includes("AGENTE") || s.includes("NOME") || s.includes("COGNOME")) {
+              if (nameColIndex === -1) nameColIndex = idx
+            } else if (s.includes("QUALIFICA") || s.includes("GRADO")) {
+              if (qualColIndex === -1) qualColIndex = idx
+            } else if (s.includes("SQUADRA") || s.includes("SEZIONE") || s.includes("GRUPPO")) {
+              if (squadColIndex === -1) squadColIndex = idx
             }
           })
-          if (agentColIndex === -1) agentColIndex = 0
+
+          if (nameColIndex === -1 && matrColIndex === -1) nameColIndex = 0
+          if (nameColIndex !== -1 && matrColIndex === -1) matrColIndex = nameColIndex + 1
+          if (matrColIndex !== -1 && nameColIndex === -1) nameColIndex = matrColIndex + 1
 
           const dayColMap: { col: number, date: Date }[] = []
           let lastDaySeen = 0
@@ -822,10 +835,13 @@ export function useAdminData(
 
           for (let r = headerRowIndex + 1; r < data.length; r++) {
             const rowData = data[r] as any[]
-            if (!rowData || !rowData[agentColIndex]) continue
+            if (!rowData) continue
             
-            const rawName = rowData[agentColIndex]?.toString().trim().toUpperCase() || ""
-            if (!rawName || rawName.length < 3) continue
+            const rawName = nameColIndex !== -1 ? (rowData[nameColIndex]?.toString().trim().toUpperCase() || "") : ""
+            const rawMatr = matrColIndex !== -1 ? (rowData[matrColIndex]?.toString().trim() || "") : ""
+
+            if (!rawName && !rawMatr) continue
+            if (rawName.length < 2 && rawMatr.length < 1) continue
             if (ignoreKeywords.some(kw => rawName === kw || (rawName.includes("PROGRAMMAZIONE") && rawName.length > 20))) continue
 
             dayColMap.forEach(mapping => {
@@ -833,9 +849,9 @@ export function useAdminData(
               if (shiftType) {
                 shiftsData.push({
                   name: rawName,
-                  matricola: rowData[agentColIndex + 1]?.toString().trim() || "",
-                  qualifica: rowData[agentColIndex + 2]?.toString().trim() || "",
-                  squadra: rowData[agentColIndex + 3]?.toString().trim() || "",
+                  matricola: rawMatr,
+                  qualifica: qualColIndex !== -1 ? (rowData[qualColIndex]?.toString().trim() || "") : "",
+                  squadra: squadColIndex !== -1 ? (rowData[squadColIndex]?.toString().trim() || "") : "",
                   date: mapping.date.toISOString(),
                   type: shiftType
                 })

@@ -75,36 +75,43 @@ export default function AgentImporter({ onImportComplete, embedded = false }: Ag
           return
         }
 
-        // Auto-map columns
+        // Dynamic Key Detection
         const agents: ImportedAgent[] = []
         const parseErrors: string[] = []
 
         jsonData.forEach((row, i) => {
-          const name = row["Nome"] || row["nome"] || row["NOME"] || row["Cognome e Nome"] || row["name"] || ""
-          const matricola = row["Matricola"] || row["matricola"] || row["MATRICOLA"] || row["Matr"] || row["matr"] || ""
-          const qualifica = row["Qualifica"] || row["qualifica"] || row["QUALIFICA"] || ""
-          const email = row["Email"] || row["email"] || row["EMAIL"] || row["E-mail"] || ""
-          const phone = row["Telefono"] || row["telefono"] || row["TELEFONO"] || row["Phone"] || row["Tel"] || ""
-          const squadra = row["Squadra"] || row["squadra"] || row["SQUADRA"] || row["Gruppo"] || ""
-          const uffRaw = row["Ufficiale"] || row["ufficiale"] || row["UFFICIALE"] || ""
-          const isUfficiale = ["SI", "SÌ", "YES", "1", "TRUE", "X"].includes(uffRaw.toUpperCase().trim())
+          // Dynamic lookup of keys
+          const keys = Object.keys(row)
+          const findVal = (regex: RegExp) => {
+            const matchedKey = keys.find(k => regex.test(k.trim()))
+            return matchedKey ? String(row[matchedKey] || "").trim() : ""
+          }
 
-          if (!name.trim()) {
+          const name = findVal(/nome|nominativo|agente|cognome/i)
+          const matricola = findVal(/matricola|matr|badge|codice|id/i)
+          const qualifica = findVal(/qualifica|grado/i)
+          const email = findVal(/email|e-mail/i)
+          const phone = findVal(/telefono|tel|phone/i)
+          const squadra = findVal(/squadra|gruppo|sezione/i)
+          const uffRaw = findVal(/ufficiale/i)
+          const isUfficiale = ["SI", "SÌ", "YES", "1", "TRUE", "X"].includes(uffRaw.toUpperCase())
+
+          if (!name) {
             parseErrors.push(`Riga ${i + 2}: Nome mancante`)
             return
           }
-          if (!matricola.toString().trim()) {
+          if (!matricola) {
             parseErrors.push(`Riga ${i + 2}: Matricola mancante per "${name}"`)
             return
           }
 
           agents.push({
-            name: name.trim().toUpperCase(),
-            matricola: matricola.toString().trim(),
-            qualifica: qualifica.trim() || "Agente di P.L.",
-            email: email.trim() || undefined,
-            phone: phone.trim() || undefined,
-            squadra: squadra.trim() || undefined,
+            name: name.toUpperCase(),
+            matricola: matricola,
+            qualifica: qualifica || "Agente di P.L.",
+            email: email || undefined,
+            phone: phone || undefined,
+            squadra: squadra || undefined,
             isUfficiale
           })
         })
@@ -113,7 +120,7 @@ export default function AgentImporter({ onImportComplete, embedded = false }: Ag
         const matricole = agents.map(a => a.matricola)
         const duplicates = matricole.filter((m, i) => matricole.indexOf(m) !== i)
         if (duplicates.length > 0) {
-          parseErrors.push(`Matricole duplicate nel file: ${[...new Set(duplicates)].join(", ")}`)
+          parseErrors.push(`Attenzione: Matricole duplicate nel file (${[...new Set(duplicates)].join(", ")}). Puoi modificarle direttamente nella tabella qui sotto.`)
         }
 
         setParsedData(agents)
@@ -124,6 +131,21 @@ export default function AgentImporter({ onImportComplete, embedded = false }: Ag
       }
     }
     reader.readAsArrayBuffer(f)
+  }
+
+  const handleMatricolaChange = (index: number, newMatr: string) => {
+    const updated = [...parsedData]
+    updated[index] = { ...updated[index], matricola: newMatr.trim() }
+    setParsedData(updated)
+
+    // Re-check duplicates
+    const allMatr = updated.map(a => a.matricola)
+    const dups = [...new Set(allMatr.filter((m, i) => m && allMatr.indexOf(m) !== i))]
+    if (dups.length > 0) {
+      setErrors([`Attenzione: Trovate matricole duplicate (${dups.join(", ")}). Modifica il valore nelle caselle evidenziate.`])
+    } else {
+      setErrors([])
+    }
   }
 
   const handleImport = async () => {
@@ -162,6 +184,11 @@ export default function AgentImporter({ onImportComplete, embedded = false }: Ag
   const containerClass = embedded
     ? ""
     : "bg-white rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-200/50 p-8 md:p-10"
+
+  // Count duplicates for real-time visual warning
+  const duplicateSet = new Set(
+    parsedData.map(a => a.matricola).filter((m, i, arr) => m && arr.indexOf(m) !== i)
+  )
 
   return (
     <div className={containerClass}>
@@ -232,7 +259,7 @@ export default function AgentImporter({ onImportComplete, embedded = false }: Ag
             </button>
           </div>
 
-          {/* Errors */}
+          {/* Errors / Warnings */}
           {errors.length > 0 && (
             <div className="mb-5 p-4 bg-amber-50 border border-amber-200 rounded-xl">
               <div className="flex items-center gap-2 mb-2">
@@ -247,9 +274,9 @@ export default function AgentImporter({ onImportComplete, embedded = false }: Ag
             </div>
           )}
 
-          {/* Duplicate handling */}
+          {/* Duplicate handling option */}
           <div className="mb-5 p-4 bg-slate-50 border border-slate-200 rounded-xl">
-            <p className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3">Se la matricola esiste già:</p>
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3">Se una matricola esiste già nel sistema:</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDuplicateMode("skip")}
@@ -273,7 +300,7 @@ export default function AgentImporter({ onImportComplete, embedded = false }: Ag
                 <tr>
                   <th className="text-left p-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">#</th>
                   <th className="text-left p-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nome</th>
-                  <th className="text-left p-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Matricola</th>
+                  <th className="text-left p-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Matricola (Modificabile)</th>
                   <th className="text-left p-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Qualifica</th>
                   <th className="text-left p-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email</th>
                   <th className="text-left p-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Squadra</th>
@@ -281,17 +308,33 @@ export default function AgentImporter({ onImportComplete, embedded = false }: Ag
                 </tr>
               </thead>
               <tbody>
-                {parsedData.map((a, i) => (
-                  <tr key={i} className={`border-t border-slate-100 ${i % 2 === 0 ? "" : "bg-slate-50/50"}`}>
-                    <td className="p-3 text-xs text-slate-400 font-mono">{i + 1}</td>
-                    <td className="p-3 text-xs font-bold text-slate-900 uppercase">{a.name}</td>
-                    <td className="p-3 text-xs font-mono text-slate-600">{a.matricola}</td>
-                    <td className="p-3 text-xs text-slate-500">{a.qualifica}</td>
-                    <td className="p-3 text-xs text-slate-400">{a.email || "—"}</td>
-                    <td className="p-3 text-xs text-slate-500 font-bold">{a.squadra || "—"}</td>
-                    <td className="p-3 text-xs">{a.isUfficiale ? <span className="text-amber-600 font-bold">SI</span> : "—"}</td>
-                  </tr>
-                ))}
+                {parsedData.map((a, i) => {
+                  const isDup = duplicateSet.has(a.matricola)
+                  return (
+                    <tr key={i} className={`border-t border-slate-100 ${isDup ? "bg-amber-50/70" : i % 2 === 0 ? "" : "bg-slate-50/50"}`}>
+                      <td className="p-3 text-xs text-slate-400 font-mono">{i + 1}</td>
+                      <td className="p-3 text-xs font-bold text-slate-900 uppercase">{a.name}</td>
+                      <td className="p-2 text-xs font-mono">
+                        <input
+                          type="text"
+                          value={a.matricola}
+                          onChange={(e) => handleMatricolaChange(i, e.target.value)}
+                          className={`w-28 px-2 py-1 border rounded text-xs font-mono transition-colors ${
+                            isDup 
+                              ? "border-rose-400 bg-rose-50 text-rose-800 font-bold focus:ring-2 focus:ring-rose-400" 
+                              : "border-slate-300 bg-white text-slate-800 focus:border-indigo-500"
+                          }`}
+                          title={isDup ? "Matricola duplicata! Modificala qui" : "Modifica matricola"}
+                        />
+                        {isDup && <span className="ml-2 text-[10px] font-bold text-rose-600 uppercase">Duplicata</span>}
+                      </td>
+                      <td className="p-3 text-xs text-slate-500">{a.qualifica}</td>
+                      <td className="p-3 text-xs text-slate-400">{a.email || "—"}</td>
+                      <td className="p-3 text-xs text-slate-500 font-bold">{a.squadra || "—"}</td>
+                      <td className="p-3 text-xs">{a.isUfficiale ? <span className="text-amber-600 font-bold">SI</span> : "—"}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
