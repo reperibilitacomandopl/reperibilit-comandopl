@@ -141,6 +141,19 @@ export async function POST(req: Request) {
         continue
       }
 
+      // Se l'Excel fornisce una matricola pulita/numerica e l'agente ha una matricola segnaposto (es. FIOREP016, FORTEM017), aggiorniamo il DB!
+      const isPlaceholder = /^[A-Z]{3,}\d+$/.test(userObj.matricola || "")
+      const isNewMatricolaValid = cleanMatricola && cleanMatricola !== userObj.matricola && /^\d+$/.test(cleanMatricola.replace(/\D/g, ""))
+      if (cleanMatricola && (isPlaceholder || isNewMatricolaValid)) {
+        try {
+          await prisma.user.update({
+            where: { id: userObj.id },
+            data: { matricola: cleanMatricola }
+          })
+          userObj.matricola = cleanMatricola
+        } catch (e) {}
+      }
+
       const targetDate = new Date(date)
       if (isNaN(targetDate.getTime())) continue
       targetDate.setUTCHours(0, 0, 0, 0)
