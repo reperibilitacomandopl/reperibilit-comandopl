@@ -52,18 +52,26 @@ export async function POST(request: Request) {
           continue
         }
 
-        // Check if matricola already exists in this tenant
+        // Cerca se l'agente esiste già per Matricola OPPURE per Nome (per aggiornare eventuali matricole provvisorie tipo BELTEM001)
+        const cleanName = agent.name.trim().toUpperCase()
         const existing = await prisma.user.findFirst({
-          where: { matricola: agent.matricola, tenantId }
+          where: {
+            tenantId,
+            OR: [
+              { matricola: agent.matricola },
+              { name: cleanName }
+            ]
+          }
         })
 
         if (existing) {
           if (duplicateMode === "overwrite") {
-            // Update existing agent
+            // Update existing agent (aggiornando anche la matricola reale)
             await prisma.user.update({
               where: { id: existing.id },
               data: {
-                name: agent.name.toUpperCase(),
+                matricola: agent.matricola,
+                name: cleanName,
                 qualifica: agent.qualifica || existing.qualifica,
                 email: agent.email || existing.email,
                 phone: agent.phone || existing.phone,
