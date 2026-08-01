@@ -83,7 +83,7 @@ export async function POST(req: Request) {
         const day = parseInt(parts[0], 10);
         const month = parseInt(parts[1], 10) - 1;
         const year = 2000 + parseInt(parts[2], 10); // Assume 2000+
-        const startOfDay = new Date(year, month, day);
+        const startOfDay = new Date(Date.UTC(year, month, day));
 
         // Upsert shift
         const existingShift = await prisma.shift.findFirst({
