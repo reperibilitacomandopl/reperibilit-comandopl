@@ -751,6 +751,40 @@ export function useAdminData(
 
   const handleImportShifts = async (file: File, type: "base" | "rep") => {
     if (!file) return
+
+    // Verbatel JSON Import
+    if (file.name.endsWith('.json')) {
+      setIsGenerating(true)
+      setUploadStatus("Importazione JSON da Verbatel in corso...")
+      try {
+        const text = await file.text();
+        const payload = JSON.parse(text);
+        
+        // Use the API we just created. No secret needed since we are logged in as admin.
+        const res = await fetch('/api/admin/shifts/import-verbatel', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ tenantSlug, turni: payload.turni || [] }) 
+        });
+        
+        const data = await res.json();
+        if (res.ok && data.success) {
+           toast.success(data.message || "Importazione JSON completata con successo!");
+           router.refresh(); // Refresh page to see new shifts
+        } else {
+           throw new Error(data.error || "Errore sconosciuto durante l'importazione API");
+        }
+      } catch (e: any) {
+        toast.error("Errore importazione JSON: " + e.message);
+      } finally {
+        setIsGenerating(false)
+        setUploadStatus("")
+      }
+      return;
+    }
+
     setIsGenerating(true)
     setUploadStatus("Analisi struttura Excel...")
     try {
