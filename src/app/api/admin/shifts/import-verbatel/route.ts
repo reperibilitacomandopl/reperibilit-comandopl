@@ -54,7 +54,7 @@ export async function POST(req: Request) {
 
     let createdCount = 0;
     let updatedCount = 0;
-    let notFoundCount = 0;
+    let notFoundAgents: string[] = [];
 
     for (const turnoRow of turni) {
       if (!turnoRow.Matricola) continue;
@@ -65,7 +65,10 @@ export async function POST(req: Request) {
       });
 
       if (!user) {
-        notFoundCount++;
+        const agentId = `${turnoRow.Nominativo} (Matricola: ${turnoRow.Matricola})`;
+        if (!notFoundAgents.includes(agentId)) {
+          notFoundAgents.push(agentId);
+        }
         continue;
       }
 
@@ -112,10 +115,15 @@ export async function POST(req: Request) {
       }
     }
 
+    let msg = `Import completato: ${createdCount} creati, ${updatedCount} aggiornati.`;
+    if (notFoundAgents.length > 0) {
+      msg += `\nAgenti non trovati (${notFoundAgents.length}):\n- ${notFoundAgents.join('\n- ')}`;
+    }
+
     return NextResponse.json({
       success: true,
-      message: `Import completato: ${createdCount} creati, ${updatedCount} aggiornati. ${notFoundCount} agenti non trovati.`,
-      stats: { createdCount, updatedCount, notFoundCount }
+      message: msg,
+      stats: { createdCount, updatedCount, notFoundAgents }
     }, { headers: corsHeaders });
     
   } catch (error: any) {
