@@ -85,28 +85,29 @@ export async function POST(req: Request) {
         const year = 2000 + parseInt(parts[2], 10); // Assume 2000+
         const startOfDay = new Date(Date.UTC(year, month, day));
 
-        // Upsert shift
-        const existingShift = await prisma.shift.findFirst({
-          where: { tenantId: actualTenantId, userId: user.id, date: startOfDay, deletedAt: null }
+        // Upsert shift (using updateMany to bypass soft-delete filters on findFirst)
+        const updateResult = await prisma.shift.updateMany({
+          where: { tenantId: actualTenantId, userId: user.id, date: startOfDay },
+          data: { type: shiftType, isSyncedToVerbatel: true, deletedAt: null }
         });
 
-        if (existingShift) {
-          await prisma.shift.update({
-            where: { id: existingShift.id },
-            data: { type: shiftType, isSyncedToVerbatel: true }
-          });
+        if (updateResult.count > 0) {
           updatedCount++;
         } else {
-          await prisma.shift.create({
-            data: {
-              tenantId: actualTenantId,
-              userId: user.id,
-              date: startOfDay,
-              type: shiftType,
-              isSyncedToVerbatel: true
-            }
-          });
-          createdCount++;
+          try {
+            await prisma.shift.create({
+              data: {
+                tenantId: actualTenantId,
+                userId: user.id,
+                date: startOfDay,
+                type: shiftType,
+                isSyncedToVerbatel: true
+              }
+            });
+            createdCount++;
+          } catch (e: any) {
+            console.error(`Errore creazione turno per ${user.matricola} in data ${dateKey}:`, e.message);
+          }
         }
       }
     }
