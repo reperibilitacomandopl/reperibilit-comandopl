@@ -31,6 +31,7 @@ const PUBLIC_PREFIXES = [
   "/api/demo-request",
   "/api/health",
   "/api/admin/verbatel-sync",
+  "/api/admin/shifts/import-verbatel",
   "/nfc",
 ]
 
