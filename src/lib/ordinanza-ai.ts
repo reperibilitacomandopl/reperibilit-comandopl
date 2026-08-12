@@ -84,7 +84,7 @@ async function callLLM(
         Authorization: `Bearer ${openRouterKey}`,
         "Content-Type": "application/json",
         "HTTP-Referer": process.env.NEXTAUTH_URL || "http://localhost:3000",
-        "X-Title": "Portale Polizia Locale — Agente Ordinanze",
+        "X-Title": "Portale Polizia Locale - Agente Ordinanze",
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
