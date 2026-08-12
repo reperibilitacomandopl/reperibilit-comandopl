@@ -31,7 +31,8 @@ import {
   Target,
   Sun,
   Moon,
-  ShieldAlert
+  ShieldAlert,
+  MapPin
 } from "lucide-react"
 
 type NavSection = {
@@ -50,6 +51,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Timbrature GPS", href: "/admin/timbrature", icon: Clock, description: "Registro ingressi e uscite" },
       { label: "Posti di Controllo", href: "/admin/posti-controllo", icon: ShieldAlert, description: "Gestione controlli stradali e OCR" },
       { label: "Registro Verbali CDS", href: "/admin/verbali", icon: FileText, description: "Contravvenzioni e incassi" },
+      { label: "Ordinanze Viabilità", href: "/admin/ordinanze", icon: MapPin, description: "Agente AI per predisposizione ordinanze" },
       { label: "Ufficio Infortunistica", href: "/admin/infortunistica", icon: ShieldAlert, description: "Gestione Sinistri Stradali" },
       { label: "Relazioni di Servizio", href: "/admin/relazioni", icon: FileText, description: "Rapporti giornalieri agenti" },
     ],

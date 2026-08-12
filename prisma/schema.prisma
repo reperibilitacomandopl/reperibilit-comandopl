@@ -77,6 +77,9 @@ model Tenant {
   EventAssignment         EventAssignment[]
   checkpoints             Checkpoint[]
   checkedVehicles         CheckedVehicle[]
+  ordinanzaRequests       OrdinanzaRequest[]
+  ordinanzaBozze          OrdinanzaBozza[]
+  ordinanzaTemplates      OrdinanzaTemplate[]
 }
 
 model Municipality {
@@ -247,6 +250,8 @@ model User {
   vacationRotationGroups    VacationRotationGroup[]   @relation("VacationRotationGroupMembers")
   eventAssignments          EventAssignment[]         @relation("EventAssignments")
   checkpoints               Checkpoint[]              @relation("CheckpointOperator")
+  ordinanzaRequests         OrdinanzaRequest[]        @relation("OrdinanzaCreatedBy")
+  ordinanzeBozzeApprovate   OrdinanzaBozza[]          @relation("OrdinanzaApprovataDa")
 
   @@unique([tenantId, matricola])
 }
@@ -1520,4 +1525,101 @@ model CheckedVehicle {
   @@index([checkpointId])
   @@index([targa])
   @@index([cdsViolationId])
+}
+
+// ============================================================
+// MODULO ORDINANZE VIABILITÀ
+// ============================================================
+
+model OrdinanzaRequest {
+  id              String            @id @default(uuid())
+  tenantId        String
+  tenant          Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdById     String
+  createdBy       User              @relation("OrdinanzaCreatedBy", fields: [createdById], references: [id])
+
+  tipoOrdinanza   String            // DIVIETO_SOSTA | CHIUSURA_STRADA | DIVIETO_E_CHIUSURA | EVENTO | LAVORI | MANIFESTAZIONE
+  testoRichiesta  String            // testo libero incollato/caricato dall'operatore
+  fileUrl         String?           // allegato originale (S3)
+
+  // Campi estratti dall'AI
+  richiedente     String?
+  via             String?
+  civico          String?
+  dataInizio      DateTime?
+  dataFine        DateTime?
+  oraDalle        String?
+  oraAlle         String?
+  motivazione     String?
+
+  analisiAi       Json?             // struttura completa estratta dall'AI
+  verifiche       Json?             // checklist verifiche necessarie
+
+  stato           String            @default("NUOVA")
+  // NUOVA | ANALISI | BOZZA | REVISIONE | APPROVATA | RIGETTATA
+
+  bozze           OrdinanzaBozza[]
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([tenantId])
+  @@index([createdById])
+  @@index([stato])
+  @@index([tipoOrdinanza])
+}
+
+model OrdinanzaBozza {
+  id               String            @id @default(uuid())
+  requestId        String
+  request          OrdinanzaRequest  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  tenantId         String
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  numeroProtocollo String?           // es. ORD-2026/0001
+  anno             Int?
+  progressivo      Int?
+
+  testo            String            // bozza generata dall'AI
+  testoModificato  String?           // eventuale versione modificata dall'operatore
+  documentiUsati   Json?             // template/ordinanze di riferimento usati per la RAG
+
+  stato            String            @default("BOZZA")
+  // BOZZA | APPROVATA | RIGETTATA
+
+  approvataDaId    String?
+  approvataDa      User?             @relation("OrdinanzaApprovataDa", fields: [approvataDaId], references: [id])
+  approvataAt      DateTime?
+  noteOperatore    String?           // note aggiunte dall'operatore
+
+  fileDocxUrl      String?           // URL file DOCX finale
+  filePdfUrl       String?           // URL file PDF finale
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([tenantId])
+  @@index([requestId])
+  @@index([stato])
+  @@unique([tenantId, anno, progressivo])
+}
+
+model OrdinanzaTemplate {
+  id          String    @id @default(uuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  nome        String
+  tipo        String    // DIVIETO_SOSTA | CHIUSURA_STRADA | DIVIETO_E_CHIUSURA | EVENTO | LAVORI | MANIFESTAZIONE | GENERICO
+  descrizione String?
+  contenuto   String    // testo del template / ordinanza di esempio
+  fileUrl     String?   // file originale caricato
+  isActive    Boolean   @default(true)
+  isDefault   Boolean   @default(false)  // template predefinito fornito dal sistema
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([tipo])
 }
