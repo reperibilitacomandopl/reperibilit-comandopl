@@ -60,35 +60,69 @@ export interface AnalisiCompleta {
 
 // ----------------------------------------------------------------
 // LLM client — OpenRouter
+// LLM client — OpenRouter o Gemini
 // ----------------------------------------------------------------
 
 async function callLLM(
   systemPrompt: string,
   userMessage: string
 ): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY
-  if (!apiKey) {
+  const openRouterKey = process.env.OPENROUTER_API_KEY
+  const geminiKey = process.env.GEMINI_API_KEY
+
+  if (!openRouterKey && !geminiKey) {
     throw new Error(
-      "OPENROUTER_API_KEY non configurata. Aggiungila nel file .env"
+      "API Key mancante: configura OPENROUTER_API_KEY oppure GEMINI_API_KEY nel file .env"
     )
   }
 
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+  // --- Caso 1: OPENROUTER ---
+  if (openRouterKey && openRouterKey.length > 10) {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openRouterKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": process.env.NEXTAUTH_URL || "http://localhost:3000",
+        "X-Title": "Portale Polizia Locale — Agente Ordinanze",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userMessage },
+        ],
+        temperature: 0.2,
+        max_tokens: 4096,
+      }),
+    })
+
+    if (!res.ok) {
+      const err = await res.text()
+      throw new Error(`Errore OpenRouter: ${err}`)
+    }
+
+    const data = await res.json()
+    return data.choices[0].message.content
+  }
+
+  // --- Caso 2: API GEMINI NATIVA (Generative Language API) ---
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": process.env.NEXTAUTH_URL || "http://localhost:3000",
-      "X-Title": "Portale Polizia Locale — Agente Ordinanze",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userMessage },
-      ],
-      temperature: 0.2,       // bassa temperatura per output formali/strutturati
-      max_tokens: 4096,
+      systemInstruction: {
+        parts: [{ text: systemPrompt }]
+      },
+      contents: [{
+        role: "user",
+        parts: [{ text: userMessage }]
+      }],
+      generationConfig: {
+        temperature: 0.2,
+      }
     }),
   })
 
