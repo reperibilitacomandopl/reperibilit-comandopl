@@ -292,6 +292,8 @@ function addSecurityHeaders(response: NextResponse, isPublic: boolean = false, r
     font-src 'self' https://fonts.gstatic.com;
     connect-src 'self' https://api.telegram.org https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://unpkg.com https://assets.mixkit.co;
     media-src 'self' https://assets.mixkit.co;
+    worker-src 'self' blob:;
+    frame-src 'self' blob:;
     frame-ancestors 'none';
     form-action 'self';
     base-uri 'self';
