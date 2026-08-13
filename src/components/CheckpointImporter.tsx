@@ -26,13 +26,11 @@ type RedactionBox = {
 }
 
 const DEFAULT_BOXES: RedactionBox[] = [
-  { id: 'intestazione', label: 'Intestazione / Operatori', color: 'border-yellow-500 bg-yellow-500/10', x: 5, y: 2, width: 90, height: 10, active: false },
-  { id: 'veicolo', label: 'Dati Veicolo (Targa, Assicurazione, Revisione, Ora)', color: 'border-cyan-500 bg-cyan-500/10', x: 5, y: 13, width: 90, height: 12, active: false },
-  { id: 'proprietario', label: 'Proprietario Veicolo', color: 'border-blue-500 bg-blue-500/10', x: 5, y: 27, width: 90, height: 16, active: false },
-  { id: 'conducente', label: 'Conducente Veicolo', color: 'border-red-500 bg-red-500/10', x: 5, y: 45, width: 90, height: 16, active: true },
-  { id: 'patente', label: 'Dati Patente', color: 'border-purple-500 bg-purple-500/10', x: 5, y: 63, width: 90, height: 10, active: false },
-  { id: 'sanzione', label: 'Sanzioni / Verbali', color: 'border-amber-500 bg-amber-500/10', x: 5, y: 75, width: 90, height: 10, active: false },
-  { id: 'passeggero', label: 'Dati Passeggero', color: 'border-emerald-500 bg-emerald-500/10', x: 5, y: 87, width: 90, height: 10, active: false }
+  { id: 'intestazione', label: 'Intestazione / Operatori', color: 'border-yellow-500 bg-yellow-500/10', x: 2, y: 1, width: 96, height: 8, active: false },
+  { id: 'veicolo_1', label: 'Veicolo 1 - Dati Conducente/Proprietario', color: 'border-red-500 bg-red-500/10', x: 2, y: 10, width: 96, height: 21, active: true },
+  { id: 'veicolo_2', label: 'Veicolo 2 - Dati Conducente/Proprietario', color: 'border-cyan-500 bg-cyan-500/10', x: 2, y: 32, width: 96, height: 21, active: true },
+  { id: 'veicolo_3', label: 'Veicolo 3 - Dati Conducente/Proprietario', color: 'border-purple-500 bg-purple-500/10', x: 2, y: 54, width: 96, height: 21, active: true },
+  { id: 'veicolo_4', label: 'Veicolo 4 - Dati Conducente/Proprietario', color: 'border-emerald-500 bg-emerald-500/10', x: 2, y: 76, width: 96, height: 21, active: true },
 ]
 
 
@@ -215,6 +213,59 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
     setActiveDrag(null)
   }
 
+  const rotateCanvasImage = (direction: 'cw' | 'ccw') => {
+    if (!preview) return
+    const img = new Image()
+    img.src = preview
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = img.naturalHeight
+      canvas.height = img.naturalWidth
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      ctx.translate(canvas.width / 2, canvas.height / 2)
+      ctx.rotate((direction === 'cw' ? 90 : -90) * Math.PI / 180)
+      ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2)
+      const dataUrl = canvas.toDataURL('image/png')
+      setPreview(dataUrl)
+      canvas.toBlob(blob => {
+        if (blob && file) {
+          const updatedFile = new File([blob], file.name.replace(/\.pdf$/i, '.png'), { type: 'image/png' })
+          setFile(updatedFile)
+        }
+      }, 'image/png')
+    }
+  }
+
+  const addCustomBox = () => {
+    const newId = `custom_${Date.now()}`
+    const colors = [
+      'border-rose-500 bg-rose-500/10',
+      'border-blue-500 bg-blue-500/10',
+      'border-amber-500 bg-amber-500/10',
+      'border-emerald-500 bg-emerald-500/10',
+      'border-purple-500 bg-purple-500/10'
+    ]
+    const randomColor = colors[boxes.length % colors.length]
+    setBoxes(prev => [
+      ...prev,
+      {
+        id: newId,
+        label: `Riquadro Censura #${prev.length + 1}`,
+        color: randomColor,
+        x: 5,
+        y: Math.min(80, 10 + (prev.length % 5) * 15),
+        width: 90,
+        height: 15,
+        active: true
+      }
+    ])
+  }
+
+  const removeBox = (id: string) => {
+    setBoxes(prev => prev.filter(b => b.id !== id))
+  }
+
   const getRedactedImageBlob = (): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       if (!file) return reject(new Error('No file selected'))
@@ -223,20 +274,15 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
       img.src = preview || ''
       img.onload = () => {
         const canvas = document.createElement('canvas')
-        const isRotated90 = rotation === 90 || rotation === 270
-        canvas.width = isRotated90 ? img.naturalHeight : img.naturalWidth
-        canvas.height = isRotated90 ? img.naturalWidth : img.naturalHeight
+        canvas.width = img.naturalWidth
+        canvas.height = img.naturalHeight
         const ctx = canvas.getContext('2d')
         if (!ctx) return reject(new Error('Canvas context not available'))
 
-        // Apply rotation
-        ctx.save()
-        ctx.translate(canvas.width / 2, canvas.height / 2)
-        ctx.rotate((rotation * Math.PI) / 180)
-        ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2)
-        ctx.restore()
+        // Draw original image
+        ctx.drawImage(img, 0, 0)
 
-        // Draw black rectangles for active redaction boxes (in rotated coordinate space)
+        // Draw black rectangles for active redaction boxes
         ctx.fillStyle = 'black'
         boxes.forEach(box => {
           if (!box.active) return
@@ -492,27 +538,27 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
               <div className="space-y-4">
                 {preview && (
                   file.type.startsWith('image/') ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between mb-2">
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                         <p className={`text-xs font-bold ${mutedText}`}>
-                          Trascina o ridimensiona i riquadri colorati per coprire le parti sensibili che non desideri inviare all'IA.
+                          Trascina o ridimensiona i riquadri per coprire i dati sensibili delle auto (fino a 4 veicoli).
                         </p>
-                        <div className="flex items-center gap-1 ml-3 shrink-0">
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); setRotation(r => (r + 270) % 360) }}
-                            className={`p-2 rounded-lg transition-all ${isDark ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
-                            title="Ruota a sinistra"
+                            onClick={(e) => { e.stopPropagation(); rotateCanvasImage('ccw') }}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${isDark ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
+                            title="Ruota foglio a sinistra"
                           >
-                            <RotateCcw size={16} />
+                            <RotateCcw size={14} /> Ruota 90° Sx
                           </button>
                           <button
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); setRotation(r => (r + 90) % 360) }}
-                            className={`p-2 rounded-lg transition-all ${isDark ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
-                            title="Ruota a destra"
+                            onClick={(e) => { e.stopPropagation(); rotateCanvasImage('cw') }}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${isDark ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
+                            title="Ruota foglio a destra"
                           >
-                            <RotateCw size={16} />
+                            <RotateCw size={14} /> Ruota 90° Dx
                           </button>
                         </div>
                       </div>
@@ -521,16 +567,16 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
                         onPointerMove={handlePointerMove}
                         onPointerUp={handlePointerUp}
                         onPointerLeave={handlePointerUp}
-                        className="relative max-w-full md:max-w-xl mx-auto rounded-xl overflow-hidden shadow-lg select-none cursor-default border border-slate-200 dark:border-white/10 bg-slate-950/20"
+                        className="relative w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl select-none cursor-default border border-slate-300 dark:border-white/15 bg-slate-950/20"
                         style={{ touchAction: 'none' }}
                       >
-                        <img src={preview} alt="Anteprima" className="w-full h-auto pointer-events-none" style={{ transform: `rotate(${rotation}deg)` }} />
+                        <img src={preview} alt="Anteprima Scheda" className="w-full h-auto pointer-events-none display-block" />
                         {boxes.map(box => {
                           if (!box.active) return null
                           return (
                             <div
                               key={box.id}
-                              className={`absolute border-2 ${box.color} flex flex-col justify-between`}
+                              className={`absolute border-2 ${box.color} flex flex-col justify-between group transition-shadow hover:shadow-lg`}
                               style={{
                                 left: `${box.x}%`,
                                 top: `${box.y}%`,
@@ -540,16 +586,26 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
                               }}
                               onPointerDown={(e) => handlePointerDown(e, box.id, 'move')}
                             >
-                              {/* Label */}
-                              <span className="bg-slate-900/80 text-white text-[9px] font-black uppercase tracking-wider px-1 py-0.5 self-start select-none rounded-br">
-                                {box.label}
-                              </span>
+                              {/* Label & Delete button */}
+                              <div className="flex items-center justify-between bg-slate-900/90 text-white px-1.5 py-0.5 self-start rounded-br max-w-full overflow-hidden">
+                                <span className="text-[10px] font-black uppercase tracking-wider truncate select-none">
+                                  {box.label}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); removeBox(box.id) }}
+                                  className="ml-1 text-rose-400 hover:text-rose-200 p-0.5 rounded"
+                                  title="Elimina riquadro"
+                                >
+                                  <X size={10} />
+                                </button>
+                              </div>
                               
                               {/* Handles */}
-                              <div className="absolute -top-1 -left-1 w-2.5 h-2.5 bg-white border border-slate-950 cursor-nw-resize rounded-full" onPointerDown={(e) => handlePointerDown(e, box.id, 'nw')} />
-                              <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-white border border-slate-950 cursor-ne-resize rounded-full" onPointerDown={(e) => handlePointerDown(e, box.id, 'ne')} />
-                              <div className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-white border border-slate-950 cursor-se-resize rounded-full" onPointerDown={(e) => handlePointerDown(e, box.id, 'se')} />
-                              <div className="absolute -bottom-1 -left-1 w-2.5 h-2.5 bg-white border border-slate-950 cursor-sw-resize rounded-full" onPointerDown={(e) => handlePointerDown(e, box.id, 'sw')} />
+                              <div className="absolute -top-1 -left-1 w-3 h-3 bg-white border-2 border-slate-950 cursor-nw-resize rounded-full shadow" onPointerDown={(e) => handlePointerDown(e, box.id, 'nw')} />
+                              <div className="absolute -top-1 -right-1 w-3 h-3 bg-white border-2 border-slate-950 cursor-ne-resize rounded-full shadow" onPointerDown={(e) => handlePointerDown(e, box.id, 'ne')} />
+                              <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-white border-2 border-slate-950 cursor-se-resize rounded-full shadow" onPointerDown={(e) => handlePointerDown(e, box.id, 'se')} />
+                              <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-white border-2 border-slate-950 cursor-sw-resize rounded-full shadow" onPointerDown={(e) => handlePointerDown(e, box.id, 'sw')} />
                             </div>
                           )
                         })}
@@ -590,22 +646,58 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
             <>
               {/* Privacy fields selection */}
               <div className="mt-8 border-t border-slate-200 dark:border-white/10 pt-6 animate-in fade-in slide-in-from-bottom-4">
-                <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
-                  <Shield size={16} className="text-rose-500" /> Seleziona Aree da Oscurare/Censurare prima dell'invio
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <h3 className="text-sm font-bold flex items-center gap-2">
+                    <Shield size={16} className="text-rose-500" /> Riquadri di Censura Attivi (Posto di Controllo fino a 4 Veicoli)
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBoxes(prev => prev.map(b => ({ ...b, active: true })))}
+                      className={`text-xs px-2.5 py-1 font-bold rounded-lg ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-slate-100 hover:bg-slate-200'}`}
+                    >
+                      Seleziona Tutti
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBoxes(prev => prev.map(b => ({ ...b, active: false })))}
+                      className={`text-xs px-2.5 py-1 font-bold rounded-lg ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-slate-100 hover:bg-slate-200'}`}
+                    >
+                      Deseleziona Tutti
+                    </button>
+                    <button
+                      type="button"
+                      onClick={addCustomBox}
+                      className="text-xs px-3 py-1 font-bold rounded-lg bg-rose-600 hover:bg-rose-500 text-white shadow-sm transition-all"
+                    >
+                      + Aggiungi Riquadro
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {boxes.map(box => (
-                    <label key={box.id} className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${box.active ? 'border-rose-500 bg-rose-500/5' : 'border-slate-200 dark:border-white/10 opacity-50 hover:opacity-100'}`}>
-                      <input 
-                        type="checkbox" 
-                        checked={box.active} 
-                        onChange={(e) => {
-                          setBoxes(prev => prev.map(b => b.id === box.id ? { ...b, active: e.target.checked } : b))
-                        }} 
-                        className="w-4 h-4 rounded text-rose-500 focus:ring-rose-500 bg-transparent border-slate-300 dark:border-slate-600" 
-                      />
-                      <span className="text-xs font-bold uppercase tracking-wider">{box.label}</span>
-                    </label>
+                    <div key={box.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${box.active ? 'border-rose-500 bg-rose-500/5' : 'border-slate-200 dark:border-white/10 opacity-50 hover:opacity-100'}`}>
+                      <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
+                        <input 
+                          type="checkbox" 
+                          checked={box.active} 
+                          onChange={(e) => {
+                            setBoxes(prev => prev.map(b => b.id === box.id ? { ...b, active: e.target.checked } : b))
+                          }} 
+                          className="w-4 h-4 rounded text-rose-500 focus:ring-rose-500 bg-transparent border-slate-300 dark:border-slate-600 shrink-0" 
+                        />
+                        <span className="text-xs font-bold truncate">{box.label}</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => removeBox(box.id)}
+                        className="text-slate-400 hover:text-rose-500 p-1 rounded transition-colors shrink-0"
+                        title="Rimuovi questo riquadro"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>
