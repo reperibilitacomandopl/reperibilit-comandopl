@@ -28,10 +28,10 @@ type RedactionBox = {
 
 const DEFAULT_BOXES: RedactionBox[] = [
   { id: 'intestazione', label: 'Intestazione / Operatori', color: 'border-yellow-500 bg-yellow-500/10', x: 2, y: 1, width: 96, height: 8, active: false },
-  { id: 'veicolo_1', label: 'Veicolo 1 - Dati Conducente/Proprietario', color: 'border-red-500 bg-red-500/10', x: 2, y: 10, width: 96, height: 21, active: true },
-  { id: 'veicolo_2', label: 'Veicolo 2 - Dati Conducente/Proprietario', color: 'border-cyan-500 bg-cyan-500/10', x: 2, y: 32, width: 96, height: 21, active: true },
-  { id: 'veicolo_3', label: 'Veicolo 3 - Dati Conducente/Proprietario', color: 'border-purple-500 bg-purple-500/10', x: 2, y: 54, width: 96, height: 21, active: true },
-  { id: 'veicolo_4', label: 'Veicolo 4 - Dati Conducente/Proprietario', color: 'border-emerald-500 bg-emerald-500/10', x: 2, y: 76, width: 96, height: 21, active: true },
+  { id: 'veicolo_1', label: 'Veicolo 1 - Dati Conducente/Proprietario', color: 'border-red-500 bg-red-500/10', x: 2, y: 10, width: 96, height: 21, active: false },
+  { id: 'veicolo_2', label: 'Veicolo 2 - Dati Conducente/Proprietario', color: 'border-cyan-500 bg-cyan-500/10', x: 2, y: 32, width: 96, height: 21, active: false },
+  { id: 'veicolo_3', label: 'Veicolo 3 - Dati Conducente/Proprietario', color: 'border-purple-500 bg-purple-500/10', x: 2, y: 54, width: 96, height: 21, active: false },
+  { id: 'veicolo_4', label: 'Veicolo 4 - Dati Conducente/Proprietario', color: 'border-emerald-500 bg-emerald-500/10', x: 2, y: 76, width: 96, height: 21, active: false },
 ]
 
 
@@ -124,7 +124,7 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
 
   // Pen tool & Freehand redaction state
   const [toolMode, setToolMode] = useState<'box' | 'pen'>('box')
-  const [penWidth, setPenWidth] = useState<number>(25)
+  const [penWidth, setPenWidth] = useState<number>(12)
   const [penStrokes, setPenStrokes] = useState<Array<{ points: Array<{ x: number, y: number }>; width: number }>>([])
   const [isDrawing, setIsDrawing] = useState<boolean>(false)
   const currentStrokeRef = useRef<Array<{ x: number, y: number }>>([])
@@ -661,25 +661,25 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
                         {/* Controlli specifici Pennarello */}
                         {toolMode === 'pen' ? (
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-300">Tratto:</span>
+                            <span className="text-xs font-bold text-slate-300">Spessore:</span>
                             <button
                               type="button"
-                              onClick={() => setPenWidth(12)}
-                              className={`px-2 py-1 text-xs font-bold rounded ${penWidth === 12 ? 'bg-rose-500 text-white' : 'bg-slate-800 text-slate-400'}`}
+                              onClick={() => setPenWidth(6)}
+                              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-colors ${penWidth === 6 ? 'bg-rose-500 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
                             >
                               Fine
                             </button>
                             <button
                               type="button"
-                              onClick={() => setPenWidth(25)}
-                              className={`px-2 py-1 text-xs font-bold rounded ${penWidth === 25 ? 'bg-rose-500 text-white' : 'bg-slate-800 text-slate-400'}`}
+                              onClick={() => setPenWidth(12)}
+                              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-colors ${penWidth === 12 ? 'bg-rose-500 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
                             >
                               Medio
                             </button>
                             <button
                               type="button"
-                              onClick={() => setPenWidth(45)}
-                              className={`px-2 py-1 text-xs font-bold rounded ${penWidth === 45 ? 'bg-rose-500 text-white' : 'bg-slate-800 text-slate-400'}`}
+                              onClick={() => setPenWidth(22)}
+                              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-colors ${penWidth === 22 ? 'bg-rose-500 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
                             >
                               Largo
                             </button>
