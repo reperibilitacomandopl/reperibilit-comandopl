@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react"
 import {
   Upload, FileText, Eye, Save, AlertTriangle, CheckCircle,
   Loader2, RotateCw, RotateCcw, X, ChevronDown, ChevronUp, Edit3, Trash2, Camera, Shield,
-  Pencil, Undo2, ZoomIn, ZoomOut, Maximize2, Minimize2
+  Pencil, Undo2, ZoomIn, ZoomOut, Maximize2, Minimize2, ArrowLeft
 } from "lucide-react"
 import * as pdfjsLib from "pdfjs-dist"
 import CdsViolationSearch from "./CdsViolationSearch"
@@ -133,8 +133,20 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
   const [lens, setLens] = useState<{ show: boolean; x: number; y: number; relX: number; relY: number }>({
     show: false, x: 0, y: 0, relX: 0, relY: 0
   })
+  const [lensZoom, setLensZoom] = useState<number>(3.5)
   const [isZoomModalOpen, setIsZoomModalOpen] = useState<boolean>(false)
   const [modalZoomScale, setModalZoomScale] = useState<number>(1.5)
+
+  // Escape key listener to close full screen modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isZoomModalOpen) {
+        setIsZoomModalOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isZoomModalOpen])
 
   const handlePointerDown = (
     e: React.PointerEvent<HTMLDivElement>,
@@ -931,26 +943,32 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
                   const relY = (y / rect.height) * 100
                   setLens({ show: true, x, y, relX, relY })
                 }}
+                onWheel={(e) => {
+                  e.preventDefault()
+                  const delta = e.deltaY < 0 ? 0.5 : -0.5
+                  setLensZoom(z => Math.max(2.0, Math.min(8.0, Number((z + delta).toFixed(1)))))
+                }}
                 onMouseLeave={() => setLens(prev => ({ ...prev, show: false }))}
                 onClick={() => setIsZoomModalOpen(true)}
               >
                 <img src={preview} alt="Anteprima Scheda" className="w-full h-auto max-h-[88vh] object-contain rounded-2xl bg-slate-100 dark:bg-slate-900" />
                 
-                {/* Lente d'Ingrandimento Fluttuante a Seguito del Mouse */}
+                {/* Lente d'Ingrandimento Fluttuante a Seguito del Mouse con Ingrandimento via Rotellina */}
                 {lens.show && (
                   <div
-                    className="absolute w-60 h-60 rounded-full border-4 border-purple-500 shadow-2xl pointer-events-none z-50 overflow-hidden"
+                    className="absolute w-64 h-64 rounded-full border-4 border-purple-500 shadow-2xl pointer-events-none z-50 overflow-hidden ring-4 ring-purple-500/30"
                     style={{
-                      left: `${lens.x - 120}px`,
-                      top: `${lens.y - 120}px`,
+                      left: `${lens.x - 128}px`,
+                      top: `${lens.y - 128}px`,
                       backgroundImage: `url(${preview})`,
                       backgroundPosition: `${lens.relX}% ${lens.relY}%`,
-                      backgroundSize: `350%`,
+                      backgroundSize: `${lensZoom * 100}%`,
                       backgroundRepeat: 'no-repeat'
                     }}
                   >
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-slate-950/90 text-purple-300 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow border border-purple-500/40">
-                      3.5x ZOOM LENTE
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-slate-950/90 text-purple-300 text-[10px] font-black uppercase px-3 py-1 rounded-full shadow border border-purple-500/50 flex items-center gap-1.5 whitespace-nowrap">
+                      <span>🔍 {lensZoom.toFixed(1)}x ZOOM</span>
+                      <span className="text-[9px] text-slate-400 font-normal border-l border-white/20 pl-1.5">Usa rotellina mouse per ingrandire</span>
                     </div>
                   </div>
                 )}
@@ -1214,17 +1232,32 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
         </div>
       )}
 
-      {/* Modal Ingrandimento Schermo Intero per Controllo Dettagli/Targhe */}
+      {/* Modal Ingrandimento Schermo Intero per Controllo Dettagli/Targhe con Tasto Torna Indietro */}
       {isZoomModalOpen && preview && (
-        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col animate-in fade-in duration-200 p-4">
-          <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
+        <div 
+          className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-lg flex flex-col animate-in fade-in duration-200 p-4 select-none"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsZoomModalOpen(false)
+          }}
+        >
+          {/* Header del Modal con Tasto Evidente Torna Indietro e Chiudi */}
+          <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0 gap-3">
             <div className="flex items-center gap-3">
-              <h3 className="text-base font-black text-white flex items-center gap-2">
-                <ZoomIn size={18} className="text-purple-400" /> Ingrandimento Scansione HD (Controllo Targhe)
-              </h3>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-mono font-bold">
-                {Math.round(modalZoomScale * 100)}%
-              </span>
+              <button
+                type="button"
+                onClick={() => setIsZoomModalOpen(false)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm shadow-lg border border-white/10 transition-all active:scale-95"
+              >
+                <ArrowLeft size={18} className="text-purple-400" /> Torna alla Scheda
+              </button>
+              <div className="hidden sm:flex items-center gap-2 border-l border-white/10 pl-3">
+                <h3 className="text-sm font-black text-white flex items-center gap-2">
+                  <ZoomIn size={16} className="text-purple-400" /> Controllo Targhe HD
+                </h3>
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-mono font-bold">
+                  {Math.round(modalZoomScale * 100)}%
+                </span>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -1252,23 +1285,25 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
                 <ZoomIn size={18} />
               </button>
               <div className="w-px h-6 bg-white/10 mx-1" />
+              
+              {/* Tasto Chiudi ben visibile */}
               <button
                 type="button"
                 onClick={() => setIsZoomModalOpen(false)}
-                className="p-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-white transition-all shadow-lg shadow-rose-500/30"
-                title="Chiudi ingrandimento"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs shadow-lg shadow-rose-600/40 transition-all active:scale-95"
+                title="Chiudi vista schermo intero (Premere ESC)"
               >
-                <X size={18} />
+                <X size={18} /> CHIUDI (ESC)
               </button>
             </div>
           </div>
 
-          <div className="flex-1 overflow-auto p-4 flex items-center justify-center min-h-0">
+          <div className="flex-1 overflow-auto p-4 flex items-center justify-center min-h-0 cursor-grab active:cursor-grabbing">
             <div 
               className="transition-transform duration-100 ease-out max-w-none shadow-2xl rounded-xl overflow-hidden border border-white/10"
               style={{ transform: `scale(${modalZoomScale})`, transformOrigin: 'top center' }}
             >
-              <img src={preview} alt="Scansione Ingrandita" className="max-w-none h-auto select-none display-block" />
+              <img src={preview} alt="Scansione Ingrandita" className="max-w-none h-auto select-none display-block pointer-events-none" />
             </div>
           </div>
         </div>
