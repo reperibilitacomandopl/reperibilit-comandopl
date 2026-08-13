@@ -3,7 +3,8 @@
 import React, { useState, useRef, useEffect, useCallback } from "react"
 import {
   Upload, FileText, Eye, Save, AlertTriangle, CheckCircle,
-  Loader2, RotateCw, RotateCcw, X, ChevronDown, ChevronUp, Edit3, Trash2, Camera, Shield
+  Loader2, RotateCw, RotateCcw, X, ChevronDown, ChevronUp, Edit3, Trash2, Camera, Shield,
+  Pencil, Undo2, ZoomIn, ZoomOut, Maximize2, Minimize2
 } from "lucide-react"
 import * as pdfjsLib from "pdfjs-dist"
 import CdsViolationSearch from "./CdsViolationSearch"
@@ -121,6 +122,20 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
   const containerRef = useRef<HTMLDivElement>(null)
   const [rotation, setRotation] = useState<number>(0)
 
+  // Pen tool & Freehand redaction state
+  const [toolMode, setToolMode] = useState<'box' | 'pen'>('box')
+  const [penWidth, setPenWidth] = useState<number>(25)
+  const [penStrokes, setPenStrokes] = useState<Array<{ points: Array<{ x: number, y: number }>; width: number }>>([])
+  const [isDrawing, setIsDrawing] = useState<boolean>(false)
+  const currentStrokeRef = useRef<Array<{ x: number, y: number }>>([])
+
+  // Magnifying lens & Modal preview state for Review step
+  const [lens, setLens] = useState<{ show: boolean; x: number; y: number; relX: number; relY: number }>({
+    show: false, x: 0, y: 0, relX: 0, relY: 0
+  })
+  const [isZoomModalOpen, setIsZoomModalOpen] = useState<boolean>(false)
+  const [modalZoomScale, setModalZoomScale] = useState<number>(1.5)
+
   const handlePointerDown = (
     e: React.PointerEvent<HTMLDivElement>,
     boxId: string,
@@ -213,6 +228,58 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
     setActiveDrag(null)
   }
 
+  // Handle Pen Drawing
+  const handlePenPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (toolMode !== 'pen' || !containerRef.current) return
+    e.preventDefault()
+    e.stopPropagation()
+    const rect = containerRef.current.getBoundingClientRect()
+    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100))
+    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100))
+    
+    setIsDrawing(true)
+    currentStrokeRef.current = [{ x, y }]
+    setPenStrokes(prev => [...prev, { points: [{ x, y }], width: penWidth }])
+
+    try {
+      (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId)
+    } catch {}
+  }
+
+  const handlePenPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (toolMode !== 'pen' || !isDrawing || !containerRef.current) return
+    e.preventDefault()
+    const rect = containerRef.current.getBoundingClientRect()
+    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100))
+    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100))
+
+    currentStrokeRef.current.push({ x, y })
+    const updatedPoints = [...currentStrokeRef.current]
+
+    setPenStrokes(prev => {
+      if (prev.length === 0) return prev
+      const copy = [...prev]
+      copy[copy.length - 1] = { points: updatedPoints, width: penWidth }
+      return copy
+    })
+  }
+
+  const handlePenPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (toolMode !== 'pen' || !isDrawing) return
+    setIsDrawing(false)
+    try {
+      (e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId)
+    } catch {}
+  }
+
+  const undoLastStroke = () => {
+    setPenStrokes(prev => prev.slice(0, -1))
+  }
+
+  const clearAllStrokes = () => {
+    setPenStrokes([])
+  }
+
   const rotateCanvasImage = (direction: 'cw' | 'ccw') => {
     if (!preview) return
     const img = new Image()
@@ -293,6 +360,25 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
           const ph = (box.height / 100) * canvas.height
 
           ctx.fillRect(px, py, pw, ph)
+        })
+
+        // Draw freehand pen strokes
+        ctx.strokeStyle = 'black'
+        ctx.lineCap = 'round'
+        ctx.lineJoin = 'round'
+
+        penStrokes.forEach(stroke => {
+          if (stroke.points.length === 0) return
+          // Calculate stroke width relative to canvas size
+          ctx.lineWidth = (stroke.width / 1000) * canvas.width
+          ctx.beginPath()
+          const start = stroke.points[0]
+          ctx.moveTo((start.x / 100) * canvas.width, (start.y / 100) * canvas.height)
+          for (let i = 1; i < stroke.points.length; i++) {
+            const pt = stroke.points[i]
+            ctx.lineTo((pt.x / 100) * canvas.width, (pt.y / 100) * canvas.height)
+          }
+          ctx.stroke()
         })
 
         // Export as blob
@@ -488,6 +574,8 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
     setSaveResult(null)
     setMatchedViolations({})
     setRotation(0)
+    setPenStrokes([])
+    setToolMode('box')
   }
 
   const loadViolations = async (idx: number, targa?: string) => {
@@ -539,10 +627,75 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
                 {preview && (
                   file.type.startsWith('image/') ? (
                     <div className="space-y-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                        <p className={`text-xs font-bold ${mutedText}`}>
-                          Trascina o ridimensiona i riquadri per coprire i dati sensibili delle auto (fino a 4 veicoli).
-                        </p>
+                      <div className="flex flex-wrap items-center justify-between gap-3 mb-2 bg-slate-900/40 p-2.5 rounded-xl border border-slate-700/50">
+                        {/* Selector Modalità Strumento */}
+                        <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-white/10">
+                          <button
+                            type="button"
+                            onClick={() => setToolMode('box')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-all ${toolMode === 'box' ? 'bg-purple-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                          >
+                            <Shield size={14} /> Riquadri Aree
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setToolMode('pen')}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-all ${toolMode === 'pen' ? 'bg-rose-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                          >
+                            <Pencil size={14} /> Pennarello Nero
+                          </button>
+                        </div>
+
+                        {/* Controlli specifici Pennarello */}
+                        {toolMode === 'pen' ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-300">Tratto:</span>
+                            <button
+                              type="button"
+                              onClick={() => setPenWidth(12)}
+                              className={`px-2 py-1 text-xs font-bold rounded ${penWidth === 12 ? 'bg-rose-500 text-white' : 'bg-slate-800 text-slate-400'}`}
+                            >
+                              Fine
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPenWidth(25)}
+                              className={`px-2 py-1 text-xs font-bold rounded ${penWidth === 25 ? 'bg-rose-500 text-white' : 'bg-slate-800 text-slate-400'}`}
+                            >
+                              Medio
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPenWidth(45)}
+                              className={`px-2 py-1 text-xs font-bold rounded ${penWidth === 45 ? 'bg-rose-500 text-white' : 'bg-slate-800 text-slate-400'}`}
+                            >
+                              Largo
+                            </button>
+                            <button
+                              type="button"
+                              onClick={undoLastStroke}
+                              disabled={penStrokes.length === 0}
+                              className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white ml-2"
+                              title="Annulla ultimo tratto"
+                            >
+                              <Undo2 size={13} /> Annulla
+                            </button>
+                            <button
+                              type="button"
+                              onClick={clearAllStrokes}
+                              disabled={penStrokes.length === 0}
+                              className="flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded bg-rose-500/20 hover:bg-rose-500/30 disabled:opacity-40 text-rose-300"
+                              title="Cancella tutti i tratti"
+                            >
+                              <Trash2 size={13} /> Pulisci
+                            </button>
+                          </div>
+                        ) : (
+                          <p className={`text-xs font-bold ${mutedText}`}>
+                            Trascina i riquadri colorati oppure passa a <span className="text-rose-400 font-extrabold">Pennarello</span> per cancellare a mano libera.
+                          </p>
+                        )}
+
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
@@ -564,19 +717,37 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
                       </div>
                       <div 
                         ref={containerRef}
-                        onPointerMove={handlePointerMove}
-                        onPointerUp={handlePointerUp}
-                        onPointerLeave={handlePointerUp}
-                        className="relative w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl select-none cursor-default border border-slate-300 dark:border-white/15 bg-slate-950/20"
+                        onPointerDown={toolMode === 'pen' ? handlePenPointerDown : undefined}
+                        onPointerMove={toolMode === 'pen' ? handlePenPointerMove : handlePointerMove}
+                        onPointerUp={toolMode === 'pen' ? handlePenPointerUp : handlePointerUp}
+                        onPointerLeave={toolMode === 'pen' ? handlePenPointerUp : handlePointerUp}
+                        className={`relative w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl select-none border border-slate-300 dark:border-white/15 bg-slate-950/20 ${toolMode === 'pen' ? 'cursor-crosshair' : 'cursor-default'}`}
                         style={{ touchAction: 'none' }}
                       >
                         <img src={preview} alt="Anteprima Scheda" className="w-full h-auto pointer-events-none display-block" />
-                        {boxes.map(box => {
+
+                        {/* Layer per i tratti del Pennarello Nero */}
+                        <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
+                          {penStrokes.map((stroke, index) => (
+                            <polyline
+                              key={index}
+                              fill="none"
+                              stroke="black"
+                              strokeWidth={`${stroke.width * 0.8}px`}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              points={stroke.points.map(p => `${p.x}%,${p.y}%`).join(' ')}
+                            />
+                          ))}
+                        </svg>
+
+                        {/* Layer per i riquadri (solo in modalità box) */}
+                        {toolMode === 'box' && boxes.map(box => {
                           if (!box.active) return null
                           return (
                             <div
                               key={box.id}
-                              className={`absolute border-2 ${box.color} flex flex-col justify-between group transition-shadow hover:shadow-lg`}
+                              className={`absolute border-2 ${box.color} flex flex-col justify-between group transition-shadow hover:shadow-lg z-20`}
                               style={{
                                 left: `${box.x}%`,
                                 top: `${box.y}%`,
@@ -732,26 +903,61 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
       {step === "review" && ocrResult && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
           
-          {/* Colonna Sinistra: Anteprima Sticky */}
+          {/* Colonna Sinistra: Anteprima Sticky con Lente d'Ingrandimento */}
           <div className="hidden xl:block sticky top-6 space-y-4">
-            <h3 className="text-sm font-black uppercase tracking-widest opacity-60 flex items-center gap-2">
-              <Camera size={16} /> Scansione Originale
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black uppercase tracking-widest opacity-60 flex items-center gap-2">
+                <Camera size={16} /> Scansione Originale (Lente d'Ingrandimento)
+              </h3>
+              {preview && (
+                <button
+                  type="button"
+                  onClick={() => setIsZoomModalOpen(true)}
+                  className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white shadow-md transition-all active:scale-95"
+                >
+                  <Maximize2 size={14} /> Schermo Intero
+                </button>
+              )}
+            </div>
+
             {preview ? (
-              <div className={`rounded-3xl border ${cardBg} p-2 overflow-hidden shadow-sm`}>
-                {(file?.type === 'application/pdf' || file?.name.toLowerCase().endsWith('.pdf')) ? (
-                  <object data={preview} type="application/pdf" className="w-full h-[85vh] rounded-2xl bg-white border-0">
-                    <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-slate-100 rounded-2xl text-slate-500">
-                      <p>Il tuo browser non supporta l'anteprima PDF inline.</p>
+              <div 
+                className={`relative rounded-3xl border ${cardBg} p-2 overflow-hidden shadow-lg cursor-crosshair group`}
+                onMouseMove={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  const x = e.clientX - rect.left
+                  const y = e.clientY - rect.top
+                  const relX = (x / rect.width) * 100
+                  const relY = (y / rect.height) * 100
+                  setLens({ show: true, x, y, relX, relY })
+                }}
+                onMouseLeave={() => setLens(prev => ({ ...prev, show: false }))}
+                onClick={() => setIsZoomModalOpen(true)}
+              >
+                <img src={preview} alt="Anteprima Scheda" className="w-full h-auto max-h-[80vh] object-contain rounded-2xl bg-slate-100 dark:bg-slate-800" />
+                
+                {/* Lente d'Ingrandimento Fluttuante a Seguito del Mouse */}
+                {lens.show && (
+                  <div
+                    className="absolute w-52 h-52 rounded-full border-4 border-purple-500 shadow-2xl pointer-events-none z-50 overflow-hidden"
+                    style={{
+                      left: `${lens.x - 104}px`,
+                      top: `${lens.y - 104}px`,
+                      backgroundImage: `url(${preview})`,
+                      backgroundPosition: `${lens.relX}% ${lens.relY}%`,
+                      backgroundSize: `300%`,
+                      backgroundRepeat: 'no-repeat'
+                    }}
+                  >
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-slate-950/80 text-purple-300 text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow border border-purple-500/30">
+                      3.0x ZOOM LENTE
                     </div>
-                  </object>
-                ) : (
-                  <img src={preview} alt="Anteprima Scheda" className="w-full h-auto max-h-[85vh] object-contain rounded-2xl bg-slate-100 dark:bg-slate-800" />
+                  </div>
                 )}
               </div>
             ) : (
               <div className={`rounded-3xl border ${cardBg} p-8 flex items-center justify-center text-center h-[50vh]`}>
-                <p className={mutedText}>Anteprima non disponibile (PDF o formato non testuale)</p>
+                <p className={mutedText}>Anteprima non disponibile</p>
               </div>
             )}
           </div>
@@ -1004,6 +1210,66 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
             <button onClick={onImportComplete} className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl">
               Vai alla lista
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Ingrandimento Schermo Intero per Controllo Dettagli/Targhe */}
+      {isZoomModalOpen && preview && (
+        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col animate-in fade-in duration-200 p-4">
+          <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
+            <div className="flex items-center gap-3">
+              <h3 className="text-base font-black text-white flex items-center gap-2">
+                <ZoomIn size={18} className="text-purple-400" /> Ingrandimento Scansione HD (Controllo Targhe)
+              </h3>
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-mono font-bold">
+                {Math.round(modalZoomScale * 100)}%
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setModalZoomScale(s => Math.max(0.5, s - 0.25))}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all"
+                title="Riduci zoom"
+              >
+                <ZoomOut size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalZoomScale(1)}
+                className="px-3 py-1.5 text-xs font-bold rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all"
+              >
+                100%
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalZoomScale(s => Math.min(4, s + 0.25))}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all"
+                title="Aumenta zoom"
+              >
+                <ZoomIn size={18} />
+              </button>
+              <div className="w-px h-6 bg-white/10 mx-1" />
+              <button
+                type="button"
+                onClick={() => setIsZoomModalOpen(false)}
+                className="p-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-white transition-all shadow-lg shadow-rose-500/30"
+                title="Chiudi ingrandimento"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-auto p-4 flex items-center justify-center min-h-0">
+            <div 
+              className="transition-transform duration-100 ease-out max-w-none shadow-2xl rounded-xl overflow-hidden border border-white/10"
+              style={{ transform: `scale(${modalZoomScale})`, transformOrigin: 'top center' }}
+            >
+              <img src={preview} alt="Scansione Ingrandita" className="max-w-none h-auto select-none display-block" />
+            </div>
           </div>
         </div>
       )}
