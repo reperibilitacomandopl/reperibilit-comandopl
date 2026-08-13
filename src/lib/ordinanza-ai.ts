@@ -59,9 +59,39 @@ export interface AnalisiCompleta {
 }
 
 // ----------------------------------------------------------------
-// LLM client — OpenRouter
-// LLM client — OpenRouter o Gemini
+// LLM client — OpenRouter o Gemini + rizzo-pii
 // ----------------------------------------------------------------
+
+async function anonymizePii(text: string): Promise<{ text: string, mapping: Record<string, string> }> {
+  const piiUrl = process.env.RIZZO_PII_URL
+  if (!piiUrl) return { text, mapping: {} }
+
+  try {
+    const res = await fetch(`${piiUrl}/analyze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, include_mapping: true })
+    })
+    if (!res.ok) {
+      console.warn("Errore rizzo-pii, fallback a testo in chiaro:", await res.text())
+      return { text, mapping: {} }
+    }
+    const data = await res.json()
+    return { text: data.anonymized_text, mapping: data.mapping || {} }
+  } catch (err) {
+    console.warn("Impossibile connettersi a rizzo-pii, fallback in chiaro:", err)
+    return { text, mapping: {} }
+  }
+}
+
+function restorePii(text: string, mapping: Record<string, string>): string {
+  if (!mapping || Object.keys(mapping).length === 0) return text
+  let restored = text
+  for (const [placeholder, realValue] of Object.entries(mapping)) {
+    restored = restored.split(placeholder).join(realValue)
+  }
+  return restored
+}
 
 async function callLLM(
   systemPrompt: string,
@@ -75,6 +105,10 @@ async function callLLM(
       "API Key mancante: configura OPENROUTER_API_KEY oppure GEMINI_API_KEY nel file .env"
     )
   }
+
+  // 1. Anonimizza i dati sensibili prima di inviarli al cloud
+  const { text: safeUserMessage, mapping } = await anonymizePii(userMessage)
+  let responseText = ""
 
   // --- Caso 1: OPENROUTER ---
   if (openRouterKey && openRouterKey.length > 10) {
@@ -90,7 +124,7 @@ async function callLLM(
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage },
+          { role: "user", content: safeUserMessage },
         ],
         temperature: 0.2,
         max_tokens: 4096,
@@ -103,10 +137,9 @@ async function callLLM(
     }
 
     const data = await res.json()
-    return data.choices[0].message.content
-  }
-
-  // --- Caso 2: API GEMINI NATIVA (Generative Language API) ---
+    responseText = data.choices[0].message.content
+  } else {
+    // --- Caso 2: API GEMINI NATIVA (Generative Language API) ---
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
     method: "POST",
     headers: {
@@ -118,7 +151,7 @@ async function callLLM(
       },
       contents: [{
         role: "user",
-        parts: [{ text: userMessage }]
+        parts: [{ text: safeUserMessage }]
       }],
       generationConfig: {
         temperature: 0.2,
@@ -127,12 +160,16 @@ async function callLLM(
   })
 
   if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Errore OpenRouter (${res.status}): ${err}`)
+      const err = await res.text()
+      throw new Error(`Errore Gemini Nativo (${res.status}): ${err}`)
+    }
+
+    const data = await res.json()
+    responseText = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ""
   }
 
-  const data = await res.json()
-  return data.choices?.[0]?.message?.content ?? ""
+  // 2. Ripristina i dati in chiaro sui risultati
+  return restorePii(responseText, mapping)
 }
 
 // ----------------------------------------------------------------

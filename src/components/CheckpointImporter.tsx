@@ -1,11 +1,16 @@
 "use client"
 
-import { useState, useRef, useCallback, useEffect } from "react"
+import React, { useState, useRef, useEffect, useCallback } from "react"
 import {
   Upload, FileText, Eye, Save, AlertTriangle, CheckCircle,
   Loader2, RotateCw, X, ChevronDown, ChevronUp, Edit3, Trash2, Camera, Shield
 } from "lucide-react"
+import * as pdfjsLib from "pdfjs-dist"
 import CdsViolationSearch from "./CdsViolationSearch"
+
+if (typeof window !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+}
 
 const ALL_PRIVACY_FIELDS = ['intestazione', 'veicolo', 'proprietario', 'conducente', 'patente', 'sanzione', 'passeggero']
 
@@ -268,7 +273,34 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
       reader.onload = e => setPreview(e.target?.result as string)
       reader.readAsDataURL(f)
     } else if (f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')) {
-      setPreview(URL.createObjectURL(f))
+      const reader = new FileReader()
+      reader.onload = async (e) => {
+        try {
+          const typedarray = new Uint8Array(e.target?.result as ArrayBuffer)
+          const pdf = await pdfjsLib.getDocument(typedarray).promise
+          const page = await pdf.getPage(1)
+          const viewport = page.getViewport({ scale: 2.0 }) // render ad alta risoluzione
+          const canvas = document.createElement('canvas')
+          const context = canvas.getContext('2d')
+          if (!context) throw new Error("No context")
+          canvas.height = viewport.height
+          canvas.width = viewport.width
+          await page.render({ canvasContext: context, viewport }).promise
+          
+          const dataUrl = canvas.toDataURL('image/png')
+          canvas.toBlob(blob => {
+            if (blob) {
+              const newFile = new File([blob], f.name.replace(/\.pdf$/i, '.png'), { type: 'image/png' })
+              setFile(newFile)     // Sovrascrive il file originario trasformandolo in immagine
+              setPreview(dataUrl)  // Imposta l'anteprima
+            }
+          }, 'image/png')
+        } catch (err) {
+          console.error("Errore durante il rendering del PDF:", err)
+          setPreview(URL.createObjectURL(f)) // Fallback standard
+        }
+      }
+      reader.readAsArrayBuffer(f)
     } else {
       setPreview(null)
     }
@@ -498,7 +530,7 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
                     </div>
                   ) : (
                     <div className="p-6 border border-amber-500/20 bg-amber-500/5 rounded-xl text-amber-500 text-xs font-bold max-w-md mx-auto">
-                      L'oscuramento interattivo delle aree è supportato solo per le immagini (PNG, JPG, TIFF). Per i PDF, tutti i filtri privacy selezionati verranno rimossi direttamente dal server tramite software.
+                      Non è stato possibile caricare il PDF come immagine. I riquadri di censura interattivi non sono disponibili in questa modalità. I campi privacy selezionati in basso verranno omessi chiedendo all'AI di ignorarli testualmente.
                     </div>
                   )
                 )}
