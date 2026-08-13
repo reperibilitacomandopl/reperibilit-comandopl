@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react"
 import {
   Upload, FileText, Eye, Save, AlertTriangle, CheckCircle,
-  Loader2, RotateCw, X, ChevronDown, ChevronUp, Edit3, Trash2, Camera, Shield
+  Loader2, RotateCw, RotateCcw, X, ChevronDown, ChevronUp, Edit3, Trash2, Camera, Shield
 } from "lucide-react"
 import * as pdfjsLib from "pdfjs-dist"
 import CdsViolationSearch from "./CdsViolationSearch"
@@ -121,6 +121,7 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
     startBoxH: number
   } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [rotation, setRotation] = useState<number>(0)
 
   const handlePointerDown = (
     e: React.PointerEvent<HTMLDivElement>,
@@ -222,15 +223,20 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
       img.src = preview || ''
       img.onload = () => {
         const canvas = document.createElement('canvas')
-        canvas.width = img.naturalWidth
-        canvas.height = img.naturalHeight
+        const isRotated90 = rotation === 90 || rotation === 270
+        canvas.width = isRotated90 ? img.naturalHeight : img.naturalWidth
+        canvas.height = isRotated90 ? img.naturalWidth : img.naturalHeight
         const ctx = canvas.getContext('2d')
         if (!ctx) return reject(new Error('Canvas context not available'))
 
-        // Draw original image
-        ctx.drawImage(img, 0, 0)
+        // Apply rotation
+        ctx.save()
+        ctx.translate(canvas.width / 2, canvas.height / 2)
+        ctx.rotate((rotation * Math.PI) / 180)
+        ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2)
+        ctx.restore()
 
-        // Draw black rectangles for active redaction boxes
+        // Draw black rectangles for active redaction boxes (in rotated coordinate space)
         ctx.fillStyle = 'black'
         boxes.forEach(box => {
           if (!box.active) return
@@ -435,6 +441,7 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
     setError(null)
     setSaveResult(null)
     setMatchedViolations({})
+    setRotation(0)
   }
 
   const loadViolations = async (idx: number, targa?: string) => {
@@ -486,9 +493,29 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
                 {preview && (
                   file.type.startsWith('image/') ? (
                     <div className="space-y-2">
-                      <p className={`text-xs font-bold ${mutedText} mb-2`}>
-                        Trascina o ridimensiona i riquadri colorati per coprire le parti sensibili che non desideri inviare all'IA.
-                      </p>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className={`text-xs font-bold ${mutedText}`}>
+                          Trascina o ridimensiona i riquadri colorati per coprire le parti sensibili che non desideri inviare all'IA.
+                        </p>
+                        <div className="flex items-center gap-1 ml-3 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setRotation(r => (r + 270) % 360) }}
+                            className={`p-2 rounded-lg transition-all ${isDark ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
+                            title="Ruota a sinistra"
+                          >
+                            <RotateCcw size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setRotation(r => (r + 90) % 360) }}
+                            className={`p-2 rounded-lg transition-all ${isDark ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}
+                            title="Ruota a destra"
+                          >
+                            <RotateCw size={16} />
+                          </button>
+                        </div>
+                      </div>
                       <div 
                         ref={containerRef}
                         onPointerMove={handlePointerMove}
@@ -497,7 +524,7 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
                         className="relative max-w-full md:max-w-xl mx-auto rounded-xl overflow-hidden shadow-lg select-none cursor-default border border-slate-200 dark:border-white/10 bg-slate-950/20"
                         style={{ touchAction: 'none' }}
                       >
-                        <img src={preview} alt="Anteprima" className="w-full h-auto pointer-events-none" />
+                        <img src={preview} alt="Anteprima" className="w-full h-auto pointer-events-none" style={{ transform: `rotate(${rotation}deg)` }} />
                         {boxes.map(box => {
                           if (!box.active) return null
                           return (
