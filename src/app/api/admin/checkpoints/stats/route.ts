@@ -107,6 +107,46 @@ export async function GET() {
       .sort((a: any, b: any) => b.count - a.count)
       .slice(0, 5) // Mostriamo solo le top 5 per non affollare il grafico
 
+    // Statistiche Operatori Più Attivi
+    const allCheckpoints = await prisma.checkpoint.findMany({
+      where: baseWhere,
+      select: { operatori: true, oraInizio: true }
+    })
+
+    const opCountMap: Record<string, number> = {}
+    const fasceMap = {
+      'Mattina (07-13)': 0,
+      'Pomeriggio (13-19)': 0,
+      'Sera (19-01)': 0,
+      'Notte (01-07)': 0
+    }
+
+    allCheckpoints.forEach(cp => {
+      if (cp.operatori) {
+        const ops = cp.operatori.split(',').map(s => s.trim()).filter(Boolean)
+        ops.forEach(op => {
+          opCountMap[op] = (opCountMap[op] || 0) + 1
+        })
+      }
+
+      if (cp.oraInizio) {
+        const hour = parseInt(cp.oraInizio.split(':')[0], 10)
+        if (!isNaN(hour)) {
+          if (hour >= 7 && hour < 13) fasceMap['Mattina (07-13)']++
+          else if (hour >= 13 && hour < 19) fasceMap['Pomeriggio (13-19)']++
+          else if (hour >= 19 || hour < 1) fasceMap['Sera (19-01)']++
+          else fasceMap['Notte (01-07)']++
+        }
+      }
+    })
+
+    const topOperatori = Object.entries(opCountMap)
+      .map(([nome, totale]) => ({ nome, totale }))
+      .sort((a, b) => b.totale - a.totale)
+      .slice(0, 5)
+
+    const fasceOrarie = Object.entries(fasceMap).map(([fasca, count]) => ({ fascia: fasca.split(' ')[0], orario: fasca, count }))
+
     // Media veicoli per controllo
     const mediaVeicoli = controlliTotali > 0 ? Math.round((veicoliTotali / controlliTotali) * 10) / 10 : 0
     const percSanzioni = veicoliTotali > 0 ? Math.round((veicoliConSanzione / veicoliTotali * 100) * 10) / 10 : 0
@@ -125,7 +165,9 @@ export async function GET() {
       andamentoMensile,
       mediaVeicoli,
       percSanzioni,
-      sanzioniPerArticolo
+      sanzioniPerArticolo,
+      topOperatori,
+      fasceOrarie
     })
   } catch (error) {
     console.error('[CHECKPOINT_STATS] Error:', error)
