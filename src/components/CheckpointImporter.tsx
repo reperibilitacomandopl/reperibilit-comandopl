@@ -721,22 +721,22 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
                         onPointerMove={toolMode === 'pen' ? handlePenPointerMove : handlePointerMove}
                         onPointerUp={toolMode === 'pen' ? handlePenPointerUp : handlePointerUp}
                         onPointerLeave={toolMode === 'pen' ? handlePenPointerUp : handlePointerUp}
-                        className={`relative w-full max-w-4xl mx-auto rounded-2xl overflow-hidden shadow-2xl select-none border border-slate-300 dark:border-white/15 bg-slate-950/20 ${toolMode === 'pen' ? 'cursor-crosshair' : 'cursor-default'}`}
+                        className={`relative w-full mx-auto rounded-2xl overflow-hidden shadow-2xl select-none border border-slate-300 dark:border-white/15 bg-slate-950/20 ${toolMode === 'pen' ? 'cursor-crosshair' : 'cursor-default'}`}
                         style={{ touchAction: 'none' }}
                       >
                         <img src={preview} alt="Anteprima Scheda" className="w-full h-auto pointer-events-none display-block" />
 
                         {/* Layer per i tratti del Pennarello Nero */}
-                        <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
+                        <svg viewBox="0 0 1000 1000" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none z-10">
                           {penStrokes.map((stroke, index) => (
                             <polyline
                               key={index}
                               fill="none"
                               stroke="black"
-                              strokeWidth={`${stroke.width * 0.8}px`}
+                              strokeWidth={stroke.width}
                               strokeLinecap="round"
                               strokeLinejoin="round"
-                              points={stroke.points.map(p => `${p.x}%,${p.y}%`).join(' ')}
+                              points={stroke.points.map(p => `${p.x * 10},${p.y * 10}`).join(' ')}
                             />
                           ))}
                         </svg>
@@ -901,28 +901,28 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
 
       {/* STEP: REVIEW */}
       {step === "review" && ocrResult && (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
+        <div className="grid grid-cols-1 2xl:grid-cols-12 gap-8 items-start w-full">
           
-          {/* Colonna Sinistra: Anteprima Sticky con Lente d'Ingrandimento */}
-          <div className="hidden xl:block sticky top-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black uppercase tracking-widest opacity-60 flex items-center gap-2">
-                <Camera size={16} /> Scansione Originale (Lente d'Ingrandimento)
+          {/* Colonna Sinistra: Anteprima Sticky con Lente d'Ingrandimento (7/12 del monitor su 2xl) */}
+          <div className="hidden xl:block 2xl:col-span-7 sticky top-4 space-y-3">
+            <div className="flex items-center justify-between bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
+              <h3 className="text-sm font-black uppercase tracking-widest text-purple-300 flex items-center gap-2">
+                <Camera size={16} /> Scansione Originale (Lente d'Ingrandimento HD)
               </h3>
               {preview && (
                 <button
                   type="button"
                   onClick={() => setIsZoomModalOpen(true)}
-                  className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white shadow-md transition-all active:scale-95"
+                  className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/30 transition-all active:scale-95"
                 >
-                  <Maximize2 size={14} /> Schermo Intero
+                  <Maximize2 size={14} /> Schermo Intero HD
                 </button>
               )}
             </div>
 
             {preview ? (
               <div 
-                className={`relative rounded-3xl border ${cardBg} p-2 overflow-hidden shadow-lg cursor-crosshair group`}
+                className={`relative rounded-3xl border ${cardBg} p-2 overflow-hidden shadow-xl cursor-crosshair group bg-slate-950/40`}
                 onMouseMove={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect()
                   const x = e.clientX - rect.left
@@ -934,23 +934,23 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
                 onMouseLeave={() => setLens(prev => ({ ...prev, show: false }))}
                 onClick={() => setIsZoomModalOpen(true)}
               >
-                <img src={preview} alt="Anteprima Scheda" className="w-full h-auto max-h-[80vh] object-contain rounded-2xl bg-slate-100 dark:bg-slate-800" />
+                <img src={preview} alt="Anteprima Scheda" className="w-full h-auto max-h-[88vh] object-contain rounded-2xl bg-slate-100 dark:bg-slate-900" />
                 
                 {/* Lente d'Ingrandimento Fluttuante a Seguito del Mouse */}
                 {lens.show && (
                   <div
-                    className="absolute w-52 h-52 rounded-full border-4 border-purple-500 shadow-2xl pointer-events-none z-50 overflow-hidden"
+                    className="absolute w-60 h-60 rounded-full border-4 border-purple-500 shadow-2xl pointer-events-none z-50 overflow-hidden"
                     style={{
-                      left: `${lens.x - 104}px`,
-                      top: `${lens.y - 104}px`,
+                      left: `${lens.x - 120}px`,
+                      top: `${lens.y - 120}px`,
                       backgroundImage: `url(${preview})`,
                       backgroundPosition: `${lens.relX}% ${lens.relY}%`,
-                      backgroundSize: `300%`,
+                      backgroundSize: `350%`,
                       backgroundRepeat: 'no-repeat'
                     }}
                   >
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-slate-950/80 text-purple-300 text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow border border-purple-500/30">
-                      3.0x ZOOM LENTE
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-slate-950/90 text-purple-300 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow border border-purple-500/40">
+                      3.5x ZOOM LENTE
                     </div>
                   </div>
                 )}
@@ -962,8 +962,8 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
             )}
           </div>
 
-          {/* Colonna Destra: Form di Verifica */}
-          <div className="space-y-6">
+          {/* Colonna Destra: Form di Verifica (5/12 del monitor su 2xl) */}
+          <div className="2xl:col-span-5 space-y-6">
             <div className={`rounded-3xl border ${cardBg} p-6 shadow-sm`}>
             <h2 className="text-lg font-black mb-4 flex items-center gap-3">
               <Edit3 size={20} className="text-amber-500" /> Revisiona i Dati Estratti
