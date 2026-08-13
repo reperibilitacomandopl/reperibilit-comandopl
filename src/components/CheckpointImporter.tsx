@@ -8,6 +8,7 @@ import {
 } from "lucide-react"
 import * as pdfjsLib from "pdfjs-dist"
 import CdsViolationSearch from "./CdsViolationSearch"
+import { StreetSearchAutocomplete } from "./StreetSearchAutocomplete"
 
 if (typeof window !== 'undefined') {
   pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js'
@@ -512,8 +513,24 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
         return
       }
 
+      let luogoEstratto = data.controllo?.luogo || ''
+      if (luogoEstratto && luogoEstratto.length >= 3) {
+        try {
+          const sRes = await fetch(`/api/agent/streets/search?q=${encodeURIComponent(luogoEstratto)}`)
+          if (sRes.ok) {
+            const streets = await sRes.json()
+            if (Array.isArray(streets) && streets.length > 0) {
+              luogoEstratto = streets[0].denominazione
+            }
+          }
+        } catch {}
+      }
+
       setOcrResult({
-        controllo: data.controllo || {},
+        controllo: {
+          ...data.controllo,
+          luogo: luogoEstratto
+        },
         veicoli: (data.veicoli || []),
         model: data.model,
         warning: data.warning
@@ -1017,28 +1034,76 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
                   <input value={ocrResult.controllo.ora_fine || ''} onChange={e => updateControlloField('ora_fine', e.target.value)} className={`w-full px-3 py-2 rounded-lg border text-sm ${inputBg}`} />
                 </div>
               </div>
-              <div>
-                <label className="text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block">Luogo</label>
-                <input value={ocrResult.controllo.luogo || ''} onChange={e => updateControlloField('luogo', e.target.value)} className={`w-full px-3 py-2 rounded-lg border text-sm ${inputBg}`} />
+              <div className="md:col-span-1">
+                <label className="text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block">Luogo (Database Vie)</label>
+                <StreetSearchAutocomplete
+                  value={ocrResult.controllo.luogo || ''}
+                  onChange={(val) => updateControlloField('luogo', val)}
+                  placeholder="Cerca o seleziona via..."
+                  theme={isDark ? "dark" : "light"}
+                />
               </div>
             </div>
+
             <div className="mb-6">
-              <label className="text-xs font-bold uppercase tracking-widest opacity-60 mb-1 block">Operatori</label>
-              <input value={ocrResult.controllo.operatori || ''} onChange={e => updateControlloField('operatori', e.target.value)} className={`w-full px-3 py-2 rounded-lg border text-sm ${inputBg}`} placeholder="es. Ag. Rossi, Isp. Verdi" />
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold uppercase tracking-widest opacity-60 block">Operatori in servizio (Database Agenti)</label>
+                <span className="text-[10px] text-purple-400 font-bold">Associazione automatica attivi</span>
+              </div>
+              <input 
+                value={ocrResult.controllo.operatori || ''} 
+                onChange={e => updateControlloField('operatori', e.target.value)} 
+                className={`w-full px-3 py-2 rounded-xl border text-sm font-bold mb-3 ${inputBg}`} 
+                placeholder="es. Ag. Rossi, Isp. Verdi" 
+              />
+              
               {users.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {users.map(u => {
-                    const name = u.name || `${u.nome || ''} ${u.cognome || ''}`.trim() || u.matricola;
-                    return (
-                      <button key={u.id} type="button" onClick={() => {
-                        const current = ocrResult.controllo.operatori || '';
-                        if (current.includes(name)) return;
-                        updateControlloField('operatori', current ? `${current}, ${name}` : name);
-                      }} className={`px-2 py-1 text-xs rounded-md border font-medium transition-colors ${isDark ? "bg-white/5 border-white/10 hover:bg-white/10" : "bg-slate-50 border-slate-200 hover:bg-slate-100"}`}>
-                        + {name}
-                      </button>
-                    )
-                  })}
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-wider opacity-50 mb-2">
+                    Operatori Comando Registrati (Clicca per associare):
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {users.map(u => {
+                      const fullName = u.name || `${u.nome || ''} ${u.cognome || ''}`.trim() || u.matricola;
+                      const cognomeOnly = u.cognome || fullName;
+                      const currentOps = ocrResult.controllo.operatori || '';
+                      
+                      const isSelected = currentOps.toLowerCase().includes(fullName.toLowerCase()) || 
+                                         (cognomeOnly.length > 2 && currentOps.toLowerCase().includes(cognomeOnly.toLowerCase()));
+
+                      return (
+                        <button 
+                          key={u.id} 
+                          type="button" 
+                          onClick={() => {
+                            if (isSelected) {
+                              // Rimuovi operatore
+                              const parts = currentOps.split(',').map(s => s.trim()).filter(s => 
+                                s.toLowerCase() !== fullName.toLowerCase() && 
+                                s.toLowerCase() !== cognomeOnly.toLowerCase() &&
+                                !s.toLowerCase().includes(cognomeOnly.toLowerCase())
+                              );
+                              updateControlloField('operatori', parts.join(', '));
+                            } else {
+                              // Aggiungi operatore
+                              const prefix = (u.ruolo || u.grado || 'Ag.').split(' ')[0];
+                              const displayName = `${prefix} ${fullName}`;
+                              updateControlloField('operatori', currentOps ? `${currentOps}, ${displayName}` : displayName);
+                            }
+                          }} 
+                          className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${
+                            isSelected 
+                              ? "bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow-sm" 
+                              : isDark ? "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10" : "bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200"
+                          }`}
+                        >
+                          {isSelected ? <CheckCircle size={13} className="text-emerald-400" /> : <span className="text-slate-400">+</span>}
+                          <span>{fullName}</span>
+                          {u.matricola && <span className="text-[10px] opacity-60 font-mono">({u.matricola})</span>}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
               )}
             </div>
