@@ -9,7 +9,7 @@ import * as pdfjsLib from "pdfjs-dist"
 import CdsViolationSearch from "./CdsViolationSearch"
 
 if (typeof window !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js'
 }
 
 const ALL_PRIVACY_FIELDS = ['intestazione', 'veicolo', 'proprietario', 'conducente', 'patente', 'sanzione', 'passeggero']
