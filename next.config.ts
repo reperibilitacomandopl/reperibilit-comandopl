@@ -16,6 +16,11 @@ const withPWA = withPWAInit({
 const nextConfig: NextConfig = {
   output: 'standalone',
   reactCompiler: true,
+  webpack: (config) => {
+    // pdfjs-dist tries to require 'canvas' (Node.js native) but we only use it client-side
+    config.resolve.alias.canvas = false;
+    return config;
+  },
   async headers() {
     return [
       {
@@ -37,10 +42,11 @@ const nextConfig: NextConfig = {
               "img-src 'self' data: blob: https:",
               "connect-src 'self' https://api.telegram.org https://hcaptcha.com https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.upstash.io",
               "media-src 'self' https://assets.mixkit.co",
+              "worker-src 'self' blob:",
+              "frame-src 'self' blob:",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
-              "worker-src 'self' blob:",
             ].join("; ")
           },
         ],
