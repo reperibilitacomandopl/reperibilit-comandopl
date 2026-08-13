@@ -470,15 +470,15 @@ export default function CheckpointImporter({ isDark, onImportComplete }: { isDar
     try {
       const formData = new FormData()
 
-      // If we have active boxes and it's an image, redact it first!
-      const hasActiveBoxes = boxes.some(b => b.active)
-      const isImage = file.type.startsWith('image/')
+      // If we have active boxes OR freehand pen strokes, redact the image before sending to IA!
+      const hasRedaction = boxes.some(b => b.active) || penStrokes.length > 0
+      const isImage = file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.png') || file.name.toLowerCase().endsWith('.jpg')
 
-      if (hasActiveBoxes && isImage) {
+      if (hasRedaction && isImage) {
         try {
           const redactedBlob = await getRedactedImageBlob()
-          // Append the redacted file instead
-          const redactedFile = new File([redactedBlob], file.name, { type: file.type })
+          const redactedFile = new File([redactedBlob], file.name.replace(/\.pdf$/i, '.png'), { type: 'image/png' })
+          setPreview(URL.createObjectURL(redactedBlob))
           formData.append('file', redactedFile)
         } catch (err) {
           console.error('Errore durante l\'oscuramento:', err)
